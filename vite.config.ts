@@ -47,5 +47,7 @@ export default defineConfig({
   test: {
     include: ["src/**/*.test.ts"],
     environment: "node",
+    // Runners de CI plus lents : PGlite et le placement automatique dépassent parfois 5 s.
+    ...(process.env.CI ? { testTimeout: 30_000 } : {}),
   },
 });
