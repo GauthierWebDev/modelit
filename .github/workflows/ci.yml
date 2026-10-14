@@ -1,0 +1,180 @@
+# Pipeline : tests sur les trois OS, exécution réelle des scripts générés sur PostgreSQL 18 et
+# MySQL 8.4 (Docker, overrides O-29 et O-35), puis build de l'application native sur les trois OS.
+#
+# - Branche main et pull requests : les installeurs sont joints au run (artefacts, 7 jours).
+# - Tag `vX.Y.Z` : release GitHub en brouillon, avec les installeurs signés pour la mise à jour
+#   automatique et `latest.json`. L'application ne voit la version qu'une fois la release publiée.
+#
+# Publier : passer `version` de package.json (seule source, lue par Tauri) à X.Y.Z, ajouter la
+# section « ## X.Y.Z — date » à CHANGELOG.md (obligatoire, vérifiée par les tests), committer,
+# puis `git tag vX.Y.Z && git push origin vX.Y.Z`. Secret requis : TAURI_SIGNING_PRIVATE_KEY.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  tests:
+    # Les trois OS de la release : chemins, fins de ligne, comportements propres à chaque plateforme.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      # Inclut l'exécution des scripts PostgreSQL 18 dans PGlite et SQLite (node:sqlite).
+      - run: pnpm test
+      - run: pnpm build
+
+  sgbd:
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: PostgreSQL 18 et MySQL 8.4 (Docker)
+        run: scripts/sgbd.sh up postgres postgis mysql && scripts/sgbd.sh wait postgres postgis mysql
+      - name: Exécution réelle des scripts générés
+        run: pnpm test:sgbd
+        env:
+          # Échec (et non test ignoré) si l'un de ces SGBD ne répond pas.
+          SGBD_REQUIRED: postgres,postgis,mysql
+      - if: always()
+        run: scripts/sgbd.sh down
+
+  bundle:
+    needs: [tests, sgbd]
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Binaire universel : Apple Silicon et Intel.
+          - os: macos-latest
+            args: --target universal-apple-darwin
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+          - os: windows-latest
+            args: ""
+            rust-targets: ""
+          # glibc ancienne : l'AppImage et les paquets fonctionnent sur davantage de distributions.
+          - os: ubuntu-22.04
+            args: ""
+            rust-targets: ""
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag conforme à la version de package.json
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          if [ "$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Le tag $GITHUB_REF_NAME ne correspond pas à la version de package.json ($version)."
+            exit 1
+          fi
+
+      - name: Dépendances système (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      # Section de la version dans CHANGELOG.md : texte de la release et notes de la mise à jour.
+      - name: Notes de version
+        id: notes
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          {
+            echo "body<<NOTES_EOF"
+            node scripts/release-notes.ts "$GITHUB_REF_NAME"
+            echo "NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build (sans publication)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: pnpm tauri build ${{ matrix.args }}
+      - name: Installeurs
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: modelit-${{ runner.os }}
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            src-tauri/target/**/bundle/dmg/*.dmg
+            src-tauri/target/**/bundle/msi/*.msi
+            src-tauri/target/**/bundle/nsis/*.exe
+            src-tauri/target/**/bundle/deb/*.deb
+            src-tauri/target/**/bundle/rpm/*.rpm
+            src-tauri/target/**/bundle/appimage/*.AppImage
+
+      # Les installeurs sont signés (clé du plugin updater) ; l'adresse de `latest.json` pointe sur
+      # la dernière release publiée de ce dépôt.
+      - name: Configuration de release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          cat > release.conf.json <<EOF
+          {
+            "bundle": { "createUpdaterArtifacts": true },
+            "plugins": { "updater": { "endpoints": ["https://github.com/$GITHUB_REPOSITORY/releases/latest/download/latest.json"] } }
+          }
+          EOF
+      - name: Build et release en brouillon
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tauriScript: pnpm tauri
+          args: ${{ matrix.args }} --config release.conf.json
+          tagName: ${{ github.ref_name }}
+          releaseName: ModelIt ${{ github.ref_name }}
+          releaseBody: ${{ steps.notes.outputs.body }}
+          releaseDraft: true
+          prerelease: false

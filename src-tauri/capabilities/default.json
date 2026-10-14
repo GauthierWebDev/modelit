@@ -1,0 +1,30 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissions de la fenêtre principale. Les fichiers ne sont accessibles qu'après sélection par l'utilisateur dans un dialogue (le plugin dialog étend alors la portée du plugin fs). Liens externes : dépôt GitHub et texte de la licence uniquement.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-title",
+    "core:window:allow-set-theme",
+    "core:window:allow-destroy",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    "fs:allow-write-file",
+    "updater:default",
+    "process:allow-restart",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://github.com/GauthierWebDev/modelit*"
+        },
+        {
+          "url": "https://www.gnu.org/licenses/*"
+        }
+      ]
+    }
+  ]
+}

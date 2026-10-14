@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+/* Thème piloté par la classe `.dark` sur <html> (préférence utilisateur, override O-03). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Police embarquée (cf. src/ui/fonts.ts), pour un rendu identique sur tous les OS. */
+@theme {
+  --font-sans: "Inter Variable", sans-serif;
+}
+
+/*
+ * Couleurs du schéma (zone graphique). Elles seront à terme surchargées par les
+ * paramètres de couleur du document ; ici, valeurs du thème.
+ */
+:root {
+  --mcd-canvas: #ffffff;
+  --mcd-grid: #d4d4d8;
+  --mcd-text: #18181b;
+  --mcd-muted: #71717a;
+  --mcd-link: #52525b;
+  --mcd-selection: #2563eb;
+  --mcd-error: #dc2626;
+  --mcd-warning: #d97706;
+
+  --mcd-entity-title: #dbeafe;
+  --mcd-entity-body: #ffffff;
+  --mcd-entity-stroke: #3b82f6;
+
+  /* Association multiple (n) et association porteuse de DF (1) : couleurs distinctes. */
+  --mcd-assoc-title: #fef3c7;
+  --mcd-assoc-body: #ffffff;
+  --mcd-assoc-stroke: #d97706;
+  --mcd-assoc-df-title: #dcfce7;
+  --mcd-assoc-df-body: #ffffff;
+  --mcd-assoc-df-stroke: #16a34a;
+
+  /* Héritage (triangle). */
+  --mcd-inherit-fill: #fce7f3;
+  --mcd-inherit-stroke: #db2777;
+
+  /* Tables des vues MLD / MPD. */
+  --mcd-table-title: #ede9fe;
+  --mcd-table-body: #ffffff;
+  --mcd-table-stroke: #7c3aed;
+  --mcd-foreign: #be185d;
+
+  color-scheme: light;
+}
+
+:root.dark {
+  --mcd-canvas: #18181b;
+  --mcd-grid: #3f3f46;
+  --mcd-text: #f4f4f5;
+  --mcd-muted: #a1a1aa;
+  --mcd-link: #a1a1aa;
+  --mcd-selection: #60a5fa;
+  --mcd-error: #f87171;
+  --mcd-warning: #fbbf24;
+
+  --mcd-entity-title: #1e3a5f;
+  --mcd-entity-body: #27272a;
+  --mcd-entity-stroke: #60a5fa;
+
+  --mcd-assoc-title: #4a3510;
+  --mcd-assoc-body: #27272a;
+  --mcd-assoc-stroke: #f59e0b;
+  --mcd-assoc-df-title: #14432a;
+  --mcd-assoc-df-body: #27272a;
+  --mcd-assoc-df-stroke: #4ade80;
+
+  --mcd-inherit-fill: #4a1d35;
+  --mcd-inherit-stroke: #f472b6;
+
+  --mcd-table-title: #2e1f5e;
+  --mcd-table-body: #27272a;
+  --mcd-table-stroke: #a78bfa;
+  --mcd-foreign: #f472b6;
+
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+input,
+textarea,
+.select-text {
+  user-select: text;
+}

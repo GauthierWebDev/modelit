@@ -1,0 +1,53 @@
+{
+  "name": "modelit",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Modélisation de données Merise (MCD → MLD → SQL), multiplateforme",
+  "author": "Gauthier DANIELS",
+  "license": "GPL-3.0-or-later",
+  "homepage": "https://github.com/GauthierWebDev/modelit",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GauthierWebDev/modelit.git"
+  },
+  "bugs": "https://github.com/GauthierWebDev/modelit/issues",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:sgbd": "SGBD_DOCKER=1 vitest run src/core/ddl/sgbd.test.ts",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@jsquash/webp": "^1.5.0",
+    "@tauri-apps/api": "^2.12.3",
+    "@tauri-apps/plugin-dialog": "^2.8.2",
+    "@tauri-apps/plugin-fs": "^2.7.0",
+    "@tauri-apps/plugin-opener": "^2.7.1",
+    "@tauri-apps/plugin-process": "^2.4.0",
+    "@tauri-apps/plugin-updater": "^2.13.3",
+    "immer": "^11.1.21",
+    "lucide-react": "^1.56.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.9",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/cli": "^2.12.2",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.4"
+  }
+}

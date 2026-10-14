@@ -1,0 +1,7 @@
+# Fins de ligne LF partout, y compris sur les postes et runners Windows (fixtures comparées octet à octet).
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary
+*.woff2 binary
+*.exe binary
