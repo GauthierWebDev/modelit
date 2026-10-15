@@ -1,9 +1,11 @@
 import { KeyRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { answerPassword, joinFromLink, leaveSession, setCollabTransport, useCollabStore } from "@/app/collab/session";
+import { setVoiceBackend } from "@/app/collab/voice/voiceSession";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { collabAvailable, connectGuestTransport, onOpenLink, startHostTransport } from "@/platform/collab";
+import { startVoice, voiceSupport } from "@/platform/voice";
 import { inputClass } from "@/ui/common/controls";
 import { Modal } from "@/ui/common/Modal";
 
@@ -78,6 +80,7 @@ export function CollabBridge() {
   useEffect(() => {
     if (!collabAvailable()) return;
     setCollabTransport({ startHost: startHostTransport, connect: connectGuestTransport });
+    setVoiceBackend({ support: voiceSupport, start: startVoice });
     let off: (() => void) | undefined;
     let disposed = false;
     void onOpenLink((url) => {

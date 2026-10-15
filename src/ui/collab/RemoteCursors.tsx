@@ -1,6 +1,7 @@
 import type { Point } from "@core/index";
 import { useEffect, useState } from "react";
 import { CURSOR_IDLE, reportPresence, useCollabStore } from "@/app/collab/session";
+import { useSpeakingStore } from "@/app/collab/voice/speaking";
 import { useDocumentView } from "@/app/document/DocumentContext";
 import type { Viewport } from "@/app/document/documentView";
 import type { DocumentHandle } from "@/app/document/handle";
@@ -44,6 +45,7 @@ export function reportCursor(doc: DocumentHandle, point: Point | null) {
 export function RemoteCursors({ viewport }: { viewport: Viewport }) {
   const { presence, participants, you } = useCollabStore();
   const view = useDocumentView((s) => s.view);
+  const speaking = useSpeakingStore((s) => s.ids);
   // Rafraîchissement régulier : un curseur immobile depuis 30 s disparaît.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -78,6 +80,20 @@ export function RemoteCursors({ viewport }: { viewport: Viewport }) {
               strokeLinejoin="round"
             />
             <g transform="translate(12 18)">
+              {/* Qui parle (O-48) : halo autour de l'étiquette. */}
+              {speaking.includes(p.id) && (
+                <rect
+                  x={-3}
+                  y={-3}
+                  rx={6}
+                  height={24}
+                  width={p.name.length * 6.6 + 18}
+                  fill="none"
+                  stroke={p.color}
+                  strokeOpacity={0.5}
+                  strokeWidth={3}
+                />
+              )}
               <rect rx={4} height={18} width={p.name.length * 6.6 + 12} fill={p.color} />
               <text
                 x={6}

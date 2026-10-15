@@ -43,6 +43,9 @@ export default defineConfig({
     target: process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome111" : "safari16.4",
     minify: !process.env.TAURI_ENV_DEBUG,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
+    // Worklet du vocal (O-48) : un vrai fichier, jamais une URL `data:` que la CSP
+    // (`script-src 'self'`) refuserait au chargement du module audio.
+    assetsInlineLimit: (file) => (file.endsWith("voiceWorklet.js") ? false : undefined),
   },
   test: {
     include: ["src/**/*.test.ts"],

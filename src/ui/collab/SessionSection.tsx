@@ -1,12 +1,14 @@
-import { Copy, LogOut, Send, Square, Users, UserX } from "lucide-react";
+import { Copy, HeadphoneOff, Headphones, LogOut, Mic, MicOff, Send, Square, Users, UserX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CHAT_MAX, type ChatMessage, type Role } from "@/app/collab/protocol";
 import type { CollabAction } from "@/app/collab/session";
 import { useCollabStore } from "@/app/collab/session";
+import { useSpeakingStore } from "@/app/collab/voice/speaking";
 import { useUiStore } from "@/app/uiStore";
 import { type MessageKey, t } from "@/i18n";
 import { Checkbox } from "@/ui/common/controls";
 import { tip } from "@/ui/common/Tooltip";
+import { MOD } from "@/ui/shortcuts";
 import { mainCommand } from "@/ui/windows/mainCommands";
 
 /** Actions de session : exécutées par la fenêtre principale, même depuis une section flottante. */
@@ -18,6 +20,66 @@ const ROLE_LABEL: Record<Role, MessageKey> = {
   reader: "collab.role.reader",
 };
 const VIEW_LABEL = { mcd: "MCD", mld: "MLD", mpd: "MPD" } as const;
+
+const voiceAct = (action: Extract<CollabAction, { kind: "voice" }>["action"]) => act({ kind: "voice", action });
+
+/** Vocal (O-48) : rejoindre / quitter l'audio, micro, raisons d'une écoute seule ou d'une indisponibilité. */
+function VoiceBar() {
+  const voice = useCollabStore((s) => s.voice);
+  const button = "flex items-center gap-1 rounded px-2 py-1 text-xs font-medium";
+  if (voice.status !== "on") {
+    return (
+      <div className="flex flex-col gap-1">
+        <button
+          type="button"
+          disabled={voice.status === "starting"}
+          className={`${button} self-start bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60`}
+          onClick={() => voiceAct({ kind: "join" })}
+        >
+          <Headphones size={14} />
+          {voice.status === "starting" ? t("voice.joining") : t("voice.join")}
+        </button>
+        {voice.unavailable === "no-codec" && (
+          <p className="text-xs text-amber-700 dark:text-amber-400">{t("voice.unavailable")}</p>
+        )}
+        {voice.micError && voice.status === "off" && (
+          <p className="text-xs text-red-600 dark:text-red-400">{t("voice.failed", { error: voice.micError })}</p>
+        )}
+      </div>
+    );
+  }
+  const muteLabel = `${voice.muted ? t("voice.unmute") : t("voice.mute")} (⇧${MOD}M)`;
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          disabled={!voice.mic}
+          aria-pressed={voice.muted}
+          aria-label={muteLabel}
+          {...tip(voice.mic ? muteLabel : t("voice.listenOnly"))}
+          className={`${button} ${voice.muted ? "bg-red-600 text-white hover:bg-red-700" : "bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-700 dark:hover:bg-neutral-600"} disabled:opacity-60`}
+          onClick={() => voiceAct({ kind: "mute", muted: !voice.muted })}
+        >
+          {voice.muted ? <MicOff size={14} /> : <Mic size={14} />}
+          {voice.muted ? t("voice.muted") : t("voice.micOn")}
+        </button>
+        <button
+          type="button"
+          className={`${button} hover:bg-neutral-200 dark:hover:bg-neutral-700`}
+          onClick={() => voiceAct({ kind: "leave" })}
+        >
+          <HeadphoneOff size={14} /> {t("voice.leave")}
+        </button>
+      </div>
+      {!voice.mic && (
+        <p className="text-xs text-amber-700 dark:text-amber-400">
+          {voice.unavailable === "no-media" ? t("voice.noMicSupport") : t("voice.micDenied")}
+        </p>
+      )}
+    </div>
+  );
+}
 
 /** Libellé de l'onglet : badge des messages non lus (O-05 §6). */
 export function SessionTitle() {
@@ -133,7 +195,8 @@ function Chat() {
  * chat, commandes (arrêter le partage, quitter, exclure, assistants IA des invités).
  */
 export function SessionSection() {
-  const { mode, links, participants, presence, you, aiAllowed } = useCollabStore();
+  const { mode, links, participants, presence, you, aiAllowed, voice } = useCollabStore();
+  const speaking = useSpeakingStore((s) => s.ids);
   const [copied, setCopied] = useState<string | null>(null);
 
   if (mode !== "host" && mode !== "guest") {
@@ -189,24 +252,67 @@ export function SessionSection() {
           onChange={(allowed) => act({ kind: "guestsAi", allowed })}
         />
       )}
+      <VoiceBar />
 
       <ul aria-label={t("collab.participantsList")} className="flex flex-col gap-0.5">
         {participants.map((p) => {
           const view = presence[p.id]?.view;
+          const talking = speaking.includes(p.id);
+          const volume = Math.round((voice.volumes[p.id] ?? 1) * 100);
           return (
             <li
               key={p.id}
               className="group flex items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
             >
-              <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: p.color }} />
-              <span className="min-w-0 truncate">
+              <span
+                className="h-2.5 w-2.5 flex-none rounded-full transition-shadow"
+                style={{ background: p.color, boxShadow: talking ? `0 0 0 3px ${p.color}55` : undefined }}
+              />
+              <span
+                className={`min-w-0 truncate ${talking ? "font-semibold" : ""}`}
+                {...(talking ? { "data-speaking": "" } : {})}
+              >
                 {p.name}
                 {p.id === you && <span className="text-neutral-400"> ({t("collab.you")})</span>}
               </span>
               <span className="text-xs text-neutral-400">{t(ROLE_LABEL[p.role])}</span>
+              {p.audio && (
+                <span
+                  className="flex flex-none items-center text-neutral-500"
+                  {...tip(p.audio.muted ? t("voice.theyMuted") : t("voice.theyIn"))}
+                >
+                  {p.audio.muted ? (
+                    <MicOff size={12} className="text-red-500" aria-label={t("voice.theyMuted")} />
+                  ) : (
+                    <Headphones size={12} aria-label={t("voice.theyIn")} />
+                  )}
+                </span>
+              )}
               <div className="flex-1" />
+              {voice.status === "on" && p.audio && p.id !== you && volume !== 100 && (
+                <span className="text-[10px] text-neutral-400 tabular-nums group-focus-within:hidden group-hover:hidden">
+                  {volume} %
+                </span>
+              )}
+              {voice.status === "on" && p.audio && p.id !== you && (
+                <input
+                  type="range"
+                  min={0}
+                  max={200}
+                  step={5}
+                  value={volume}
+                  aria-label={t("voice.volume", { name: p.name, n: volume })}
+                  {...tip(t("voice.volume", { name: p.name, n: volume }))}
+                  className="hidden w-16 accent-emerald-600 group-focus-within:block group-hover:block"
+                  onChange={(e) => voiceAct({ kind: "volume", peer: p.id, gain: Number(e.target.value) / 100 })}
+                />
+              )}
               {view && p.id !== you && (
-                <span className="text-[10px] font-semibold text-neutral-400">{VIEW_LABEL[view]}</span>
+                <span
+                  className={`text-[10px] font-semibold text-neutral-400 ${voice.status === "on" && p.audio ? "group-focus-within:hidden group-hover:hidden" : ""}`}
+                >
+                  {VIEW_LABEL[view]}
+                </span>
               )}
               {isHost && p.role !== "host" && (
                 <button
