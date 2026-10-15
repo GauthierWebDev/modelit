@@ -8,6 +8,7 @@ export const en: Record<MessageKey, string> = {
   "app.untitledN": "Untitled {n}",
   "tabs.label": "Open documents",
   "tabs.close": "Close tab ({key})",
+  "tabs.new": "New tab ({key})",
   "common.close": "Close",
   "physical.toggle": "Advanced view (physical annotations)",
   "physical.title": "Physical annotations",

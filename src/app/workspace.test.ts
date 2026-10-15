@@ -1,7 +1,7 @@
 import { emptyDocument } from "@core/index";
 import { beforeEach, describe, expect, it } from "vitest";
 import { addEntity } from "./commands";
-import { documentName } from "./fileCommands";
+import { documentName, newTab } from "./fileCommands";
 import {
   activate,
   activateNeighbour,
@@ -39,6 +39,13 @@ describe("espace de travail", () => {
     const c = openFile("/m/c.mcd");
     expect(ids()).toEqual([a.id, c.id, b.id]);
     expect(activeDocument()).toBe(c);
+  });
+
+  it("nouvel onglet (⌘T) : toujours un onglet de plus, même depuis un onglet vierge", () => {
+    newTab();
+    newTab();
+    expect(names()).toEqual(["Sans titre", "Sans titre 2", "Sans titre 3"]);
+    expect(documentName(activeDocument())).toBe("Sans titre 3");
   });
 
   it("numérotation « Sans titre N » : plus petit numéro libre", () => {

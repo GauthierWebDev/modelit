@@ -50,6 +50,11 @@ export function newDocument() {
   openInTab();
 }
 
+/** Nouvel onglet vierge (⌘/Ctrl + T, override O-44) : toujours un onglet de plus. */
+export function newTab() {
+  openInTab(undefined, { reuseBlank: false });
+}
+
 export async function openDocument() {
   try {
     const file = await openModelFile(t("file.modelFilter"));

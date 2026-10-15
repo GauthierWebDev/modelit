@@ -1,9 +1,9 @@
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { useEffect, useRef, type PointerEvent } from "react";
 import { useStore } from "zustand";
 import { selectIsDirty } from "@/app/document/documentStore";
 import type { DocumentHandle } from "@/app/document/handle";
-import { closeDocument, documentName } from "@/app/fileCommands";
+import { closeDocument, documentName, newTab } from "@/app/fileCommands";
 import { activate, moveTab, useWorkspaceStore } from "@/app/workspace";
 import { t } from "@/i18n";
 import { tip } from "@/ui/common/Tooltip";
@@ -11,7 +11,7 @@ import { MOD } from "@/ui/shortcuts";
 
 /**
  * Barre d'onglets, un par document ouvert (override O-44) : clic pour activer, clic milieu ou
- * croix pour fermer, glisser pour réordonner. Elle défile horizontalement si les onglets ne
+ * croix pour fermer, glisser pour réordonner, « + » (⌘/Ctrl + T) pour un nouvel onglet vierge. Elle défile horizontalement si les onglets ne
  * tiennent pas ; l'onglet actif reste visible.
  */
 
@@ -58,6 +58,15 @@ export function TabBar() {
           onPointerUp={() => (drag.current = null)}
         />
       ))}
+      <button
+        type="button"
+        aria-label={t("tabs.new", { key: `${MOD}T` })}
+        {...tip(t("tabs.new", { key: `${MOD}T` }))}
+        onClick={newTab}
+        className="mb-1 ml-1 flex size-6 flex-none items-center justify-center rounded text-neutral-600 hover:bg-neutral-200 dark:text-neutral-400 dark:hover:bg-neutral-800"
+      >
+        <Plus size={14} />
+      </button>
     </div>
   );
 }
