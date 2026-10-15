@@ -41,6 +41,9 @@ jobs:
       - run: pnpm typecheck
       # Inclut l'exécution des scripts PostgreSQL 18 dans PGlite et SQLite (node:sqlite).
       - run: pnpm test
+      # Budgets de temps du placement automatique, mesurés seuls (le reste de la suite fausserait la mesure).
+      - if: runner.os == 'Linux'
+        run: pnpm test:perf
       - run: pnpm build
 
   sgbd:
