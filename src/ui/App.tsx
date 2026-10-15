@@ -18,8 +18,7 @@ import { ExportDialog } from "./export/ExportDialog";
 import { OptionsDialog } from "./options/OptionsDialog";
 import { ReverseDialog } from "./reverse/ReverseDialog";
 import { TabBar } from "./tabs/TabBar";
-import { Inspector } from "./panels/Inspector";
-import { OutputPanel } from "./panels/OutputPanel";
+import { DockZone, DragGhost, FloatingGroups } from "./dock/Dock";
 import { useShortcuts } from "./shortcuts";
 import { useApplyTheme } from "./theme";
 import { Toolbar } from "./toolbar/Toolbar";
@@ -78,14 +77,12 @@ function Workbench() {
           <div className="min-h-0 flex-1">
             {view === "mcd" ? <McdCanvas /> : <LogicalCanvas key={view} mode={view} />}
           </div>
-          <div className="h-56 flex-none border-t border-neutral-200 dark:border-neutral-700">
-            <OutputPanel />
-          </div>
+          <DockZone zone="bottom" />
         </div>
-        <aside className="w-80 flex-none border-l border-neutral-200 dark:border-neutral-700">
-          <Inspector />
-        </aside>
+        <DockZone zone="right" />
       </div>
+      <FloatingGroups />
+      <DragGhost />
       <ExportDialog />
       <OptionsDialog />
       <AboutDialog />

@@ -3,7 +3,7 @@ import { useMemo, useRef } from "react";
 import { useIssuesByTarget, useLogicalModel } from "@/app/derived";
 import { t } from "@/i18n";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
-import { useUiStore } from "@/app/uiStore";
+import { revealSection } from "@/app/dock/actions";
 import { CanvasSurface, hitId } from "./CanvasSurface";
 import { FONT_FAMILY, FONT_SIZE, PAD_X, ROW_HEIGHT, snap, TITLE_HEIGHT, TITLE_WEIGHT } from "./geometry";
 import {
@@ -54,7 +54,7 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
         const hit = hitId(e);
         select(hit ? [hit] : []);
         if (hit && (e.target as Element).closest("[data-badge]")) {
-          useUiStore.getState().setBottomTab("issues");
+          revealSection("issues");
           return true;
         }
         if (!hit) return false;

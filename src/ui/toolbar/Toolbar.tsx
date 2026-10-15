@@ -9,6 +9,7 @@ import {
   Monitor,
   Moon,
   MousePointer2,
+  PanelsTopLeft,
   Redo2,
   Save,
   Info,
@@ -34,6 +35,8 @@ import { t, type MessageKey } from "@/i18n";
 import { autoLayoutTables } from "@/ui/canvas/autoLayout";
 import { fitToWindow, zoomBy, zoomTo } from "@/ui/canvas/viewport";
 import { IconButton, inputClass } from "@/ui/common/controls";
+import { Menu } from "@/ui/common/Menu";
+import { SectionChecks } from "@/ui/dock/Dock";
 import { tip } from "@/ui/common/Tooltip";
 import { MOD } from "@/ui/shortcuts";
 
@@ -203,6 +206,13 @@ export function Toolbar() {
       >
         {currentTheme.icon}
       </IconButton>
+      <Menu trigger={({ toggle }) => (
+        <IconButton tooltip={t("toolbar.sections")} onClick={toggle}>
+          <PanelsTopLeft size={16} />
+        </IconButton>
+      )}>
+        {(close) => <SectionChecks close={close} withReset />}
+      </Menu>
       <IconButton tooltip={t("toolbar.options", { key: `${MOD},` })} onClick={() => setOptionsOpen(true)}>
         <Settings size={16} />
       </IconButton>

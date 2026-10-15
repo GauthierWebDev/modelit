@@ -11,6 +11,7 @@ import {
 import { KeyRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import * as cmd from "@/app/commands";
+import { revealSection } from "@/app/dock/actions";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
@@ -22,10 +23,10 @@ import { PhysicalSection } from "./PhysicalSection";
 import { CommentSection, KeyPatternField, PathSection, RelationTextSection } from "./sections";
 
 /**
- * Panneau de propriétés : édite l'objet sélectionné, ou les paramètres
- * du document quand rien n'est sélectionné.
+ * Section « Propriétés » (override O-46) : édite l'objet sélectionné. Les paramètres du document
+ * sont dans la section « Modèle ».
  */
-export function Inspector() {
+export function PropertiesSection() {
   const doc = useDocument((s) => s.doc);
   const selection = useDocumentView((s) => s.selection);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +39,14 @@ export function Inspector() {
 
   let content;
   if (selection.length === 0) {
-    content = <DocumentSettingsPanel doc={doc} />;
+    content = (
+      <div className="p-3 text-sm text-neutral-500">
+        <p>{t("dock.noSelection")}</p>
+        <button type="button" className="mt-1 text-blue-600 hover:underline dark:text-blue-400" onClick={() => revealSection("model")}>
+          {t("dock.showModel")}
+        </button>
+      </div>
+    );
   } else if (selection.length > 1) {
     content = <p className="p-3 text-sm text-neutral-500">{t("inspector.selectedCount", { n: selection.length })}</p>;
   } else {
@@ -59,6 +67,16 @@ export function Inspector() {
     <div className="flex h-full flex-col overflow-y-auto">
       <ErrorBanner message={error} onClose={() => setError(null)} />
       {content}
+    </div>
+  );
+}
+
+/** Section « Modèle » (override O-46) : paramètres du document. */
+export function ModelSection() {
+  const doc = useDocument((s) => s.doc);
+  return (
+    <div className="flex h-full flex-col overflow-y-auto">
+      <DocumentSettingsPanel doc={doc} />
     </div>
   );
 }
