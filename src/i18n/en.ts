@@ -371,6 +371,7 @@ export const en: Record<MessageKey, string> = {
   "history.grid": "Grid",
   "history.gridSize": "Grid size",
   "history.applyDefaults": "Apply the general options",
+  "history.ai": "AI: model change",
   "history.relationArrows": "Arrows between tables",
   "history.relationLabels": "Text on links",
   "history.relationText": "Link text",

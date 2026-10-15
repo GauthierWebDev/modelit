@@ -384,6 +384,7 @@ export const fr = {
   "history.grid": "Grille",
   "history.gridSize": "Pas de grille",
   "history.applyDefaults": "Appliquer les options générales",
+  "history.ai": "IA : modification du modèle",
   "history.relationArrows": "Flèches entre les tables",
   "history.relationLabels": "Texte sur les liens",
   "history.relationText": "Texte du lien",
