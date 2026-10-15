@@ -45,13 +45,13 @@ export function onCloseRequested(canClose: () => Promise<boolean>, isDirty: () =
   };
 }
 
-/** Élément « About » du menu de l'application (macOS) ; renvoie la fonction de désinscription. */
-export function onMenuAbout(handler: () => void): () => void {
+/** Événement émis par un élément du menu natif (macOS, `src-tauri/src/lib.rs`) ; renvoie la désinscription. */
+function onMenuEvent(event: string, handler: () => void): () => void {
   if (!isTauri()) return () => {};
   let unlisten: (() => void) | undefined;
   let disposed = false;
   void import("@tauri-apps/api/event").then(async ({ listen }) => {
-    const off = await listen("menu-about", handler);
+    const off = await listen(event, handler);
     if (disposed) off();
     else unlisten = off;
   });
@@ -60,3 +60,9 @@ export function onMenuAbout(handler: () => void): () => void {
     unlisten?.();
   };
 }
+
+/** Élément « About » du menu de l'application (macOS). */
+export const onMenuAbout = (handler: () => void) => onMenuEvent("menu-about", handler);
+
+/** Élément « Close Tab » (⌘W) du menu (macOS, override O-44). */
+export const onMenuCloseTab = (handler: () => void) => onMenuEvent("menu-close-tab", handler);

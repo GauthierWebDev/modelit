@@ -2,6 +2,7 @@ import type { Association, Attribute, CheckConstraint, Entity, KeyMember, ModelD
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import * as cmd from "@/app/commands";
+import { useDocumentHandle } from "@/app/document/DocumentContext";
 import { t } from "@/i18n";
 import { Checkbox, CommitInput, Field, IconButton, Section } from "@/ui/common/controls";
 
@@ -11,13 +12,14 @@ import { Checkbox, CommitInput, Field, IconButton, Section } from "@/ui/common/c
  * (UNIQUE), index. Le générateur les réapplique quand le SGBD cible le permet.
  */
 export function PhysicalSection({ doc, node }: { doc: ModelDocument; node: Entity | Association }) {
+  const handle = useDocumentHandle();
   const isEntity = doc.entities.some((e) => e.id === node.id);
   const memberName = (member: KeyMember) => {
     if ("attributeId" in member) return node.attributes.find((a) => a.id === member.attributeId)?.name ?? "?";
     const origin = [...doc.entities, ...doc.associations].flatMap((n) => n.attributes).find((a) => a.id === member.originId);
     return `#${origin?.name ?? "?"}`;
   };
-  const edit = (recipe: (n: Entity | Association) => void) => cmd.updatePhysical(node.id, recipe);
+  const edit = (recipe: (n: Entity | Association) => void) => cmd.updatePhysical(handle, node.id, recipe);
 
   return (
     <Section title={t("physical.title")}>

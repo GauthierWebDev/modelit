@@ -1,59 +1,71 @@
 import { DBMS_LIST, groupLosses, issueMessage, mldLines, mldPlainText, type Loss } from "@core/index";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Copy } from "lucide-react";
 import { useDdl, useLogicalModel } from "@/app/derived";
-import { useDocumentStore } from "@/app/documentStore";
-import { useUiStore, type BottomTab } from "@/app/uiStore";
+import { useDocument, useDocumentView } from "@/app/document/DocumentContext";
 import { t } from "@/i18n";
 import { IconButton } from "@/ui/common/controls";
 
-/** Panneaux « MLD textuel », « Script LDD » et « Problèmes », mis à jour en temps réel. */
-export function OutputPanel() {
-  const tab = useUiStore((s) => s.bottomTab);
-  const setTab = useUiStore((s) => s.setBottomTab);
-  const logical = useLogicalModel();
-  const ddl = useDdl();
-  const dbms = useDocumentStore((s) => s.doc.settings.dbms);
-  const errors = logical.issues.filter((i) => i.severity === "error").length;
+/**
+ * Sections « MLD textuel », « Script LDD » et « Problèmes » (override O-46), mises à jour en temps
+ * réel. Chacune fournit son corps et le libellé de son onglet.
+ */
 
-  const copyText = tab === "mld" ? mldPlainText(logical) : tab === "sql" && ddl.ok ? ddl.sql : null;
-
-  const tabs: { id: BottomTab; label: string }[] = [
-    { id: "mld", label: t("output.mld") },
-    { id: "sql", label: t("output.sql", { dbms: DBMS_LIST.find((d) => d.id === dbms)?.label ?? "" }) },
-    { id: "issues", label: logical.issues.length ? t("output.issuesCount", { n: logical.issues.length }) : t("output.issues") },
-  ];
-
+function OutputBody({ copyText, children }: { copyText?: string | null; children: ReactNode }) {
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center border-b border-neutral-200 px-2 dark:border-neutral-700">
-        {tabs.map((x) => (
-          <button
-            key={x.id}
-            type="button"
-            onClick={() => setTab(x.id)}
-            className={`-mb-px border-b-2 px-3 py-1.5 text-sm ${
-              tab === x.id
-                ? "border-blue-600 text-neutral-900 dark:text-neutral-50"
-                : "border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200"
-            } ${x.id === "issues" && errors > 0 ? "text-red-600 dark:text-red-400" : ""}`}
-          >
-            {x.label}
-          </button>
-        ))}
-        <div className="flex-1" />
-        {copyText !== null && (
+    <div className="relative h-full overflow-auto p-3 font-mono text-[13px] leading-5 select-text">
+      {copyText != null && (
+        <div className="absolute top-1 right-1">
           <IconButton tooltip={t("output.copy")} onClick={() => void navigator.clipboard.writeText(copyText)}>
             <Copy size={14} />
           </IconButton>
-        )}
-      </div>
-      <div className="min-h-0 flex-1 overflow-auto p-3 font-mono text-[13px] leading-5 select-text">
-        {tab === "mld" && <MldView />}
-        {tab === "sql" && (ddl.ok ? <SqlView sql={ddl.sql} losses={ddl.losses} /> : <p className="text-red-600 dark:text-red-400">{ddl.error}</p>)}
-        {tab === "issues" && <IssuesView />}
-      </div>
+        </div>
+      )}
+      {children}
     </div>
+  );
+}
+
+export function MldSection() {
+  const logical = useLogicalModel();
+  return (
+    <OutputBody copyText={mldPlainText(logical)}>
+      <MldView />
+    </OutputBody>
+  );
+}
+
+export function SqlSection() {
+  const ddl = useDdl();
+  return (
+    <OutputBody copyText={ddl.ok ? ddl.sql : null}>
+      {ddl.ok ? <SqlView sql={ddl.sql} losses={ddl.losses} /> : <p className="text-red-600 dark:text-red-400">{ddl.error}</p>}
+    </OutputBody>
+  );
+}
+
+export function IssuesSection() {
+  return (
+    <OutputBody>
+      <IssuesView />
+    </OutputBody>
+  );
+}
+
+export const MldTitle = () => <>{t("output.mld")}</>;
+
+export function SqlTitle() {
+  const dbms = useDocument((s) => s.doc.settings.dbms);
+  return <>{t("output.sql", { dbms: DBMS_LIST.find((d) => d.id === dbms)?.label ?? "" })}</>;
+}
+
+export function IssuesTitle() {
+  const { issues } = useLogicalModel();
+  const errors = issues.filter((i) => i.severity === "error").length;
+  return (
+    <span className={errors > 0 ? "text-red-600 dark:text-red-400" : undefined}>
+      {issues.length ? t("output.issuesCount", { n: issues.length }) : t("output.issues")}
+    </span>
   );
 }
 
@@ -128,8 +140,8 @@ function MldView() {
 /** Problèmes, formulés dans le vocabulaire de la vue active : MCD, ou MLD / MPD (override O-24). */
 function IssuesView() {
   const { issues } = useLogicalModel();
-  const select = useUiStore((s) => s.select);
-  const layer = useUiStore((s) => (s.view === "mcd" ? "conceptual" : "logical"));
+  const select = useDocumentView((s) => s.select);
+  const layer = useDocumentView((s) => (s.view === "mcd" ? "conceptual" : "logical"));
   if (issues.length === 0) return <p className="font-sans text-neutral-500">{t("output.noIssues")}</p>;
   return (
     <ul className="font-sans text-sm">

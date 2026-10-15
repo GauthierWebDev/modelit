@@ -2,7 +2,7 @@ import { t } from "@/i18n";
 import { APP_INFO, CHANGELOG } from "./appInfo";
 import { checkForUpdate, updatesSupported, type AvailableUpdate } from "@/platform/updater";
 import { alertDialog, confirmDialog, showError } from "./dialogStore";
-import { confirmLoseChanges } from "./fileCommands";
+import { confirmLoseAllChanges } from "./fileCommands";
 import { usePreferencesStore } from "./preferencesStore";
 import { useUiStore } from "./uiStore";
 
@@ -68,7 +68,7 @@ async function offer(update: AvailableUpdate) {
     tone: "info",
   });
   // L'application redémarre : le modèle non enregistré serait perdu.
-  if (!accepted || !(await confirmLoseChanges())) return;
+  if (!accepted || !(await confirmLoseAllChanges())) return;
 
   const ui = useUiStore.getState();
   let shown = -1;

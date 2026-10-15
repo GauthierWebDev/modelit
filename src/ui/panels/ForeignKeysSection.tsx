@@ -2,7 +2,7 @@ import { formatCardinality, linksOf, type Id, type LogicalColumn, type ModelDocu
 import { Info } from "lucide-react";
 import { renameForeignKey } from "@/app/commands";
 import { useLogicalModel } from "@/app/derived";
-import { useDocumentStore } from "@/app/documentStore";
+import { useDocument, useDocumentHandle } from "@/app/document/DocumentContext";
 import { t } from "@/i18n";
 import { CommitInput, Section } from "@/ui/common/controls";
 import { tip } from "@/ui/common/Tooltip";
@@ -17,7 +17,8 @@ import { tip } from "@/ui/common/Tooltip";
  */
 export function ForeignKeysSection({ tableOf, linkIds }: { tableOf?: Id; linkIds?: Id[] }) {
   const logical = useLogicalModel();
-  const doc = useDocumentStore((s) => s.doc);
+  const handle = useDocumentHandle();
+  const doc = useDocument((s) => s.doc);
   const rows: { table: string; column: LogicalColumn; referenced: string | undefined }[] = [];
   for (const table of logical.tables) {
     table.columns.forEach((column) => {
@@ -52,7 +53,7 @@ export function ForeignKeysSection({ tableOf, linkIds }: { tableOf?: Id; linkIds
                 value={column.name}
                 placeholder={origin.defaultName}
                 onCommit={(name) =>
-                  renameForeignKey(origin.linkId, origin.attributeId, name.trim() === origin.defaultName ? "" : name)
+                  renameForeignKey(handle, origin.linkId, origin.attributeId, name.trim() === origin.defaultName ? "" : name)
                 }
               />
               <span

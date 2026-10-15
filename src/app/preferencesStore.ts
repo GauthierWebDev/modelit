@@ -2,6 +2,7 @@ import { latestVersion, migrateLegacyPattern, type Dbms, type KeyPattern } from 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { systemLocale, type Locale } from "@/i18n";
+import { defaultLayout, sanitizeLayout, type DockLayout } from "./dock/layout";
 
 /**
  * Options générales (override O-21) : propres au poste, conservées dans le localStorage,
@@ -46,6 +47,17 @@ export interface Preferences {
   lastUpdateCheck: number;
   /** Dernière version lancée sur ce poste : ses nouveautés sont montrées après une mise à jour. */
   lastSeenVersion: string;
+  /** Disposition de la barre d'outils et des sections (overrides O-45, O-46). */
+  dock: DockLayout;
+  /** Assistants IA par MCP (override O-47) : désactivé par défaut. */
+  mcp: McpPreferences;
+}
+
+export interface McpPreferences {
+  enabled: boolean;
+  port: number;
+  /** Jeton d'accès propre au poste ; créé à la première activation. */
+  token: string;
 }
 
 interface PreferencesState extends Preferences {
@@ -59,6 +71,9 @@ interface PreferencesState extends Preferences {
   setUpdateCheck: (enabled: boolean) => void;
   setLastUpdateCheck: (time: number) => void;
   setLastSeenVersion: (version: string) => void;
+  /** Applique une opération de `dock/layout.ts` à la disposition. */
+  updateDock: (change: (layout: DockLayout) => DockLayout) => void;
+  setMcp: (patch: Partial<McpPreferences>) => void;
 }
 
 const initial: Preferences = {
@@ -78,6 +93,8 @@ const initial: Preferences = {
   updateCheck: true,
   lastUpdateCheck: 0,
   lastSeenVersion: "",
+  dock: defaultLayout(),
+  mcp: { enabled: false, port: 47321, token: "" },
 };
 
 export const usePreferencesStore = create<PreferencesState>()(
@@ -94,6 +111,8 @@ export const usePreferencesStore = create<PreferencesState>()(
       setUpdateCheck: (updateCheck) => set({ updateCheck }),
       setLastUpdateCheck: (lastUpdateCheck) => set({ lastUpdateCheck }),
       setLastSeenVersion: (lastSeenVersion) => set({ lastSeenVersion }),
+      updateDock: (change) => set((s) => ({ dock: change(s.dock) })),
+      setMcp: (patch) => set((s) => ({ mcp: { ...s.mcp, ...patch } })),
     }),
     {
       name: "modelit/preferences",
@@ -114,9 +133,19 @@ export const usePreferencesStore = create<PreferencesState>()(
             foreignKey: migrateLegacyPattern(defaults.foreignKey),
           },
           export: { ...current.export, ...saved.export },
+          dock: saved.dock ? sanitizeLayout(saved.dock) : current.dock,
+          mcp: { ...current.mcp, ...saved.mcp },
         };
       },
       migrate: (persisted) => persisted as PreferencesState,
     },
   ),
 );
+
+// Fenêtres flottantes (J-01, phase 4) : les options écrites par une autre fenêtre de l'application
+// (thème, langue, disposition) sont relues dès qu'elles changent.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === "modelit/preferences") void usePreferencesStore.persist.rehydrate();
+  });
+}

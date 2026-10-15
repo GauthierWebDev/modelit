@@ -1,4 +1,4 @@
-import type { ViewMode } from "@/app/uiStore";
+import type { ViewMode } from "@/app/document/documentView";
 import { t } from "@/i18n";
 import { FONT_FAMILY } from "@/ui/canvas/geometry";
 import { embeddedFontCss } from "@/ui/fonts";

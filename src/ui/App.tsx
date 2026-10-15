@@ -1,12 +1,18 @@
 import { useEffect } from "react";
 import { APP_NAME } from "@/app/appInfo";
 import { startAutosave } from "@/app/autosave";
-import { selectIsDirty, useDocumentStore } from "@/app/documentStore";
-import { confirmLoseChanges, fileName } from "@/app/fileCommands";
+import { DocumentProvider, useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
+import { selectIsDirty } from "@/app/document/documentStore";
+import { closeDocument, confirmLoseAllChanges, documentName } from "@/app/fileCommands";
 import { useUiStore } from "@/app/uiStore";
 import { scheduleUpdateCheck, showWhatsNew } from "@/app/updates";
+import { activeDocument, useActiveDocument, useWorkspaceStore } from "@/app/workspace";
 import { t } from "@/i18n";
-import { onCloseRequested, onMenuAbout, setWindowTitle } from "@/platform/window";
+import { closeAllFloats, nativeWindows } from "@/platform/floatWindows";
+import { onCloseRequested, onMenuAbout, onMenuCloseTab, setWindowTitle } from "@/platform/window";
+import { FloatManager } from "./windows/FloatManager";
+import { McpBridge } from "./mcp/McpBridge";
+import { McpIndicator } from "./mcp/McpIndicator";
 import { AboutDialog } from "./about/AboutDialog";
 import { LogicalCanvas } from "./canvas/LogicalCanvas";
 import { McdCanvas } from "./canvas/McdCanvas";
@@ -15,21 +21,35 @@ import { TooltipLayer } from "./common/Tooltip";
 import { ExportDialog } from "./export/ExportDialog";
 import { OptionsDialog } from "./options/OptionsDialog";
 import { ReverseDialog } from "./reverse/ReverseDialog";
-import { Inspector } from "./panels/Inspector";
-import { OutputPanel } from "./panels/OutputPanel";
+import { TabBar } from "./tabs/TabBar";
+import { DockZone, DragGhost, FloatingGroups } from "./dock/Dock";
 import { useShortcuts } from "./shortcuts";
 import { useApplyTheme } from "./theme";
-import { Toolbar } from "./toolbar/Toolbar";
+import { ToolbarHost } from "./toolbar/ToolbarHost";
 
+const anyDocumentDirty = () => useWorkspaceStore.getState().documents.some((d) => selectIsDirty(d.store.getState()));
 
+/** Fenêtre : fournit le document de l'onglet actif à toute l'interface (override O-44). */
 export function App() {
+  const active = useActiveDocument();
+  return (
+    <DocumentProvider handle={active}>
+      <Workbench />
+    </DocumentProvider>
+  );
+}
+
+function Workbench() {
   useShortcuts();
   useApplyTheme();
-  const view = useUiStore((s) => s.view);
-  const filePath = useDocumentStore((s) => s.filePath);
-  const dirty = useDocumentStore(selectIsDirty);
-  const recovered = useDocumentStore((s) => s.recovered);
-  const title = `${fileName(filePath)}${recovered ? ` ${t("app.recovered")}` : ""}`;
+  const doc = useDocumentHandle();
+  const view = useDocumentView((s) => s.view);
+  const dirty = useDocument(selectIsDirty);
+  const recovered = useDocument((s) => s.recovered);
+  // Le nom suit l'enregistrement (filePath) et la numérotation « Sans titre N ».
+  useDocument((s) => s.filePath);
+  const untitled = useWorkspaceStore((s) => s.untitled);
+  const title = `${documentName(doc, untitled)}${recovered ? ` ${t("app.recovered")}` : ""}`;
   const status = useUiStore((s) => s.status);
   const notify = useUiStore((s) => s.notify);
 
@@ -41,8 +61,18 @@ export function App() {
   useEffect(() => scheduleUpdateCheck(), []);
   useEffect(() => showWhatsNew(), []);
   useEffect(() => onMenuAbout(() => useUiStore.getState().setAbout("about")), []);
+  useEffect(() => onMenuCloseTab(() => void closeDocument(activeDocument())), []);
 
-  useEffect(() => onCloseRequested(confirmLoseChanges, () => selectIsDirty(useDocumentStore.getState())), []);
+  useEffect(
+    () =>
+      onCloseRequested(async () => {
+        const ok = await confirmLoseAllChanges();
+        // Les fenêtres flottantes se ferment avec la principale (O-45, O-46).
+        if (ok && nativeWindows()) await closeAllFloats();
+        return ok;
+      }, anyDocumentDirty),
+    [],
+  );
 
   useEffect(() => {
     if (!status) return;
@@ -52,20 +82,22 @@ export function App() {
 
   return (
     <div className="flex h-screen flex-col bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
-      <Toolbar />
-      <div className="flex min-h-0 flex-1">
+      <ToolbarHost />
+      <TabBar />
+      {/* Remonté à chaque changement d'onglet : gestes en cours et saisies locales repartent de zéro. */}
+      <div key={doc.id} className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="min-h-0 flex-1">
             {view === "mcd" ? <McdCanvas /> : <LogicalCanvas key={view} mode={view} />}
           </div>
-          <div className="h-56 flex-none border-t border-neutral-200 dark:border-neutral-700">
-            <OutputPanel />
-          </div>
+          <DockZone zone="bottom" />
         </div>
-        <aside className="w-80 flex-none border-l border-neutral-200 dark:border-neutral-700">
-          <Inspector />
-        </aside>
+        <DockZone zone="right" />
       </div>
+      <FloatingGroups />
+      <FloatManager />
+      <McpBridge />
+      <DragGhost />
       <ExportDialog />
       <OptionsDialog />
       <AboutDialog />
@@ -78,6 +110,7 @@ export function App() {
           {dirty && ` — ${t("app.modified")}`}
         </span>
         {status && <span className={status.kind === "error" ? "text-red-600" : ""}>{status.text}</span>}
+        <McpIndicator />
       </footer>
     </div>
   );

@@ -12,6 +12,7 @@ import {
 } from "@core/index";
 import { useState } from "react";
 import * as cmd from "@/app/commands";
+import { useDocumentHandle } from "@/app/document/DocumentContext";
 import { useLogicalModel } from "@/app/derived";
 import { getLocale, t, type MessageKey } from "@/i18n";
 import { CommitInput, inputClass, Section } from "@/ui/common/controls";
@@ -20,6 +21,7 @@ import { CommitInput, inputClass, Section } from "@/ui/common/controls";
 
 /** Tracé d'un lien : aide sur les cassures et suppression de toutes ses cassures. */
 export function PathSection({ linkId, bends }: { linkId: string; bends: number }) {
+  const handle = useDocumentHandle();
   return (
     <Section title={t("inspector.path")}>
       <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("inspector.pathHelp")}</p>
@@ -27,7 +29,7 @@ export function PathSection({ linkId, bends }: { linkId: string; bends: number }
         <button
           type="button"
           className="self-start text-sm text-blue-600 hover:underline dark:text-blue-400"
-          onClick={() => cmd.straightenLink(linkId)}
+          onClick={() => cmd.straightenLink(handle, linkId)}
         >
           {t("inspector.straighten", { n: bends })}
         </button>
@@ -140,13 +142,14 @@ export function KeyPatternField({
  * Affiché seulement si ce lien crée effectivement une clé étrangère.
  */
 export function RelationTextSection({ linkId, value }: { linkId: string; value?: string }) {
+  const handle = useDocumentHandle();
   const logical = useLogicalModel();
   const createsForeignKey = logical.tables.some((table) => table.foreignKeys.some((fk) => fk.relationId === linkId));
   return (
     <Section title={t("inspector.relationText")}>
       {createsForeignKey ? (
         <>
-          <CommitInput value={value ?? ""} placeholder={t("inspector.relationTextPlaceholder")} onCommit={(text) => cmd.setRelationLabel(linkId, text)} />
+          <CommitInput value={value ?? ""} placeholder={t("inspector.relationTextPlaceholder")} onCommit={(text) => cmd.setRelationLabel(handle, linkId, text)} />
           <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("inspector.relationTextHelp")}</p>
         </>
       ) : (

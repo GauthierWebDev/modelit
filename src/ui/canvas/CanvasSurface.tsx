@@ -1,6 +1,7 @@
 import type { Point } from "@core/index";
 import { useEffect, useRef, type MouseEvent, type PointerEvent, type ReactNode } from "react";
-import { useUiStore, type Viewport } from "@/app/uiStore";
+import { useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
+import type { Viewport } from "@/app/document/documentView";
 import { setCanvasElement, setCanvasSize, zoomBy } from "./viewport";
 
 /**
@@ -26,8 +27,9 @@ export function CanvasSurface({
   children,
   ...handlers
 }: SurfaceHandlers & { grid: number | null; panOnEmpty?: boolean; className?: string; children: ReactNode }) {
-  const viewport = useUiStore((s) => s.viewport);
-  const setViewport = useUiStore((s) => s.setViewport);
+  const doc = useDocumentHandle();
+  const viewport = useDocumentView((s) => s.viewport);
+  const setViewport = useDocumentView((s) => s.setViewport);
   const svgRef = useRef<SVGSVGElement>(null);
   const pan = useRef<{ start: Point; origin: Viewport } | null>(null);
 
@@ -42,9 +44,9 @@ export function CanvasSurface({
       e.preventDefault();
       const r = svg.getBoundingClientRect();
       if (e.ctrlKey || e.metaKey) {
-        zoomBy(Math.exp(-e.deltaY * 0.01), { x: e.clientX - r.left, y: e.clientY - r.top });
+        zoomBy(doc, Math.exp(-e.deltaY * 0.01), { x: e.clientX - r.left, y: e.clientY - r.top });
       } else {
-        const { viewport: v, setViewport: set } = useUiStore.getState();
+        const { viewport: v, setViewport: set } = doc.view.getState();
         set({ ...v, x: v.x - e.deltaX, y: v.y - e.deltaY });
       }
     };
@@ -53,7 +55,7 @@ export function CanvasSurface({
       observer.disconnect();
       svg.removeEventListener("wheel", onWheel);
     };
-  }, []);
+  }, [doc]);
 
   const screenPoint = (e: { clientX: number; clientY: number }): Point => {
     const r = svgRef.current!.getBoundingClientRect();
