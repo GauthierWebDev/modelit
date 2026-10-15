@@ -1,10 +1,11 @@
-import { Plus, X } from "lucide-react";
+import { Plus, Users, X } from "lucide-react";
 import { useEffect, useRef, type PointerEvent } from "react";
 import { useStore } from "zustand";
 import { selectIsDirty } from "@/app/document/documentStore";
 import type { DocumentHandle } from "@/app/document/handle";
 import { closeDocument, documentName, newTab } from "@/app/fileCommands";
 import { activate, moveTab, useWorkspaceStore } from "@/app/workspace";
+import { useCollabStore } from "@/app/collab/session";
 import { t } from "@/i18n";
 import { tip } from "@/ui/common/Tooltip";
 import { MOD } from "@/ui/shortcuts";
@@ -91,6 +92,8 @@ function Tab({
   const untitled = useWorkspaceStore((s) => s.untitled);
   const titles = useWorkspaceStore((s) => s.titles);
   const name = documentName(doc, untitled, titles);
+  // Onglet d'une session collaborative, partagé ou rejoint (O-05 §4.1).
+  const shared = useCollabStore((s) => s.tabId === doc.id && (s.mode === "host" || s.mode === "guest"));
 
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -117,6 +120,11 @@ function Tab({
       <span className="w-2 flex-none text-center" aria-hidden="true">
         {dirty ? "•" : ""}
       </span>
+      {shared && (
+        <span className="flex-none text-emerald-600 dark:text-emerald-400" {...tip(t("collab.sharing"))}>
+          <Users size={12} aria-label={t("collab.sharing")} />
+        </span>
+      )}
       <span className="min-w-0 flex-1 truncate">
         {name}
         {recovered && ` ${t("app.recovered")}`}

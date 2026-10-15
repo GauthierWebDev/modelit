@@ -63,15 +63,7 @@ export function ShareDialog() {
 
   let body;
   let footer;
-  if (!collabAvailable()) {
-    body = <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.unavailable")}</p>;
-    footer = (
-      <>
-        <div className="flex-1" />
-        {closeButton}
-      </>
-    );
-  } else if (mode === "host" && links) {
+  if (mode === "host" && links) {
     body = (
       <div className="flex flex-col gap-3">
         <LinkRow label={t("collab.editLink")} value={links.edit} />
@@ -95,6 +87,14 @@ export function ShareDialog() {
         <button type="button" className={`${secondary} text-red-600`} onClick={() => void leaveSession()}>
           <LogOut size={14} /> {t("collab.leave")}
         </button>
+        <div className="flex-1" />
+        {closeButton}
+      </>
+    );
+  } else if (!collabAvailable()) {
+    body = <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.unavailable")}</p>;
+    footer = (
+      <>
         <div className="flex-1" />
         {closeButton}
       </>

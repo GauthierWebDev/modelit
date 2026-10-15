@@ -6,7 +6,9 @@
  * ou bien elle est masquée. Un groupe vide n'existe pas.
  */
 
-export const SECTIONS = ["properties", "model", "mld", "sql", "issues"] as const;
+export const SECTIONS = ["properties", "model", "mld", "sql", "issues", "session"] as const;
+/** Sections affichées seulement à la demande : masquées par défaut (« session » : O-05 §7). */
+const HIDDEN_BY_DEFAULT: SectionId[] = ["session"];
 export type SectionId = (typeof SECTIONS)[number];
 export type Zone = "right" | "bottom";
 export const ZONES: Zone[] = ["right", "bottom"];
@@ -71,8 +73,8 @@ export function defaultLayout(): DockLayout {
       bottom: { groups: [group(["mld", "sql", "issues"], "bottom")], size: 224 },
     },
     floating: [],
-    hidden: [],
-    lastPlace: {},
+    hidden: [...HIDDEN_BY_DEFAULT],
+    lastPlace: { session: { group: "right" } },
     toolbar: { floating: false, position: null },
   };
 }
@@ -316,9 +318,16 @@ export function sanitizeLayout(raw: unknown): DockLayout {
     }
     layout.hidden = (Array.isArray(input.hidden) ? input.hidden : []).filter((s) => isSection(s) && !seen.has(s));
     layout.hidden.forEach((s) => seen.add(s));
-    // Section oubliée (ajoutée par une version plus récente, ou disposition abîmée) : à droite.
-    for (const s of SECTIONS) if (!seen.has(s)) attach(layout, [s], { kind: "zone", zone: "right", index: Infinity });
     layout.lastPlace = typeof input.lastPlace === "object" && input.lastPlace ? input.lastPlace : {};
+    // Section oubliée (ajoutée par une version plus récente, ou disposition abîmée) : à droite,
+    // ou masquée si elle ne s'affiche qu'à la demande.
+    for (const s of SECTIONS) {
+      if (seen.has(s)) continue;
+      if (HIDDEN_BY_DEFAULT.includes(s)) {
+        layout.hidden.push(s);
+        layout.lastPlace[s] ??= { group: "right" };
+      } else attach(layout, [s], { kind: "zone", zone: "right", index: Infinity });
+    }
     const t = input.toolbar;
     layout.toolbar = {
       floating: t?.floating === true,

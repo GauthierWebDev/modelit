@@ -1,8 +1,10 @@
 import { create } from "zustand";
-import { alertDialog } from "../dialogStore";
+import { alertDialog, confirmDialog } from "../dialogStore";
 import { createDocumentStore } from "../document/documentStore";
-import { createDocumentViewStore } from "../document/documentView";
+import { createDocumentViewStore, type ViewMode } from "../document/documentView";
 import { createDocumentHandle, type DocumentHandle } from "../document/handle";
+import { updateDock } from "../dock/actions";
+import { groupOf, hideSection, setActive, showSection } from "../dock/layout";
 import { documentName } from "../fileCommands";
 import { usePreferencesStore } from "../preferencesStore";
 import { activeDocument, addTab, replaceDocument, setTitle, useWorkspaceStore } from "../workspace";
@@ -12,7 +14,7 @@ import { startHost, type HostSession } from "./host";
 import { displayName } from "./identity";
 import { buildLink, newSecret, parseLink } from "./link";
 import { MIN_PASSWORD_LENGTH, verifier } from "./password";
-import type { GuestLink, HostLink, Participant, Presence } from "./protocol";
+import type { ChatMessage, GuestLink, HostLink, Participant, Presence } from "./protocol";
 
 /**
  * Session collaborative de la fenêtre (O-05 ; J-01, phase 5a) : une à la fois, comme hôte ou comme
@@ -50,6 +52,9 @@ interface CollabState {
   participants: Participant[];
   aiAllowed: boolean;
   presence: Record<string, RemotePresence>;
+  chat: ChatMessage[];
+  /** Messages des autres arrivés depuis la dernière lecture (badge de la section Session). */
+  unread: number;
   /** Mon identifiant dans la session. */
   you: string | null;
   /** Invité : rôle, état de la connexion, mot de passe demandé. */
@@ -64,10 +69,27 @@ export const useCollabStore = create<CollabState>(() => ({
   participants: [],
   aiAllowed: false,
   presence: {},
+  chat: [],
+  unread: 0,
   you: null,
   guest: null,
   error: null,
 }));
+
+/** Messages reçus : compte ceux des autres arrivés depuis la dernière synchronisation. */
+function trackChat(next: ChatMessage[], you: string | null): Pick<CollabState, "chat" | "unread"> {
+  const { chat, unread } = useCollabStore.getState();
+  if (next === chat) return { chat, unread };
+  const last = chat.at(-1)?.id ?? 0;
+  return { chat: next, unread: unread + next.filter((m) => m.id > last && m.author !== you).length };
+}
+
+export const markChatRead = () => useCollabStore.getState().unread && useCollabStore.setState({ unread: 0 });
+
+export function sendChat(text: string) {
+  host?.session.sendChat(text);
+  guest?.session.sendChat(text);
+}
 
 /** Présence reçue : horodate chaque mouvement de curseur. */
 function trackPresence(next: Record<string, Presence>): Record<string, RemotePresence> {
@@ -118,7 +140,7 @@ export async function shareActiveTab({ password, aiAllowed = false }: { password
     replaceDocument(tab.id, { id: tab.id, store: session.store, view: tab.view });
     const sync = () => {
       const s = session.state.getState();
-      useCollabStore.setState({ participants: s.participants, aiAllowed: s.aiAllowed, presence: trackPresence(s.presence) });
+      useCollabStore.setState({ participants: s.participants, aiAllowed: s.aiAllowed, presence: trackPresence(s.presence), ...trackChat(s.chat, "host") });
     };
     const offState = session.state.subscribe(sync);
     // Onglet fermé : fin du partage.
@@ -156,11 +178,24 @@ export async function stopSharing() {
     store.setState({ filePath: state.filePath, savedDoc: state.savedDoc });
     replaceDocument(tab.id, { id: tab.id, store, view: tab.view });
   }
-  useCollabStore.setState({ mode: "idle", tabId: null, links: null, participants: [], presence: {}, you: null });
+  useCollabStore.setState({ mode: "idle", tabId: null, links: null, participants: [], presence: {}, chat: [], unread: 0, you: null });
 }
 
 export const setGuestsAi = (allowed: boolean) => host?.session.setAiAllowed(allowed);
 export const kick = (peer: string) => host?.session.kick(peer);
+
+/** Exclusion demandée depuis la liste des participants : confirmée d'abord (O-05 §4.3). */
+async function confirmKick(peer: string) {
+  const name = useCollabStore.getState().participants.find((p) => p.id === peer)?.name;
+  if (!name) return;
+  const ok = await confirmDialog({
+    title: t("collab.kickTitle"),
+    message: t("collab.kickConfirm", { name }),
+    okLabel: t("collab.kickOk"),
+    cancelLabel: t("common.cancel"),
+  });
+  if (ok) kick(peer);
+}
 
 // ——— Invité ———
 
@@ -189,6 +224,7 @@ export async function joinFromLink(url: string): Promise<boolean> {
       participants: s.participants,
       aiAllowed: s.aiAllowed,
       presence: trackPresence(s.presence),
+      ...trackChat(s.chat, s.you),
       you: s.you,
       guest: { role: s.role, status: s.status, password: s.password },
     });
@@ -248,7 +284,7 @@ async function endGuestSession(reason: string | null) {
   off();
   clearTimeout(retry);
   const tabId = useCollabStore.getState().tabId;
-  useCollabStore.setState({ mode: "idle", tabId: null, participants: [], presence: {}, you: null, guest: null });
+  useCollabStore.setState({ mode: "idle", tabId: null, participants: [], presence: {}, chat: [], unread: 0, you: null, guest: null });
   if (tabId) {
     const copy = createDocumentHandle(session.snapshot());
     // Copie modifiée (non enregistrée) : rien ne se perd à la fermeture.
@@ -310,6 +346,72 @@ export function sharedTabName(): string | null {
   const tab = useWorkspaceStore.getState().documents.find((d) => d.id === id);
   return tab ? documentName(tab) : null;
 }
+
+// ——— Fenêtres flottantes (J-01, D6) ———
+
+/** Actions de session, exécutées par la fenêtre principale (relayées depuis une flottante). */
+export type CollabAction =
+  | { kind: "chat"; text: string }
+  | { kind: "read" }
+  | { kind: "kick"; peer: string }
+  | { kind: "guestsAi"; allowed: boolean }
+  | { kind: "stop" }
+  | { kind: "leave" };
+
+export function runCollabAction(action: CollabAction) {
+  switch (action.kind) {
+    case "chat":
+      return sendChat(action.text);
+    case "read":
+      return void markChatRead();
+    case "kick":
+      return void confirmKick(action.peer);
+    case "guestsAi":
+      return void setGuestsAi(action.allowed);
+    case "stop":
+      return void stopSharing();
+    case "leave":
+      return void leaveSession();
+  }
+}
+
+/**
+ * Ce qu'une fenêtre flottante reçoit de la session : tout sauf les curseurs (dessinés dans le
+ * canevas de la principale), réduits à la vue de chacun.
+ */
+export type CollabMirror = Omit<CollabState, "presence"> & { views: Record<string, ViewMode> };
+
+export function collabMirror(): CollabMirror {
+  const { presence, ...rest } = useCollabStore.getState();
+  return { ...rest, views: Object.fromEntries(Object.entries(presence).map(([id, p]) => [id, p.view])) };
+}
+
+export const sameCollabMirror = (a: CollabMirror, b: CollabMirror) =>
+  (Object.keys(a) as (keyof CollabMirror)[]).every((k) => (k === "views" ? JSON.stringify(a.views) === JSON.stringify(b.views) : a[k] === b[k]));
+
+export function applyCollabMirror(mirror: CollabMirror) {
+  // Rien de changé : pas de nouvel état (il repartirait vers la principale par les abonnements).
+  if (JSON.stringify(mirror) === JSON.stringify(collabMirror())) return;
+  const { views, ...rest } = mirror;
+  useCollabStore.setState({
+    ...rest,
+    presence: Object.fromEntries(Object.entries(views).map(([id, view]) => [id, { view, cursor: null, selection: [], movedAt: 0 }])),
+  });
+}
+
+/** Section « Session » (O-05 §7) : affichée au début d'une session, masquée à la fin. */
+useCollabStore.subscribe((s, p) => {
+  // Fenêtre principale seulement (une flottante reçoit sa disposition de la principale).
+  if (!transport) return;
+  const active = (mode: CollabMode) => mode === "host" || mode === "guest";
+  if (active(s.mode) === active(p.mode)) return;
+  updateDock((layout) => {
+    if (!active(s.mode)) return hideSection(layout, "session");
+    const shown = showSection(layout, "session");
+    const found = groupOf(shown, "session");
+    return found ? setActive(shown, found.group.id, "session") : shown;
+  });
+});
 
 /** Identité changée dans les options : visible tout de suite par les autres (O-05 §3). */
 usePreferencesStore.subscribe((s, p) => {

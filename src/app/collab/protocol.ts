@@ -26,6 +26,24 @@ export interface Presence {
   selection: string[];
 }
 
+/** Longueur maximale d'un message du chat (O-05 §6). */
+export const CHAT_MAX = 2000;
+
+/**
+ * Message du chat (O-05 §6). `kind` : texte d'un participant, ou message de service (arrivée,
+ * départ, exclusion) dont `name` désigne le participant concerné.
+ */
+export interface ChatMessage {
+  id: number;
+  kind: "text" | "joined" | "left" | "kicked";
+  author: string;
+  name: string;
+  color: string;
+  text: string;
+  /** Heure d'envoi, horloge de l'hôte (ms). */
+  at: number;
+}
+
 /** Invité → hôte. */
 export type ToHost =
   /**
@@ -37,18 +55,29 @@ export type ToHost =
   | { type: "ops"; ops: Op[]; ai?: boolean }
   | { type: "identity"; name: string; color: string }
   | { type: "presence"; presence: Presence }
+  | { type: "chat"; text: string }
   | { type: "leave" };
 
 /** Hôte → invité. */
 export type ToGuest =
   /** Session protégée : prouver la connaissance du mot de passe (défi `nonce`, sel `salt`). */
   | { type: "challenge"; nonce: string; salt: string; attemptsLeft: number }
-  | { type: "welcome"; you: string; role: Exclude<Role, "host">; doc: ModelDocument; participants: Participant[]; aiAllowed: boolean }
+  /** Entrée acceptée ; `chat` : messages déjà échangés pendant la session. */
+  | {
+      type: "welcome";
+      you: string;
+      role: Exclude<Role, "host">;
+      doc: ModelDocument;
+      participants: Participant[];
+      aiAllowed: boolean;
+      chat: ChatMessage[];
+    }
   /** Modifications appliquées par l'hôte, dans l'ordre ; `author` : participant d'origine. */
   | { type: "ops"; ops: Op[]; author: string }
   | { type: "participants"; participants: Participant[] }
   /** Présence d'un autre participant, relayée par l'hôte. */
   | { type: "presence"; id: string; presence: Presence }
+  | { type: "chat"; message: ChatMessage }
   | { type: "settings"; aiAllowed: boolean }
   /**
    * Demande refusée (lien inconnu, modification d'un lecteur, IA interdite…). `doc` : état de

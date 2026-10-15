@@ -10,7 +10,21 @@ import { startHost } from "./host";
 import { buildLink, parseLink } from "./link";
 import { memoryNetwork } from "./memoryNetwork";
 import { verifier } from "./password";
-import { answerPassword, joinFromLink, leaveSession, reportPresence, setCollabTransport, shareActiveTab, stopSharing, useCollabStore } from "./session";
+import { groupOf } from "../dock/layout";
+import { usePreferencesStore } from "../preferencesStore";
+import {
+  answerPassword,
+  joinFromLink,
+  leaveSession,
+  markChatRead,
+  reportPresence,
+  runCollabAction,
+  sendChat,
+  setCollabTransport,
+  shareActiveTab,
+  stopSharing,
+  useCollabStore,
+} from "./session";
 
 /** Cycle d'une session (O-05 §4) : partager, rejoindre, arrêter, quitter. */
 describe("gestionnaire de session", () => {
@@ -101,6 +115,32 @@ describe("gestionnaire de session", () => {
       net.flush();
       expect(seen.length).toBeLessThanOrEqual(4);
       expect(seen.at(-1)).toBe(30);
+    });
+
+    it("la section Session s'affiche pendant la session et se masque ensuite (O-05 §7)", async () => {
+      const visible = () => !usePreferencesStore.getState().dock.hidden.includes("session");
+      expect(visible()).toBe(false);
+      await shareActiveTab();
+      expect(visible()).toBe(true);
+      const found = groupOf(usePreferencesStore.getState().dock, "session")!;
+      expect(found.group.active).toBe("session");
+      await stopSharing();
+      expect(visible()).toBe(false);
+    });
+
+    it("chat : les messages des autres comptent comme non lus, pas les miens", async () => {
+      await shareActiveTab();
+      const bob = startGuest({ link: net.connect("bob"), secret: parseLink(useCollabStore.getState().links!.edit)!.secret, name: "Bob", color: "#000" });
+      await net.settle();
+      markChatRead();
+      sendChat("Bienvenue");
+      bob.sendChat("Merci");
+      bob.sendChat("Je commence");
+      await net.settle();
+      expect(useCollabStore.getState().chat.filter((m) => m.kind === "text").map((m) => m.text)).toEqual(["Bienvenue", "Merci", "Je commence"]);
+      expect(useCollabStore.getState().unread).toBe(2);
+      runCollabAction({ kind: "read" });
+      expect(useCollabStore.getState().unread).toBe(0);
     });
 
     it("mot de passe trop court : refusé", async () => {

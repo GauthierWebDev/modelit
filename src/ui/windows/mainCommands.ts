@@ -1,4 +1,5 @@
 import { newDocument, newTab, openDocument, saveDocument } from "@/app/fileCommands";
+import { runCollabAction } from "@/app/collab/session";
 import type { MainCommand } from "@/app/windows/protocol";
 import { activeDocument } from "@/app/workspace";
 import { autoLayoutTables } from "@/ui/canvas/autoLayout";
@@ -28,6 +29,8 @@ export function runMainCommand(command: MainCommand) {
       return fitToWindow(doc);
     case "autoLayout":
       return void autoLayoutTables(doc);
+    case "collab":
+      return runCollabAction(command.action);
   }
 }
 

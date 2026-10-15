@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { addEntity, renameNode } from "../commands";
 import { selectUndoLabel } from "../document/documentStore";
 import { activeDocument, openInTab, resetWorkspace } from "../workspace";
+import { useCollabStore } from "../collab/session";
 import { startOwner } from "./owner";
 import type { Channel, MainCommand, ToMain, ToReplica } from "./protocol";
 import { startReplica } from "./replica";
@@ -98,6 +99,18 @@ describe("synchronisation entre fenêtres", () => {
     expect(channels.sent.length).toBe(before);
     store.getState().commit("history.move");
     expect(channels.sent.length).toBe(before + 1);
+  });
+
+  it("la session collaborative est reflétée dans la flottante, sans les curseurs", () => {
+    useCollabStore.setState({
+      mode: "host",
+      participants: [{ id: "host", name: "Alice", color: "#000", role: "host" }],
+      presence: { bob: { view: "mld", cursor: { x: 1, y: 2 }, selection: [], movedAt: 1 } },
+    });
+    const mirrored = channels.sent.at(-1)!.state.collab;
+    expect(mirrored).toMatchObject({ mode: "host", views: { bob: "mld" } });
+    expect("presence" in mirrored).toBe(false);
+    useCollabStore.setState({ mode: "idle", participants: [], presence: {} });
   });
 
   it("commandes réservées à la principale : relayées", () => {

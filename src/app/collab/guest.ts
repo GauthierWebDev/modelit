@@ -1,7 +1,7 @@
 import { emptyDocument, type ModelDocument } from "@core/index";
 import { create } from "zustand";
 import { prove } from "./password";
-import type { GuestLink, Participant, Presence, RejectReason, Role } from "./protocol";
+import type { ChatMessage, GuestLink, Participant, Presence, RejectReason, Role } from "./protocol";
 import { createSessionStore, type SessionStore } from "./sessionStore";
 
 /**
@@ -28,6 +28,7 @@ export interface GuestState {
   password: { attemptsLeft: number; wrong: boolean } | null;
   /** Présence des autres participants (O-05 §5). */
   presence: Record<string, Presence>;
+  chat: ChatMessage[];
 }
 
 export interface GuestSession {
@@ -37,6 +38,7 @@ export interface GuestSession {
   /** Réponse au défi d'une session protégée. */
   answer: (password: string) => Promise<void>;
   setPresence: (presence: Presence) => void;
+  sendChat: (text: string) => void;
   /** Connexion retrouvée (O-05 §4.4) : nouveau canal vers le même hôte. */
   reconnect: (link: GuestLink) => void;
   leave: () => void;
@@ -45,7 +47,7 @@ export interface GuestSession {
 }
 
 const createGuestState = () =>
-  create<GuestState>(() => ({ status: "connecting", role: null, you: null, participants: [], aiAllowed: false, ended: null, rejected: null, password: null, presence: {} }));
+  create<GuestState>(() => ({ status: "connecting", role: null, you: null, participants: [], aiAllowed: false, ended: null, rejected: null, password: null, presence: {}, chat: [] }));
 
 export function startGuest({ link, secret, name, color }: { link: GuestLink; secret: string; name: string; color: string }): GuestSession {
   const state = createGuestState();
@@ -86,7 +88,15 @@ export function startGuest({ link, secret, name, color }: { link: GuestLink; sec
           challenge = null;
           pending = null;
           store.getState().reset(message.doc);
-          state.setState({ status: "connected", role: message.role, you: message.you, participants: message.participants, aiAllowed: message.aiAllowed, password: null });
+          state.setState({
+            status: "connected",
+            role: message.role,
+            you: message.you,
+            participants: message.participants,
+            aiAllowed: message.aiAllowed,
+            password: null,
+            chat: message.chat,
+          });
           return;
         case "ops":
           store.getState().applyRemote(message.ops);
@@ -100,6 +110,9 @@ export function startGuest({ link, secret, name, color }: { link: GuestLink; sec
         }
         case "presence":
           state.setState((s) => ({ presence: { ...s.presence, [message.id]: message.presence } }));
+          return;
+        case "chat":
+          state.setState((s) => ({ chat: [...s.chat, message.message] }));
           return;
         case "settings":
           state.setState({ aiAllowed: message.aiAllowed });
@@ -138,6 +151,9 @@ export function startGuest({ link, secret, name, color }: { link: GuestLink; sec
     answer,
     setPresence: (presence) => {
       if (state.getState().status === "connected") current.send({ type: "presence", presence });
+    },
+    sendChat: (text) => {
+      if (state.getState().status === "connected" && text.trim()) current.send({ type: "chat", text });
     },
     reconnect: (target) => {
       detach();

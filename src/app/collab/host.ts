@@ -1,7 +1,7 @@
 import type { ModelDocument } from "@core/index";
 import { create } from "zustand";
 import { MAX_ATTEMPTS, randomHex } from "./password";
-import type { HostLink, Participant, Presence, ToGuest, ToHost } from "./protocol";
+import { CHAT_MAX, type ChatMessage, type HostLink, type Participant, type Presence, type ToGuest, type ToHost } from "./protocol";
 import { createSessionStore, type SessionStore } from "./sessionStore";
 
 /**
@@ -30,13 +30,22 @@ export interface HostSession {
   setIdentity: (name: string, color: string) => void;
   /** Présence de l'hôte, diffusée à tous. */
   setPresence: (presence: Presence) => void;
+  sendChat: (text: string) => void;
   kick: (peer: string) => void;
   /** Arrête la session pour tous. */
   stop: () => void;
 }
 
 const createHostState = (participants: Participant[], aiAllowed: boolean) =>
-  create<{ participants: Participant[]; aiAllowed: boolean; presence: Record<string, Presence> }>(() => ({ participants, aiAllowed, presence: {} }));
+  create<{ participants: Participant[]; aiAllowed: boolean; presence: Record<string, Presence>; chat: ChatMessage[] }>(() => ({
+    participants,
+    aiAllowed,
+    presence: {},
+    chat: [],
+  }));
+
+/** Messages gardés en mémoire pour les nouveaux venus, le temps de la session seulement. */
+const CHAT_KEPT = 500;
 
 export function startHost({ link, doc, secrets, me, aiAllowed = false, password }: HostOptions): HostSession {
   const guests = new Map<string, Participant>();
@@ -44,6 +53,13 @@ export function startHost({ link, doc, secrets, me, aiAllowed = false, password 
   const state = createHostState([host], aiAllowed);
 
   const everyone = () => [host, ...guests.values()];
+  let chatId = 0;
+  const post = (kind: ChatMessage["kind"], who: Participant, text = "") => {
+    const message: ChatMessage = { id: ++chatId, kind, author: who.id, name: who.name, color: who.color, text: text.slice(0, CHAT_MAX), at: Date.now() };
+    state.setState((s) => ({ chat: [...s.chat, message].slice(-CHAT_KEPT) }));
+    broadcast({ type: "chat", message });
+  };
+
   /** Dernière présence de chacun : envoyée aux nouveaux venus. */
   const presence = new Map<string, Presence>();
   const relayPresence = (id: string, value: Presence) => {
@@ -98,8 +114,11 @@ export function startHost({ link, doc, secrets, me, aiAllowed = false, password 
       }
       challenges.delete(peer);
     }
-    guests.set(peer, { id: peer, name: message.name, color: message.color, role });
-    link.send(peer, { type: "welcome", you: peer, role, doc: store.getState().doc, participants: everyone(), aiAllowed: state.getState().aiAllowed });
+    const guest: Participant = { id: peer, name: message.name, color: message.color, role };
+    post("joined", guest);
+    guests.set(peer, guest);
+    const { aiAllowed: ai, chat } = state.getState();
+    link.send(peer, { type: "welcome", you: peer, role, doc: store.getState().doc, participants: everyone(), aiAllowed: ai, chat });
     for (const [id, value] of presence) link.send(peer, { type: "presence", id, presence: value });
     publishParticipants();
   };
@@ -126,6 +145,10 @@ export function startHost({ link, doc, secrets, me, aiAllowed = false, password 
       case "presence":
         if (guest) relayPresence(peer, message.presence);
         return;
+      case "chat":
+        // Lecteurs compris : tout le monde est dans le chat (O-05 §6).
+        if (guest && message.text.trim()) post("text", guest, message.text);
+        return;
       case "leave":
         link.close(peer);
         return;
@@ -134,7 +157,11 @@ export function startHost({ link, doc, secrets, me, aiAllowed = false, password 
   const offClose = link.onClose((peer) => {
     challenges.delete(peer);
     forget(peer);
-    if (guests.delete(peer)) publishParticipants();
+    const gone = guests.get(peer);
+    if (gone && guests.delete(peer)) {
+      publishParticipants();
+      post("left", gone);
+    }
   });
 
   return {
@@ -149,10 +176,15 @@ export function startHost({ link, doc, secrets, me, aiAllowed = false, password 
       publishParticipants();
     },
     setPresence: (value) => relayPresence(host.id, value),
+    sendChat: (text) => {
+      if (text.trim()) post("text", host, text);
+    },
     kick: (peer) => {
-      if (!guests.has(peer)) return;
+      const guest = guests.get(peer);
+      if (!guest) return;
       link.send(peer, { type: "ended", reason: "kicked" });
       guests.delete(peer);
+      post("kicked", guest);
       forget(peer);
       link.close(peer);
       publishParticipants();
