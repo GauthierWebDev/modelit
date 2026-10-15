@@ -1,0 +1,108 @@
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { addEntity, renameNode } from "../commands";
+import { selectUndoLabel } from "../document/documentStore";
+import { activeDocument, openInTab, resetWorkspace } from "../workspace";
+import { startOwner } from "./owner";
+import type { Channel, MainCommand, ToMain, ToReplica } from "./protocol";
+import { startReplica } from "./replica";
+
+/** Canal en mémoire : ce qu'envoie un côté est reçu par l'autre, immédiatement. */
+function memoryChannels() {
+  const toMain = new Set<(m: ToMain) => void>();
+  const toReplica = new Set<(m: ToReplica) => void>();
+  const sent: ToReplica[] = [];
+  const owner: Channel<ToReplica, ToMain> = {
+    send: (m) => (sent.push(m), toReplica.forEach((h) => h(structuredClone(m)))),
+    listen: (h) => (toMain.add(h), () => toMain.delete(h)),
+  };
+  const replica: Channel<ToMain, ToReplica> = {
+    send: (m) => toMain.forEach((h) => h(structuredClone(m))),
+    listen: (h) => (toReplica.add(h), () => toReplica.delete(h)),
+  };
+  return { owner, replica, sent };
+}
+
+/** Fenêtres flottantes synchronisées avec la principale (J-01, phase 4, D6). */
+describe("synchronisation entre fenêtres", () => {
+  let commands: MainCommand[];
+  let channels: ReturnType<typeof memoryChannels>;
+  let replica: ReturnType<typeof startReplica>;
+  let stopOwner: () => void;
+
+  beforeEach(() => {
+    resetWorkspace();
+    commands = [];
+    channels = memoryChannels();
+    stopOwner = startOwner(channels.owner, (c) => commands.push(c), { schedule: (f) => f() });
+    replica = startReplica(channels.replica);
+  });
+
+  afterEach(() => {
+    replica.stop();
+    stopOwner();
+  });
+
+  it("la flottante reçoit le document actif dès son ouverture", () => {
+    expect(replica.handle.store.getState().doc.entities).toEqual([]);
+    addEntity(activeDocument(), { x: 0, y: 0 });
+    expect(replica.handle.store.getState().doc.entities).toHaveLength(1);
+  });
+
+  it("une modification faite dans la flottante entre dans l'historique de la principale", () => {
+    const id = addEntity(activeDocument(), { x: 0, y: 0 });
+    expect(renameNode(replica.handle, id, "CLIENT")).toBeNull();
+    const main = activeDocument().store.getState();
+    expect(main.doc.entities[0]!.name).toBe("CLIENT");
+    expect(selectUndoLabel(main)).toBe("history.rename");
+    // Libellé d'annulation et indicateur de modification relayés.
+    expect(selectUndoLabel(replica.handle.store.getState())).toBe("history.rename");
+  });
+
+  it("annuler depuis la flottante annule dans la principale", () => {
+    const id = addEntity(activeDocument(), { x: 0, y: 0 });
+    renameNode(replica.handle, id, "CLIENT");
+    replica.handle.store.getState().undo();
+    expect(activeDocument().store.getState().doc.entities[0]!.name).not.toBe("CLIENT");
+    expect(replica.handle.store.getState().doc.entities[0]!.name).not.toBe("CLIENT");
+  });
+
+  it("sélection partagée dans les deux sens", () => {
+    const id = addEntity(activeDocument(), { x: 0, y: 0 });
+    activeDocument().view.getState().select([id]);
+    expect(replica.handle.view.getState().selection).toEqual([id]);
+    replica.handle.view.getState().select([]);
+    expect(activeDocument().view.getState().selection).toEqual([]);
+  });
+
+  it("changer d'onglet dans la principale change le document de la flottante", () => {
+    addEntity(activeDocument(), { x: 0, y: 0 });
+    openInTab();
+    expect(replica.handle.store.getState().doc.entities).toEqual([]);
+  });
+
+  it("une modification visant un autre onglet que l'actif est ignorée", () => {
+    const id = addEntity(activeDocument(), { x: 0, y: 0 });
+    const stale = replica.handle;
+    openInTab();
+    // La flottante a reçu le nouvel onglet : son document courant est vide, rien à renommer.
+    expect(renameNode(stale, id, "X")).toBeNull();
+    expect(activeDocument().store.getState().doc.entities).toEqual([]);
+  });
+
+  it("pendant un glisser-déposer, une seule diffusion, à la fin", () => {
+    const id = addEntity(activeDocument(), { x: 0, y: 0 });
+    const store = activeDocument().store;
+    const before = channels.sent.length;
+    store.getState().begin();
+    for (let x = 1; x <= 10; x++) store.getState().preview((d) => void (d.layout.positions[id] = { x, y: 0 }));
+    expect(channels.sent.length).toBe(before);
+    store.getState().commit("history.move");
+    expect(channels.sent.length).toBe(before + 1);
+  });
+
+  it("commandes réservées à la principale : relayées", () => {
+    replica.command({ name: "zoomBy", factor: 1.2 });
+    replica.command({ name: "open" });
+    expect(commands).toEqual([{ name: "zoomBy", factor: 1.2 }, { name: "open" }]);
+  });
+});

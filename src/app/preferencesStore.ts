@@ -128,3 +128,11 @@ export const usePreferencesStore = create<PreferencesState>()(
     },
   ),
 );
+
+// Fenêtres flottantes (J-01, phase 4) : les options écrites par une autre fenêtre de l'application
+// (thème, langue, disposition) sont relues dès qu'elles changent.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key === "modelit/preferences") void usePreferencesStore.persist.rehydrate();
+  });
+}
