@@ -1,5 +1,6 @@
 import { emptyDocument, type ModelDocument } from "@core/index";
 import { create } from "zustand";
+import { prove } from "./password";
 import type { GuestLink, Participant, RejectReason, Role } from "./protocol";
 import { createSessionStore, type SessionStore } from "./sessionStore";
 
@@ -10,7 +11,8 @@ import { createSessionStore, type SessionStore } from "./sessionStore";
  * Lecteur, ou connexion perdue : aucune modification (O-05 §4.3, §4.4).
  */
 
-export type GuestStatus = "connecting" | "connected" | "disconnected" | "ended";
+/** `password` : la session est protégée, le mot de passe est attendu (`answer`). */
+export type GuestStatus = "connecting" | "password" | "connected" | "disconnected" | "ended";
 
 export interface GuestState {
   status: GuestStatus;
@@ -22,19 +24,23 @@ export interface GuestState {
   ended: "stopped" | "kicked" | RejectReason | null;
   /** Dernier refus d'une modification (lecteur, IA interdite). */
   rejected: RejectReason | null;
+  /** Essais restants pour le mot de passe ; `wrong` : la réponse précédente était fausse. */
+  password: { attemptsLeft: number; wrong: boolean } | null;
 }
 
 export interface GuestSession {
   store: SessionStore;
   state: ReturnType<typeof createGuestState>;
   setIdentity: (name: string, color: string) => void;
+  /** Réponse au défi d'une session protégée. */
+  answer: (password: string) => Promise<void>;
   leave: () => void;
   /** Document courant, gardé en copie à la fin de la session (D16). */
   snapshot: () => ModelDocument;
 }
 
 const createGuestState = () =>
-  create<GuestState>(() => ({ status: "connecting", role: null, you: null, participants: [], aiAllowed: false, ended: null, rejected: null }));
+  create<GuestState>(() => ({ status: "connecting", role: null, you: null, participants: [], aiAllowed: false, ended: null, rejected: null, password: null }));
 
 export function startGuest({ link, secret, name, color }: { link: GuestLink; secret: string; name: string; color: string }): GuestSession {
   const state = createGuestState();
@@ -44,11 +50,20 @@ export function startGuest({ link, secret, name, color }: { link: GuestLink; sec
     publish: (ops, label) => link.send({ type: "ops", ops, ...(label === "history.ai" ? { ai: true } : {}) }),
   });
 
+  let challenge: { nonce: string; salt: string } | null = null;
+  let identity = { name, color };
+
   const offMessage = link.onMessage((message) => {
     switch (message.type) {
+      case "challenge": {
+        const wrong = challenge !== null;
+        challenge = { nonce: message.nonce, salt: message.salt };
+        state.setState({ status: "password", password: { attemptsLeft: message.attemptsLeft, wrong } });
+        return;
+      }
       case "welcome":
         store.getState().reset(message.doc);
-        state.setState({ status: "connected", role: message.role, you: message.you, participants: message.participants, aiAllowed: message.aiAllowed });
+        state.setState({ status: "connected", role: message.role, you: message.you, participants: message.participants, aiAllowed: message.aiAllowed, password: null });
         return;
       case "ops":
         store.getState().applyRemote(message.ops);
@@ -60,7 +75,7 @@ export function startGuest({ link, secret, name, color }: { link: GuestLink; sec
         state.setState({ aiAllowed: message.aiAllowed });
         return;
       case "rejected":
-        if (message.reason === "unknown-link") state.setState({ status: "ended", ended: message.reason });
+        if (message.reason === "unknown-link" || message.reason === "bad-password") state.setState({ status: "ended", ended: message.reason, password: null });
         else {
           // Modification refusée, déjà appliquée ici : retour à l'état de l'hôte.
           if (message.doc) store.getState().reset(message.doc);
@@ -81,7 +96,16 @@ export function startGuest({ link, secret, name, color }: { link: GuestLink; sec
   return {
     store,
     state,
-    setIdentity: (n, c) => link.send({ type: "identity", name: n, color: c }),
+    setIdentity: (n, c) => {
+      identity = { name: n, color: c };
+      link.send({ type: "identity", name: n, color: c });
+    },
+    answer: async (password) => {
+      if (!challenge) return;
+      const proof = await prove(password, challenge.salt, challenge.nonce);
+      state.setState({ status: "connecting" });
+      link.send({ type: "hello", secret, ...identity, proof });
+    },
     leave: () => {
       link.send({ type: "leave" });
       state.setState({ status: "ended", ended: null });

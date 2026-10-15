@@ -17,8 +17,11 @@ export interface Participant {
 
 /** Invité → hôte. */
 export type ToHost =
-  /** Entrée dans la session : `secret` du lien utilisé (édition ou lecture). */
-  | { type: "hello"; secret: string; name: string; color: string }
+  /**
+   * Entrée dans la session : `secret` du lien utilisé (édition ou lecture) ; `proof` : réponse au
+   * défi quand la session a un mot de passe (`password.ts`).
+   */
+  | { type: "hello"; secret: string; name: string; color: string; proof?: string }
   /** Modifications ; `ai` : faites par un assistant IA (O-05 §8). */
   | { type: "ops"; ops: Op[]; ai?: boolean }
   | { type: "identity"; name: string; color: string }
@@ -26,6 +29,8 @@ export type ToHost =
 
 /** Hôte → invité. */
 export type ToGuest =
+  /** Session protégée : prouver la connaissance du mot de passe (défi `nonce`, sel `salt`). */
+  | { type: "challenge"; nonce: string; salt: string; attemptsLeft: number }
   | { type: "welcome"; you: string; role: Exclude<Role, "host">; doc: ModelDocument; participants: Participant[]; aiAllowed: boolean }
   /** Modifications appliquées par l'hôte, dans l'ordre ; `author` : participant d'origine. */
   | { type: "ops"; ops: Op[]; author: string }
@@ -38,7 +43,7 @@ export type ToGuest =
   | { type: "rejected"; reason: RejectReason; doc?: ModelDocument }
   | { type: "ended"; reason: "stopped" | "kicked" };
 
-export type RejectReason = "unknown-link" | "read-only" | "ai-disabled";
+export type RejectReason = "unknown-link" | "bad-password" | "read-only" | "ai-disabled";
 
 /** Côté hôte : un canal par invité, désigné par un identifiant de connexion. */
 export interface HostLink {

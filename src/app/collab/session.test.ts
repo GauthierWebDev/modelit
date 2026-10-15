@@ -5,51 +5,8 @@ import { createDocumentViewStore } from "../document/documentView";
 import type { DocumentHandle } from "../document/handle";
 import { startGuest, type GuestSession } from "./guest";
 import { startHost, type HostSession } from "./host";
-import type { GuestLink, HostLink, ToGuest, ToHost } from "./protocol";
+import { memoryNetwork as network } from "./memoryNetwork";
 import type { SessionStore } from "./sessionStore";
-
-/**
- * Réseau simulé : les messages attendent dans une file et ne sont livrés qu'à `flush()`, dans
- * l'ordre d'envoi. On reproduit ainsi des modifications réellement simultanées.
- */
-function network() {
-  const queue: (() => void)[] = [];
-  const hostHandlers = new Set<(peer: string, m: ToHost) => void>();
-  const hostClose = new Set<(peer: string) => void>();
-  const guests = new Map<string, { handlers: Set<(m: ToGuest) => void>; close: Set<() => void>; open: boolean }>();
-  const clone = <T,>(m: T): T => structuredClone(m);
-
-  const hostLink: HostLink = {
-    send: (peer, m) => queue.push(() => guests.get(peer)?.open && guests.get(peer)!.handlers.forEach((h) => h(clone(m)))),
-    onMessage: (h) => (hostHandlers.add(h), () => hostHandlers.delete(h)),
-    onClose: (h) => (hostClose.add(h), () => hostClose.delete(h)),
-    close: (peer) => {
-      const g = guests.get(peer);
-      if (!g?.open) return;
-      queue.push(() => {
-        g.open = false;
-        g.close.forEach((h) => h());
-      });
-    },
-  };
-  const connect = (peer: string): GuestLink => {
-    const g = { handlers: new Set<(m: ToGuest) => void>(), close: new Set<() => void>(), open: true };
-    guests.set(peer, g);
-    return {
-      send: (m) => queue.push(() => g.open && hostHandlers.forEach((h) => h(peer, clone(m)))),
-      onMessage: (h) => (g.handlers.add(h), () => g.handlers.delete(h)),
-      onClose: (h) => (g.close.add(h), () => g.close.delete(h)),
-      close: () => {
-        g.open = false;
-        hostClose.forEach((h) => h(peer));
-      },
-    };
-  };
-  const flush = () => {
-    while (queue.length) queue.shift()!();
-  };
-  return { hostLink, connect, flush };
-}
 
 const handle = (store: SessionStore): DocumentHandle => ({ id: crypto.randomUUID(), store, view: createDocumentViewStore() });
 /** Comparaison indépendante de l'ordre des clés (la géométrie est un dictionnaire). */

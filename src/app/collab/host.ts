@@ -1,6 +1,7 @@
 import type { ModelDocument } from "@core/index";
 import { create } from "zustand";
-import type { HostLink, Participant, ToGuest } from "./protocol";
+import { MAX_ATTEMPTS, randomHex } from "./password";
+import type { HostLink, Participant, ToGuest, ToHost } from "./protocol";
 import { createSessionStore, type SessionStore } from "./sessionStore";
 
 /**
@@ -17,6 +18,8 @@ export interface HostOptions {
   secrets: { editor: string; reader: string };
   me: Omit<Participant, "role">;
   aiAllowed?: boolean;
+  /** Mot de passe de la session (`password.ts` : `verifier`), s'il y en a un. */
+  password?: { salt: string; verify: (nonce: string, proof: string) => Promise<boolean> };
 }
 
 export interface HostSession {
@@ -33,7 +36,7 @@ export interface HostSession {
 const createHostState = (participants: Participant[], aiAllowed: boolean) =>
   create<{ participants: Participant[]; aiAllowed: boolean }>(() => ({ participants, aiAllowed }));
 
-export function startHost({ link, doc, secrets, me, aiAllowed = false }: HostOptions): HostSession {
+export function startHost({ link, doc, secrets, me, aiAllowed = false, password }: HostOptions): HostSession {
   const guests = new Map<string, Participant>();
   const host: Participant = { ...me, role: "host" };
   const state = createHostState([host], aiAllowed);
@@ -51,19 +54,45 @@ export function startHost({ link, doc, secrets, me, aiAllowed = false }: HostOpt
   // Modifications de l'hôte : appliquées chez lui, diffusées à tous.
   const store = createSessionStore(doc, { publish: (ops) => broadcast({ type: "ops", ops, author: host.id }) });
 
+  /** Défis en cours (session protégée) : nombre aléatoire et essais restants, par connexion. */
+  const challenges = new Map<string, { nonce: string; attemptsLeft: number }>();
+  const challenge = (peer: string, attemptsLeft: number) => {
+    const nonce = randomHex();
+    challenges.set(peer, { nonce, attemptsLeft });
+    link.send(peer, { type: "challenge", nonce, salt: password!.salt, attemptsLeft });
+  };
+
+  /** Entrée dans la session : lien, puis mot de passe s'il y en a un. */
+  const hello = async (peer: string, message: Extract<ToHost, { type: "hello" }>) => {
+    const role = message.secret === secrets.editor ? "editor" : message.secret === secrets.reader ? "reader" : null;
+    if (!role) {
+      link.send(peer, { type: "rejected", reason: "unknown-link" });
+      return link.close(peer);
+    }
+    if (password) {
+      const pending = challenges.get(peer);
+      if (!pending || !message.proof) return challenge(peer, pending?.attemptsLeft ?? MAX_ATTEMPTS);
+      if (!(await password.verify(pending.nonce, message.proof))) {
+        if (pending.attemptsLeft <= 1) {
+          challenges.delete(peer);
+          link.send(peer, { type: "rejected", reason: "bad-password" });
+          return link.close(peer);
+        }
+        return challenge(peer, pending.attemptsLeft - 1);
+      }
+      challenges.delete(peer);
+    }
+    guests.set(peer, { id: peer, name: message.name, color: message.color, role });
+    link.send(peer, { type: "welcome", you: peer, role, doc: store.getState().doc, participants: everyone(), aiAllowed: state.getState().aiAllowed });
+    publishParticipants();
+  };
+
   const offMessage = link.onMessage((peer, message) => {
     const guest = guests.get(peer);
     switch (message.type) {
-      case "hello": {
-        const role = message.secret === secrets.editor ? "editor" : message.secret === secrets.reader ? "reader" : null;
-        if (!role) {
-          link.send(peer, { type: "rejected", reason: "unknown-link" });
-          return link.close(peer);
-        }
-        guests.set(peer, { id: peer, name: message.name, color: message.color, role });
-        link.send(peer, { type: "welcome", you: peer, role, doc: store.getState().doc, participants: everyone(), aiAllowed: state.getState().aiAllowed });
-        return publishParticipants();
-      }
+      case "hello":
+        void hello(peer, message);
+        return;
       case "ops": {
         if (!guest) return;
         const doc = store.getState().doc;
@@ -83,6 +112,7 @@ export function startHost({ link, doc, secrets, me, aiAllowed = false }: HostOpt
     }
   });
   const offClose = link.onClose((peer) => {
+    challenges.delete(peer);
     if (guests.delete(peer)) publishParticipants();
   });
 
