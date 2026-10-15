@@ -7,7 +7,7 @@ mod mcp;
 pub fn run() {
     let builder = tauri::Builder::default()
         .manage(mcp::McpState::default())
-        .invoke_handler(tauri::generate_handler![mcp::mcp_start, mcp::mcp_stop, mcp::mcp_reply])
+        .invoke_handler(tauri::generate_handler![mcp::mcp_start, mcp::mcp_stop, mcp::mcp_reply, mcp::mcp_release_others])
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())

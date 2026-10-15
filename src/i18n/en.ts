@@ -22,6 +22,8 @@ export const en: Record<MessageKey, string> = {
   "mcp.copied": "Copied",
   "mcp.applied": "AI: {summary}",
   "mcp.connected": "AI connected",
+  "mcp.released": "MCP session closed by another ModelIt instance.",
+  "mcp.closeOthers": "Close all other MCP sessions",
   "dock.noSelection": "Nothing selected.",
   "dock.showModel": "Show the model settings",
   "dock.section.properties": "Properties",

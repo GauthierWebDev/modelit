@@ -5,7 +5,8 @@
 //! principale, qui le traite (`src/app/mcp/server.ts`) et renvoie la réponse par `mcp_reply`.
 
 use std::collections::HashMap;
-use std::io::Read;
+use std::io::{Read, Write};
+use std::net::{SocketAddr, TcpStream};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
@@ -13,15 +14,19 @@ use std::thread;
 use std::time::Duration;
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tiny_http::{Header, Method, Request, Response, Server};
 
 /// Taille maximale d'une requête (un script SQL de rétroconception peut être long).
 const MAX_BODY: u64 = 5 * 1024 * 1024;
 /// Délai maximal de traitement par l'interface.
 const TIMEOUT: Duration = Duration::from_secs(60);
-/// Événement écouté par la fenêtre principale (`src/platform/mcp.ts`).
+/// Événements écoutés par la fenêtre principale (`src/platform/mcp.ts`).
 const REQUEST_EVENT: &str = "mcp://request";
+/// Une autre instance de ModelIt a demandé le port : l'écoute est arrêtée ici.
+const RELEASED_EVENT: &str = "mcp://released";
+/// Chemin de libération du port (bouton « Fermer toutes les autres sessions MCP », O-47).
+const RELEASE_PATH: &str = "/mcp/release";
 
 type Pending = Arc<Mutex<HashMap<u64, mpsc::Sender<Option<String>>>>>;
 
@@ -73,7 +78,8 @@ fn same(a: &str, b: &str) -> bool {
 }
 
 fn handle(app: &AppHandle, mut request: Request, port: u16, token: &str, pending: &Pending, next: &AtomicU64) {
-    if request.url() != "/mcp" {
+    let release = request.url() == RELEASE_PATH;
+    if request.url() != "/mcp" && !release {
         return error(request, 404, "not found");
     }
     if request.method() != &Method::Post {
@@ -93,6 +99,13 @@ fn handle(app: &AppHandle, mut request: Request, port: u16, token: &str, pending
         .is_some_and(|t| same(&t, token));
     if !authorized {
         return error(request, 401, "missing or invalid token");
+    }
+    if release {
+        // Traité ici, sans l'interface : fonctionne même si la fenêtre de cette instance ne répond plus.
+        reply(request, 200, "{\"released\":true}");
+        stop_server(&app.state::<McpState>());
+        let _ = app.emit_to("main", RELEASED_EVENT, ());
+        return;
     }
     let mut body = String::new();
     if request.as_reader().take(MAX_BODY).read_to_string(&mut body).is_err() {
@@ -122,7 +135,7 @@ fn handle(app: &AppHandle, mut request: Request, port: u16, token: &str, pending
 /// Démarre (ou redémarre) l'écoute sur 127.0.0.1:`port`.
 #[tauri::command]
 pub fn mcp_start(app: AppHandle, state: State<'_, McpState>, port: u16, token: String) -> Result<(), String> {
-    mcp_stop(state.clone());
+    stop_server(&state);
     if token.len() < 16 {
         return Err("token too short".into());
     }
@@ -140,14 +153,50 @@ pub fn mcp_start(app: AppHandle, state: State<'_, McpState>, port: u16, token: S
     Ok(())
 }
 
-/// Arrête l'écoute ; les requêtes en attente reçoivent une erreur.
-#[tauri::command]
-pub fn mcp_stop(state: State<'_, McpState>) {
+fn stop_server(state: &McpState) {
     if let Some((server, worker)) = state.server.lock().expect("verrou").take() {
         server.unblock();
         let _ = worker.join();
     }
     state.pending.lock().expect("verrou").clear();
+}
+
+/// Arrête l'écoute ; les requêtes en attente reçoivent une erreur.
+#[tauri::command]
+pub fn mcp_stop(state: State<'_, McpState>) {
+    stop_server(&state);
+}
+
+/// Demande à l'instance qui écoute sur `port` (une autre instance de ModelIt) de libérer le port.
+/// `Ok(false)` : personne n'écoute ; erreur : l'occupant refuse (autre jeton, autre logiciel).
+#[tauri::command]
+pub fn mcp_release_others(port: u16, token: String) -> Result<bool, String> {
+    let address = SocketAddr::from(([127, 0, 0, 1], port));
+    let mut stream = match TcpStream::connect_timeout(&address, Duration::from_secs(2)) {
+        Ok(stream) => stream,
+        Err(_) => return Ok(false),
+    };
+    stream.set_read_timeout(Some(Duration::from_secs(5))).map_err(|e| e.to_string())?;
+    let request = format!(
+        "POST {RELEASE_PATH} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nAuthorization: Bearer {token}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+    );
+    stream.write_all(request.as_bytes()).map_err(|e| e.to_string())?;
+    let mut response = String::new();
+    let _ = stream.read_to_string(&mut response);
+    match response.split_whitespace().nth(1) {
+        Some("200") => {
+            // L'autre instance répond avant de fermer son écoute : attendre que le port soit libre.
+            for _ in 0..40 {
+                if TcpStream::connect_timeout(&address, Duration::from_millis(100)).is_err() {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(50));
+            }
+            Ok(true)
+        }
+        Some("401") => Err("the other session uses another token".into()),
+        _ => Err("the port is used by another program".into()),
+    }
 }
 
 /// Réponse de l'interface à la requête `id` (`None` : notification, pas de réponse).

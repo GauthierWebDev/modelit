@@ -2,7 +2,8 @@ import { create } from "zustand";
 
 /** État du point d'écoute MCP et activité des assistants IA (override O-47). */
 export const useMcpStore = create<{
-  status: "off" | "on" | "error";
+  /** `released` : une autre instance de ModelIt a repris le port (O-47). */
+  status: "off" | "on" | "error" | "released";
   error: string | null;
   /** Dernier échange avec un client (ms) ; 0 = aucun. */
   lastActivity: number;

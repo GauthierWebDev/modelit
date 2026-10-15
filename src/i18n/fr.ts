@@ -24,6 +24,8 @@ export const fr = {
   "mcp.copied": "Copié",
   "mcp.applied": "IA : {summary}",
   "mcp.connected": "IA connectée",
+  "mcp.released": "Session MCP fermée par une autre instance de ModelIt.",
+  "mcp.closeOthers": "Fermer toutes les autres sessions MCP",
   "dock.noSelection": "Aucune sélection.",
   "dock.showModel": "Afficher les paramètres du modèle",
   "dock.section.properties": "Propriétés",

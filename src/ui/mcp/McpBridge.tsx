@@ -5,8 +5,23 @@ import { usePreferencesStore } from "@/app/preferencesStore";
 import { useUiStore } from "@/app/uiStore";
 import { activeDocument } from "@/app/workspace";
 import { t } from "@/i18n";
-import { mcpAvailable, onMcpRequest, startMcp, stopMcp } from "@/platform/mcp";
+import { mcpAvailable, onMcpReleased, onMcpRequest, releaseOtherMcp, startMcp, stopMcp } from "@/platform/mcp";
 import { autoLayoutTables } from "@/ui/canvas/autoLayout";
+
+/**
+ * Libère le port tenu par d'autres instances de ModelIt, puis écoute ici
+ * (« Fermer toutes les autres sessions MCP », O-47).
+ */
+export async function takeOverMcp() {
+  const { port, token } = usePreferencesStore.getState().mcp;
+  try {
+    await releaseOtherMcp(port, token);
+    await startMcp(port, token);
+    useMcpStore.setState({ status: "on", error: null });
+  } catch (e) {
+    useMcpStore.setState({ status: "error", error: String(e) });
+  }
+}
 
 /**
  * Assistants IA par MCP (override O-47), fenêtre principale : démarre ou arrête le point d'écoute
@@ -41,9 +56,14 @@ export function McpBridge() {
           respond(JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32603, message: e instanceof Error ? e.message : String(e) } }));
         });
     }).then((f) => (disposed ? f() : (off = f)));
+    let offReleased: (() => void) | undefined;
+    void onMcpReleased(() => useMcpStore.setState({ status: "released", error: null })).then((f) =>
+      disposed ? f() : (offReleased = f),
+    );
     return () => {
       disposed = true;
       off?.();
+      offReleased?.();
     };
   }, []);
 

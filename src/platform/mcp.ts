@@ -11,6 +11,18 @@ export const startMcp = (port: number, token: string) => invoke<void>("mcp_start
 
 export const stopMcp = () => invoke<void>("mcp_stop");
 
+/**
+ * Demande à l'instance de ModelIt qui écoute sur `port` de le libérer (même jeton).
+ * `false` : personne n'écoutait.
+ */
+export const releaseOtherMcp = (port: number, token: string) => invoke<boolean>("mcp_release_others", { port, token });
+
+/** Une autre instance a repris le port : l'écoute de celle-ci est arrêtée. */
+export async function onMcpReleased(handler: () => void): Promise<() => void> {
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen("mcp://released", handler);
+}
+
 export interface McpRequest {
   id: number;
   body: string;
