@@ -1,35 +1,14 @@
+import { useEffect } from "react";
 import { DBMS_LIST, versionOptions } from "@core/index";
-import {
-  DatabaseZap,
-  FilePlus,
-  ChevronDown,
-  FolderOpen,
-  GripVertical,
-  ImageDown,
-  LayoutDashboard,
-  Maximize,
-  Monitor,
-  Moon,
-  MousePointer2,
-  PanelsTopLeft,
-  Redo2,
-  Save,
-  Info,
-  Settings,
-  Spline,
-  Square,
-  Sun,
-  Triangle,
-  Undo2,
-  ZoomIn,
-  ZoomOut,
-} from "lucide-react";
+import { ChevronDown, DatabaseZap, FilePlus, FolderOpen, GripVertical, ImageDown, Info, LayoutDashboard, Maximize, Monitor, Moon, MousePointer2, PanelsTopLeft, Redo2, Save, Settings, Spline, Square, Sun, Triangle, Undo2, Users, ZoomIn, ZoomOut } from "lucide-react";
 import type { PointerEvent, ReactNode } from "react";
 import { setDbmsVersion, setTargetDbms } from "@/app/commands";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { selectRedoLabel, selectUndoLabel } from "@/app/document/documentStore";
 import type { ViewMode } from "@/app/document/documentView";
 import { usePreferencesStore, type ThemePreference } from "@/app/preferencesStore";
+import { useCollabStore } from "@/app/collab/session";
+import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { useUiStore, type Tool } from "@/app/uiStore";
 import { chooseTool, showView } from "@/app/viewCommands";
 import { t, type MessageKey } from "@/i18n";
@@ -76,8 +55,14 @@ const THEMES: { id: ThemePreference; label: MessageKey; icon: ReactNode }[] = [
  * contenu ; `onGripDown` : poignée de déplacement (gérée par `ToolbarHost`).
  */
 export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; onGripDown?: (e: PointerEvent<HTMLElement>) => void }) {
-  const { tool, setOptionsOpen, setExportOpen, setReverseOpen, setAbout } = useUiStore();
+  const { tool, setOptionsOpen, setExportOpen, setReverseOpen, setShareOpen, setAbout } = useUiStore();
+  const sharing = useCollabStore((s) => s.mode === "host" || s.mode === "guest");
   const doc = useDocumentHandle();
+  // Lecture seule (lecteur, reconnexion) : seul l'outil de sélection reste (O-05 §4.3).
+  const readOnly = useSessionReadOnly(doc);
+  useEffect(() => {
+    if (readOnly && tool !== "select") chooseTool(doc, "select");
+  }, [readOnly, tool, doc]);
   const view = useDocumentView((s) => s.view);
   const zoom = useDocumentView((s) => s.viewport.zoom);
   const undoLabel = useDocument(selectUndoLabel);
@@ -167,7 +152,7 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
             key={x.id}
             tooltip={t("tool.tooltip", { label: t(x.label), key: x.key })}
             active={tool === x.id}
-            disabled={view !== "mcd" && x.id !== "select"}
+            disabled={(view !== "mcd" || readOnly) && x.id !== "select"}
             onClick={() => chooseTool(doc, x.id)}
           >
             {x.icon}
@@ -215,6 +200,9 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
           onChange={(value) => setDbmsVersion(doc, value)}
         />
       </label>
+      <IconButton tooltip={t("collab.share")} active={sharing} onClick={() => setShareOpen(true)}>
+        <Users size={16} />
+      </IconButton>
       <IconButton
         tooltip={t("toolbar.themeCycle", { theme: t(currentTheme.label) })}
         onClick={() => setTheme(THEMES[(themeIndex + 1) % THEMES.length]!.id)}

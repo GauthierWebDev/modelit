@@ -25,6 +25,8 @@ interface UiState {
   about: AboutTab | null;
   /** Boîte « Rétroconception » ouverte. */
   reverseOpen: boolean;
+  /** Boîte « Session collaborative » ouverte (O-05). */
+  shareOpen: boolean;
   tool: Tool;
   status: StatusMessage | null;
   /** Vue avancée de l'inspecteur : annotations physiques (override O-29). */
@@ -34,6 +36,7 @@ interface UiState {
   setOptionsOpen: (open: boolean) => void;
   setAbout: (tab: AboutTab | null) => void;
   setReverseOpen: (open: boolean) => void;
+  setShareOpen: (open: boolean) => void;
   setTool: (tool: Tool) => void;
   setAdvanced: (advanced: boolean) => void;
   notify: (status: StatusMessage | null) => void;
@@ -44,6 +47,7 @@ export const useUiStore = create<UiState>()((set) => ({
   optionsOpen: false,
   about: null,
   reverseOpen: false,
+  shareOpen: false,
   tool: "select",
   status: null,
   advanced: false,
@@ -54,6 +58,7 @@ export const useUiStore = create<UiState>()((set) => ({
   setOptionsOpen: (optionsOpen) => set({ optionsOpen }),
   setAbout: (about) => set({ about }),
   setReverseOpen: (reverseOpen) => set({ reverseOpen }),
+  setShareOpen: (shareOpen) => set({ shareOpen }),
   setAdvanced: (advanced) => set({ advanced }),
   notify: (status) => set({ status }),
 }));

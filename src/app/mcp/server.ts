@@ -5,6 +5,7 @@ import { ddlOf, logicalModelOf } from "../derived";
 import { documentName } from "../fileCommands";
 import { newModelDocument } from "../modelDefaults";
 import { useUiStore } from "../uiStore";
+import { aiWriteRefusal } from "../collab/session";
 import { activeDocument, openInTab, useWorkspaceStore } from "../workspace";
 import { applyChanges, type Operation } from "./apply";
 import { describeModel } from "./describe";
@@ -158,6 +159,7 @@ function busy(): boolean {
     ui.exportOpen ||
     ui.optionsOpen ||
     ui.reverseOpen ||
+    ui.shareOpen ||
     ui.about !== null ||
     activeDocument().store.getState().transactionStart !== null
   );
@@ -169,6 +171,10 @@ async function callTool(name: string, args: Record<string, unknown>, hooks: McpH
   const doc = activeDocument();
   const model = doc.store.getState().doc;
   if (WRITE_TOOLS.has(name) && busy()) return failure("ModelIt is busy (a dialog is open or a drag is in progress): try again in a moment.");
+  // Session collaborative rejointe : lecteur, IA interdite par l'hôte (O-05 §8). Un nouvel onglet
+  // (rétroconception) n'est pas concerné.
+  const refusal = name === "reverse_engineer" ? null : WRITE_TOOLS.has(name) ? aiWriteRefusal(doc.id) : null;
+  if (refusal) return failure(refusal);
   switch (name) {
     case "list_documents": {
       const { documents, activeId } = useWorkspaceStore.getState();

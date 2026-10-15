@@ -4,6 +4,24 @@ Une section `## X.Y.Z — AAAA-MM-JJ` par version, la plus récente en haut. La 
 taguée devient le texte de la release GitHub et les notes proposées par la mise à jour ; tout
 l'historique est affiché dans l'application (À propos → Nouveautés).
 
+## 0.3.0 — 2026-10-16
+
+### Nouveautés
+
+- Session collaborative : partagez l'onglet actif (bouton « Partager » de la barre d'outils) et modélisez à plusieurs en direct, sans compte ni serveur. Les participants rejoignent par un lien, en édition ou en lecture seule ; un mot de passe peut protéger la session.
+- Curseurs des autres participants, à leur couleur et avec leur nom, sur la même vue que vous.
+- Section « Session » : liste des participants avec leur rôle et leur vue, et chat intégré (messages non lus signalés sur l'onglet de la section).
+- Chacun n'annule que ses propres modifications (⌘/Ctrl + Z).
+- À la fin d'une session, l'invité garde une copie du modèle dans un onglet « Sans titre ».
+- Votre nom et votre couleur de participant se règlent dans les Options générales ; sans nom saisi, un nom aléatoire est utilisé (« Castor curieux »).
+- Assistants IA des invités : l'hôte les autorise ou les interdit ; en lecture seule, ils peuvent seulement lire le modèle.
+
+### À savoir
+
+- La session s'arrête quand l'hôte l'arrête, ferme l'onglet partagé ou quitte ModelIt. Un invité dont la connexion tombe passe en lecture seule et se reconnecte pendant 30 secondes.
+- Les échanges sont chiffrés de bout en bout ; quand une connexion directe est impossible, ils passent par des relais publics qui ne voient que des données chiffrées.
+- Une session compte 20 participants au plus, pour un modèle de 5 Mo au plus.
+
 ## 0.2.0 — 2026-10-15
 
 ### Nouveautés

@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { systemLocale, type Locale } from "@/i18n";
 import { defaultLayout, sanitizeLayout, type DockLayout } from "./dock/layout";
+import { IDENTITY_COLORS, newIdentity, type IdentityPreferences } from "./collab/identity";
 
 /**
  * Options générales (override O-21) : propres au poste, conservées dans le localStorage,
@@ -51,6 +52,8 @@ export interface Preferences {
   dock: DockLayout;
   /** Assistants IA par MCP (override O-47) : désactivé par défaut. */
   mcp: McpPreferences;
+  /** Identité en session collaborative (O-05 §3). */
+  identity: IdentityPreferences;
 }
 
 export interface McpPreferences {
@@ -74,6 +77,7 @@ interface PreferencesState extends Preferences {
   /** Applique une opération de `dock/layout.ts` à la disposition. */
   updateDock: (change: (layout: DockLayout) => DockLayout) => void;
   setMcp: (patch: Partial<McpPreferences>) => void;
+  setIdentity: (patch: Partial<Pick<IdentityPreferences, "name" | "color">>) => void;
 }
 
 const initial: Preferences = {
@@ -95,6 +99,7 @@ const initial: Preferences = {
   lastSeenVersion: "",
   dock: defaultLayout(),
   mcp: { enabled: false, port: 47321, token: "" },
+  identity: newIdentity(),
 };
 
 export const usePreferencesStore = create<PreferencesState>()(
@@ -113,6 +118,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       setLastSeenVersion: (lastSeenVersion) => set({ lastSeenVersion }),
       updateDock: (change) => set((s) => ({ dock: change(s.dock) })),
       setMcp: (patch) => set((s) => ({ mcp: { ...s.mcp, ...patch } })),
+      setIdentity: (patch) => set((s) => ({ identity: { ...s.identity, ...patch, name: (patch.name ?? s.identity.name).slice(0, 40) } })),
     }),
     {
       name: "modelit/preferences",
@@ -135,6 +141,11 @@ export const usePreferencesStore = create<PreferencesState>()(
           export: { ...current.export, ...saved.export },
           dock: saved.dock ? sanitizeLayout(saved.dock) : current.dock,
           mcp: { ...current.mcp, ...saved.mcp },
+          identity: {
+            ...current.identity,
+            ...saved.identity,
+            color: IDENTITY_COLORS.includes(saved.identity?.color ?? "") || /^#[0-9a-f]{6}$/i.test(saved.identity?.color ?? "") ? saved.identity!.color : current.identity.color,
+          },
         };
       },
       migrate: (persisted) => persisted as PreferencesState,

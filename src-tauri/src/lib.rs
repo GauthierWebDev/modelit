@@ -1,13 +1,40 @@
 //! Coquille native. Toute la logique métier vit côté TypeScript (`src/core`) ;
 //! Rust ne fournit que la fenêtre et l'accès au système (dialogues, fichiers, mises à jour).
 
+mod collab;
 mod mcp;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // Une seule instance (builds de release) : un lien modelit:// ou un second lancement va à la
+    // fenêtre déjà ouverte. Désactivé en développement, pour lancer `tauri dev` à côté d'une
+    // version installée (même identifiant d'application).
+    #[cfg(not(debug_assertions))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+        use tauri::Manager;
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.unminimize();
+            let _ = window.set_focus();
+        }
+    }));
+    let builder = builder
+        .plugin(tauri_plugin_deep_link::init())
         .manage(mcp::McpState::default())
-        .invoke_handler(tauri::generate_handler![mcp::mcp_start, mcp::mcp_stop, mcp::mcp_reply, mcp::mcp_release_others])
+        .manage(collab::CollabState::default())
+        .invoke_handler(tauri::generate_handler![
+            mcp::mcp_start,
+            mcp::mcp_stop,
+            mcp::mcp_reply,
+            mcp::mcp_release_others,
+            collab::collab_host_start,
+            collab::collab_host_send,
+            collab::collab_host_close,
+            collab::collab_host_stop,
+            collab::collab_guest_connect,
+            collab::collab_guest_send,
+            collab::collab_guest_close
+        ])
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())

@@ -1,5 +1,6 @@
 import { applyPatches, enablePatches, type Draft } from "immer";
 import type { ModelDocument } from "@core/index";
+import { collabMirror, sameCollabMirror, useCollabStore } from "../collab/session";
 import { useDialogStore } from "../dialogStore";
 import { selectIsDirty, selectRedoLabel, selectUndoLabel } from "../document/documentStore";
 import { documentName } from "../fileCommands";
@@ -33,7 +34,8 @@ export function snapshot(): MirrorState {
     redoLabel: selectRedoLabel(state),
     view: { view: view.view, selection: view.selection, viewport: view.viewport, activeBend: view.activeBend },
     ui: { tool: ui.tool, advanced: ui.advanced },
-    modal: useDialogStore.getState().queue.length > 0 || ui.exportOpen || ui.optionsOpen || ui.reverseOpen || ui.about !== null,
+    modal: useDialogStore.getState().queue.length > 0 || ui.exportOpen || ui.optionsOpen || ui.reverseOpen || ui.shareOpen || ui.about !== null,
+    collab: collabMirror(),
   };
 }
 
@@ -51,7 +53,8 @@ const same = (a: MirrorState, b: MirrorState) =>
   a.view.activeBend === b.view.activeBend &&
   a.ui.tool === b.ui.tool &&
   a.ui.advanced === b.ui.advanced &&
-  a.modal === b.modal;
+  a.modal === b.modal &&
+  sameCollabMirror(a.collab, b.collab);
 
 export function startOwner(
   channel: Channel<ToReplica, ToMain>,
@@ -107,6 +110,7 @@ export function startOwner(
   });
   const offUi = useUiStore.subscribe(request);
   const offDialogs = useDialogStore.subscribe(request);
+  const offCollab = useCollabStore.subscribe(request);
 
   const offChannel = channel.listen((message) => {
     const doc = activeDocument();
@@ -143,6 +147,7 @@ export function startOwner(
     offWorkspace();
     offUi();
     offDialogs();
+    offCollab();
     offChannel();
   };
 }
