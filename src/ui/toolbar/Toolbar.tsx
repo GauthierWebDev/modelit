@@ -2,7 +2,9 @@ import { DBMS_LIST, versionOptions } from "@core/index";
 import {
   DatabaseZap,
   FilePlus,
+  ChevronDown,
   FolderOpen,
+  GripVertical,
   ImageDown,
   LayoutDashboard,
   Maximize,
@@ -22,7 +24,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { PointerEvent, ReactNode } from "react";
 import { setDbmsVersion, setTargetDbms } from "@/app/commands";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { selectRedoLabel, selectUndoLabel } from "@/app/document/documentStore";
@@ -35,7 +37,9 @@ import { t, type MessageKey } from "@/i18n";
 import { autoLayoutTables } from "@/ui/canvas/autoLayout";
 import { fitToWindow, zoomBy, zoomTo } from "@/ui/canvas/viewport";
 import { IconButton, inputClass } from "@/ui/common/controls";
-import { Menu } from "@/ui/common/Menu";
+import { Menu, MenuItem } from "@/ui/common/Menu";
+import { updateDock } from "@/app/dock/actions";
+import { setToolbar } from "@/app/dock/layout";
 import { SectionChecks } from "@/ui/dock/Dock";
 import { tip } from "@/ui/common/Tooltip";
 import { MOD } from "@/ui/shortcuts";
@@ -69,7 +73,11 @@ const THEMES: { id: ThemePreference; label: MessageKey; icon: ReactNode }[] = [
   { id: "dark", label: "theme.dark", icon: <Moon size={16} /> },
 ];
 
-export function Toolbar() {
+/**
+ * Barre d'outils principale (override O-45). `floating` : barre flottante, largeur ajustée à son
+ * contenu ; `onGripDown` : poignée de déplacement (gérée par `ToolbarHost`).
+ */
+export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; onGripDown?: (e: PointerEvent<HTMLElement>) => void }) {
   const { tool, setOptionsOpen, setExportOpen, setReverseOpen, setAbout } = useUiStore();
   const doc = useDocumentHandle();
   const view = useDocumentView((s) => s.view);
@@ -83,7 +91,24 @@ export function Toolbar() {
   const currentTheme = THEMES[themeIndex] ?? THEMES[0]!;
 
   return (
-    <div className="flex items-center gap-1 border-b border-neutral-200 bg-neutral-50 px-2 py-1 dark:border-neutral-700 dark:bg-neutral-900">
+    <div
+      className={
+        floating
+          ? "inline-flex items-center gap-1 rounded-lg border border-neutral-300 bg-neutral-50 py-1 pr-2 pl-1 whitespace-nowrap shadow-2xl dark:border-neutral-600 dark:bg-neutral-900"
+          : "flex items-center gap-1 border-b border-neutral-200 bg-neutral-50 py-1 pr-2 pl-1 dark:border-neutral-700 dark:bg-neutral-900"
+      }
+    >
+      <span
+        role="button"
+        tabIndex={-1}
+        aria-label={t("toolbar.grip")}
+        {...tip(t("toolbar.grip"))}
+        data-toolbar-grip=""
+        onPointerDown={onGripDown}
+        className="flex h-7 w-3 cursor-grab items-center justify-center text-neutral-400"
+      >
+        <GripVertical size={14} />
+      </span>
       <Group>
         <IconButton tooltip={t("toolbar.new", { key: `${MOD}N` })} onClick={newDocument}>
           <FilePlus size={16} />
@@ -177,7 +202,7 @@ export function Toolbar() {
           <span className="hidden text-xs whitespace-nowrap 2xl:inline">{t("toolbar.autoLayoutShort")}</span>
         </IconButton>
       </Group>
-      <div className="flex-1" />
+      {floating ? <div className="w-1" /> : <div className="flex-1" />}
       <label className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400" {...tip(t("toolbar.dbmsTooltip"))}>
         {t("toolbar.dbms")}
         <select className={`${inputClass} w-auto`} value={dbms} onChange={(e) => setTargetDbms(doc, e.target.value as typeof dbms)}>
@@ -219,6 +244,30 @@ export function Toolbar() {
       <IconButton tooltip={t("toolbar.about")} onClick={() => setAbout("about")}>
         <Info size={16} />
       </IconButton>
+      <Menu
+        trigger={({ toggle }) => (
+          <button
+            type="button"
+            aria-label={t("toolbar.menu")}
+            {...tip(t("toolbar.menu"))}
+            onClick={toggle}
+            className="ml-1 flex size-5 items-center justify-center rounded border border-neutral-300 text-neutral-500 hover:bg-neutral-200 dark:border-neutral-600 dark:hover:bg-neutral-700"
+          >
+            <ChevronDown size={12} />
+          </button>
+        )}
+      >
+        {(close) => (
+          <MenuItem
+            onSelect={() => {
+              updateDock((l) => setToolbar(l, { floating: !floating }));
+              close();
+            }}
+          >
+            {t(floating ? "toolbar.dock" : "toolbar.detach")}
+          </MenuItem>
+        )}
+      </Menu>
     </div>
   );
 }

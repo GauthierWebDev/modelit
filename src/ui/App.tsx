@@ -21,7 +21,7 @@ import { TabBar } from "./tabs/TabBar";
 import { DockZone, DragGhost, FloatingGroups } from "./dock/Dock";
 import { useShortcuts } from "./shortcuts";
 import { useApplyTheme } from "./theme";
-import { Toolbar } from "./toolbar/Toolbar";
+import { ToolbarHost } from "./toolbar/ToolbarHost";
 
 const anyDocumentDirty = () => useWorkspaceStore.getState().documents.some((d) => selectIsDirty(d.store.getState()));
 
@@ -69,7 +69,7 @@ function Workbench() {
 
   return (
     <div className="flex h-screen flex-col bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
-      <Toolbar />
+      <ToolbarHost />
       <TabBar />
       {/* Remonté à chaque changement d'onglet : gestes en cours et saisies locales repartent de zéro. */}
       <div key={doc.id} className="flex min-h-0 flex-1">
