@@ -1,5 +1,5 @@
 import { emptyDocument } from "@core/index";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as cmd from "../commands";
 import { useDialogStore } from "../dialogStore";
 import { createDocumentViewStore } from "../document/documentView";
@@ -10,7 +10,7 @@ import { startHost } from "./host";
 import { buildLink, parseLink } from "./link";
 import { memoryNetwork } from "./memoryNetwork";
 import { verifier } from "./password";
-import { answerPassword, joinFromLink, leaveSession, setCollabTransport, shareActiveTab, stopSharing, useCollabStore } from "./session";
+import { answerPassword, joinFromLink, leaveSession, reportPresence, setCollabTransport, shareActiveTab, stopSharing, useCollabStore } from "./session";
 
 /** Cycle d'une session (O-05 §4) : partager, rejoindre, arrêter, quitter. */
 describe("gestionnaire de session", () => {
@@ -77,6 +77,30 @@ describe("gestionnaire de session", () => {
       closeTab(shared);
       await net.settle();
       expect(useCollabStore.getState().mode).toBe("idle");
+    });
+
+    it("présence : au plus 20 envois par seconde, le dernier état part toujours", async () => {
+      await shareActiveTab();
+      const bob = startGuest({ link: net.connect("bob"), secret: parseLink(useCollabStore.getState().links!.edit)!.secret, name: "Bob", color: "#000" });
+      await net.settle();
+      const seen: number[] = [];
+      bob.state.subscribe((s) => {
+        const x = s.presence.host?.cursor?.x;
+        if (x !== undefined && x !== seen.at(-1)) seen.push(x);
+      });
+      vi.useFakeTimers();
+      try {
+        for (let x = 1; x <= 30; x++) {
+          reportPresence({ view: "mcd", cursor: { x, y: 0 }, selection: [] });
+          vi.advanceTimersByTime(5);
+        }
+        vi.advanceTimersByTime(100);
+      } finally {
+        vi.useRealTimers();
+      }
+      net.flush();
+      expect(seen.length).toBeLessThanOrEqual(4);
+      expect(seen.at(-1)).toBe(30);
     });
 
     it("mot de passe trop court : refusé", async () => {

@@ -1,7 +1,7 @@
 import { emptyDocument, type ModelDocument } from "@core/index";
 import { create } from "zustand";
 import { prove } from "./password";
-import type { GuestLink, Participant, RejectReason, Role } from "./protocol";
+import type { GuestLink, Participant, Presence, RejectReason, Role } from "./protocol";
 import { createSessionStore, type SessionStore } from "./sessionStore";
 
 /**
@@ -26,6 +26,8 @@ export interface GuestState {
   rejected: RejectReason | null;
   /** Essais restants pour le mot de passe ; `wrong` : la réponse précédente était fausse. */
   password: { attemptsLeft: number; wrong: boolean } | null;
+  /** Présence des autres participants (O-05 §5). */
+  presence: Record<string, Presence>;
 }
 
 export interface GuestSession {
@@ -34,6 +36,7 @@ export interface GuestSession {
   setIdentity: (name: string, color: string) => void;
   /** Réponse au défi d'une session protégée. */
   answer: (password: string) => Promise<void>;
+  setPresence: (presence: Presence) => void;
   /** Connexion retrouvée (O-05 §4.4) : nouveau canal vers le même hôte. */
   reconnect: (link: GuestLink) => void;
   leave: () => void;
@@ -42,7 +45,7 @@ export interface GuestSession {
 }
 
 const createGuestState = () =>
-  create<GuestState>(() => ({ status: "connecting", role: null, you: null, participants: [], aiAllowed: false, ended: null, rejected: null, password: null }));
+  create<GuestState>(() => ({ status: "connecting", role: null, you: null, participants: [], aiAllowed: false, ended: null, rejected: null, password: null, presence: {} }));
 
 export function startGuest({ link, secret, name, color }: { link: GuestLink; secret: string; name: string; color: string }): GuestSession {
   const state = createGuestState();
@@ -88,8 +91,15 @@ export function startGuest({ link, secret, name, color }: { link: GuestLink; sec
         case "ops":
           store.getState().applyRemote(message.ops);
           return;
-        case "participants":
-          state.setState({ participants: message.participants });
+        case "participants": {
+          // Présence des participants partis : effacée.
+          const ids = new Set(message.participants.map((p) => p.id));
+          const presence = Object.fromEntries(Object.entries(state.getState().presence).filter(([id]) => ids.has(id)));
+          state.setState({ participants: message.participants, presence });
+          return;
+        }
+        case "presence":
+          state.setState((s) => ({ presence: { ...s.presence, [message.id]: message.presence } }));
           return;
         case "settings":
           state.setState({ aiAllowed: message.aiAllowed });
@@ -126,6 +136,9 @@ export function startGuest({ link, secret, name, color }: { link: GuestLink; sec
       current.send({ type: "identity", name: n, color: c });
     },
     answer,
+    setPresence: (presence) => {
+      if (state.getState().status === "connected") current.send({ type: "presence", presence });
+    },
     reconnect: (target) => {
       detach();
       current = target;

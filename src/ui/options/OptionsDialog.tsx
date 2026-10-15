@@ -9,6 +9,7 @@ import { LOCALES, t } from "@/i18n";
 import { mcpAvailable } from "@/platform/mcp";
 import { updatesSupported } from "@/platform/updater";
 import { McpOptions } from "@/ui/mcp/McpOptions";
+import { IdentityOptions } from "@/ui/collab/IdentityOptions";
 import { Checkbox, CommitInput, Field, inputClass, Select } from "@/ui/common/controls";
 import { Modal } from "@/ui/common/Modal";
 import { KeyPatternField } from "@/ui/panels/sections";
@@ -140,6 +141,10 @@ export function OptionsDialog() {
             <Help>{t("options.autosaveDelayHelp")}</Help>
           </>
         )}
+      </Group>
+
+      <Group title={t("collab.title")}>
+        <IdentityOptions />
       </Group>
 
       {mcpAvailable() && (

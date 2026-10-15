@@ -12,7 +12,7 @@ import { startHost, type HostSession } from "./host";
 import { displayName } from "./identity";
 import { buildLink, newSecret, parseLink } from "./link";
 import { MIN_PASSWORD_LENGTH, verifier } from "./password";
-import type { GuestLink, HostLink, Participant } from "./protocol";
+import type { GuestLink, HostLink, Participant, Presence } from "./protocol";
 
 /**
  * Session collaborative de la fenêtre (O-05 ; J-01, phase 5a) : une à la fois, comme hôte ou comme
@@ -32,6 +32,13 @@ export const setCollabTransport = (value: CollabTransport) => (transport = value
 /** Reconnexion d'un invité (O-05 §4.4) : essais pendant 30 s, toutes les 3 s. */
 export const RECONNECT_FOR = 30_000;
 const RECONNECT_EVERY = 3_000;
+/** Présence : au plus 20 envois par seconde (O-05 §5). */
+const PRESENCE_EVERY = 50;
+/** Curseur masqué après 30 s sans mouvement (O-05 §5). */
+export const CURSOR_IDLE = 30_000;
+
+/** Présence d'un autre participant ; `movedAt` : dernier mouvement de son curseur (horloge locale). */
+export type RemotePresence = Presence & { movedAt: number };
 
 export type CollabMode = "idle" | "starting" | "host" | "joining" | "guest";
 
@@ -42,12 +49,38 @@ interface CollabState {
   links: { edit: string; read: string } | null;
   participants: Participant[];
   aiAllowed: boolean;
+  presence: Record<string, RemotePresence>;
+  /** Mon identifiant dans la session. */
+  you: string | null;
   /** Invité : rôle, état de la connexion, mot de passe demandé. */
   guest: { role: "editor" | "reader" | null; status: GuestSession["state"] extends { getState: () => infer S } ? S extends { status: infer T } ? T : never : never; password: { attemptsLeft: number; wrong: boolean } | null } | null;
   error: string | null;
 }
 
-export const useCollabStore = create<CollabState>(() => ({ mode: "idle", tabId: null, links: null, participants: [], aiAllowed: false, guest: null, error: null }));
+export const useCollabStore = create<CollabState>(() => ({
+  mode: "idle",
+  tabId: null,
+  links: null,
+  participants: [],
+  aiAllowed: false,
+  presence: {},
+  you: null,
+  guest: null,
+  error: null,
+}));
+
+/** Présence reçue : horodate chaque mouvement de curseur. */
+function trackPresence(next: Record<string, Presence>): Record<string, RemotePresence> {
+  const previous = useCollabStore.getState().presence;
+  const now = Date.now();
+  return Object.fromEntries(
+    Object.entries(next).map(([id, p]) => {
+      const before = previous[id];
+      const moved = !before || before.cursor?.x !== p.cursor?.x || before.cursor?.y !== p.cursor?.y;
+      return [id, { ...p, movedAt: moved ? now : before.movedAt }];
+    }),
+  );
+}
 
 let host: { session: HostSession; stop: () => Promise<void>; off: () => void } | null = null;
 let guest: { session: GuestSession; addr: string; off: () => void; retry?: ReturnType<typeof setTimeout> } | null = null;
@@ -66,6 +99,7 @@ export async function shareActiveTab({ password, aiAllowed = false }: { password
   if (!transport || useCollabStore.getState().mode !== "idle") return false;
   if (password && password.length < MIN_PASSWORD_LENGTH) return fail(t("collab.passwordTooShort", { n: MIN_PASSWORD_LENGTH })), false;
   useCollabStore.setState({ mode: "starting", error: null });
+  presenceSent = null;
   const tab = activeDocument();
   try {
     const started = await transport.startHost();
@@ -82,7 +116,10 @@ export async function shareActiveTab({ password, aiAllowed = false }: { password
     // L'onglet garde son fichier et son état « modifié » ; son historique devient personnel.
     session.store.setState({ filePath: original.filePath, savedDoc: original.savedDoc === original.doc ? original.doc : original.savedDoc });
     replaceDocument(tab.id, { id: tab.id, store: session.store, view: tab.view });
-    const sync = () => useCollabStore.setState({ participants: session.state.getState().participants, aiAllowed: session.state.getState().aiAllowed });
+    const sync = () => {
+      const s = session.state.getState();
+      useCollabStore.setState({ participants: s.participants, aiAllowed: s.aiAllowed, presence: trackPresence(s.presence) });
+    };
     const offState = session.state.subscribe(sync);
     // Onglet fermé : fin du partage.
     const offTabs = useWorkspaceStore.subscribe((s) => {
@@ -91,6 +128,7 @@ export async function shareActiveTab({ password, aiAllowed = false }: { password
     host = { session, stop: started.stop, off: () => (offState(), offTabs()) };
     useCollabStore.setState({
       mode: "host",
+      you: "host",
       tabId: tab.id,
       links: { edit: buildLink(started.addr, secrets.editor), read: buildLink(started.addr, secrets.reader) },
     });
@@ -118,7 +156,7 @@ export async function stopSharing() {
     store.setState({ filePath: state.filePath, savedDoc: state.savedDoc });
     replaceDocument(tab.id, { id: tab.id, store, view: tab.view });
   }
-  useCollabStore.setState({ mode: "idle", tabId: null, links: null, participants: [] });
+  useCollabStore.setState({ mode: "idle", tabId: null, links: null, participants: [], presence: {}, you: null });
 }
 
 export const setGuestsAi = (allowed: boolean) => host?.session.setAiAllowed(allowed);
@@ -133,6 +171,7 @@ export async function joinFromLink(url: string): Promise<boolean> {
   if (!transport) return false;
   if (useCollabStore.getState().mode !== "idle") return fail(t("collab.alreadyInSession")), false;
   useCollabStore.setState({ mode: "joining", error: null });
+  presenceSent = null;
   let link: GuestLink;
   try {
     link = await transport.connect(parsed.addr);
@@ -146,7 +185,13 @@ export async function joinFromLink(url: string): Promise<boolean> {
 
   const sync = () => {
     const s = session.state.getState();
-    useCollabStore.setState({ participants: s.participants, aiAllowed: s.aiAllowed, guest: { role: s.role, status: s.status, password: s.password } });
+    useCollabStore.setState({
+      participants: s.participants,
+      aiAllowed: s.aiAllowed,
+      presence: trackPresence(s.presence),
+      you: s.you,
+      guest: { role: s.role, status: s.status, password: s.password },
+    });
     const hostName = s.participants.find((p) => p.role === "host")?.name;
     if (s.status === "connected" && !opened) {
       opened = true;
@@ -203,7 +248,7 @@ async function endGuestSession(reason: string | null) {
   off();
   clearTimeout(retry);
   const tabId = useCollabStore.getState().tabId;
-  useCollabStore.setState({ mode: "idle", tabId: null, participants: [], guest: null });
+  useCollabStore.setState({ mode: "idle", tabId: null, participants: [], presence: {}, you: null, guest: null });
   if (tabId) {
     const copy = createDocumentHandle(session.snapshot());
     // Copie modifiée (non enregistrée) : rien ne se perd à la fermeture.
@@ -222,6 +267,41 @@ async function endGuestSession(reason: string | null) {
   if (reason && messages[reason]) {
     await alertDialog({ title: t("collab.endedTitle"), message: messages[reason]!, ...(tabId ? { detail: t("collab.copyKept") } : {}), okLabel: t("common.ok") });
   }
+}
+
+// ——— Présence ———
+
+let presenceSent: Presence | null = null;
+let presenceNext: Presence | null = null;
+let presenceAt = 0;
+let presenceTimer: ReturnType<typeof setTimeout> | undefined;
+
+const samePresence = (a: Presence, b: Presence) =>
+  a.view === b.view && a.cursor?.x === b.cursor?.x && a.cursor?.y === b.cursor?.y && a.selection.join() === b.selection.join();
+
+function flushPresence() {
+  presenceTimer = undefined;
+  if (!presenceNext) return;
+  const value = presenceNext;
+  presenceNext = null;
+  presenceAt = Date.now();
+  presenceSent = value;
+  host?.session.setPresence(value);
+  guest?.session.setPresence(value);
+}
+
+/**
+ * Ma présence (vue, curseur en coordonnées du modèle, sélection) : envoyée aux autres participants,
+ * au plus 20 fois par seconde ; le dernier état part toujours.
+ */
+export function reportPresence(value: Presence) {
+  if (!host && !guest) return;
+  if (presenceSent && samePresence(presenceSent, value)) return void (presenceNext = null);
+  presenceNext = value;
+  if (presenceTimer !== undefined) return;
+  const wait = PRESENCE_EVERY - (Date.now() - presenceAt);
+  if (wait <= 0) flushPresence();
+  else presenceTimer = setTimeout(flushPresence, wait);
 }
 
 /** Nom de l'onglet partagé, pour l'interface. */

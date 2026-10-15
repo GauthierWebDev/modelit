@@ -1,4 +1,5 @@
 import type { ModelDocument } from "@core/index";
+import type { ViewMode } from "../document/documentView";
 import type { Op } from "./ops";
 
 /**
@@ -15,6 +16,16 @@ export interface Participant {
   role: Role;
 }
 
+/**
+ * Présence d'un participant (O-05 §5) : éphémère, jamais dans l'historique. `cursor` en
+ * coordonnées du modèle, `null` hors du canevas.
+ */
+export interface Presence {
+  view: ViewMode;
+  cursor: { x: number; y: number } | null;
+  selection: string[];
+}
+
 /** Invité → hôte. */
 export type ToHost =
   /**
@@ -25,6 +36,7 @@ export type ToHost =
   /** Modifications ; `ai` : faites par un assistant IA (O-05 §8). */
   | { type: "ops"; ops: Op[]; ai?: boolean }
   | { type: "identity"; name: string; color: string }
+  | { type: "presence"; presence: Presence }
   | { type: "leave" };
 
 /** Hôte → invité. */
@@ -35,6 +47,8 @@ export type ToGuest =
   /** Modifications appliquées par l'hôte, dans l'ordre ; `author` : participant d'origine. */
   | { type: "ops"; ops: Op[]; author: string }
   | { type: "participants"; participants: Participant[] }
+  /** Présence d'un autre participant, relayée par l'hôte. */
+  | { type: "presence"; id: string; presence: Presence }
   | { type: "settings"; aiAllowed: boolean }
   /**
    * Demande refusée (lien inconnu, modification d'un lecteur, IA interdite…). `doc` : état de

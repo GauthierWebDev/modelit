@@ -1,7 +1,7 @@
 import type { ModelDocument } from "@core/index";
 import { create } from "zustand";
 import { MAX_ATTEMPTS, randomHex } from "./password";
-import type { HostLink, Participant, ToGuest, ToHost } from "./protocol";
+import type { HostLink, Participant, Presence, ToGuest, ToHost } from "./protocol";
 import { createSessionStore, type SessionStore } from "./sessionStore";
 
 /**
@@ -28,13 +28,15 @@ export interface HostSession {
   state: ReturnType<typeof createHostState>;
   setAiAllowed: (allowed: boolean) => void;
   setIdentity: (name: string, color: string) => void;
+  /** Présence de l'hôte, diffusée à tous. */
+  setPresence: (presence: Presence) => void;
   kick: (peer: string) => void;
   /** Arrête la session pour tous. */
   stop: () => void;
 }
 
 const createHostState = (participants: Participant[], aiAllowed: boolean) =>
-  create<{ participants: Participant[]; aiAllowed: boolean }>(() => ({ participants, aiAllowed }));
+  create<{ participants: Participant[]; aiAllowed: boolean; presence: Record<string, Presence> }>(() => ({ participants, aiAllowed, presence: {} }));
 
 export function startHost({ link, doc, secrets, me, aiAllowed = false, password }: HostOptions): HostSession {
   const guests = new Map<string, Participant>();
@@ -42,6 +44,20 @@ export function startHost({ link, doc, secrets, me, aiAllowed = false, password 
   const state = createHostState([host], aiAllowed);
 
   const everyone = () => [host, ...guests.values()];
+  /** Dernière présence de chacun : envoyée aux nouveaux venus. */
+  const presence = new Map<string, Presence>();
+  const relayPresence = (id: string, value: Presence) => {
+    presence.set(id, value);
+    if (id !== host.id) state.setState((s) => ({ presence: { ...s.presence, [id]: value } }));
+    for (const peer of guests.keys()) if (peer !== id) link.send(peer, { type: "presence", id, presence: value });
+  };
+  const forget = (id: string) => {
+    presence.delete(id);
+    state.setState((s) => {
+      const { [id]: _gone, ...rest } = s.presence;
+      return { presence: rest };
+    });
+  };
   const broadcast = (message: ToGuest) => {
     for (const peer of guests.keys()) link.send(peer, message);
   };
@@ -84,6 +100,7 @@ export function startHost({ link, doc, secrets, me, aiAllowed = false, password 
     }
     guests.set(peer, { id: peer, name: message.name, color: message.color, role });
     link.send(peer, { type: "welcome", you: peer, role, doc: store.getState().doc, participants: everyone(), aiAllowed: state.getState().aiAllowed });
+    for (const [id, value] of presence) link.send(peer, { type: "presence", id, presence: value });
     publishParticipants();
   };
 
@@ -106,6 +123,9 @@ export function startHost({ link, doc, secrets, me, aiAllowed = false, password 
         guests.set(peer, { ...guest, name: message.name, color: message.color });
         return publishParticipants();
       }
+      case "presence":
+        if (guest) relayPresence(peer, message.presence);
+        return;
       case "leave":
         link.close(peer);
         return;
@@ -113,6 +133,7 @@ export function startHost({ link, doc, secrets, me, aiAllowed = false, password 
   });
   const offClose = link.onClose((peer) => {
     challenges.delete(peer);
+    forget(peer);
     if (guests.delete(peer)) publishParticipants();
   });
 
@@ -127,10 +148,12 @@ export function startHost({ link, doc, secrets, me, aiAllowed = false, password 
       Object.assign(host, { name, color });
       publishParticipants();
     },
+    setPresence: (value) => relayPresence(host.id, value),
     kick: (peer) => {
       if (!guests.has(peer)) return;
       link.send(peer, { type: "ended", reason: "kicked" });
       guests.delete(peer);
+      forget(peer);
       link.close(peer);
       publishParticipants();
     },
