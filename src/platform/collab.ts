@@ -29,6 +29,14 @@ function on(event: string, handler: (payload: Payload) => void): () => void {
   };
 }
 
+/** Datagrammes (vocal, O-48) : base64 entre l'interface et Rust (événements Tauri en texte). */
+const toBase64 = (bytes: Uint8Array) => {
+  let text = "";
+  for (const b of bytes) text += String.fromCharCode(b);
+  return btoa(text);
+};
+const fromBase64 = (text: string) => Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
+
 const parse = <T>(data: string | null): T | null => {
   try {
     return data ? (JSON.parse(data) as T) : null;
@@ -49,6 +57,8 @@ export async function startHostTransport(): Promise<{ addr: string; link: HostLi
       }),
     onClose: (handler) => on("collab://host-close", ({ peer }) => handler(peer)),
     close: (peer) => void invoke("collab_host_close", { peer }),
+    sendDatagram: (peers, data) => void invoke("collab_host_datagram", { peers, data: toBase64(data) }),
+    onDatagram: (handler) => on("collab://host-datagram", ({ peer, data }) => data && handler(peer, fromBase64(data))),
   };
   return { addr, link, stop: () => invoke("collab_host_stop") };
 }
@@ -65,11 +75,18 @@ export async function connectGuestTransport(addr: string): Promise<GuestLink> {
   const offClose = on("collab://guest-close", () => {
     for (const h of closers) h();
   });
+  const datagrams = new Set<(data: Uint8Array) => void>();
+  const offDatagram = on("collab://guest-datagram", ({ data }) => {
+    if (!data) return;
+    const bytes = fromBase64(data);
+    for (const h of datagrams) h(bytes);
+  });
   try {
     await invoke("collab_guest_connect", { addr });
   } catch (e) {
     offMessage();
     offClose();
+    offDatagram();
     throw e;
   }
   return {
@@ -85,7 +102,13 @@ export async function connectGuestTransport(addr: string): Promise<GuestLink> {
     close: () => {
       offMessage();
       offClose();
+      offDatagram();
       void invoke("collab_guest_close");
+    },
+    sendDatagram: (data) => void invoke("collab_guest_datagram", { data: toBase64(data) }),
+    onDatagram: (handler) => {
+      datagrams.add(handler);
+      return () => datagrams.delete(handler);
     },
   };
 }

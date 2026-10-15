@@ -5,13 +5,17 @@
 //! sa clé publique, la connexion est chiffrée de bout en bout.
 //!
 //! Rust ne fait que transporter : des messages (texte JSON) encadrés par leur longueur sur un flux
-//! QUIC bidirectionnel par invité. Toute la logique de session est en TypeScript (`src/app/collab/`).
+//! QUIC bidirectionnel par invité, et des datagrammes (non fiables) pour le vocal (O-48, D18). Toute
+//! la logique de session est en TypeScript (`src/app/collab/`).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine as _;
+use bytes::Bytes;
 use iroh::endpoint::{presets, Connection, RecvStream, SendStream};
 use iroh::{Endpoint, EndpointAddr};
 use serde::Serialize;
@@ -31,6 +35,8 @@ type Sink = Arc<dyn Fn(Event) + Send + Sync>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Event {
     Message { peer: String, data: String },
+    /// Datagramme reçu (vocal) : perdu ou désordonné sans conséquence pour le reste.
+    Datagram { peer: String, data: Vec<u8> },
     Closed { peer: String },
 }
 
@@ -63,6 +69,12 @@ fn pump(peer: String, connection: Connection, mut send: SendStream, mut recv: Re
             }
         }
         let _ = send.finish();
+    });
+    let (datagrams, datagram_sink, datagram_peer) = (connection.clone(), sink.clone(), peer.clone());
+    tokio::spawn(async move {
+        while let Ok(data) = datagrams.read_datagram().await {
+            datagram_sink(Event::Datagram { peer: datagram_peer.clone(), data: data.to_vec() });
+        }
     });
     tokio::spawn(async move {
         while let Some(data) = read_frame(&mut recv).await {
@@ -117,6 +129,16 @@ impl Host {
         }
     }
 
+    /// Datagramme vers plusieurs invités (vocal) ; trop gros ou file pleine : abandonné.
+    pub fn send_datagram(&self, peers: &[String], data: Bytes) {
+        let table = self.peers.lock().expect("verrou");
+        for peer in peers {
+            if let Some((_, connection)) = table.get(peer) {
+                let _ = connection.send_datagram(data.clone());
+            }
+        }
+    }
+
     /// Ferme la connexion d'un invité (départ, exclusion, lien refusé).
     pub fn close(&self, peer: &str) {
         if let Some((_, connection)) = self.peers.lock().expect("verrou").remove(peer) {
@@ -158,6 +180,10 @@ impl Guest {
         let _ = self.sender.send(data);
     }
 
+    pub fn send_datagram(&self, data: Bytes) {
+        let _ = self.connection.send_datagram(data);
+    }
+
     pub async fn close(self) {
         tokio::time::sleep(Duration::from_millis(300)).await;
         self.connection.close(0u32.into(), b"left");
@@ -184,6 +210,7 @@ fn sink(app: AppHandle, prefix: &'static str) -> Sink {
     Arc::new(move |event| {
         let (name, payload) = match event {
             Event::Message { peer, data } => (format!("{prefix}-message"), Payload { peer, data: Some(data) }),
+            Event::Datagram { peer, data } => (format!("{prefix}-datagram"), Payload { peer, data: Some(BASE64.encode(data)) }),
             Event::Closed { peer } => (format!("{prefix}-close"), Payload { peer, data: None }),
         };
         let _ = app.emit_to("main", &name, payload);
@@ -205,6 +232,16 @@ pub async fn collab_host_start(app: AppHandle, state: State<'_, CollabState>) ->
 pub async fn collab_host_send(state: State<'_, CollabState>, peer: String, data: String) -> Result<(), String> {
     if let Some(host) = state.host.lock().await.as_ref() {
         host.send(&peer, data);
+    }
+    Ok(())
+}
+
+/// Datagramme (base64) vers les invités `peers` : vocal de l'hôte, ou relais d'un invité (O-48).
+#[tauri::command]
+pub async fn collab_host_datagram(state: State<'_, CollabState>, peers: Vec<String>, data: String) -> Result<(), String> {
+    let bytes = BASE64.decode(data).map_err(|e| e.to_string())?;
+    if let Some(host) = state.host.lock().await.as_ref() {
+        host.send_datagram(&peers, Bytes::from(bytes));
     }
     Ok(())
 }
@@ -241,6 +278,15 @@ pub async fn collab_guest_connect(app: AppHandle, state: State<'_, CollabState>,
 pub async fn collab_guest_send(state: State<'_, CollabState>, data: String) -> Result<(), String> {
     if let Some(guest) = state.guest.lock().await.as_ref() {
         guest.send(data);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn collab_guest_datagram(state: State<'_, CollabState>, data: String) -> Result<(), String> {
+    let bytes = BASE64.decode(data).map_err(|e| e.to_string())?;
+    if let Some(guest) = state.guest.lock().await.as_ref() {
+        guest.send_datagram(Bytes::from(bytes));
     }
     Ok(())
 }
@@ -288,6 +334,18 @@ mod tests {
             panic!("réponse attendue");
         };
         assert_eq!(data.len(), big.len());
+
+        // Datagrammes (vocal, O-48) dans les deux sens.
+        guest.send_datagram(Bytes::from_static(b"\x01audio"));
+        let Some(Event::Datagram { data, .. }) = tokio::time::timeout(Duration::from_secs(10), events.recv()).await.expect("délai") else {
+            panic!("datagramme attendu");
+        };
+        assert_eq!(data, b"\x01audio");
+        host.send_datagram(&[peer.clone()], Bytes::from_static(b"\x01retour"));
+        let Some(Event::Datagram { data, .. }) = tokio::time::timeout(Duration::from_secs(10), guest_events.recv()).await.expect("délai") else {
+            panic!("datagramme attendu");
+        };
+        assert_eq!(data, b"\x01retour");
 
         guest.close().await;
         let closed = tokio::time::timeout(Duration::from_secs(10), events.recv()).await.expect("délai");
