@@ -82,10 +82,10 @@ export function Toolbar() {
   return (
     <div className="flex items-center gap-1 border-b border-neutral-200 bg-neutral-50 px-2 py-1 dark:border-neutral-700 dark:bg-neutral-900">
       <Group>
-        <IconButton tooltip={t("toolbar.new", { key: `${MOD}N` })} onClick={() => void newDocument(doc)}>
+        <IconButton tooltip={t("toolbar.new", { key: `${MOD}N` })} onClick={newDocument}>
           <FilePlus size={16} />
         </IconButton>
-        <IconButton tooltip={t("toolbar.open", { key: `${MOD}O` })} onClick={() => void openDocument(doc)}>
+        <IconButton tooltip={t("toolbar.open", { key: `${MOD}O` })} onClick={() => void openDocument()}>
           <FolderOpen size={16} />
         </IconButton>
         <IconButton tooltip={t("toolbar.save", { key: `${MOD}S` })} onClick={() => void saveDocument(doc)}>
