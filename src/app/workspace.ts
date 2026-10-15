@@ -15,11 +15,13 @@ interface WorkspaceState {
   activeId: string;
   /** Numéro « Sans titre N » de chaque document jamais enregistré (1 = « Sans titre »). */
   untitled: Record<string, number>;
+  /** Titre imposé d'un onglet (session rejointe : « Session de Alice », O-05). */
+  titles: Record<string, string>;
 }
 
 function initialState(): WorkspaceState {
   const first = createDocumentHandle(newModelDocument());
-  return { documents: [first], activeId: first.id, untitled: { [first.id]: 1 } };
+  return { documents: [first], activeId: first.id, untitled: { [first.id]: 1 }, titles: {} };
 }
 
 export const useWorkspaceStore = create<WorkspaceState>()(initialState);
@@ -103,6 +105,8 @@ export function closeTab(id: string) {
   const rest = documents.filter((d) => d.id !== id);
   const nextUntitledMap = { ...untitled };
   delete nextUntitledMap[id];
+  const { [id]: _title, ...titles } = useWorkspaceStore.getState().titles;
+  useWorkspaceStore.setState({ titles });
   if (rest.length === 0) {
     const blank = createDocumentHandle(newModelDocument());
     nextUntitledMap[blank.id] = nextUntitled(nextUntitledMap);
@@ -112,6 +116,43 @@ export function closeTab(id: string) {
   // Onglet actif fermé : le voisin de droite, sinon de gauche, devient actif.
   const nextActive = id === activeId ? (rest[index] ?? rest[index - 1])!.id : activeId;
   useWorkspaceStore.setState({ documents: rest, activeId: nextActive, untitled: nextUntitledMap });
+}
+
+/**
+ * Remplace le document d'un onglet, à la même place (session collaborative : l'onglet partagé
+ * passe à un document de session, puis revient à un document ordinaire, O-05).
+ */
+export function replaceDocument(id: string, doc: DocumentHandle) {
+  const { documents, activeId, untitled, titles } = useWorkspaceStore.getState();
+  if (!documents.some((d) => d.id === id)) return;
+  const rename = <T,>(record: Record<string, T>) => {
+    if (doc.id === id || !(id in record)) return record;
+    const { [id]: value, ...rest } = record;
+    return { ...rest, [doc.id]: value! };
+  };
+  useWorkspaceStore.setState({
+    documents: documents.map((d) => (d.id === id ? doc : d)),
+    activeId: activeId === id ? doc.id : activeId,
+    untitled: rename(untitled),
+    titles: rename(titles),
+  });
+}
+
+/** Ajoute un document existant dans un nouvel onglet, à droite de l'actif, et l'active. */
+export function addTab(doc: DocumentHandle, title?: string) {
+  const { documents, activeId, untitled, titles } = useWorkspaceStore.getState();
+  const index = documents.findIndex((d) => d.id === activeId);
+  useWorkspaceStore.setState({
+    documents: [...documents.slice(0, index + 1), doc, ...documents.slice(index + 1)],
+    activeId: doc.id,
+    ...(title ? { titles: { ...titles, [doc.id]: title } } : doc.store.getState().filePath ? {} : { untitled: { ...untitled, [doc.id]: nextUntitled(untitled) } }),
+  });
+}
+
+export function setTitle(id: string, title: string | null) {
+  const { titles } = useWorkspaceStore.getState();
+  const { [id]: _previous, ...rest } = titles;
+  useWorkspaceStore.setState({ titles: title ? { ...rest, [id]: title } : rest });
 }
 
 /** Déplace un onglet à la position `to` (glisser-déposer dans la barre). */

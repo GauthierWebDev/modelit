@@ -1,6 +1,7 @@
 import type { ModelDocument } from "@core/index";
 import type { Patch } from "immer";
 import type { MessageKey } from "@/i18n";
+import type { CollabAction, CollabMirror } from "../collab/session";
 import type { DockLayout, DragItem, Rect } from "../dock/layout";
 import type { DocumentViewState } from "../document/documentView";
 import type { AboutTab, Tool } from "../uiStore";
@@ -24,6 +25,8 @@ export interface MirrorState {
   ui: { tool: Tool; advanced: boolean };
   /** Une boîte modale est ouverte dans la fenêtre principale : les flottantes sont désactivées (O-45). */
   modal: boolean;
+  /** Session collaborative (section Session, O-05 §7). */
+  collab: CollabMirror;
 }
 
 /** Commandes qui ne peuvent s'exécuter que dans la fenêtre principale (fichiers, cadrage…). */
@@ -35,7 +38,8 @@ export type MainCommand =
   | { name: "zoomTo"; zoom: number }
   | { name: "zoomBy"; factor: number }
   | { name: "fit" }
-  | { name: "autoLayout" };
+  | { name: "autoLayout" }
+  | { name: "collab"; action: CollabAction };
 
 export type UiPatch = Partial<{
   tool: Tool;
@@ -43,6 +47,7 @@ export type UiPatch = Partial<{
   exportOpen: boolean;
   optionsOpen: boolean;
   reverseOpen: boolean;
+  shareOpen: boolean;
   about: AboutTab | null;
 }>;
 

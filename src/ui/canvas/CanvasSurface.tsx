@@ -2,6 +2,7 @@ import type { Point } from "@core/index";
 import { useEffect, useRef, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import type { Viewport } from "@/app/document/documentView";
+import { RemoteCursors, reportCursor, useIsSessionTab, usePresenceReporting } from "@/ui/collab/RemoteCursors";
 import { setCanvasElement, setCanvasSize, zoomBy } from "./viewport";
 
 /**
@@ -32,6 +33,9 @@ export function CanvasSurface({
   const setViewport = useDocumentView((s) => s.setViewport);
   const svgRef = useRef<SVGSVGElement>(null);
   const pan = useRef<{ start: Point; origin: Viewport } | null>(null);
+  // Session collaborative : ma présence part aux autres, leurs curseurs sont dessinés (O-05 §5).
+  const shared = useIsSessionTab(doc);
+  usePresenceReporting(doc, shared);
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -86,6 +90,7 @@ export function CanvasSurface({
         }
       }}
       onPointerMove={(e) => {
+        if (shared) reportCursor(doc, modelPoint(e));
         if (pan.current) {
           const p = screenPoint(e);
           const { start, origin } = pan.current;
@@ -105,6 +110,7 @@ export function CanvasSurface({
         pan.current = null;
         handlers.onPointerCancel?.();
       }}
+      onPointerLeave={() => shared && reportCursor(doc, null)}
       onContextMenu={handlers.onContextMenu}
     >
       <defs>
@@ -143,6 +149,7 @@ export function CanvasSurface({
       <g data-export-root="" transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.zoom})`}>
         {children}
       </g>
+      {shared && <RemoteCursors viewport={viewport} />}
     </svg>
   );
 }

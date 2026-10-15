@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { APP_NAME } from "@/app/appInfo";
 import { startAutosave } from "@/app/autosave";
+import { endSessionOnExit } from "@/app/collab/session";
 import { DocumentProvider, useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { selectIsDirty } from "@/app/document/documentStore";
 import { closeDocument, confirmLoseAllChanges, documentName } from "@/app/fileCommands";
@@ -12,6 +13,9 @@ import { closeAllFloats, nativeWindows } from "@/platform/floatWindows";
 import { onCloseRequested, onMenuAbout, onMenuCloseTab, setWindowTitle } from "@/platform/window";
 import { FloatManager } from "./windows/FloatManager";
 import { McpBridge } from "./mcp/McpBridge";
+import { CollabBridge } from "./collab/CollabBridge";
+import { CollabIndicator } from "./collab/CollabIndicator";
+import { ShareDialog } from "./collab/ShareDialog";
 import { McpIndicator } from "./mcp/McpIndicator";
 import { AboutDialog } from "./about/AboutDialog";
 import { LogicalCanvas } from "./canvas/LogicalCanvas";
@@ -49,7 +53,8 @@ function Workbench() {
   // Le nom suit l'enregistrement (filePath) et la numérotation « Sans titre N ».
   useDocument((s) => s.filePath);
   const untitled = useWorkspaceStore((s) => s.untitled);
-  const title = `${documentName(doc, untitled)}${recovered ? ` ${t("app.recovered")}` : ""}`;
+  const titles = useWorkspaceStore((s) => s.titles);
+  const title = `${documentName(doc, untitled, titles)}${recovered ? ` ${t("app.recovered")}` : ""}`;
   const status = useUiStore((s) => s.status);
   const notify = useUiStore((s) => s.notify);
 
@@ -67,6 +72,7 @@ function Workbench() {
     () =>
       onCloseRequested(async () => {
         const ok = await confirmLoseAllChanges();
+        if (ok) await endSessionOnExit();
         // Les fenêtres flottantes se ferment avec la principale (O-45, O-46).
         if (ok && nativeWindows()) await closeAllFloats();
         return ok;
@@ -102,6 +108,8 @@ function Workbench() {
       <OptionsDialog />
       <AboutDialog />
       <ReverseDialog />
+      <ShareDialog />
+      <CollabBridge />
       <DialogHost />
       <TooltipLayer />
       <footer className="flex h-6 flex-none items-center gap-3 border-t border-neutral-200 bg-neutral-50 px-3 text-xs text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900">
@@ -110,6 +118,7 @@ function Workbench() {
           {dirty && ` — ${t("app.modified")}`}
         </span>
         {status && <span className={status.kind === "error" ? "text-red-600" : ""}>{status.text}</span>}
+        <CollabIndicator />
         <McpIndicator />
       </footer>
     </div>

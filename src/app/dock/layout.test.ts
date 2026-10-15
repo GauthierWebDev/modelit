@@ -24,8 +24,9 @@ const shape = (layout: DockLayout) => ({
 
 /** Sections ancrables ou flottantes (override O-46). */
 describe("disposition des sections", () => {
-  it("par défaut : celle d'avant O-46", () => {
-    expect(shape(defaultLayout())).toEqual({ right: ["properties|model"], bottom: ["mld|sql|issues"], floating: [], hidden: [] });
+  it("par défaut : celle d'avant O-46 ; la section Session, masquée, s'affiche pendant une session (O-05 §7)", () => {
+    expect(shape(defaultLayout())).toEqual({ right: ["properties|model"], bottom: ["mld|sql|issues"], floating: [], hidden: ["session"] });
+    expect(shape(showSection(defaultLayout(), "session")).right).toEqual(["properties|model|session"]);
   });
 
   it("glisser un onglet sur un autre groupe : il le rejoint et devient actif", () => {
@@ -66,7 +67,7 @@ describe("disposition des sections", () => {
   it("fermer un groupe masque ses sections ; les réafficher les rend à leur place", () => {
     let layout = moveGroup(defaultLayout(), "bottom", { kind: "float", rect });
     layout = closeGroup(layout, "bottom");
-    expect(shape(layout)).toMatchObject({ floating: [], hidden: ["mld", "sql", "issues"] });
+    expect(shape(layout)).toMatchObject({ floating: [], hidden: ["session", "mld", "sql", "issues"] });
     layout = showSection(layout, "sql");
     expect(shape(layout).floating).toEqual(["sql"]);
     expect(layout.floating[0]!.rect).toEqual(rect);
@@ -111,7 +112,7 @@ describe("disposition des sections", () => {
       floating: [{ id: "f", sections: ["sql"], rect: { x: 1, y: 2, width: 300, height: 200 } }, { id: "sans-rect", sections: ["mld"] }],
       hidden: ["issues", "sql"],
     });
-    expect(shape(repaired)).toEqual({ right: ["properties", "model", "mld"], bottom: [], floating: ["sql"], hidden: ["issues"] });
+    expect(shape(repaired)).toEqual({ right: ["properties", "model", "mld"], bottom: [], floating: ["sql"], hidden: ["issues", "session"] });
     expect(repaired.zones.right.groups[0]!.active).toBe("properties");
   });
 });

@@ -9,13 +9,14 @@ import {
   type ModelDocument,
 } from "@core/index";
 import { KeyRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import * as cmd from "@/app/commands";
 import { revealSection } from "@/app/dock/actions";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { Checkbox, CommitInput, ErrorBanner, Field, NumberInput, Section, Select } from "@/ui/common/controls";
+import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { AttributesEditor } from "./AttributesEditor";
 import { ForeignKeysSection } from "./ForeignKeysSection";
 import { InheritanceLinkPanel, InheritancePanel } from "./InheritancePanels";
@@ -66,8 +67,22 @@ export function PropertiesSection() {
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <ErrorBanner message={error} onClose={() => setError(null)} />
-      {content}
+      <ReadOnly>{content}</ReadOnly>
     </div>
+  );
+}
+
+/** Champs désactivés dans l'onglet d'une session en lecture seule (O-05 §4.3). */
+function ReadOnly({ children }: { children: ReactNode }) {
+  const readOnly = useSessionReadOnly(useDocumentHandle());
+  if (!readOnly) return <>{children}</>;
+  return (
+    <>
+      <p className="mx-3 mt-3 rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">{t("collab.readOnlyNote")}</p>
+      <fieldset disabled className="contents [&_:is(input,select,textarea,button)]:cursor-not-allowed [&_:is(input,select,textarea,button)]:opacity-50">
+        {children}
+      </fieldset>
+    </>
   );
 }
 
@@ -76,7 +91,9 @@ export function ModelSection() {
   const doc = useDocument((s) => s.doc);
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <DocumentSettingsPanel doc={doc} />
+      <ReadOnly>
+        <DocumentSettingsPanel doc={doc} />
+      </ReadOnly>
     </div>
   );
 }
