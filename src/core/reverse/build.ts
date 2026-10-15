@@ -173,7 +173,8 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
 
   const entityTables = schema.tables.filter((t) => !joinTables.has(t));
   entityTables.forEach((table, index) => {
-    const entity = createEntity(table.name, { x: (index % 5) * 280, y: Math.floor(index / 5) * 220 });
+    const entity = createEntity(table.name);
+    doc.layout.positions[entity.id] = { x: (index % 5) * 280, y: Math.floor(index / 5) * 220 };
     if (logicalName(entity, naming) !== table.name) entity.logicalName = table.name;
     entity.comment = table.comment;
     const fkColumns = new Set(fks.get(table)!.flatMap((fk) => fk.columns.map(key)));
@@ -310,7 +311,7 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
   // 5. Associations issues des tables d'association.
   const joinAssociations = new Map<ParsedTable, Association>();
   for (const table of joinTables) {
-    const association = createAssociation(associationName(table.name), { x: 0, y: 0 });
+    const association = createAssociation(associationName(table.name));
     if (logicalName(association, naming) !== table.name) association.logicalName = table.name;
     association.comment = table.comment;
     const fkColumns = new Set(fks.get(table)!.flatMap((fk) => fk.columns.map(key)));
@@ -355,7 +356,7 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
         (fk.columns.length === 1 && columns[0]?.unique) ||
         table.uniques.some((u) => sameColumns(u.columns, fk.columns) && !u.where && !u.expression && !u.state?.disabled) ||
         sameColumns(fk.columns, table.primaryKey);
-      const association = createAssociation(dependencyName(table, fk), { x: 0, y: 0 });
+      const association = createAssociation(dependencyName(table, fk));
       const parentLink = createLink(association.id, parent.id);
       parentLink.cardinality = { min: 0, max: unique ? 1 : "n" };
       parentLink.foreignKeyNames = foreignKeyNames(fk);
@@ -382,7 +383,7 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
   }
   const inheritanceLinkOf = new Map<ParsedTable, InheritanceLink>();
   for (const [parent, children] of childrenOf) {
-    const inheritance = createInheritance({ x: 0, y: 0 });
+    const inheritance = createInheritance();
     inheritance.parentId = entities.get(parent)!.id;
     doc.inheritances.push(inheritance);
     doc.inheritanceLinks.push(createInheritanceLink(inheritance.id, entities.get(parent)!.id));
@@ -548,15 +549,15 @@ function orderByKey<T extends ParsedForeignKey>(list: T[], primaryKey: string[])
 
 /** Associations et héritages placés entre leurs entités (le placement automatique affinera). */
 function placeBetween(doc: ModelDocument) {
-  const position = new Map(doc.entities.map((e) => [e.id, e.position]));
+  const { positions } = doc.layout;
   const center = (ids: Id[]) => {
-    const points = ids.map((id) => position.get(id)).filter((p) => p !== undefined);
+    const points = ids.map((id) => positions[id]).filter((p) => p !== undefined);
     if (!points.length) return { x: 0, y: 0 };
     return {
       x: points.reduce((s, p) => s + p.x, 0) / points.length + 60,
       y: points.reduce((s, p) => s + p.y, 0) / points.length + 110,
     };
   };
-  for (const a of doc.associations) a.position = center(doc.links.filter((l) => l.associationId === a.id).map((l) => l.entityId));
-  for (const h of doc.inheritances) h.position = center(doc.inheritanceLinks.filter((l) => l.inheritanceId === h.id).map((l) => l.entityId));
+  for (const a of doc.associations) positions[a.id] = center(doc.links.filter((l) => l.associationId === a.id).map((l) => l.entityId));
+  for (const h of doc.inheritances) positions[h.id] = center(doc.inheritanceLinks.filter((l) => l.inheritanceId === h.id).map((l) => l.entityId));
 }

@@ -9,9 +9,12 @@ import {
   createAssociation,
   createInheritance,
   createInheritanceLink,
+  bendsOf,
   diagramLinks,
   diagramNodes,
   linkSourceId,
+  positionOf,
+  setBends,
   createAutoIdentifier,
   createEntity,
   createLink,
@@ -49,14 +52,20 @@ const findNode = (d: Draft<ModelDocument>, id: Id) =>
   d.entities.find((e) => e.id === id) ?? d.associations.find((a) => a.id === id);
 
 export function addEntity(doc: DocumentHandle, position: Point): Id {
-  const entity = createEntity(nextFreeName(t("default.entity"), current(doc).entities.map((e) => e.name)), position);
-  change(doc, "history.createEntity", (d) => void d.entities.push(entity));
+  const entity = createEntity(nextFreeName(t("default.entity"), current(doc).entities.map((e) => e.name)));
+  change(doc, "history.createEntity", (d) => {
+    d.entities.push(entity);
+    d.layout.positions[entity.id] = position;
+  });
   return entity.id;
 }
 
 export function addInheritance(doc: DocumentHandle, position: Point): Id {
-  const inheritance = createInheritance(position);
-  change(doc, "history.createInheritance", (d) => void d.inheritances.push(inheritance));
+  const inheritance = createInheritance();
+  change(doc, "history.createInheritance", (d) => {
+    d.inheritances.push(inheritance);
+    d.layout.positions[inheritance.id] = position;
+  });
   return inheritance.id;
 }
 
@@ -100,8 +109,11 @@ export function updateInheritance(doc: DocumentHandle, inheritanceId: Id, patch:
 }
 
 export function addAssociation(doc: DocumentHandle, position: Point): Id {
-  const association = createAssociation(nextFreeName(t("default.association"), current(doc).associations.map((a) => a.name)), position);
-  change(doc, "history.createAssociation", (d) => void d.associations.push(association));
+  const association = createAssociation(nextFreeName(t("default.association"), current(doc).associations.map((a) => a.name)));
+  change(doc, "history.createAssociation", (d) => {
+    d.associations.push(association);
+    d.layout.positions[association.id] = position;
+  });
   return association.id;
 }
 
@@ -147,16 +159,14 @@ export function connectNodes(
   if (isInheritance(fromId) && isEntity(toId)) return addInheritanceLink(doc, fromId, toId);
   if (isEntity(fromId) && isInheritance(toId)) return addInheritanceLink(doc, toId, fromId);
   if (!isEntity(fromId) || !isEntity(toId)) return addLink(doc, fromId, toId);
-  const association = createAssociation(
-    nextFreeName(t("default.association"), current(doc).associations.map((a) => a.name)),
-    placement.associationPosition,
-  );
+  const association = createAssociation(nextFreeName(t("default.association"), current(doc).associations.map((a) => a.name)));
   const first = createLink(association.id, fromId);
   const second = createLink(association.id, toId);
-  if (fromId === toId) second.bends = placement.reflexiveBends ?? [];
   change(doc, fromId === toId ? "history.createReflexive" : "history.createAssociation", (d) => {
     d.associations.push(association);
     d.links.push(first, second);
+    d.layout.positions[association.id] = placement.associationPosition;
+    if (fromId === toId) setBends(d.layout, second.id, placement.reflexiveBends ?? []);
   });
   return { created: association.id };
 }
@@ -185,18 +195,12 @@ export const findDiagramLink = (d: Draft<ModelDocument>, id: Id) =>
 
 /** Supprime les cassures d'un lien. */
 export function straightenLink(doc: DocumentHandle, linkId: Id) {
-  change(doc, "history.straighten", (d) => {
-    const link = findDiagramLink(d, linkId);
-    if (link) link.bends = [];
-  });
+  change(doc, "history.straighten", (d) => setBends(d.layout, linkId, []));
 }
 
 export function removeBend(doc: DocumentHandle, linkId: Id, index: number) {
   doc.view.getState().setActiveBend(null);
-  change(doc, "history.removeBend", (d) => {
-    const link = findDiagramLink(d, linkId);
-    if (link) link.bends.splice(index, 1);
-  });
+  change(doc, "history.removeBend", (d) => setBends(d.layout, linkId, bendsOf(d.layout, linkId).filter((_, i) => i !== index)));
 }
 
 /**
@@ -210,20 +214,21 @@ export function moveNodes(doc: DocumentHandle, positions: Map<Id, Point>, bends 
     for (const node of diagramNodes(d)) {
       const p = positions.get(node.id);
       if (!p) continue;
-      delta.set(node.id, { x: p.x - node.position.x, y: p.y - node.position.y });
-      node.position = p;
+      const old = positionOf(d.layout, node.id);
+      delta.set(node.id, { x: p.x - old.x, y: p.y - old.y });
+      d.layout.positions[node.id] = p;
     }
     for (const link of diagramLinks(d)) {
       const replaced = bends.get(link.id);
       if (replaced) {
-        link.bends = replaced;
+        setBends(d.layout, link.id, replaced);
         continue;
       }
       const a = delta.get(linkSourceId(link)) ?? { x: 0, y: 0 };
       const e = delta.get(link.entityId) ?? { x: 0, y: 0 };
       const dx = (a.x + e.x) / 2;
       const dy = (a.y + e.y) / 2;
-      if (dx || dy) link.bends = link.bends.map((b) => ({ x: b.x + dx, y: b.y + dy }));
+      if (dx || dy) setBends(d.layout, link.id, bendsOf(d.layout, link.id).map((b) => ({ x: b.x + dx, y: b.y + dy })));
     }
   });
 }
@@ -241,6 +246,10 @@ export function deleteObjects(doc: DocumentHandle, ids: Id[]) {
     for (const h of d.inheritances) {
       if (h.parentId && !d.inheritanceLinks.some((l) => l.inheritanceId === h.id && l.entityId === h.parentId)) h.parentId = undefined;
     }
+    // Géométrie des objets et des traits disparus.
+    const kept = new Set([...diagramNodes(d), ...diagramLinks(d)].map((o) => o.id));
+    for (const id of Object.keys(d.layout.positions)) if (!kept.has(id)) delete d.layout.positions[id];
+    for (const id of Object.keys(d.layout.bends)) if (!kept.has(id)) delete d.layout.bends[id];
   });
   doc.view.getState().select([]);
 }

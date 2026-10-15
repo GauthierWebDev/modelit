@@ -1,6 +1,17 @@
-import { createAssociation, diagramLinks, diagramNodes, linkSourceId, nextFreeName, type Id, type Point } from "@core/index";
+import {
+  bendsOf,
+  createAssociation,
+  diagramLinks,
+  diagramNodes,
+  linkSourceId,
+  nextFreeName,
+  positionOf,
+  setBends,
+  type Id,
+  type Point,
+} from "@core/index";
 import { useEffect, useMemo, useState, type PointerEvent } from "react";
-import { addAssociation, addEntity, addInheritance, connectNodes, findDiagramLink, removeBend } from "@/app/commands";
+import { addAssociation, addEntity, addInheritance, connectNodes, removeBend } from "@/app/commands";
 import { useIssuesByTarget } from "@/app/derived";
 import { t } from "@/i18n";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
@@ -59,10 +70,10 @@ export function McdCanvas() {
   const [gesture, setGesture] = useState<Gesture | null>(null);
 
   const layouts = useMemo(() => layoutsOf(doc), [doc]);
-  const geometries = useMemo(() => linkGeometries(doc.links, layouts), [doc.links, layouts]);
+  const geometries = useMemo(() => linkGeometries(doc.links, layouts, doc.layout.bends), [doc.links, layouts, doc.layout.bends]);
   const inheritance = useMemo(
-    () => inheritanceGeometries(doc.inheritances, doc.inheritanceLinks, layouts),
-    [doc.inheritances, doc.inheritanceLinks, layouts],
+    () => inheritanceGeometries(doc.inheritances, doc.inheritanceLinks, layouts, doc.layout.bends),
+    [doc.inheritances, doc.inheritanceLinks, layouts, doc.layout.bends],
   );
   const selected = useMemo(() => new Set(selection), [selection]);
   /** Associations qui référencent un identifiant alternatif (oeuvre(isbn)) plutôt que la clé primaire (O-36). */
@@ -94,7 +105,7 @@ export function McdCanvas() {
   /** Position de la nouvelle association : centrée entre les deux entités. */
   function associationPosition(a: NodeLayout, b: NodeLayout): Point {
     const name = nextFreeName("Association", doc.associations.map((x) => x.name));
-    const size = nodeLayout(createAssociation(name, { x: 0, y: 0 }), doc.settings.display);
+    const size = nodeLayout(createAssociation(name), { x: 0, y: 0 }, doc.settings.display);
     const ca = center(a);
     const cb = center(b);
     return {
@@ -110,7 +121,7 @@ export function McdCanvas() {
    */
   function reflexivePlacement(e: NodeLayout) {
     const name = nextFreeName("Association", doc.associations.map((x) => x.name));
-    const size = nodeLayout(createAssociation(name, { x: 0, y: 0 }), doc.settings.display);
+    const size = nodeLayout(createAssociation(name), { x: 0, y: 0 }, doc.settings.display);
     const ce = center(e);
     const others = [...layouts.values()];
     const MARGIN = 16;
@@ -193,7 +204,9 @@ export function McdCanvas() {
       const created = handle.dataset.handle === "mid";
       if (created) {
         docHandle.store.getState().preview((d) => {
-          findDiagramLink(d, hit)?.bends.splice(index, 0, { x: snap(point.x, grid), y: snap(point.y, grid) });
+          const bends = [...bendsOf(d.layout, hit)];
+          bends.splice(index, 0, { x: snap(point.x, grid), y: snap(point.y, grid) });
+          setBends(d.layout, hit, bends);
         });
       }
       setGesture({ type: "bend", linkId: hit, index, created });
@@ -237,10 +250,11 @@ export function McdCanvas() {
     const ids = selected.has(hit) ? selection : [hit];
     if (!selected.has(hit)) select(ids);
     const origins = new Map<Id, Point>();
-    for (const n of diagramNodes(doc)) if (ids.includes(n.id)) origins.set(n.id, n.position);
+    for (const n of diagramNodes(doc)) if (ids.includes(n.id)) origins.set(n.id, positionOf(doc.layout, n.id));
     const bendOrigins = new Map<Id, Point[]>();
     for (const l of diagramLinks(doc)) {
-      if (l.bends.length && origins.has(linkSourceId(l)) && origins.has(l.entityId)) bendOrigins.set(l.id, l.bends);
+      const bends = bendsOf(doc.layout, l.id);
+      if (bends.length && origins.has(linkSourceId(l)) && origins.has(l.entityId)) bendOrigins.set(l.id, bends);
     }
     if (origins.size > 0) {
       docHandle.store.getState().begin();
@@ -255,23 +269,22 @@ export function McdCanvas() {
       case "move": {
         const dx = point.x - gesture.start.x;
         const dy = point.y - gesture.start.y;
+        // Seule la géométrie change (`layout`) : MLD et SQL ne sont pas recalculés (J-01, phase 3).
         docHandle.store.getState().preview((d) => {
-          for (const node of diagramNodes(d)) {
-            const origin = gesture.origins.get(node.id);
-            if (origin) node.position = { x: snap(origin.x + dx, grid), y: snap(origin.y + dy, grid) };
+          for (const [id, origin] of gesture.origins) {
+            d.layout.positions[id] = { x: snap(origin.x + dx, grid), y: snap(origin.y + dy, grid) };
           }
           // Les cassures d'un lien suivent quand ses deux extrémités sont déplacées ensemble.
-          for (const link of diagramLinks(d)) {
-            const bends = gesture.bendOrigins.get(link.id);
-            if (bends) link.bends = bends.map((b) => ({ x: snap(b.x + dx, grid), y: snap(b.y + dy, grid) }));
+          for (const [id, bends] of gesture.bendOrigins) {
+            setBends(d.layout, id, bends.map((b) => ({ x: snap(b.x + dx, grid), y: snap(b.y + dy, grid) })));
           }
         });
         break;
       }
       case "bend": {
         docHandle.store.getState().preview((d) => {
-          const link = findDiagramLink(d, gesture.linkId);
-          if (link?.bends[gesture.index]) link.bends[gesture.index] = { x: snap(point.x, grid), y: snap(point.y, grid) };
+          const bends = d.layout.bends[gesture.linkId];
+          if (bends?.[gesture.index]) bends[gesture.index] = { x: snap(point.x, grid), y: snap(point.y, grid) };
         });
         break;
       }
@@ -306,7 +319,7 @@ export function McdCanvas() {
 
   const activeBendPoint =
     activeBend && selected.has(activeBend.linkId)
-      ? diagramLinks(doc).find((l) => l.id === activeBend.linkId)?.bends[activeBend.index]
+      ? bendsOf(doc.layout, activeBend.linkId)[activeBend.index]
       : undefined;
   const marquee: Rect | null = gesture?.type === "marquee" ? normalizeRect(gesture.start, gesture.current) : null;
   const linkSource = gesture?.type === "link" ? layouts.get(gesture.fromId) : undefined;

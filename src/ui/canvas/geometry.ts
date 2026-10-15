@@ -161,15 +161,16 @@ export function attributeWidth(mark: AttributeMarks): number {
 /** Encombrement du triangle d'héritage (override O-18). */
 export const INHERITANCE_SIZE = { width: 56, height: 56 };
 
-export function nodeLayout(node: ModelNode, display: DisplayOptions, linkNames?: Map<string, string>): NodeLayout {
-  if (node.kind === "inheritance") return { ...node.position, ...INHERITANCE_SIZE, rows: [] };
+/** Encombrement d'un objet placé en `position` (coin haut-gauche, `doc.layout`). */
+export function nodeLayout(node: ModelNode, position: Point, display: DisplayOptions, linkNames?: Map<string, string>): NodeLayout {
+  if (node.kind === "inheritance") return { x: position.x, y: position.y, ...INHERITANCE_SIZE, rows: [] };
   const attributes = display.showAttributes ? node.attributes : [];
   const rows = attributes.map((attribute, i) => ({ attribute, y: TITLE_HEIGHT + 4 + i * ROW_HEIGHT }));
   const marks = attributeMarks(node, linkNames);
   const contentWidth = Math.max(textWidth(node.name, { weight: TITLE_WEIGHT }), ...rows.map((r) => attributeWidth(marks.get(r.attribute.id)!)));
   const width = Math.ceil(Math.max(MIN_WIDTH[node.kind], contentWidth + 2 * PAD_X));
   const height = rows.length > 0 ? TITLE_HEIGHT + 4 + rows.length * ROW_HEIGHT + PAD_BOTTOM : TITLE_HEIGHT + 10;
-  return { x: node.position.x, y: node.position.y, width, height, rows };
+  return { x: position.x, y: position.y, width, height, rows };
 }
 
 export const center = (r: Rect): Point => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
@@ -189,6 +190,8 @@ export function clipToRect(r: Rect, toward: Point): Point {
 
 export interface LinkGeometry {
   link: Link;
+  /** Cassures du trait (`doc.layout.bends`). */
+  bends: Point[];
   /** Tracé : association → cassures éventuelles → entité. */
   points: Point[];
   label: Point; // cardinalité, près de l'entité
@@ -224,10 +227,10 @@ function rolePosition(role: string, points: Point[], entity: Rect, association: 
  * Plusieurs pattes droites entre la même association et la même entité (réflexive)
  * sont décalées en parallèle.
  */
-export function linkGeometries(links: Link[], layouts: Map<string, NodeLayout>): LinkGeometry[] {
+export function linkGeometries(links: Link[], layouts: Map<string, NodeLayout>, allBends: Record<string, Point[]> = {}): LinkGeometry[] {
   const groups = new Map<string, Link[]>();
   for (const link of links) {
-    if (link.bends.length > 0) continue;
+    if (allBends[link.id]?.length) continue;
     const key = `${link.associationId}|${link.entityId}`;
     groups.set(key, [...(groups.get(key) ?? []), link]);
   }
@@ -236,9 +239,10 @@ export function linkGeometries(links: Link[], layouts: Map<string, NodeLayout>):
     const a = layouts.get(link.associationId);
     const e = layouts.get(link.entityId);
     if (!a || !e) continue;
+    const bends = allBends[link.id] ?? [];
     let points: Point[];
-    if (link.bends.length > 0) {
-      points = [clipToRect(a, link.bends[0]!), ...link.bends, clipToRect(e, link.bends.at(-1)!)];
+    if (bends.length > 0) {
+      points = [clipToRect(a, bends[0]!), ...bends, clipToRect(e, bends.at(-1)!)];
     } else {
       const group = groups.get(`${link.associationId}|${link.entityId}`)!;
       const ca = center(a);
@@ -254,7 +258,7 @@ export function linkGeometries(links: Link[], layouts: Map<string, NodeLayout>):
     const ux = (to.x - before.x) / len;
     const uy = (to.y - before.y) / len;
     const label = { x: to.x - ux * 22 - uy * 12, y: to.y - uy * 22 + ux * 12 };
-    result.push({ link, points, label, ...(link.role?.trim() ? { role: rolePosition(link.role.trim(), points, e, a) } : {}) });
+    result.push({ link, bends, points, label, ...(link.role?.trim() ? { role: rolePosition(link.role.trim(), points, e, a) } : {}) });
   }
   return result;
 }
@@ -286,6 +290,7 @@ export function triangleOf(rect: Rect): Triangle {
 
 export interface InheritanceLinkGeometry {
   link: InheritanceLink;
+  bends: Point[];
   points: Point[];
   /** Lien vers l'entité générique : porte une flèche (non désactivable, O-27). */
   toParent: boolean;
@@ -296,6 +301,7 @@ export function inheritanceGeometries(
   inheritances: Inheritance[],
   links: InheritanceLink[],
   layouts: Map<string, NodeLayout>,
+  allBends: Record<string, Point[]> = {},
 ): { triangles: Map<string, Triangle>; links: InheritanceLinkGeometry[] } {
   const triangles = new Map<string, Triangle>();
   for (const h of inheritances) {
@@ -310,8 +316,9 @@ export function inheritanceGeometries(
     if (!triangle || !entity || !h) continue;
     const toParent = h.parentId === link.entityId;
     const start = toParent ? triangle.apex : triangle.base;
-    const last = link.bends.at(-1) ?? start;
-    result.push({ link, toParent, points: [start, ...link.bends, clipToRect(entity, last)] });
+    const bends = allBends[link.id] ?? [];
+    const last = bends.at(-1) ?? start;
+    result.push({ link, bends, toParent, points: [start, ...bends, clipToRect(entity, last)] });
   }
   return { triangles, links: result };
 }

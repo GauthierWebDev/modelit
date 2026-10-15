@@ -1,4 +1,4 @@
-import type { Association, Attribute, Entity, Id, Inheritance, InheritanceLink, Link, ModelDocument, Point } from "./document";
+import type { Association, Attribute, Entity, Id, Inheritance, InheritanceLink, Link, ModelDocument } from "./document";
 import { applyPattern } from "../naming/patterns";
 import type { KeyPattern } from "./settings";
 import { defaultSettings } from "./settings";
@@ -6,27 +6,36 @@ import { defaultSettings } from "./settings";
 export const newId = (): Id => crypto.randomUUID();
 
 export function emptyDocument(): ModelDocument {
-  return { settings: defaultSettings(), entities: [], associations: [], links: [], inheritances: [], inheritanceLinks: [] };
+  return {
+    settings: defaultSettings(),
+    entities: [],
+    associations: [],
+    links: [],
+    inheritances: [],
+    inheritanceLinks: [],
+    layout: { positions: {}, bends: {} },
+  };
 }
 
 export function createAttribute(name: string, patch: Partial<Attribute> = {}): Attribute {
   return { id: newId(), name, identifier: false, notNull: false, unique: false, ...patch };
 }
 
-export function createEntity(name: string, position: Point): Entity {
-  return { id: newId(), kind: "entity", name, attributes: [], position, fictive: false };
+/** Objets du schéma : leur position se range dans `ModelDocument.layout` (J-01, phase 3). */
+export function createEntity(name: string): Entity {
+  return { id: newId(), kind: "entity", name, attributes: [], fictive: false };
 }
 
-export function createAssociation(name: string, position: Point): Association {
-  return { id: newId(), kind: "association", name, attributes: [], position };
+export function createAssociation(name: string): Association {
+  return { id: newId(), kind: "association", name, attributes: [] };
 }
 
-export function createInheritance(position: Point): Inheritance {
-  return { id: newId(), kind: "inheritance", constraint: "none", position };
+export function createInheritance(): Inheritance {
+  return { id: newId(), kind: "inheritance", constraint: "none" };
 }
 
 export function createInheritanceLink(inheritanceId: Id, entityId: Id): InheritanceLink {
-  return { id: newId(), inheritanceId, entityId, bends: [] };
+  return { id: newId(), inheritanceId, entityId };
 }
 
 export function createLink(associationId: Id, entityId: Id): Link {
@@ -36,7 +45,6 @@ export function createLink(associationId: Id, entityId: Id): Link {
     entityId,
     cardinality: { min: 0, max: "n" },
     relativeId: false,
-    bends: [],
   };
 }
 

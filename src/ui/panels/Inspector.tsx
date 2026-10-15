@@ -1,4 +1,5 @@
 import {
+  bendsOf,
   REFERENTIAL_ACTIONS,
   TYPOLOGIES,
   type Association,
@@ -259,7 +260,7 @@ function LinkPanel({ doc, link, report }: { doc: ModelDocument; link: Link; repo
           />
         </Field>
       </Section>
-      <PathSection linkId={link.id} bends={link.bends.length} />
+      <PathSection linkId={link.id} bends={bendsOf(doc.layout, link.id).length} />
       <RelationTextSection linkId={link.id} value={link.relationLabel} />
     </>
   );

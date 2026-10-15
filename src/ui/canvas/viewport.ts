@@ -1,4 +1,4 @@
-import { diagramLinks, diagramNodes, type ModelDocument, type Point } from "@core/index";
+import { diagramNodes, positionOf, type ModelDocument, type Point } from "@core/index";
 import { logicalModelOf } from "@/app/derived";
 import type { ViewMode } from "@/app/document/documentView";
 import type { DocumentHandle } from "@/app/document/handle";
@@ -28,7 +28,7 @@ function canvasSizeNow() {
 export function layoutsOf(doc: ModelDocument): Map<string, NodeLayout> {
   const display = doc.settings.display;
   const linkNames = associationNamesByLink(doc);
-  return new Map(diagramNodes(doc).map((n) => [n.id, nodeLayout(n, display, linkNames)]));
+  return new Map(diagramNodes(doc).map((n) => [n.id, nodeLayout(n, positionOf(doc.layout, n.id), display, linkNames)]));
 }
 
 /** Zoome en gardant fixe le point écran `anchor` (par défaut le centre du canevas). */
@@ -52,7 +52,7 @@ export const zoomBy = (doc: DocumentHandle, factor: number, anchor?: Point) =>
 /** Emprise de la vue : objets, et en MCD les cassures des liens (boucles des réflexives, qui débordent). */
 function rectsOf(doc: ModelDocument, view: ViewMode): Rect[] {
   if (view !== "mcd") return tableLayouts(logicalModelOf(doc), doc, view);
-  const bends = diagramLinks(doc).flatMap((l) => l.bends.map((b) => ({ x: b.x, y: b.y, width: 0, height: 0 })));
+  const bends = Object.values(doc.layout.bends).flatMap((points) => points.map((b) => ({ x: b.x, y: b.y, width: 0, height: 0 })));
   return [...layoutsOf(doc).values(), ...bends];
 }
 

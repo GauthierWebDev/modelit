@@ -100,7 +100,7 @@ function rowsOf(table: LogicalTable, mode: LogicalViewMode, doc: ModelDocument):
 }
 
 export function tableLayouts(model: LogicalModel, doc: ModelDocument, mode: LogicalViewMode): TableLayout[] {
-  const positions = new Map<Id, Point>([...doc.entities, ...doc.associations].map((n) => [n.id, n.position]));
+  const positions = doc.layout.positions;
   return model.tables.map((table) => {
     const raw = rowsOf(table, mode, doc);
     const nameWidth = Math.max(0, ...raw.map((r) => r.indent + textWidth(r.label, columnStyle(r))));
@@ -112,7 +112,7 @@ export function tableLayouts(model: LogicalModel, doc: ModelDocument, mode: Logi
     const width = Math.ceil(Math.max(MIN_WIDTH, contentWidth, textWidth(table.name, { weight: TITLE_WEIGHT }) + 2 * PAD_X));
     const rows = raw.map((r, i) => ({ ...r, y: TITLE_HEIGHT + 4 + i * ROW_HEIGHT }));
     const height = TITLE_HEIGHT + 4 + Math.max(1, rows.length) * ROW_HEIGHT + 6;
-    const position = positions.get(table.source.id) ?? { x: 0, y: 0 };
+    const position = positions[table.source.id] ?? { x: 0, y: 0 };
     const keyRows = rows.filter((r) => r.primaryKey);
     const compositeKey =
       table.primaryKey.length > 1 && keyRows.length > 1

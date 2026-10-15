@@ -11,7 +11,7 @@ import { defaultSettings, type DocumentSettings } from "../model/settings";
  * une migration `n → n+1` dans `MIGRATIONS`. Les fichiers anciens restent lisibles.
  */
 export const FILE_FORMAT = "modelit/model";
-export const CURRENT_VERSION = 2;
+export const CURRENT_VERSION = 3;
 export const FILE_EXTENSION = "mcd";
 
 type RawModel = Record<string, unknown>;
@@ -31,6 +31,34 @@ const MIGRATIONS: Record<number, (model: RawModel) => RawModel> = {
       };
     }),
   }),
+  // v2 → v3 : positions et cassures sorties des objets vers `layout` (docs/jalons/J-01, phase 3).
+  2: (model) => {
+    const positions: RawModel = {};
+    const bends: RawModel = {};
+    const withoutPosition = (list: unknown) =>
+      asArray(list).map((node) => {
+        if (!isRecord(node)) return node;
+        const { position, ...rest } = node;
+        if (typeof rest.id === "string" && isRecord(position)) positions[rest.id] = position;
+        return rest;
+      });
+    const withoutBends = (list: unknown) =>
+      asArray(list).map((link) => {
+        if (!isRecord(link)) return link;
+        const { bends: points, ...rest } = link;
+        if (typeof rest.id === "string" && Array.isArray(points) && points.length) bends[rest.id] = points;
+        return rest;
+      });
+    return {
+      ...model,
+      entities: withoutPosition(model.entities),
+      associations: withoutPosition(model.associations),
+      inheritances: withoutPosition(model.inheritances),
+      links: withoutBends(model.links),
+      inheritanceLinks: withoutBends(model.inheritanceLinks),
+      layout: { positions, bends },
+    };
+  },
 };
 
 export class ModelFileError extends Error {}
@@ -83,6 +111,7 @@ function normalize(model: RawModel): ModelDocument {
   settings.keys.primary = migrateLegacyPattern(settings.keys.primary);
   settings.keys.foreign = migrateLegacyPattern(settings.keys.foreign);
   settings.dbmsVersion = resolveVersion(settings.dbms, typeof raw.dbmsVersion === "string" ? raw.dbmsVersion : undefined);
+  const layout = model.layout;
   return {
     settings,
     entities: asArray(model.entities),
@@ -95,6 +124,10 @@ function normalize(model: RawModel): ModelDocument {
     links: asArray(model.links),
     inheritances: asArray(model.inheritances),
     inheritanceLinks: asArray(model.inheritanceLinks),
+    layout: {
+      positions: isRecord(layout) && isRecord(layout.positions) ? layout.positions : {},
+      bends: isRecord(layout) && isRecord(layout.bends) ? layout.bends : {},
+    },
   } as ModelDocument;
 }
 
