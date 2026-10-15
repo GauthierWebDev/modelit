@@ -1,14 +1,14 @@
 import { useEffect } from "react";
 import { APP_NAME } from "@/app/appInfo";
 import { startAutosave } from "@/app/autosave";
-import { DocumentProvider, useDocument, useDocumentView } from "@/app/document/DocumentContext";
+import { DocumentProvider, useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { selectIsDirty } from "@/app/document/documentStore";
-import { confirmLoseAllChanges, fileName } from "@/app/fileCommands";
+import { closeDocument, confirmLoseAllChanges, documentName } from "@/app/fileCommands";
 import { useUiStore } from "@/app/uiStore";
 import { scheduleUpdateCheck, showWhatsNew } from "@/app/updates";
-import { useActiveDocument, useWorkspaceStore } from "@/app/workspace";
+import { activeDocument, useActiveDocument, useWorkspaceStore } from "@/app/workspace";
 import { t } from "@/i18n";
-import { onCloseRequested, onMenuAbout, setWindowTitle } from "@/platform/window";
+import { onCloseRequested, onMenuAbout, onMenuCloseTab, setWindowTitle } from "@/platform/window";
 import { AboutDialog } from "./about/AboutDialog";
 import { LogicalCanvas } from "./canvas/LogicalCanvas";
 import { McdCanvas } from "./canvas/McdCanvas";
@@ -17,6 +17,7 @@ import { TooltipLayer } from "./common/Tooltip";
 import { ExportDialog } from "./export/ExportDialog";
 import { OptionsDialog } from "./options/OptionsDialog";
 import { ReverseDialog } from "./reverse/ReverseDialog";
+import { TabBar } from "./tabs/TabBar";
 import { Inspector } from "./panels/Inspector";
 import { OutputPanel } from "./panels/OutputPanel";
 import { useShortcuts } from "./shortcuts";
@@ -25,7 +26,7 @@ import { Toolbar } from "./toolbar/Toolbar";
 
 const anyDocumentDirty = () => useWorkspaceStore.getState().documents.some((d) => selectIsDirty(d.store.getState()));
 
-/** Fenêtre : fournit le document actif à toute l'interface (docs/jalons/J-01, phase 1). */
+/** Fenêtre : fournit le document de l'onglet actif à toute l'interface (override O-44). */
 export function App() {
   const active = useActiveDocument();
   return (
@@ -38,11 +39,14 @@ export function App() {
 function Workbench() {
   useShortcuts();
   useApplyTheme();
+  const doc = useDocumentHandle();
   const view = useDocumentView((s) => s.view);
-  const filePath = useDocument((s) => s.filePath);
   const dirty = useDocument(selectIsDirty);
   const recovered = useDocument((s) => s.recovered);
-  const title = `${fileName(filePath)}${recovered ? ` ${t("app.recovered")}` : ""}`;
+  // Le nom suit l'enregistrement (filePath) et la numérotation « Sans titre N ».
+  useDocument((s) => s.filePath);
+  const untitled = useWorkspaceStore((s) => s.untitled);
+  const title = `${documentName(doc, untitled)}${recovered ? ` ${t("app.recovered")}` : ""}`;
   const status = useUiStore((s) => s.status);
   const notify = useUiStore((s) => s.notify);
 
@@ -54,6 +58,7 @@ function Workbench() {
   useEffect(() => scheduleUpdateCheck(), []);
   useEffect(() => showWhatsNew(), []);
   useEffect(() => onMenuAbout(() => useUiStore.getState().setAbout("about")), []);
+  useEffect(() => onMenuCloseTab(() => void closeDocument(activeDocument())), []);
 
   useEffect(() => onCloseRequested(confirmLoseAllChanges, anyDocumentDirty), []);
 
@@ -66,7 +71,9 @@ function Workbench() {
   return (
     <div className="flex h-screen flex-col bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
       <Toolbar />
-      <div className="flex min-h-0 flex-1">
+      <TabBar />
+      {/* Remonté à chaque changement d'onglet : gestes en cours et saisies locales repartent de zéro. */}
+      <div key={doc.id} className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="min-h-0 flex-1">
             {view === "mcd" ? <McdCanvas /> : <LogicalCanvas key={view} mode={view} />}

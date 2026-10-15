@@ -1,10 +1,10 @@
 import { diagramLinks, diagramNodes } from "@core/index";
 import { useEffect } from "react";
 import { deleteObjects, removeBend } from "@/app/commands";
-import { newDocument, openDocument, saveDocument } from "@/app/fileCommands";
+import { closeDocument, newDocument, openDocument, saveDocument } from "@/app/fileCommands";
 import { useUiStore, type Tool } from "@/app/uiStore";
 import { chooseTool, showView } from "@/app/viewCommands";
-import { activeDocument } from "@/app/workspace";
+import { activateNeighbour, activeDocument } from "@/app/workspace";
 import { fitToWindow, zoomBy, zoomTo } from "@/ui/canvas/viewport";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -28,11 +28,19 @@ export function useShortcuts() {
       const view = doc.view.getState();
       const ui = useUiStore.getState();
 
+      // Onglets (override O-44) : Ctrl + Tab sur tous les systèmes, y compris macOS.
+      if (e.ctrlKey && key === "tab") {
+        e.preventDefault();
+        activateNeighbour(e.shiftKey ? -1 : 1);
+        return;
+      }
+
       if (mod) {
         const actions: Record<string, () => void> = {
           s: () => void saveDocument(doc, e.shiftKey),
-          o: () => void openDocument(doc),
-          n: () => void newDocument(doc),
+          o: () => void openDocument(),
+          n: () => newDocument(),
+          w: () => void closeDocument(doc),
           e: () => ui.setExportOpen(true),
           ",": () => ui.setOptionsOpen(true),
           "1": () => showView(doc, "mcd"),

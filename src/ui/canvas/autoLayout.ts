@@ -95,11 +95,22 @@ const pool: Worker[] = [];
 const newWorker = () => new Worker(new URL("./layoutWorker.ts", import.meta.url), { type: "module" });
 
 /**
+ * Un placement à la fois : les Workers du pool sont partagés entre les onglets (override O-44),
+ * deux calculs simultanés se répondraient l'un à l'autre.
+ */
+let queue: Promise<unknown> = Promise.resolve();
+function computeLayout(nodes: GridNode[], edges: GridEdge[]): Promise<Map<string, Point>> {
+  const run = queue.then(() => computeLayoutNow(nodes, edges));
+  queue = run.catch(() => undefined);
+  return run;
+}
+
+/**
  * Lots de départs calculés en parallèle, un Web Worker par cœur disponible ; dès que la décision
  * est certaine (`decidedChunk`), les lots en cours sont abandonnés (leurs Workers remplacés).
  * Même résultat qu'en séquentiel.
  */
-async function computeLayout(nodes: GridNode[], edges: GridEdge[]): Promise<Map<string, Point>> {
+async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<Map<string, Point>> {
   const workerCount = Math.max(1, Math.min(LAYOUT_CHUNKS, (navigator.hardwareConcurrency || 2) - 1));
   while (pool.length < workerCount) pool.push(newWorker());
   const workers = pool.slice(0, workerCount);
