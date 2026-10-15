@@ -10,6 +10,7 @@ export const fr = {
   "app.untitledN": "Sans titre {n}",
   "tabs.label": "Documents ouverts",
   "tabs.close": "Fermer l'onglet ({key})",
+  "tabs.new": "Nouvel onglet ({key})",
   "common.close": "Fermer",
   "physical.toggle": "Vue avancée (annotations physiques)",
   "physical.title": "Annotations physiques",

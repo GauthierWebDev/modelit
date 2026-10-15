@@ -1,7 +1,7 @@
 import { diagramLinks, diagramNodes } from "@core/index";
 import { useEffect } from "react";
 import { deleteObjects, removeBend } from "@/app/commands";
-import { closeDocument, newDocument, openDocument, saveDocument } from "@/app/fileCommands";
+import { closeDocument, newDocument, newTab, openDocument, saveDocument } from "@/app/fileCommands";
 import { useUiStore, type Tool } from "@/app/uiStore";
 import { chooseTool, showView } from "@/app/viewCommands";
 import { activateNeighbour, activeDocument } from "@/app/workspace";
@@ -40,6 +40,7 @@ export function useShortcuts() {
           s: () => void saveDocument(doc, e.shiftKey),
           o: () => void openDocument(),
           n: () => newDocument(),
+          t: () => newTab(),
           w: () => void closeDocument(doc),
           e: () => ui.setExportOpen(true),
           ",": () => ui.setOptionsOpen(true),
