@@ -1,7 +1,7 @@
 # Pipeline : tests sur les trois OS, exécution réelle des scripts générés sur PostgreSQL 18 et
 # MySQL 8.4 (Docker, overrides O-29 et O-35), puis build de l'application native sur les trois OS.
 #
-# - Branche main et pull requests : les installeurs sont joints au run (artefacts, 7 jours).
+# - Branches main et dev, pull requests : les installeurs sont joints au run (artefacts, 7 jours).
 # - Tag `vX.Y.Z` : release GitHub en brouillon, avec les installeurs signés pour la mise à jour
 #   automatique et `latest.json`. L'application ne voit la version qu'une fois la release publiée.
 #
@@ -12,7 +12,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     tags: ["v*"]
   pull_request:
 
