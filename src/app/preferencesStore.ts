@@ -2,6 +2,7 @@ import { latestVersion, migrateLegacyPattern, type Dbms, type KeyPattern } from 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { systemLocale, type Locale } from "@/i18n";
+import { defaultLayout, sanitizeLayout, type DockLayout } from "./dock/layout";
 
 /**
  * Options générales (override O-21) : propres au poste, conservées dans le localStorage,
@@ -46,6 +47,8 @@ export interface Preferences {
   lastUpdateCheck: number;
   /** Dernière version lancée sur ce poste : ses nouveautés sont montrées après une mise à jour. */
   lastSeenVersion: string;
+  /** Disposition de la barre d'outils et des sections (overrides O-45, O-46). */
+  dock: DockLayout;
 }
 
 interface PreferencesState extends Preferences {
@@ -59,6 +62,8 @@ interface PreferencesState extends Preferences {
   setUpdateCheck: (enabled: boolean) => void;
   setLastUpdateCheck: (time: number) => void;
   setLastSeenVersion: (version: string) => void;
+  /** Applique une opération de `dock/layout.ts` à la disposition. */
+  updateDock: (change: (layout: DockLayout) => DockLayout) => void;
 }
 
 const initial: Preferences = {
@@ -78,6 +83,7 @@ const initial: Preferences = {
   updateCheck: true,
   lastUpdateCheck: 0,
   lastSeenVersion: "",
+  dock: defaultLayout(),
 };
 
 export const usePreferencesStore = create<PreferencesState>()(
@@ -94,6 +100,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       setUpdateCheck: (updateCheck) => set({ updateCheck }),
       setLastUpdateCheck: (lastUpdateCheck) => set({ lastUpdateCheck }),
       setLastSeenVersion: (lastSeenVersion) => set({ lastSeenVersion }),
+      updateDock: (change) => set((s) => ({ dock: change(s.dock) })),
     }),
     {
       name: "modelit/preferences",
@@ -114,6 +121,7 @@ export const usePreferencesStore = create<PreferencesState>()(
             foreignKey: migrateLegacyPattern(defaults.foreignKey),
           },
           export: { ...current.export, ...saved.export },
+          dock: saved.dock ? sanitizeLayout(saved.dock) : current.dock,
         };
       },
       migrate: (persisted) => persisted as PreferencesState,
