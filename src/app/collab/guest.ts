@@ -34,6 +34,8 @@ export interface GuestSession {
   setIdentity: (name: string, color: string) => void;
   /** Réponse au défi d'une session protégée. */
   answer: (password: string) => Promise<void>;
+  /** Connexion retrouvée (O-05 §4.4) : nouveau canal vers le même hôte. */
+  reconnect: (link: GuestLink) => void;
   leave: () => void;
   /** Document courant, gardé en copie à la fin de la session (D16). */
   snapshot: () => ModelDocument;
@@ -44,74 +46,98 @@ const createGuestState = () =>
 
 export function startGuest({ link, secret, name, color }: { link: GuestLink; secret: string; name: string; color: string }): GuestSession {
   const state = createGuestState();
+  let current = link;
   const canEdit = () => state.getState().status === "connected" && state.getState().role === "editor";
   const store = createSessionStore(emptyDocument(), {
     canEdit,
-    publish: (ops, label) => link.send({ type: "ops", ops, ...(label === "history.ai" ? { ai: true } : {}) }),
+    publish: (ops, label) => current.send({ type: "ops", ops, ...(label === "history.ai" ? { ai: true } : {}) }),
   });
 
   let challenge: { nonce: string; salt: string } | null = null;
   let identity = { name, color };
+  /** Mot de passe accepté, gardé en mémoire le temps de la session : reconnexion sans le redemander. */
+  let accepted: string | null = null;
+  let pending: string | null = null;
 
-  const offMessage = link.onMessage((message) => {
-    switch (message.type) {
-      case "challenge": {
-        const wrong = challenge !== null;
-        challenge = { nonce: message.nonce, salt: message.salt };
-        state.setState({ status: "password", password: { attemptsLeft: message.attemptsLeft, wrong } });
-        return;
-      }
-      case "welcome":
-        store.getState().reset(message.doc);
-        state.setState({ status: "connected", role: message.role, you: message.you, participants: message.participants, aiAllowed: message.aiAllowed, password: null });
-        return;
-      case "ops":
-        store.getState().applyRemote(message.ops);
-        return;
-      case "participants":
-        state.setState({ participants: message.participants });
-        return;
-      case "settings":
-        state.setState({ aiAllowed: message.aiAllowed });
-        return;
-      case "rejected":
-        if (message.reason === "unknown-link" || message.reason === "bad-password") state.setState({ status: "ended", ended: message.reason, password: null });
-        else {
-          // Modification refusée, déjà appliquée ici : retour à l'état de l'hôte.
-          if (message.doc) store.getState().reset(message.doc);
-          state.setState({ rejected: message.reason });
+  const answer = async (password: string) => {
+    if (!challenge) return;
+    pending = password;
+    const proof = await prove(password, challenge.salt, challenge.nonce);
+    state.setState({ status: "connecting" });
+    current.send({ type: "hello", secret, ...identity, proof });
+  };
+
+  /** Branche un canal : messages de l'hôte, fin de connexion, puis entrée dans la session. */
+  const attach = (target: GuestLink) => {
+    const offMessage = target.onMessage((message) => {
+      switch (message.type) {
+        case "challenge": {
+          const wrong = challenge !== null && pending !== null;
+          challenge = { nonce: message.nonce, salt: message.salt };
+          if (accepted && !wrong) return void answer(accepted);
+          state.setState({ status: "password", password: { attemptsLeft: message.attemptsLeft, wrong } });
+          return;
         }
-        return;
-      case "ended":
-        state.setState({ status: "ended", ended: message.reason });
-        return;
-    }
-  });
-  const offClose = link.onClose(() => {
-    if (state.getState().status !== "ended") state.setState({ status: "disconnected" });
-  });
-
-  link.send({ type: "hello", secret, name, color });
+        case "welcome":
+          accepted = pending ?? accepted;
+          challenge = null;
+          pending = null;
+          store.getState().reset(message.doc);
+          state.setState({ status: "connected", role: message.role, you: message.you, participants: message.participants, aiAllowed: message.aiAllowed, password: null });
+          return;
+        case "ops":
+          store.getState().applyRemote(message.ops);
+          return;
+        case "participants":
+          state.setState({ participants: message.participants });
+          return;
+        case "settings":
+          state.setState({ aiAllowed: message.aiAllowed });
+          return;
+        case "rejected":
+          if (message.reason === "unknown-link" || message.reason === "bad-password") state.setState({ status: "ended", ended: message.reason, password: null });
+          else {
+            // Modification refusée, déjà appliquée ici : retour à l'état de l'hôte.
+            if (message.doc) store.getState().reset(message.doc);
+            state.setState({ rejected: message.reason });
+          }
+          return;
+        case "ended":
+          state.setState({ status: "ended", ended: message.reason });
+          return;
+      }
+    });
+    const offClose = target.onClose(() => {
+      if (state.getState().status !== "ended") state.setState({ status: "disconnected" });
+    });
+    target.send({ type: "hello", secret, ...identity });
+    return () => {
+      offMessage();
+      offClose();
+    };
+  };
+  let detach = attach(link);
 
   return {
     store,
     state,
     setIdentity: (n, c) => {
       identity = { name: n, color: c };
-      link.send({ type: "identity", name: n, color: c });
+      current.send({ type: "identity", name: n, color: c });
     },
-    answer: async (password) => {
-      if (!challenge) return;
-      const proof = await prove(password, challenge.salt, challenge.nonce);
+    answer,
+    reconnect: (target) => {
+      detach();
+      current = target;
+      challenge = null;
       state.setState({ status: "connecting" });
-      link.send({ type: "hello", secret, ...identity, proof });
+      detach = attach(target);
     },
     leave: () => {
-      link.send({ type: "leave" });
+      current.send({ type: "leave" });
       state.setState({ status: "ended", ended: null });
-      offMessage();
-      offClose();
-      link.close();
+      detach();
+      current.close();
     },
     snapshot: () => store.getState().doc,
   };

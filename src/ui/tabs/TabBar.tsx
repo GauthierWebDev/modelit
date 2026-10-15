@@ -89,7 +89,8 @@ function Tab({
   const dirty = useStore(doc.store, selectIsDirty);
   const recovered = useStore(doc.store, (s) => s.recovered);
   const untitled = useWorkspaceStore((s) => s.untitled);
-  const name = documentName(doc, untitled);
+  const titles = useWorkspaceStore((s) => s.titles);
+  const name = documentName(doc, untitled, titles);
 
   useEffect(() => {
     if (active) ref.current?.scrollIntoView({ block: "nearest", inline: "nearest" });

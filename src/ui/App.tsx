@@ -49,7 +49,8 @@ function Workbench() {
   // Le nom suit l'enregistrement (filePath) et la numérotation « Sans titre N ».
   useDocument((s) => s.filePath);
   const untitled = useWorkspaceStore((s) => s.untitled);
-  const title = `${documentName(doc, untitled)}${recovered ? ` ${t("app.recovered")}` : ""}`;
+  const titles = useWorkspaceStore((s) => s.titles);
+  const title = `${documentName(doc, untitled, titles)}${recovered ? ` ${t("app.recovered")}` : ""}`;
   const status = useUiStore((s) => s.status);
   const notify = useUiStore((s) => s.notify);
 
