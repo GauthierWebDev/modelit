@@ -49,6 +49,15 @@ export interface Preferences {
   lastSeenVersion: string;
   /** Disposition de la barre d'outils et des sections (overrides O-45, O-46). */
   dock: DockLayout;
+  /** Assistants IA par MCP (override O-47) : désactivé par défaut. */
+  mcp: McpPreferences;
+}
+
+export interface McpPreferences {
+  enabled: boolean;
+  port: number;
+  /** Jeton d'accès propre au poste ; créé à la première activation. */
+  token: string;
 }
 
 interface PreferencesState extends Preferences {
@@ -64,6 +73,7 @@ interface PreferencesState extends Preferences {
   setLastSeenVersion: (version: string) => void;
   /** Applique une opération de `dock/layout.ts` à la disposition. */
   updateDock: (change: (layout: DockLayout) => DockLayout) => void;
+  setMcp: (patch: Partial<McpPreferences>) => void;
 }
 
 const initial: Preferences = {
@@ -84,6 +94,7 @@ const initial: Preferences = {
   lastUpdateCheck: 0,
   lastSeenVersion: "",
   dock: defaultLayout(),
+  mcp: { enabled: false, port: 47321, token: "" },
 };
 
 export const usePreferencesStore = create<PreferencesState>()(
@@ -101,6 +112,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       setLastUpdateCheck: (lastUpdateCheck) => set({ lastUpdateCheck }),
       setLastSeenVersion: (lastSeenVersion) => set({ lastSeenVersion }),
       updateDock: (change) => set((s) => ({ dock: change(s.dock) })),
+      setMcp: (patch) => set((s) => ({ mcp: { ...s.mcp, ...patch } })),
     }),
     {
       name: "modelit/preferences",
@@ -122,6 +134,7 @@ export const usePreferencesStore = create<PreferencesState>()(
           },
           export: { ...current.export, ...saved.export },
           dock: saved.dock ? sanitizeLayout(saved.dock) : current.dock,
+          mcp: { ...current.mcp, ...saved.mcp },
         };
       },
       migrate: (persisted) => persisted as PreferencesState,
