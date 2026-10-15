@@ -1,4 +1,4 @@
-import type { Inheritance, InheritanceConstraint, InheritanceLink, ModelDocument } from "@core/index";
+import { bendsOf, type Inheritance, type InheritanceConstraint, type InheritanceLink, type ModelDocument } from "@core/index";
 import * as cmd from "@/app/commands";
 import { useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { t } from "@/i18n";
@@ -105,7 +105,7 @@ export function InheritanceLinkPanel({ doc, link }: { doc: ModelDocument; link: 
           </button>
         )}
       </Section>
-      <PathSection linkId={link.id} bends={link.bends.length} />
+      <PathSection linkId={link.id} bends={bendsOf(doc.layout, link.id).length} />
       {!isParent && <RelationTextSection linkId={link.id} value={link.relationLabel} />}
     </>
   );

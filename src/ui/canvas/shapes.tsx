@@ -267,10 +267,10 @@ export function LinkHandles({
   geometry,
   activeIndex,
 }: {
-  geometry: { link: { id: Id; bends: Point[] }; points: Point[] };
+  geometry: { link: { id: Id }; bends: Point[]; points: Point[] };
   activeIndex: number | null;
 }) {
-  const { link, points } = geometry;
+  const { link, bends, points } = geometry;
   return (
     <g data-id={link.id}>
       {segmentMidpoints(points).map(({ index, point }) => (
@@ -288,7 +288,7 @@ export function LinkHandles({
           data-tooltip={t("canvas.midHandle")}
         />
       ))}
-      {link.bends.map((b, index) => (
+      {bends.map((b, index) => (
         <circle
           key={`bend-${index}`}
           data-handle="bend"

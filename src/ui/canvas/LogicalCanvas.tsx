@@ -68,10 +68,7 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
         const d = drag.current;
         if (!d) return;
         const position = { x: snap(d.origin.x + point.x - d.start.x, grid), y: snap(d.origin.y + point.y - d.start.y, grid) };
-        docHandle.store.getState().preview((draft) => {
-          const node = draft.entities.find((n) => n.id === d.id) ?? draft.associations.find((n) => n.id === d.id);
-          if (node) node.position = position;
-        });
+        docHandle.store.getState().preview((draft) => void (draft.layout.positions[d.id] = position));
       }}
       onPointerUp={() => {
         if (drag.current) docHandle.store.getState().commit("history.moveTable");

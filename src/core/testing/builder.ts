@@ -20,17 +20,16 @@ export function model() {
   // Clés étrangères nommées comme la colonne référencée (masque [FK]) :
   // les tests de passage restent lisibles ; les masques ont leurs propres tests.
   doc.settings.keys.foreign = "<column>";
-  const at = { x: 0, y: 0 };
 
   const api = {
     entity(name: string, attributes: string[] = [], patch: Partial<Entity> = {}) {
-      const e = createEntity(name, at);
+      const e = createEntity(name);
       e.attributes = attributes.map(parseAttribute);
       doc.entities.push({ ...e, ...patch });
       return api;
     },
     association(name: string, legs: string[], attributes: string[] = [], patch: Partial<Association> = {}) {
-      const a = createAssociation(name, at);
+      const a = createAssociation(name);
       a.attributes = attributes.map(parseAttribute);
       doc.associations.push({ ...a, ...patch });
       for (const leg of legs) {
@@ -53,7 +52,7 @@ export function model() {
         if (!e) throw new Error(`Entité inconnue : ${name}`);
         return e.id;
       };
-      const h = createInheritance(at);
+      const h = createInheritance();
       h.constraint = constraint;
       if (parent) h.parentId = id(parent);
       doc.inheritances.push(h);

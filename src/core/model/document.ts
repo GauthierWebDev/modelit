@@ -80,7 +80,6 @@ interface NodeBase {
   logicalName?: string;
   attributes: Attribute[];
   comment?: string;
-  position: Point;
   // Annotations physiques de la table (override O-29)
   /** Nom entre guillemets dans le script d'origine : sa casse est significative. */
   caseSensitive?: boolean;
@@ -182,8 +181,6 @@ export interface Link {
    * pas : la base d'origine ne garantissait pas cette référence (O-36).
    */
   sourceNotEnforced?: boolean;
-  /** Points de cassure, en coordonnées du modèle. */
-  bends: Point[];
 }
 
 /** Contrainte d'un héritage (symbole dans le triangle, override O-18). */
@@ -200,7 +197,6 @@ export interface Inheritance {
   /** Entité cible (surtype), choisie parmi les entités reliées. */
   parentId?: Id;
   comment?: string;
-  position: Point;
 }
 
 /** Lien entre un héritage et une entité (surtype ou sous-type selon `Inheritance.parentId`). */
@@ -208,7 +204,6 @@ export interface InheritanceLink {
   id: Id;
   inheritanceId: Id;
   entityId: Id;
-  bends: Point[];
   /** Texte libre du trait sous-type → surtype dans le MLD / MPD (override O-25). */
   relationLabel?: string;
   /** Clé étrangère de l'entité spécialisée vers l'entité générique (override O-29). */
@@ -222,6 +217,17 @@ export interface InheritanceLink {
 
 export type ModelNode = Entity | Association | Inheritance;
 
+/**
+ * Géométrie du schéma, séparée de la sémantique (docs/jalons/J-01, phase 3) : déplacer un objet
+ * ne touche ni les entités ni les liens, donc ni le MLD ni le SQL dérivés. Indexée par identifiant.
+ */
+export interface DiagramLayout {
+  /** Coin haut-gauche des entités, associations et héritages, en coordonnées du modèle. */
+  positions: Record<Id, Point>;
+  /** Points de cassure des pattes et des liens d'héritage ; absent = trait droit. */
+  bends: Record<Id, Point[]>;
+}
+
 export interface ModelDocument {
   settings: DocumentSettings;
   entities: Entity[];
@@ -229,6 +235,22 @@ export interface ModelDocument {
   links: Link[];
   inheritances: Inheritance[];
   inheritanceLinks: InheritanceLink[];
+  layout: DiagramLayout;
+}
+
+const ORIGIN: Point = { x: 0, y: 0 };
+const STRAIGHT: Point[] = [];
+
+/** Position d'un objet du schéma (origine si elle n'est pas connue). */
+export const positionOf = (layout: DiagramLayout, id: Id): Point => layout.positions[id] ?? ORIGIN;
+
+/** Cassures d'un trait (aucune si elles ne sont pas connues). */
+export const bendsOf = (layout: DiagramLayout, id: Id): Point[] => layout.bends[id] ?? STRAIGHT;
+
+/** Fixe les cassures d'un trait ; une liste vide retire l'entrée (trait droit). */
+export function setBends(layout: DiagramLayout, id: Id, bends: Point[]) {
+  if (bends.length) layout.bends[id] = bends;
+  else delete layout.bends[id];
 }
 
 /** Tout trait du schéma : patte d'association ou lien d'héritage. */

@@ -1,4 +1,4 @@
-import { bestChunk, decidedChunk, diagramLinks, diagramNodes, LAYOUT_CHUNKS, linkSourceId, type ChunkResult, type GridEdge, type GridNode, type Id, type Point } from "@core/index";
+import { bendsOf, bestChunk, decidedChunk, diagramLinks, diagramNodes, LAYOUT_CHUNKS, linkSourceId, positionOf, type ChunkResult, type GridEdge, type GridNode, type Id, type Point } from "@core/index";
 import { moveNodes } from "@/app/commands";
 import { logicalModelOf } from "@/app/derived";
 import type { DocumentHandle } from "@/app/document/handle";
@@ -28,7 +28,7 @@ export async function autoLayoutTables(handle: DocumentHandle) {
   const mpd = new Map(tableLayouts(logicalModelOf(doc), doc, "mpd").map((t) => [t.sourceId, t]));
   const placed = await computeLayout(
     nodes.map((node) => {
-      const mcd = nodeLayout(node, display, associationNamesByLink(doc));
+      const mcd = nodeLayout(node, positionOf(doc.layout, node.id), display, associationNamesByLink(doc));
       const table = mpd.get(node.id);
       return {
         id: node.id,
@@ -51,7 +51,7 @@ export async function autoLayoutTables(handle: DocumentHandle) {
   const positions = new Map<Id, Point>([...placed].map(([id, p]) => [id, snap(p)]));
   const mcdRect = (id: Id): Rect => {
     const node = nodes.find((n) => n.id === id)!;
-    const { width, height } = nodeLayout(node, display, associationNamesByLink(doc));
+    const { width, height } = nodeLayout(node, positionOf(doc.layout, id), display, associationNamesByLink(doc));
     return { ...positions.get(id)!, width, height };
   };
 
@@ -63,7 +63,7 @@ export async function autoLayoutTables(handle: DocumentHandle) {
     if (reflexive) {
       // Seconde patte : contourne l'entité et l'association ; la première reste droite.
       if (link.id !== legs[1]!.id) {
-        if (link.bends.length) bends.set(link.id, []);
+        if (bendsOf(doc.layout, link.id).length) bends.set(link.id, []);
         continue;
       }
       const obstacles = [...positions.keys()].filter((id) => id !== link.entityId && id !== sourceId).map(mcdRect);
@@ -74,12 +74,13 @@ export async function autoLayoutTables(handle: DocumentHandle) {
       bends.set(link.id, reflexiveBends(mcdRect(link.entityId), mcdRect(sourceId), grid, obstacles, lines));
       continue;
     }
-    if (link.bends.length === 0) continue;
-    const node = (id: Id) => nodes.find((n) => n.id === id)!.position;
+    const linkBends = bendsOf(doc.layout, link.id);
+    if (linkBends.length === 0) continue;
+    const node = (id: Id) => positionOf(doc.layout, id);
     const delta = (id: Id) => ({ x: positions.get(id)!.x - node(id).x, y: positions.get(id)!.y - node(id).y });
     const dE = delta(link.entityId);
     const dA = delta(sourceId);
-    bends.set(link.id, dE.x === dA.x && dE.y === dA.y ? link.bends.map((b) => ({ x: b.x + dE.x, y: b.y + dE.y })) : []);
+    bends.set(link.id, dE.x === dA.x && dE.y === dA.y ? linkBends.map((b) => ({ x: b.x + dE.x, y: b.y + dE.y })) : []);
   }
 
   moveNodes(handle, positions, bends);
