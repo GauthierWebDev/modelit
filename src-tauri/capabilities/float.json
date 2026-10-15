@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "float",
+  "description": "Fenêtres flottantes (barre d'outils, groupes de sections ; O-45, O-46) : vues de la fenêtre principale. Elles se déplacent, se redimensionnent et échangent des événements avec elle ; aucun accès aux fichiers.",
+  "windows": [
+    "float-*"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-position",
+    "core:window:allow-start-resize-dragging",
+    "core:window:allow-set-size",
+    "core:window:allow-set-theme",
+    "core:window:allow-set-focus"
+  ]
+}

@@ -15,6 +15,7 @@ import { addAssociation, addEntity, addInheritance, connectNodes, removeBend } f
 import { useIssuesByTarget } from "@/app/derived";
 import { t } from "@/i18n";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
+import { revealSection } from "@/app/dock/actions";
 import { useUiStore } from "@/app/uiStore";
 import { CanvasSurface, hitId, hitIdAt } from "./CanvasSurface";
 import {
@@ -189,7 +190,7 @@ export function McdCanvas() {
     }
     if (target.closest("[data-badge]") && hit) {
       select([hit]);
-      useUiStore.getState().setBottomTab("issues");
+      revealSection("issues");
       return true;
     }
     const handle = target.closest<SVGElement>("[data-handle]");

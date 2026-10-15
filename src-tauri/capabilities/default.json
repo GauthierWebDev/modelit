@@ -1,12 +1,21 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions de la fenêtre principale. Les fichiers ne sont accessibles qu'après sélection par l'utilisateur dans un dialogue (le plugin dialog étend alors la portée du plugin fs). Liens externes : dépôt GitHub et texte de la licence uniquement.",
-  "windows": ["main"],
+  "description": "Permissions de la fenêtre principale. Les fichiers ne sont accessibles qu'après sélection par l'utilisateur dans un dialogue (le plugin dialog étend alors la portée du plugin fs). Liens externes : dépôt GitHub et texte de la licence uniquement. Fenêtres flottantes (O-45, O-46) : création, géométrie, affichage et fermeture des fenêtres float-*.",
+  "windows": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "core:window:allow-set-title",
     "core:window:allow-set-theme",
+    "core:webview:allow-create-webview-window",
+    "core:window:allow-set-position",
+    "core:window:allow-set-size",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-close",
+    "core:window:allow-set-focus",
     "core:window:allow-destroy",
     "dialog:allow-open",
     "dialog:allow-save",

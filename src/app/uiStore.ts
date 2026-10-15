@@ -2,12 +2,11 @@ import { create } from "zustand";
 
 /**
  * État d'interface propre à la FENÊTRE, non enregistré dans le fichier modèle et hors
- * historique. L'état propre à chaque document (vue, sélection, cadrage) est dans
+ * historique. La disposition des sections est dans les options du poste (`dock`). L'état propre à chaque document (vue, sélection, cadrage) est dans
  * `document/documentView.ts`.
  */
 
 export type Tool = "select" | "entity" | "association" | "inheritance" | "link";
-export type BottomTab = "mld" | "sql" | "issues";
 
 /** Onglets de la boîte À propos. */
 export type AboutTab = "about" | "changes";
@@ -27,7 +26,6 @@ interface UiState {
   /** Boîte « Rétroconception » ouverte. */
   reverseOpen: boolean;
   tool: Tool;
-  bottomTab: BottomTab;
   status: StatusMessage | null;
   /** Vue avancée de l'inspecteur : annotations physiques (override O-29). */
   advanced: boolean;
@@ -37,7 +35,6 @@ interface UiState {
   setAbout: (tab: AboutTab | null) => void;
   setReverseOpen: (open: boolean) => void;
   setTool: (tool: Tool) => void;
-  setBottomTab: (tab: BottomTab) => void;
   setAdvanced: (advanced: boolean) => void;
   notify: (status: StatusMessage | null) => void;
 }
@@ -48,7 +45,6 @@ export const useUiStore = create<UiState>()((set) => ({
   about: null,
   reverseOpen: false,
   tool: "select",
-  bottomTab: "mld",
   status: null,
   advanced: false,
 
@@ -58,7 +54,6 @@ export const useUiStore = create<UiState>()((set) => ({
   setOptionsOpen: (optionsOpen) => set({ optionsOpen }),
   setAbout: (about) => set({ about }),
   setReverseOpen: (reverseOpen) => set({ reverseOpen }),
-  setBottomTab: (bottomTab) => set({ bottomTab }),
   setAdvanced: (advanced) => set({ advanced }),
   notify: (status) => set({ status }),
 }));

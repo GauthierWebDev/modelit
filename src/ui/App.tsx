@@ -8,7 +8,9 @@ import { useUiStore } from "@/app/uiStore";
 import { scheduleUpdateCheck, showWhatsNew } from "@/app/updates";
 import { activeDocument, useActiveDocument, useWorkspaceStore } from "@/app/workspace";
 import { t } from "@/i18n";
+import { closeAllFloats, nativeWindows } from "@/platform/floatWindows";
 import { onCloseRequested, onMenuAbout, onMenuCloseTab, setWindowTitle } from "@/platform/window";
+import { FloatManager } from "./windows/FloatManager";
 import { AboutDialog } from "./about/AboutDialog";
 import { LogicalCanvas } from "./canvas/LogicalCanvas";
 import { McdCanvas } from "./canvas/McdCanvas";
@@ -18,11 +20,10 @@ import { ExportDialog } from "./export/ExportDialog";
 import { OptionsDialog } from "./options/OptionsDialog";
 import { ReverseDialog } from "./reverse/ReverseDialog";
 import { TabBar } from "./tabs/TabBar";
-import { Inspector } from "./panels/Inspector";
-import { OutputPanel } from "./panels/OutputPanel";
+import { DockZone, DragGhost, FloatingGroups } from "./dock/Dock";
 import { useShortcuts } from "./shortcuts";
 import { useApplyTheme } from "./theme";
-import { Toolbar } from "./toolbar/Toolbar";
+import { ToolbarHost } from "./toolbar/ToolbarHost";
 
 const anyDocumentDirty = () => useWorkspaceStore.getState().documents.some((d) => selectIsDirty(d.store.getState()));
 
@@ -60,7 +61,16 @@ function Workbench() {
   useEffect(() => onMenuAbout(() => useUiStore.getState().setAbout("about")), []);
   useEffect(() => onMenuCloseTab(() => void closeDocument(activeDocument())), []);
 
-  useEffect(() => onCloseRequested(confirmLoseAllChanges, anyDocumentDirty), []);
+  useEffect(
+    () =>
+      onCloseRequested(async () => {
+        const ok = await confirmLoseAllChanges();
+        // Les fenêtres flottantes se ferment avec la principale (O-45, O-46).
+        if (ok && nativeWindows()) await closeAllFloats();
+        return ok;
+      }, anyDocumentDirty),
+    [],
+  );
 
   useEffect(() => {
     if (!status) return;
@@ -70,7 +80,7 @@ function Workbench() {
 
   return (
     <div className="flex h-screen flex-col bg-white text-neutral-900 dark:bg-neutral-900 dark:text-neutral-100">
-      <Toolbar />
+      <ToolbarHost />
       <TabBar />
       {/* Remonté à chaque changement d'onglet : gestes en cours et saisies locales repartent de zéro. */}
       <div key={doc.id} className="flex min-h-0 flex-1">
@@ -78,14 +88,13 @@ function Workbench() {
           <div className="min-h-0 flex-1">
             {view === "mcd" ? <McdCanvas /> : <LogicalCanvas key={view} mode={view} />}
           </div>
-          <div className="h-56 flex-none border-t border-neutral-200 dark:border-neutral-700">
-            <OutputPanel />
-          </div>
+          <DockZone zone="bottom" />
         </div>
-        <aside className="w-80 flex-none border-l border-neutral-200 dark:border-neutral-700">
-          <Inspector />
-        </aside>
+        <DockZone zone="right" />
       </div>
+      <FloatingGroups />
+      <FloatManager />
+      <DragGhost />
       <ExportDialog />
       <OptionsDialog />
       <AboutDialog />
