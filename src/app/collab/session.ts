@@ -14,7 +14,7 @@ import { startHost, type HostSession } from "./host";
 import { displayName } from "./identity";
 import { buildLink, newSecret, parseLink } from "./link";
 import { MIN_PASSWORD_LENGTH, verifier } from "./password";
-import type { ChatMessage, GuestLink, HostLink, Participant, Presence } from "./protocol";
+import { MAX_DOCUMENT_BYTES, type ChatMessage, type GuestLink, type HostLink, type Participant, type Presence } from "./protocol";
 
 /**
  * Session collaborative de la fenêtre (O-05 ; J-01, phase 5a) : une à la fois, comme hôte ou comme
@@ -76,6 +76,13 @@ export const useCollabStore = create<CollabState>(() => ({
   error: null,
 }));
 
+/**
+ * Onglet de session en lecture seule pour ce poste : lecteur, ou invité en cours de reconnexion
+ * (O-05 §4.3, §4.4). Fonctionne aussi dans une fenêtre flottante (état reflété).
+ */
+export const selectReadOnlyTab = (s: CollabState): string | null =>
+  s.mode === "guest" && s.guest && (s.guest.role === "reader" || s.guest.status !== "connected") ? s.tabId : null;
+
 /** Messages reçus : compte ceux des autres arrivés depuis la dernière synchronisation. */
 function trackChat(next: ChatMessage[], you: string | null): Pick<CollabState, "chat" | "unread"> {
   const { chat, unread } = useCollabStore.getState();
@@ -120,9 +127,10 @@ const fail = (error: string) => useCollabStore.setState({ error });
 export async function shareActiveTab({ password, aiAllowed = false }: { password?: string; aiAllowed?: boolean } = {}): Promise<boolean> {
   if (!transport || useCollabStore.getState().mode !== "idle") return false;
   if (password && password.length < MIN_PASSWORD_LENGTH) return fail(t("collab.passwordTooShort", { n: MIN_PASSWORD_LENGTH })), false;
+  const tab = activeDocument();
+  if (new TextEncoder().encode(JSON.stringify(tab.store.getState().doc)).length > MAX_DOCUMENT_BYTES) return fail(t("collab.tooLarge")), false;
   useCollabStore.setState({ mode: "starting", error: null });
   presenceSent = null;
-  const tab = activeDocument();
   try {
     const started = await transport.startHost();
     const secrets = { editor: newSecret(), reader: newSecret() };
@@ -133,6 +141,7 @@ export async function shareActiveTab({ password, aiAllowed = false }: { password
       secrets,
       me: { id: "host", ...me() },
       aiAllowed,
+      title: documentName(tab),
       ...(password ? { password: await verifier(password) } : {}),
     });
     // L'onglet garde son fichier et son état « modifié » ; son historique devient personnel.
@@ -228,12 +237,14 @@ export async function joinFromLink(url: string): Promise<boolean> {
       you: s.you,
       guest: { role: s.role, status: s.status, password: s.password },
     });
-    const hostName = s.participants.find((p) => p.role === "host")?.name;
+    const hostName = s.participants.find((p) => p.role === "host")?.name ?? "?";
+    // « <nom> — session de <hôte> » (O-05 §4.2).
+    const title = t("collab.tabTitle", { name: s.title ?? t("app.untitled"), host: hostName });
     if (s.status === "connected" && !opened) {
       opened = true;
-      addTab(tab, t("collab.tabTitle", { host: hostName ?? "?" }));
+      addTab(tab, title);
       useCollabStore.setState({ mode: "guest", tabId: tab.id });
-    } else if (opened && hostName) setTitle(tab.id, t("collab.tabTitle", { host: hostName }));
+    } else if (opened) setTitle(tab.id, title);
     if (s.status === "disconnected") reconnect();
     if (s.status === "ended") void endGuestSession(s.ended);
   };
@@ -262,6 +273,21 @@ function reconnect() {
     }
   };
   current.retry = setTimeout(() => void attempt(), RECONNECT_EVERY);
+}
+
+/**
+ * Fermeture de l'application : l'hôte arrête la session (les invités voient « arrêtée par
+ * l'hôte », pas une perte de connexion) ; un invité la quitte (O-05 §4.4).
+ */
+export async function endSessionOnExit() {
+  if (host) await stopSharing();
+  else if (guest) {
+    const { session, off, retry } = guest;
+    guest = null;
+    off();
+    clearTimeout(retry);
+    session.leave();
+  }
 }
 
 /** Réponse au mot de passe demandé par l'hôte. */
@@ -299,6 +325,7 @@ async function endGuestSession(reason: string | null) {
     lost: t("collab.endedLost"),
     "unknown-link": t("collab.endedUnknownLink"),
     "bad-password": t("collab.endedBadPassword"),
+    full: t("collab.endedFull"),
   };
   if (reason && messages[reason]) {
     await alertDialog({ title: t("collab.endedTitle"), message: messages[reason]!, ...(tabId ? { detail: t("collab.copyKept") } : {}), okLabel: t("common.ok") });

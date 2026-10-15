@@ -71,6 +71,8 @@ export type ToGuest =
       participants: Participant[];
       aiAllowed: boolean;
       chat: ChatMessage[];
+      /** Nom du document partagé (titre de l'onglet de l'invité). */
+      title?: string;
     }
   /** Modifications appliquées par l'hôte, dans l'ordre ; `author` : participant d'origine. */
   | { type: "ops"; ops: Op[]; author: string }
@@ -86,7 +88,11 @@ export type ToGuest =
   | { type: "rejected"; reason: RejectReason; doc?: ModelDocument }
   | { type: "ended"; reason: "stopped" | "kicked" };
 
-export type RejectReason = "unknown-link" | "bad-password" | "read-only" | "ai-disabled";
+export type RejectReason = "unknown-link" | "bad-password" | "full" | "read-only" | "ai-disabled";
+
+/** Limites d'une session (O-05 §10). */
+export const MAX_PARTICIPANTS = 20;
+export const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
 
 /** Côté hôte : un canal par invité, désigné par un identifiant de connexion. */
 export interface HostLink {

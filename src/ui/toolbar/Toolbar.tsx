@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { DBMS_LIST, versionOptions } from "@core/index";
 import { ChevronDown, DatabaseZap, FilePlus, FolderOpen, GripVertical, ImageDown, Info, LayoutDashboard, Maximize, Monitor, Moon, MousePointer2, PanelsTopLeft, Redo2, Save, Settings, Spline, Square, Sun, Triangle, Undo2, Users, ZoomIn, ZoomOut } from "lucide-react";
 import type { PointerEvent, ReactNode } from "react";
@@ -7,6 +8,7 @@ import { selectRedoLabel, selectUndoLabel } from "@/app/document/documentStore";
 import type { ViewMode } from "@/app/document/documentView";
 import { usePreferencesStore, type ThemePreference } from "@/app/preferencesStore";
 import { useCollabStore } from "@/app/collab/session";
+import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { useUiStore, type Tool } from "@/app/uiStore";
 import { chooseTool, showView } from "@/app/viewCommands";
 import { t, type MessageKey } from "@/i18n";
@@ -56,6 +58,11 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
   const { tool, setOptionsOpen, setExportOpen, setReverseOpen, setShareOpen, setAbout } = useUiStore();
   const sharing = useCollabStore((s) => s.mode === "host" || s.mode === "guest");
   const doc = useDocumentHandle();
+  // Lecture seule (lecteur, reconnexion) : seul l'outil de sélection reste (O-05 §4.3).
+  const readOnly = useSessionReadOnly(doc);
+  useEffect(() => {
+    if (readOnly && tool !== "select") chooseTool(doc, "select");
+  }, [readOnly, tool, doc]);
   const view = useDocumentView((s) => s.view);
   const zoom = useDocumentView((s) => s.viewport.zoom);
   const undoLabel = useDocument(selectUndoLabel);
@@ -145,7 +152,7 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
             key={x.id}
             tooltip={t("tool.tooltip", { label: t(x.label), key: x.key })}
             active={tool === x.id}
-            disabled={view !== "mcd" && x.id !== "select"}
+            disabled={(view !== "mcd" || readOnly) && x.id !== "select"}
             onClick={() => chooseTool(doc, x.id)}
           >
             {x.icon}

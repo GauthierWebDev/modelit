@@ -143,6 +143,13 @@ describe("gestionnaire de session", () => {
       expect(useCollabStore.getState().unread).toBe(0);
     });
 
+    it("modèle de plus de 5 Mo : partage refusé", async () => {
+      const doc = activeDocument();
+      doc.store.setState({ doc: { ...doc.store.getState().doc, entities: [{ id: "big", kind: "entity", name: "x".repeat(5 * 1024 * 1024), attributes: [], fictive: false }] } });
+      expect(await shareActiveTab()).toBe(false);
+      expect(useCollabStore.getState()).toMatchObject({ mode: "idle", error: expect.stringContaining("5 Mo") });
+    });
+
     it("mot de passe trop court : refusé", async () => {
       expect(await shareActiveTab({ password: "court" })).toBe(false);
       expect(useCollabStore.getState()).toMatchObject({ mode: "idle", error: expect.stringContaining("10") });
@@ -153,18 +160,25 @@ describe("gestionnaire de session", () => {
     function remoteHost(password?: Awaited<ReturnType<typeof verifier>>) {
       const doc = emptyDocument();
       doc.entities.push({ id: "e1", kind: "entity", name: "LIVRE", attributes: [], fictive: false });
-      const host = startHost({ link: net.hostLink, doc, secrets: { editor: "a".repeat(32), reader: "b".repeat(32) }, me: { id: "alice", name: "Alice", color: "#f00" }, ...(password ? { password } : {}) });
+      const host = startHost({
+        link: net.hostLink,
+        doc,
+        secrets: { editor: "a".repeat(32), reader: "b".repeat(32) },
+        me: { id: "alice", name: "Alice", color: "#f00" },
+        title: "Bibliothèque",
+        ...(password ? { password } : {}),
+      });
       return { host, edit: buildLink(JSON.stringify({ id: "hote" }), "a".repeat(32)) };
     }
 
-    it("rejoindre : nouvel onglet « Session de Alice » avec le document de l'hôte", async () => {
-      remoteHost();
+    it("rejoindre : nouvel onglet « <nom> — session de Alice » avec le document de l'hôte", async () => {
+      const { edit } = remoteHost();
       const before = useWorkspaceStore.getState().documents.length;
-      await joinFromLink(remoteHost().edit);
+      await joinFromLink(edit);
       await net.settle();
       expect(useCollabStore.getState().mode).toBe("guest");
       expect(useWorkspaceStore.getState().documents).toHaveLength(before + 1);
-      expect(documentName(activeDocument())).toBe("Session de Alice");
+      expect(documentName(activeDocument())).toBe("Bibliothèque — session de Alice");
       expect(activeDocument().store.getState().doc.entities.map((e) => e.name)).toEqual(["LIVRE"]);
     });
 

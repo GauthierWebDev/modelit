@@ -14,7 +14,7 @@ export function CollabIndicator() {
         ? t("collab.reconnecting")
         : guest?.role === "reader"
           ? t("collab.readOnly")
-          : t("collab.tabTitle", { host: participants.find((p) => p.role === "host")?.name ?? "?" });
+          : t("collab.sessionOf", { host: participants.find((p) => p.role === "host")?.name ?? "?" });
   return (
     <button
       type="button"

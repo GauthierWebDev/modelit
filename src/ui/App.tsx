@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { APP_NAME } from "@/app/appInfo";
 import { startAutosave } from "@/app/autosave";
+import { endSessionOnExit } from "@/app/collab/session";
 import { DocumentProvider, useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { selectIsDirty } from "@/app/document/documentStore";
 import { closeDocument, confirmLoseAllChanges, documentName } from "@/app/fileCommands";
@@ -71,6 +72,7 @@ function Workbench() {
     () =>
       onCloseRequested(async () => {
         const ok = await confirmLoseAllChanges();
+        if (ok) await endSessionOnExit();
         // Les fenêtres flottantes se ferment avec la principale (O-45, O-46).
         if (ok && nativeWindows()) await closeAllFloats();
         return ok;

@@ -1,7 +1,7 @@
 import type { ModelDocument } from "@core/index";
 import { create } from "zustand";
-import { MAX_ATTEMPTS, randomHex } from "./password";
-import { CHAT_MAX, type ChatMessage, type HostLink, type Participant, type Presence, type ToGuest, type ToHost } from "./protocol";
+import { failureDelay, MAX_ATTEMPTS, randomHex } from "./password";
+import { CHAT_MAX, MAX_PARTICIPANTS, type ChatMessage, type HostLink, type Participant, type Presence, type ToGuest, type ToHost } from "./protocol";
 import { createSessionStore, type SessionStore } from "./sessionStore";
 
 /**
@@ -18,8 +18,12 @@ export interface HostOptions {
   secrets: { editor: string; reader: string };
   me: Omit<Participant, "role">;
   aiAllowed?: boolean;
+  /** Nom du document partagé, montré aux invités. */
+  title?: string;
   /** Mot de passe de la session (`password.ts` : `verifier`), s'il y en a un. */
   password?: { salt: string; verify: (nonce: string, proof: string) => Promise<boolean> };
+  /** Attente (ms) ; remplaçable dans les tests. */
+  wait?: (ms: number) => Promise<void>;
 }
 
 export interface HostSession {
@@ -47,7 +51,18 @@ const createHostState = (participants: Participant[], aiAllowed: boolean) =>
 /** Messages gardés en mémoire pour les nouveaux venus, le temps de la session seulement. */
 const CHAT_KEPT = 500;
 
-export function startHost({ link, doc, secrets, me, aiAllowed = false, password }: HostOptions): HostSession {
+export function startHost({
+  link,
+  doc,
+  secrets,
+  me,
+  aiAllowed = false,
+  password,
+  title,
+  wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+}: HostOptions): HostSession {
+  /** Preuves fausses reçues pendant toute la session. */
+  let failures = 0;
   const guests = new Map<string, Participant>();
   const host: Participant = { ...me, role: "host" };
   const state = createHostState([host], aiAllowed);
@@ -101,10 +116,16 @@ export function startHost({ link, doc, secrets, me, aiAllowed = false, password 
       link.send(peer, { type: "rejected", reason: "unknown-link" });
       return link.close(peer);
     }
+    // Session complète (hôte compris) : refus avant même le mot de passe.
+    if (guests.size + 1 >= MAX_PARTICIPANTS) {
+      link.send(peer, { type: "rejected", reason: "full" });
+      return link.close(peer);
+    }
     if (password) {
       const pending = challenges.get(peer);
       if (!pending || !message.proof) return challenge(peer, pending?.attemptsLeft ?? MAX_ATTEMPTS);
       if (!(await password.verify(pending.nonce, message.proof))) {
+        await wait(failureDelay(++failures));
         if (pending.attemptsLeft <= 1) {
           challenges.delete(peer);
           link.send(peer, { type: "rejected", reason: "bad-password" });
@@ -118,7 +139,7 @@ export function startHost({ link, doc, secrets, me, aiAllowed = false, password 
     post("joined", guest);
     guests.set(peer, guest);
     const { aiAllowed: ai, chat } = state.getState();
-    link.send(peer, { type: "welcome", you: peer, role, doc: store.getState().doc, participants: everyone(), aiAllowed: ai, chat });
+    link.send(peer, { type: "welcome", you: peer, role, doc: store.getState().doc, participants: everyone(), aiAllowed: ai, chat, ...(title ? { title } : {}) });
     for (const [id, value] of presence) link.send(peer, { type: "presence", id, presence: value });
     publishParticipants();
   };

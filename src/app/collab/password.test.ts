@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { startGuest } from "./guest";
 import { startHost } from "./host";
 import { memoryNetwork } from "./memoryNetwork";
-import { verifier } from "./password";
+import { failureDelay, verifier } from "./password";
 
 /** Mot de passe d'une session (O-05 §4.2, §9) : défi-réponse vérifié par l'hôte. */
 describe("session protégée par mot de passe", () => {
@@ -59,5 +59,29 @@ describe("session protégée par mot de passe", () => {
     await net.settle();
     expect(bob.state.getState().status).toBe("connected");
     expect(sent.join("")).not.toContain("secret-tres-long");
+  });
+
+  it("attente croissante après 3 erreurs, comptée sur toute la session", async () => {
+    expect([1, 2, 3, 4, 5, 6, 9, 20].map(failureDelay)).toEqual([0, 0, 0, 1000, 2000, 4000, 30_000, 30_000]);
+    const net = memoryNetwork();
+    const waits: number[] = [];
+    startHost({
+      link: net.hostLink,
+      doc: emptyDocument(),
+      secrets: { editor: "e", reader: "r" },
+      me: { id: "alice", name: "Alice", color: "#000" },
+      password: await verifier("le bon mot de passe"),
+      wait: async (ms) => void waits.push(ms),
+    });
+    // Deux connexions successives : le compte continue.
+    for (const peer of ["eve1", "eve2"]) {
+      const eve = startGuest({ link: net.connect(peer), secret: "e", name: "Eve", color: "#222" });
+      await net.settle();
+      for (let i = 0; i < 3; i++) {
+        await eve.answer(`faux ${i}`);
+        await net.settle();
+      }
+    }
+    expect(waits).toEqual([0, 0, 0, 1000, 2000, 4000]);
   });
 }, 30_000);

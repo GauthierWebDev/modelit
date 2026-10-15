@@ -26,6 +26,8 @@ export interface GuestState {
   rejected: RejectReason | null;
   /** Essais restants pour le mot de passe ; `wrong` : la réponse précédente était fausse. */
   password: { attemptsLeft: number; wrong: boolean } | null;
+  /** Nom du document partagé par l'hôte. */
+  title: string | null;
   /** Présence des autres participants (O-05 §5). */
   presence: Record<string, Presence>;
   chat: ChatMessage[];
@@ -47,7 +49,7 @@ export interface GuestSession {
 }
 
 const createGuestState = () =>
-  create<GuestState>(() => ({ status: "connecting", role: null, you: null, participants: [], aiAllowed: false, ended: null, rejected: null, password: null, presence: {}, chat: [] }));
+  create<GuestState>(() => ({ status: "connecting", role: null, you: null, participants: [], aiAllowed: false, ended: null, rejected: null, password: null, presence: {}, chat: [], title: null }));
 
 export function startGuest({ link, secret, name, color }: { link: GuestLink; secret: string; name: string; color: string }): GuestSession {
   const state = createGuestState();
@@ -96,6 +98,7 @@ export function startGuest({ link, secret, name, color }: { link: GuestLink; sec
             aiAllowed: message.aiAllowed,
             password: null,
             chat: message.chat,
+            title: message.title ?? null,
           });
           return;
         case "ops":
@@ -118,8 +121,9 @@ export function startGuest({ link, secret, name, color }: { link: GuestLink; sec
           state.setState({ aiAllowed: message.aiAllowed });
           return;
         case "rejected":
-          if (message.reason === "unknown-link" || message.reason === "bad-password") state.setState({ status: "ended", ended: message.reason, password: null });
-          else {
+          if (message.reason === "unknown-link" || message.reason === "bad-password" || message.reason === "full") {
+            state.setState({ status: "ended", ended: message.reason, password: null });
+          } else {
             // Modification refusée, déjà appliquée ici : retour à l'état de l'hôte.
             if (message.doc) store.getState().reset(message.doc);
             state.setState({ rejected: message.reason });
