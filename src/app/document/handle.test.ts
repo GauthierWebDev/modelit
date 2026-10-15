@@ -1,7 +1,7 @@
 import { emptyDocument } from "@core/index";
 import { describe, expect, it } from "vitest";
-import { addEntity, deleteObjects, renameNode } from "../commands";
-import { logicalModelOf } from "../derived";
+import { addEntity, connectNodes, deleteObjects, moveNodes, renameNode } from "../commands";
+import { ddlOf, logicalModelOf } from "../derived";
 import { useUiStore } from "../uiStore";
 import { chooseTool, showView } from "../viewCommands";
 import { createDocumentHandle } from "./handle";
@@ -70,5 +70,42 @@ describe("documents instanciables", () => {
     const first = logicalModelOf(docA);
     logicalModelOf(docB);
     expect(logicalModelOf(docA)).toBe(first);
+  });
+});
+
+/** Géométrie séparée de la sémantique (docs/jalons/J-01, phase 3). */
+describe("géométrie du schéma", () => {
+  it("déplacer un objet ne recalcule ni le MLD ni le SQL", () => {
+    const doc = createDocumentHandle(emptyDocument());
+    const id = addEntity(doc, { x: 0, y: 0 });
+    const before = doc.store.getState().doc;
+    const logical = logicalModelOf(before);
+    const ddl = ddlOf(before);
+
+    moveNodes(doc, new Map([[id, { x: 300, y: 120 }]]), new Map(), "history.move");
+    const after = doc.store.getState().doc;
+    expect(after).not.toBe(before);
+    expect(after.layout.positions[id]).toEqual({ x: 300, y: 120 });
+    expect(logicalModelOf(after)).toBe(logical);
+    expect(ddlOf(after)).toBe(ddl);
+
+    renameNode(doc, id, "CLIENT");
+    expect(logicalModelOf(doc.store.getState().doc)).not.toBe(logical);
+  });
+
+  it("supprimer un objet retire sa position et les cassures de ses traits", () => {
+    const doc = createDocumentHandle(emptyDocument());
+    const a = addEntity(doc, { x: 0, y: 0 });
+    const b = addEntity(doc, { x: 400, y: 0 });
+    const result = connectNodes(doc, a, b, { associationPosition: { x: 200, y: 0 } });
+    if (!result || !("created" in result)) throw new Error("association non créée");
+    const [leg] = doc.store.getState().doc.links;
+    moveNodes(doc, new Map(), new Map([[leg!.id, [{ x: 100, y: 50 }]]]));
+    expect(Object.keys(doc.store.getState().doc.layout.bends)).toEqual([leg!.id]);
+
+    deleteObjects(doc, [a]);
+    const { layout } = doc.store.getState().doc;
+    expect(Object.keys(layout.positions).sort()).toEqual([b, result.created].sort());
+    expect(layout.bends).toEqual({});
   });
 });
