@@ -1,10 +1,14 @@
 import { diagramLinks, diagramNodes, type ModelDocument, type Point } from "@core/index";
 import { logicalModelOf } from "@/app/derived";
-import { useUiStore, type ViewMode } from "@/app/uiStore";
+import type { ViewMode } from "@/app/document/documentView";
+import type { DocumentHandle } from "@/app/document/handle";
 import { associationNamesByLink, nodeLayout, type NodeLayout, type Rect } from "./geometry";
 import { tableLayouts } from "./logicalGeometry";
 
-/** Opérations de zoom et de cadrage, partagées par la barre d'outils, les raccourcis et le canevas. */
+/**
+ * Opérations de zoom et de cadrage, partagées par la barre d'outils, les raccourcis et le canevas.
+ * Elles agissent sur le cadrage du document reçu.
+ */
 
 let observedSize = { width: 800, height: 600 };
 let canvasElement: Element | null = null;
@@ -28,17 +32,22 @@ export function layoutsOf(doc: ModelDocument): Map<string, NodeLayout> {
 }
 
 /** Zoome en gardant fixe le point écran `anchor` (par défaut le centre du canevas). */
-export function zoomTo(zoom: number, anchor: Point = { x: canvasSizeNow().width / 2, y: canvasSizeNow().height / 2 }) {
-  const { viewport, setViewport } = useUiStore.getState();
+export function zoomTo(
+  doc: DocumentHandle,
+  zoom: number,
+  anchor: Point = { x: canvasSizeNow().width / 2, y: canvasSizeNow().height / 2 },
+) {
+  const { viewport, setViewport } = doc.view.getState();
   const modelX = (anchor.x - viewport.x) / viewport.zoom;
   const modelY = (anchor.y - viewport.y) / viewport.zoom;
   setViewport({ zoom, x: anchor.x - modelX * zoom, y: anchor.y - modelY * zoom });
   // Le zoom peut avoir été borné : recaler sur la valeur effective.
-  const effective = useUiStore.getState().viewport.zoom;
+  const effective = doc.view.getState().viewport.zoom;
   if (effective !== zoom) setViewport({ zoom: effective, x: anchor.x - modelX * effective, y: anchor.y - modelY * effective });
 }
 
-export const zoomBy = (factor: number, anchor?: Point) => zoomTo(useUiStore.getState().viewport.zoom * factor, anchor);
+export const zoomBy = (doc: DocumentHandle, factor: number, anchor?: Point) =>
+  zoomTo(doc, doc.view.getState().viewport.zoom * factor, anchor);
 
 /** Emprise de la vue : objets, et en MCD les cassures des liens (boucles des réflexives, qui débordent). */
 function rectsOf(doc: ModelDocument, view: ViewMode): Rect[] {
@@ -48,13 +57,13 @@ function rectsOf(doc: ModelDocument, view: ViewMode): Rect[] {
 }
 
 /** « Ajuster à la fenêtre » : cadre tout le modèle, dans la vue courante. */
-export function fitToWindow(doc: ModelDocument, maxZoom?: number) {
-  fitToRects(rectsOf(doc, useUiStore.getState().view), maxZoom);
+export function fitToWindow(doc: DocumentHandle, maxZoom?: number) {
+  fitToRects(doc, rectsOf(doc.store.getState().doc, doc.view.getState().view), maxZoom);
 }
 
 /** Cadre les rectangles donnés, sans dépasser le zoom `maxZoom`. */
-export function fitToRects(layouts: Rect[], maxZoom = 1.5) {
-  const { setViewport } = useUiStore.getState();
+export function fitToRects(doc: DocumentHandle, layouts: Rect[], maxZoom = 1.5) {
+  const { setViewport } = doc.view.getState();
   if (layouts.length === 0) return setViewport({ x: 40, y: 40, zoom: 1 });
   const canvasSize = canvasSizeNow();
   const minX = Math.min(...layouts.map((l) => l.x));

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { useDocumentStore } from "@/app/documentStore";
+import { useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
+import type { ViewMode } from "@/app/document/documentView";
 import { fileName } from "@/app/fileCommands";
 import { usePreferencesStore } from "@/app/preferencesStore";
-import { useUiStore, type ViewMode } from "@/app/uiStore";
+import { useUiStore } from "@/app/uiStore";
 import { showError } from "@/app/dialogStore";
 import { saveExportFile } from "@/platform/files";
 import { inputClass } from "@/ui/common/controls";
@@ -15,15 +16,16 @@ import { DPI_OPTIONS, ExportError, FORMATS, renderExport } from "./exportImage";
 export function ExportDialog() {
   const open = useUiStore((s) => s.exportOpen);
   const setOpen = useUiStore((s) => s.setExportOpen);
-  const currentView = useUiStore((s) => s.view);
+  const doc = useDocumentHandle();
+  const currentView = useDocumentView((s) => s.view);
   const prefs = usePreferencesStore((s) => s.export);
   const setPrefs = usePreferencesStore((s) => s.setExport);
   const [view, setView] = useState<ViewMode>(currentView);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (open) setView(useUiStore.getState().view);
-  }, [open]);
+    if (open) setView(doc.view.getState().view);
+  }, [open, doc]);
 
   useEffect(() => {
     if (!open) return;
@@ -39,11 +41,12 @@ export function ExportDialog() {
   async function run() {
     setBusy(true);
     const ui = useUiStore.getState();
-    const previous = { view: ui.view, selection: ui.selection };
+    const display = doc.view.getState();
+    const previous = { view: display.view, selection: display.selection };
     try {
-      // Dessin de la vue demandée, sans sélection, avant capture.
-      ui.select([]);
-      ui.setView(view);
+      // Dessin de la vue demandée, sans sélection, avant capture (l'outil de la fenêtre n'est pas touché).
+      display.select([]);
+      display.setView(view);
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
       const blob = await renderExport({
         format: prefs.format,
@@ -52,7 +55,7 @@ export function ExportDialog() {
         background: transparent ? null : prefs.color,
         dpi: prefs.dpi,
       });
-      const path = useDocumentStore.getState().filePath;
+      const path = doc.store.getState().filePath;
       const base = path ? fileName(path).replace(/\.[^.]+$/, "") : t("export.defaultName");
       const saved = await saveExportFile(blob, `${base}-${view}.${prefs.format}`, {
         name: format.label,
@@ -65,8 +68,8 @@ export function ExportDialog() {
     } catch (e) {
       await showError(e instanceof ExportError ? e.message : t("export.failed", { error: String(e) }));
     } finally {
-      ui.setView(previous.view);
-      ui.select(previous.selection);
+      display.setView(previous.view);
+      display.select(previous.selection);
       setBusy(false);
     }
   }

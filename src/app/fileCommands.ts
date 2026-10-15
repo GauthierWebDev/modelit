@@ -2,16 +2,21 @@ import { deserializeModel, FILE_EXTENSION, ModelFileError, serializeModel } from
 import { t } from "@/i18n";
 import { openModelFile, saveModelFile } from "@/platform/files";
 import { confirmDialog, showError, showWarnings } from "./dialogStore";
-import { selectIsDirty, useDocumentStore } from "./documentStore";
+import { selectIsDirty } from "./document/documentStore";
+import type { DocumentHandle } from "./document/handle";
 import { newModelDocument } from "./modelDefaults";
 import { useUiStore } from "./uiStore";
+import { useWorkspaceStore } from "./workspace";
 
-/** Commandes Fichier : Nouveau, Ouvrir, Enregistrer, Enregistrer sous. */
+/**
+ * Commandes Fichier : Nouveau, Ouvrir, Enregistrer, Enregistrer sous. Elles agissent sur le
+ * document reçu ; Nouveau et Ouvrir le remplacent (en attendant les onglets, J-01 phase 2).
+ */
 
 export const fileName = (path: string | null) => (path ? (path.split(/[\\/]/).pop() ?? path) : t("app.untitled"));
 
-export async function confirmLoseChanges(): Promise<boolean> {
-  const state = useDocumentStore.getState();
+export async function confirmLoseChanges(doc: DocumentHandle): Promise<boolean> {
+  const state = doc.store.getState();
   if (!selectIsDirty(state)) return true;
   return confirmDialog({
     title: t("file.unsavedTitle"),
@@ -22,31 +27,39 @@ export async function confirmLoseChanges(): Promise<boolean> {
   });
 }
 
-export async function newDocument() {
-  if (!(await confirmLoseChanges())) return;
-  useDocumentStore.getState().load(newModelDocument(), null);
-  useUiStore.getState().select([]);
+/** Confirme la perte des modifications de tous les documents ouverts (redémarrage, fermeture). */
+export async function confirmLoseAllChanges(): Promise<boolean> {
+  for (const doc of useWorkspaceStore.getState().documents) {
+    if (!(await confirmLoseChanges(doc))) return false;
+  }
+  return true;
 }
 
-export async function openDocument() {
-  if (!(await confirmLoseChanges())) return;
+export async function newDocument(doc: DocumentHandle) {
+  if (!(await confirmLoseChanges(doc))) return;
+  doc.store.getState().load(newModelDocument(), null);
+  doc.view.getState().select([]);
+}
+
+export async function openDocument(doc: DocumentHandle) {
+  if (!(await confirmLoseChanges(doc))) return;
   try {
     const file = await openModelFile(t("file.modelFilter"));
     if (!file) return;
-    const { doc, warnings } = deserializeModel(file.content);
-    useDocumentStore.getState().load(doc, file.path);
-    useUiStore.getState().select([]);
+    const { doc: model, warnings } = deserializeModel(file.content);
+    doc.store.getState().load(model, file.path);
+    doc.view.getState().select([]);
     await showWarnings(warnings);
   } catch (e) {
     await showError(e instanceof ModelFileError ? e.message : t("file.openFailed", { error: String(e) }));
   }
 }
 
-export async function saveDocument(saveAs = false) {
-  const { doc, filePath, markSaved } = useDocumentStore.getState();
+export async function saveDocument(doc: DocumentHandle, saveAs = false) {
+  const { doc: model, filePath, markSaved } = doc.store.getState();
   try {
     const path = await saveModelFile(
-      serializeModel(doc),
+      serializeModel(model),
       saveAs ? null : filePath,
       `${t("file.defaultName")}.${FILE_EXTENSION}`,
       t("file.modelFilter"),

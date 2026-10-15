@@ -1,7 +1,7 @@
 import { bestChunk, decidedChunk, diagramLinks, diagramNodes, LAYOUT_CHUNKS, linkSourceId, type ChunkResult, type GridEdge, type GridNode, type Id, type Point } from "@core/index";
 import { moveNodes } from "@/app/commands";
 import { logicalModelOf } from "@/app/derived";
-import { useDocumentStore } from "@/app/documentStore";
+import type { DocumentHandle } from "@/app/document/handle";
 import { associationNamesByLink, center, nodeLayout, reflexiveBends, type Rect } from "./geometry";
 import { tableLayouts } from "./logicalGeometry";
 import { fitToWindow } from "./viewport";
@@ -20,8 +20,8 @@ import { fitToWindow } from "./viewport";
  *
  * Le calcul tourne dans des Web Workers, en parallèle (lots de départs) : l'interface reste réactive.
  */
-export async function autoLayoutTables() {
-  let doc = useDocumentStore.getState().doc;
+export async function autoLayoutTables(handle: DocumentHandle) {
+  let doc = handle.store.getState().doc;
   let nodes = diagramNodes(doc);
   if (nodes.length === 0) return;
   const display = doc.settings.display;
@@ -41,7 +41,7 @@ export async function autoLayoutTables() {
     diagramLinks(doc).map((l) => ({ a: linkSourceId(l), b: l.entityId })),
   );
   // Repartir du document courant ; s'il a changé d'objets pendant le calcul, résultat abandonné.
-  doc = useDocumentStore.getState().doc;
+  doc = handle.store.getState().doc;
   nodes = diagramNodes(doc);
   if (nodes.length !== placed.size || nodes.some((n) => !placed.has(n.id))) return;
 
@@ -82,10 +82,9 @@ export async function autoLayoutTables() {
     bends.set(link.id, dE.x === dA.x && dE.y === dA.y ? link.bends.map((b) => ({ x: b.x + dE.x, y: b.y + dE.y })) : []);
   }
 
-  moveNodes(positions, bends);
-  const after = useDocumentStore.getState().doc;
+  moveNodes(handle, positions, bends);
   // Cadrage sur la vue affichée (le MPD, bien plus large, laisserait le MCD minuscule), sans dépasser 100 %.
-  fitToWindow(after, 1);
+  fitToWindow(handle, 1);
 }
 
 /**

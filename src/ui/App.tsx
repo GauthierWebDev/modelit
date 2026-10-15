@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import { APP_NAME } from "@/app/appInfo";
 import { startAutosave } from "@/app/autosave";
-import { selectIsDirty, useDocumentStore } from "@/app/documentStore";
-import { confirmLoseChanges, fileName } from "@/app/fileCommands";
+import { DocumentProvider, useDocument, useDocumentView } from "@/app/document/DocumentContext";
+import { selectIsDirty } from "@/app/document/documentStore";
+import { confirmLoseAllChanges, fileName } from "@/app/fileCommands";
 import { useUiStore } from "@/app/uiStore";
 import { scheduleUpdateCheck, showWhatsNew } from "@/app/updates";
+import { useActiveDocument, useWorkspaceStore } from "@/app/workspace";
 import { t } from "@/i18n";
 import { onCloseRequested, onMenuAbout, setWindowTitle } from "@/platform/window";
 import { AboutDialog } from "./about/AboutDialog";
@@ -21,14 +23,25 @@ import { useShortcuts } from "./shortcuts";
 import { useApplyTheme } from "./theme";
 import { Toolbar } from "./toolbar/Toolbar";
 
+const anyDocumentDirty = () => useWorkspaceStore.getState().documents.some((d) => selectIsDirty(d.store.getState()));
 
+/** Fenêtre : fournit le document actif à toute l'interface (docs/jalons/J-01, phase 1). */
 export function App() {
+  const active = useActiveDocument();
+  return (
+    <DocumentProvider handle={active}>
+      <Workbench />
+    </DocumentProvider>
+  );
+}
+
+function Workbench() {
   useShortcuts();
   useApplyTheme();
-  const view = useUiStore((s) => s.view);
-  const filePath = useDocumentStore((s) => s.filePath);
-  const dirty = useDocumentStore(selectIsDirty);
-  const recovered = useDocumentStore((s) => s.recovered);
+  const view = useDocumentView((s) => s.view);
+  const filePath = useDocument((s) => s.filePath);
+  const dirty = useDocument(selectIsDirty);
+  const recovered = useDocument((s) => s.recovered);
   const title = `${fileName(filePath)}${recovered ? ` ${t("app.recovered")}` : ""}`;
   const status = useUiStore((s) => s.status);
   const notify = useUiStore((s) => s.notify);
@@ -42,7 +55,7 @@ export function App() {
   useEffect(() => showWhatsNew(), []);
   useEffect(() => onMenuAbout(() => useUiStore.getState().setAbout("about")), []);
 
-  useEffect(() => onCloseRequested(confirmLoseChanges, () => selectIsDirty(useDocumentStore.getState())), []);
+  useEffect(() => onCloseRequested(confirmLoseAllChanges, anyDocumentDirty), []);
 
   useEffect(() => {
     if (!status) return;

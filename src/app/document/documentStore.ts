@@ -1,11 +1,12 @@
 import type { ModelDocument } from "@core/index";
 import type { MessageKey } from "@/i18n";
-import { newModelDocument } from "./modelDefaults";
 import { produce, type Draft } from "immer";
-import { create } from "zustand";
+import { createStore, type StoreApi } from "zustand/vanilla";
 
 /**
- * État du document ouvert et historique annuler / rétablir.
+ * État d'un document ouvert et historique annuler / rétablir. Une instance par document
+ * (cf. `createDocumentStore`), jamais de store global : plusieurs documents peuvent être
+ * ouverts en même temps (docs/jalons/J-01, phase 1).
  *
  * Toute modification du modèle passe par `change` (une entrée d'historique) ou par
  * une transaction `begin` → `preview`* → `commit` (ex. déplacement à la souris :
@@ -24,7 +25,7 @@ interface HistoryEntry {
 
 const HISTORY_LIMIT = 200;
 
-interface DocumentState {
+export interface DocumentState {
   doc: ModelDocument;
   /** Document tel qu'enregistré ; sert à calculer l'indicateur de modification. */
   savedDoc: ModelDocument;
@@ -52,9 +53,10 @@ interface DocumentState {
 
 const pushPast = (past: HistoryEntry[], entry: HistoryEntry) => [...past, entry].slice(-HISTORY_LIMIT);
 
-export const useDocumentStore = create<DocumentState>()((set, get) => {
-  const initial = newModelDocument();
-  return {
+export type DocumentStore = StoreApi<DocumentState>;
+
+export const createDocumentStore = (initial: ModelDocument): DocumentStore =>
+  createStore<DocumentState>()((set, get) => ({
     doc: initial,
     savedDoc: initial,
     filePath: null,
@@ -119,8 +121,7 @@ export const useDocumentStore = create<DocumentState>()((set, get) => {
     markSaved(filePath) {
       set({ savedDoc: get().doc, filePath, recovered: false });
     },
-  };
-});
+  }));
 
 export const selectIsDirty = (s: DocumentState) => s.doc !== s.savedDoc;
 export const selectUndoLabel = (s: DocumentState) => s.past.at(-1)?.label;

@@ -2,7 +2,7 @@ import type { Id, Issue, Point, RelationLabelMode } from "@core/index";
 import { useMemo, useRef } from "react";
 import { useIssuesByTarget, useLogicalModel } from "@/app/derived";
 import { t } from "@/i18n";
-import { useDocumentStore } from "@/app/documentStore";
+import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { useUiStore } from "@/app/uiStore";
 import { CanvasSurface, hitId } from "./CanvasSurface";
 import { FONT_FAMILY, FONT_SIZE, PAD_X, ROW_HEIGHT, snap, TITLE_HEIGHT, TITLE_WEIGHT } from "./geometry";
@@ -28,10 +28,11 @@ import { ErrorBadge } from "./shapes";
  * sélectionne la patte ou le lien d'héritage d'origine.
  */
 export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
-  const doc = useDocumentStore((s) => s.doc);
+  const docHandle = useDocumentHandle();
+  const doc = useDocument((s) => s.doc);
   const logical = useLogicalModel();
-  const selection = useUiStore((s) => s.selection);
-  const select = useUiStore((s) => s.select);
+  const selection = useDocumentView((s) => s.selection);
+  const select = useDocumentView((s) => s.select);
   const issues = useIssuesByTarget();
 
   const layouts = useMemo(() => tableLayouts(logical, doc, mode), [logical, doc, mode]);
@@ -59,7 +60,7 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
         if (!hit) return false;
         const layout = layouts.find((l) => l.sourceId === hit);
         if (!layout) return true; // trait entre tables : sélection seule
-        useDocumentStore.getState().begin();
+        docHandle.store.getState().begin();
         drag.current = { id: hit, start: point, origin: { x: layout.x, y: layout.y } };
         return true;
       }}
@@ -67,17 +68,17 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
         const d = drag.current;
         if (!d) return;
         const position = { x: snap(d.origin.x + point.x - d.start.x, grid), y: snap(d.origin.y + point.y - d.start.y, grid) };
-        useDocumentStore.getState().preview((draft) => {
+        docHandle.store.getState().preview((draft) => {
           const node = draft.entities.find((n) => n.id === d.id) ?? draft.associations.find((n) => n.id === d.id);
           if (node) node.position = position;
         });
       }}
       onPointerUp={() => {
-        if (drag.current) useDocumentStore.getState().commit("history.moveTable");
+        if (drag.current) docHandle.store.getState().commit("history.moveTable");
         drag.current = null;
       }}
       onPointerCancel={() => {
-        if (drag.current) useDocumentStore.getState().cancel();
+        if (drag.current) docHandle.store.getState().cancel();
         drag.current = null;
       }}
     >
