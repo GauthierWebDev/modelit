@@ -305,6 +305,22 @@ async function endGuestSession(reason: string | null) {
   }
 }
 
+// ——— Assistants IA (O-05 §8) ———
+
+/**
+ * Raison pour laquelle l'assistant IA de ce poste ne peut pas modifier le document `docId`, ou
+ * `null`. Seul l'onglet d'une session rejointe est concerné : l'hôte suit ses propres options
+ * (O-47). Messages en anglais, comme le reste du serveur MCP.
+ */
+export function aiWriteRefusal(docId: string): string | null {
+  const { mode, tabId, guest: state, aiAllowed } = useCollabStore.getState();
+  if (mode !== "guest" || tabId !== docId || !state) return null;
+  if (state.role === "reader") return "This is a read-only session: the document can be read, not changed.";
+  if (!aiAllowed) return "AI assistants are disabled by the session host. Reading is still allowed.";
+  if (state.status !== "connected") return "The session is reconnecting to its host: try again in a moment.";
+  return null;
+}
+
 // ——— Présence ———
 
 let presenceSent: Presence | null = null;
