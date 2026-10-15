@@ -8,7 +8,9 @@ import { useUiStore } from "@/app/uiStore";
 import { scheduleUpdateCheck, showWhatsNew } from "@/app/updates";
 import { activeDocument, useActiveDocument, useWorkspaceStore } from "@/app/workspace";
 import { t } from "@/i18n";
+import { closeAllFloats, nativeWindows } from "@/platform/floatWindows";
 import { onCloseRequested, onMenuAbout, onMenuCloseTab, setWindowTitle } from "@/platform/window";
+import { FloatManager } from "./windows/FloatManager";
 import { AboutDialog } from "./about/AboutDialog";
 import { LogicalCanvas } from "./canvas/LogicalCanvas";
 import { McdCanvas } from "./canvas/McdCanvas";
@@ -59,7 +61,16 @@ function Workbench() {
   useEffect(() => onMenuAbout(() => useUiStore.getState().setAbout("about")), []);
   useEffect(() => onMenuCloseTab(() => void closeDocument(activeDocument())), []);
 
-  useEffect(() => onCloseRequested(confirmLoseAllChanges, anyDocumentDirty), []);
+  useEffect(
+    () =>
+      onCloseRequested(async () => {
+        const ok = await confirmLoseAllChanges();
+        // Les fenêtres flottantes se ferment avec la principale (O-45, O-46).
+        if (ok && nativeWindows()) await closeAllFloats();
+        return ok;
+      }, anyDocumentDirty),
+    [],
+  );
 
   useEffect(() => {
     if (!status) return;
@@ -82,6 +93,7 @@ function Workbench() {
         <DockZone zone="right" />
       </div>
       <FloatingGroups />
+      <FloatManager />
       <DragGhost />
       <ExportDialog />
       <OptionsDialog />

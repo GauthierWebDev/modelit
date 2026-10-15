@@ -1,7 +1,7 @@
 import type { ModelDocument } from "@core/index";
 import type { Patch } from "immer";
 import type { MessageKey } from "@/i18n";
-import type { DockLayout } from "../dock/layout";
+import type { DockLayout, DragItem, Rect } from "../dock/layout";
 import type { DocumentViewState } from "../document/documentView";
 import type { AboutTab, Tool } from "../uiStore";
 
@@ -56,7 +56,20 @@ export type ToMain =
   | { type: "ui"; patch: UiPatch }
   | { type: "dock"; layout: DockLayout }
   | { type: "command"; command: MainCommand }
-  | { type: "focus"; focused: boolean };
+  /** Glisser commencé dans une flottante, relâché au point `screen` : la principale décide. */
+  | { type: "drop"; item: DragItem; screen: { x: number; y: number } }
+  /**
+   * Une fenêtre flottante a bougé. `pointer` (écran) : déplacée à la main par sa poignée, `final` au
+   * relâchement — la principale allume puis choisit la cible d'ancrage. `pointer` nul : simple
+   * nouvelle géométrie (redimensionnement…), à enregistrer.
+   */
+  | {
+      type: "moved";
+      float: { kind: "toolbar" } | { kind: "group"; id: string };
+      rect: Rect;
+      pointer: { x: number; y: number } | null;
+      final: boolean;
+    };
 
 /** Messages de la principale vers les flottantes. */
 export type ToReplica = { type: "state"; state: MirrorState };

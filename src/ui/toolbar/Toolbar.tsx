@@ -29,14 +29,12 @@ import { setDbmsVersion, setTargetDbms } from "@/app/commands";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { selectRedoLabel, selectUndoLabel } from "@/app/document/documentStore";
 import type { ViewMode } from "@/app/document/documentView";
-import { newDocument, openDocument, saveDocument } from "@/app/fileCommands";
 import { usePreferencesStore, type ThemePreference } from "@/app/preferencesStore";
 import { useUiStore, type Tool } from "@/app/uiStore";
 import { chooseTool, showView } from "@/app/viewCommands";
 import { t, type MessageKey } from "@/i18n";
-import { autoLayoutTables } from "@/ui/canvas/autoLayout";
-import { fitToWindow, zoomBy, zoomTo } from "@/ui/canvas/viewport";
-import { IconButton, inputClass } from "@/ui/common/controls";
+import { mainCommand } from "@/ui/windows/mainCommands";
+import { FitSelect, IconButton } from "@/ui/common/controls";
 import { Menu, MenuItem } from "@/ui/common/Menu";
 import { updateDock } from "@/app/dock/actions";
 import { setToolbar } from "@/app/dock/layout";
@@ -110,13 +108,13 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
         <GripVertical size={14} />
       </span>
       <Group>
-        <IconButton tooltip={t("toolbar.new", { key: `${MOD}N` })} onClick={newDocument}>
+        <IconButton tooltip={t("toolbar.new", { key: `${MOD}N` })} onClick={() => mainCommand({ name: "new" })}>
           <FilePlus size={16} />
         </IconButton>
-        <IconButton tooltip={t("toolbar.open", { key: `${MOD}O` })} onClick={() => void openDocument()}>
+        <IconButton tooltip={t("toolbar.open", { key: `${MOD}O` })} onClick={() => mainCommand({ name: "open" })}>
           <FolderOpen size={16} />
         </IconButton>
-        <IconButton tooltip={t("toolbar.save", { key: `${MOD}S` })} onClick={() => void saveDocument(doc)}>
+        <IconButton tooltip={t("toolbar.save", { key: `${MOD}S` })} onClick={() => mainCommand({ name: "save" })}>
           <Save size={16} />
         </IconButton>
         <IconButton tooltip={t("toolbar.exportImage", { key: `${MOD}E` })} onClick={() => setExportOpen(true)}>
@@ -178,26 +176,26 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
         ))}
       </Group>
       <Group>
-        <IconButton tooltip={t("toolbar.zoomOut")} onClick={() => zoomBy(doc, 1 / 1.2)}>
+        <IconButton tooltip={t("toolbar.zoomOut")} onClick={() => mainCommand({ name: "zoomBy", factor: 1 / 1.2 })}>
           <ZoomOut size={16} />
         </IconButton>
         <button
           type="button"
           {...tip(t("toolbar.zoomReset"))}
           className="w-12 text-center text-xs text-neutral-600 tabular-nums hover:underline dark:text-neutral-300"
-          onClick={() => zoomTo(doc, 1)}
+          onClick={() => mainCommand({ name: "zoomTo", zoom: 1 })}
         >
           {Math.round(zoom * 100)} %
         </button>
-        <IconButton tooltip={t("toolbar.zoomIn")} onClick={() => zoomBy(doc, 1.2)}>
+        <IconButton tooltip={t("toolbar.zoomIn")} onClick={() => mainCommand({ name: "zoomBy", factor: 1.2 })}>
           <ZoomIn size={16} />
         </IconButton>
-        <IconButton tooltip={t("toolbar.fit")} onClick={() => fitToWindow(doc)}>
+        <IconButton tooltip={t("toolbar.fit")} onClick={() => mainCommand({ name: "fit" })}>
           <Maximize size={16} />
         </IconButton>
       </Group>
       <Group>
-        <IconButton tooltip={t("toolbar.autoLayout")} onClick={() => void autoLayoutTables(doc)}>
+        <IconButton tooltip={t("toolbar.autoLayout")} onClick={() => mainCommand({ name: "autoLayout" })}>
           <LayoutDashboard size={16} />
           <span className="hidden text-xs whitespace-nowrap 2xl:inline">{t("toolbar.autoLayoutShort")}</span>
         </IconButton>
@@ -205,25 +203,17 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
       {floating ? <div className="w-1" /> : <div className="flex-1" />}
       <label className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400" {...tip(t("toolbar.dbmsTooltip"))}>
         {t("toolbar.dbms")}
-        <select className={`${inputClass} w-auto`} value={dbms} onChange={(e) => setTargetDbms(doc, e.target.value as typeof dbms)}>
-          {DBMS_LIST.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.label}
-            </option>
-          ))}
-        </select>
-        <select
-          className={`${inputClass} w-auto`}
+        <FitSelect
+          value={dbms}
+          options={DBMS_LIST.map((d) => ({ id: d.id, label: d.label }))}
+          onChange={(value) => setTargetDbms(doc, value)}
+        />
+        <FitSelect
           value={dbmsVersion}
-          aria-label={t("toolbar.version")}
-          onChange={(e) => setDbmsVersion(doc, e.target.value)}
-        >
-          {versionOptions(dbms).map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.label}
-            </option>
-          ))}
-        </select>
+          label={t("toolbar.version")}
+          options={versionOptions(dbms)}
+          onChange={(value) => setDbmsVersion(doc, value)}
+        />
       </label>
       <IconButton
         tooltip={t("toolbar.themeCycle", { theme: t(currentTheme.label) })}

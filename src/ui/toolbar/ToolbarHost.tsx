@@ -1,8 +1,14 @@
 import { useRef, useState, type PointerEvent } from "react";
+import { create } from "zustand";
 import { updateDock } from "@/app/dock/actions";
 import { setToolbar } from "@/app/dock/layout";
 import { usePreferencesStore } from "@/app/preferencesStore";
+import { nativeWindows } from "@/platform/floatWindows";
+import { toScreen } from "@/ui/dock/drag";
 import { Toolbar } from "./Toolbar";
+
+/** Barre flottante native survolant la bande d'ancrage (allumée par la fenêtre principale). */
+export const useToolbarBand = create<{ over: boolean }>(() => ({ over: false }));
 
 /**
  * Barre d'outils ancrée ou flottante (override O-45), dans la page. Glisser la poignée vers le bas
@@ -55,6 +61,11 @@ export function ToolbarHost() {
       setDrag(null);
       if (!current) return;
       const { position, overBand } = current;
+      if (nativeWindows()) {
+        // La barre devient une fenêtre native, à la même place à l'écran.
+        updateDock((l) => setToolbar(l, overBand ? { floating: false } : { floating: true, position: position && toScreen(position) }));
+        return;
+      }
       // Dans la page, la barre reste entièrement visible (ses dimensions naturelles sont gardées).
       const width = floatingRef.current?.offsetWidth ?? 0;
       const height = floatingRef.current?.offsetHeight ?? 0;
@@ -68,8 +79,13 @@ export function ToolbarHost() {
     window.addEventListener("pointerup", up);
   }
 
+  const nativeBand = useToolbarBand((s) => s.over);
   const floating = drag ? true : toolbar.floating;
   const position = drag?.position ?? toolbar.position;
+  // Application native : la barre flottante est une fenêtre (FloatManager) ; ici, seule la bande d'ancrage.
+  if (nativeWindows() && toolbar.floating && !drag) {
+    return nativeBand ? <div className="h-9 flex-none border-b-2 border-blue-500 bg-blue-500/15" /> : null;
+  }
 
   return (
     <>

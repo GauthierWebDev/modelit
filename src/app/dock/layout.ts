@@ -43,6 +43,9 @@ export interface DockLayout {
   toolbar: { floating: boolean; position: { x: number; y: number } | null };
 }
 
+/** Ce qu'on glisse : un onglet (une section) ou un groupe entier. */
+export type DragItem = { kind: "section"; section: SectionId; group: string } | { kind: "group"; group: string };
+
 /** Où déposer une section ou un groupe. */
 export type DropTarget =
   | { kind: "group"; group: string }

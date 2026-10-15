@@ -17,7 +17,12 @@ interface Shown {
   anchor: DOMRect;
 }
 
-export function TooltipLayer() {
+/**
+ * `outside` : fenêtre flottante native ajustée à son contenu (barre d'outils, O-45). L'infobulle se
+ * place toujours sous l'élément, hors de la barre, sans être ramenée dans la fenêtre : c'est la
+ * fenêtre qui s'agrandit pour l'afficher.
+ */
+export function TooltipLayer({ outside = false }: { outside?: boolean }) {
   const [shown, setShown] = useState<Shown | null>(null);
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
   const bubble = useRef<HTMLDivElement>(null);
@@ -62,10 +67,12 @@ export function TooltipLayer() {
     const { width, height } = bubble.current.getBoundingClientRect();
     const { anchor } = shown;
     let top = anchor.bottom + GAP;
+    const centered = anchor.left + anchor.width / 2 - width / 2;
+    if (outside) return setPosition({ left: Math.max(GAP, centered), top });
     if (top + height > window.innerHeight - GAP) top = anchor.top - GAP - height;
-    const left = Math.min(Math.max(GAP, anchor.left + anchor.width / 2 - width / 2), window.innerWidth - width - GAP);
+    const left = Math.min(Math.max(GAP, centered), window.innerWidth - width - GAP);
     setPosition({ left, top: Math.max(GAP, top) });
-  }, [shown]);
+  }, [shown, outside]);
 
   if (!shown) return null;
   return (

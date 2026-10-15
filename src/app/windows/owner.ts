@@ -8,6 +8,8 @@ import { useUiStore } from "../uiStore";
 import { activeDocument, useWorkspaceStore } from "../workspace";
 import type { Channel, MainCommand, MirrorState, ToMain, ToReplica } from "./protocol";
 
+type Message<T extends ToMain["type"]> = Extract<ToMain, { type: T }>;
+
 enablePatches();
 
 /**
@@ -54,7 +56,15 @@ const same = (a: MirrorState, b: MirrorState) =>
 export function startOwner(
   channel: Channel<ToReplica, ToMain>,
   runCommand: (command: MainCommand) => void,
-  { onFocus, schedule = (f: () => void) => queueMicrotask(f) }: { onFocus?: (focused: boolean) => void; schedule?: (f: () => void) => void } = {},
+  {
+    onDrop,
+    onMoved,
+    schedule = (f: () => void) => queueMicrotask(f),
+  }: {
+    onDrop?: (message: Message<"drop">) => void;
+    onMoved?: (message: Message<"moved">) => void;
+    schedule?: (f: () => void) => void;
+  } = {},
 ): () => void {
   let last: MirrorState | null = null;
   let pending = false;
@@ -121,8 +131,10 @@ export function startOwner(
         return usePreferencesStore.getState().updateDock(() => message.layout);
       case "command":
         return runCommand(message.command);
-      case "focus":
-        return onFocus?.(message.focused);
+      case "drop":
+        return onDrop?.(message);
+      case "moved":
+        return onMoved?.(message);
     }
   });
 

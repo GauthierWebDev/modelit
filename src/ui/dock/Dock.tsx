@@ -5,8 +5,6 @@ import {
   closeGroup,
   defaultLayout,
   hideSection,
-  moveGroup,
-  moveSection,
   SECTIONS,
   setActive,
   setFloatingRect,
@@ -24,7 +22,8 @@ import { usePreferencesStore } from "@/app/preferencesStore";
 import { t } from "@/i18n";
 import { Menu, MenuCheck, MenuItem, MenuSeparator } from "@/ui/common/Menu";
 import { tip } from "@/ui/common/Tooltip";
-import { startDrag, useDragStore } from "./drag";
+import { nativeWindows } from "@/platform/floatWindows";
+import { dropItem, startDrag, toScreen, useDragStore } from "./drag";
 import { sectionLabel, SECTION_VIEWS } from "./sectionViews";
 
 /**
@@ -69,14 +68,25 @@ export function SectionChecks({ close, withReset }: { close: () => void; withRes
   );
 }
 
-function GroupView({ group, zone, onClose }: { group: Group; zone: Zone | null; onClose?: () => void }) {
+export function GroupView({
+  group,
+  zone,
+  onClose,
+  onGripDown,
+}: {
+  group: Group;
+  zone: Zone | null;
+  onClose?: () => void;
+  /** Poignée : par défaut, glisser le groupe ; dans une fenêtre flottante native, déplacer la fenêtre. */
+  onGripDown?: (e: ReactPointerEvent<HTMLElement>) => void;
+}) {
   const target = useDragStore((s) => s.target);
   const dragging = useDragStore((s) => s.item);
   const highlighted = target?.kind === "group" && target.group === group.id;
   const Body = SECTION_VIEWS[group.active].Body;
 
-  const dropSection = (section: (typeof SECTIONS)[number]) => (to: DropTarget) => updateDock((l) => moveSection(l, section, to));
-  const dropGroup = (to: DropTarget) => to.kind !== "group" && updateDock((l) => moveGroup(l, group.id, to));
+  const dropSection = (section: (typeof SECTIONS)[number]) => (to: DropTarget) => dropItem({ kind: "section", section, group: group.id }, to);
+  const dropGroup = (to: DropTarget) => dropItem({ kind: "group", group: group.id }, to);
 
   return (
     <section
@@ -101,7 +111,9 @@ function GroupView({ group, zone, onClose }: { group: Group; zone: Zone | null; 
           aria-label={t("dock.grip")}
           {...tip(t("dock.grip"))}
           data-dock-grip=""
-          onPointerDown={(e: ReactPointerEvent) => e.button === 0 && startDrag(e, { kind: "group", group: group.id }, dropGroup)}
+          onPointerDown={(e: ReactPointerEvent<HTMLElement>) =>
+            e.button === 0 && (onGripDown ? onGripDown(e) : startDrag(e, { kind: "group", group: group.id }, dropGroup))
+          }
           className="flex h-5 w-3 cursor-grab items-center justify-center text-neutral-400"
         >
           <GripVertical size={14} />
@@ -150,8 +162,7 @@ function GroupView({ group, zone, onClose }: { group: Group; zone: Zone | null; 
               {zone ? (
                 <MenuItem
                   onSelect={() => {
-                    const r = document.querySelector(`[data-group-id="${group.id}"]`)?.getBoundingClientRect();
-                    dropGroup({ kind: "float", rect: { x: (r?.x ?? 200) - 340, y: r?.y ?? 120, width: 320, height: Math.min(420, r?.height ?? 320) } });
+                    dropGroup({ kind: "float", rect: toScreen(detachedRect(group.id)) });
                     close();
                   }}
                 >
@@ -177,6 +188,19 @@ function GroupView({ group, zone, onClose }: { group: Group; zone: Zone | null; 
       )}
     </section>
   );
+}
+
+/**
+ * Place d'un groupe détaché par le menu : à gauche de sa place s'il y a la place, sinon décalé
+ * vers l'intérieur ; toujours entièrement dans la page.
+ */
+function detachedRect(id: string) {
+  const r = document.querySelector(`[data-group-id="${id}"]`)?.getBoundingClientRect() ?? new DOMRect(200, 120, 320, 320);
+  const width = 320;
+  const height = Math.min(420, Math.max(200, r.height));
+  const x = r.left >= width + 40 ? r.left - width - 20 : r.left + 40;
+  const y = Math.min(r.top + 20, window.innerHeight - height - 16);
+  return { x: Math.max(8, Math.min(x, window.innerWidth - width - 8)), y: Math.max(8, y), width, height };
 }
 
 /**
@@ -320,8 +344,10 @@ function FloatingGroupView({ group }: { group: FloatingGroup }) {
   );
 }
 
+/** Groupes flottants dans la page (navigateur) ; dans l'application native, ce sont des fenêtres. */
 export function FloatingGroups() {
   const floating = useDock().floating;
+  if (nativeWindows()) return null;
   return (
     <>
       {floating.map((g) => (

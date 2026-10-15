@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import { usePreferencesStore } from "./app/preferencesStore";
 import { setLocale } from "./i18n";
 import { App } from "./ui/App";
+import { floatKind } from "./platform/floatWindows";
+import { FloatRoot } from "./ui/windows/FloatRoot";
 import { loadFonts } from "./ui/fonts";
 import "./index.css";
 
@@ -14,7 +16,9 @@ import "./index.css";
 function Root() {
   const locale = usePreferencesStore((s) => s.locale);
   setLocale(locale);
-  return <App key={locale} />;
+  // Fenêtre flottante native (barre d'outils, groupe de sections ; O-45, O-46).
+  const float = floatKind();
+  return float ? <FloatRoot key={locale} kind={float} /> : <App key={locale} />;
 }
 
 // Les largeurs de texte du schéma sont mesurées (et mises en cache) avec la police embarquée :
