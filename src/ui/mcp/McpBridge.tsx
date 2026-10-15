@@ -36,7 +36,10 @@ export function McpBridge() {
         request.method ?? undefined,
       )
         .then((response) => respond(response ? JSON.stringify(response) : null))
-        .catch((e) => respond(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32603, message: String(e) } })));
+        .catch((e: unknown) => {
+          const id = (message as { id?: unknown } | null)?.id ?? null;
+          respond(JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32603, message: e instanceof Error ? e.message : String(e) } }));
+        });
     }).then((f) => (disposed ? f() : (off = f)));
     return () => {
       disposed = true;

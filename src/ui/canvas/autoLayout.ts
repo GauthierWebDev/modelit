@@ -1,4 +1,4 @@
-import { bendsOf, bestChunk, decidedChunk, diagramLinks, diagramNodes, LAYOUT_CHUNKS, linkSourceId, positionOf, type ChunkResult, type GridEdge, type GridNode, type Id, type Point } from "@core/index";
+import { bendsOf, bestChunk, decidedChunk, diagramLinks, diagramNodes, gridLayout, LAYOUT_CHUNKS, linkSourceId, positionOf, type ChunkResult, type GridEdge, type GridNode, type Id, type Point } from "@core/index";
 import { moveNodes } from "@/app/commands";
 import { logicalModelOf } from "@/app/derived";
 import type { DocumentHandle } from "@/app/document/handle";
@@ -100,10 +100,39 @@ const newWorker = () => new Worker(new URL("./layoutWorker.ts", import.meta.url)
  * deux calculs simultanés se répondraient l'un à l'autre.
  */
 let queue: Promise<unknown> = Promise.resolve();
+
+/**
+ * Délai au-delà duquel les Workers sont jugés indisponibles (fenêtre en arrière-plan, que le moteur
+ * peut ralentir ou suspendre ; Worker qui ne se charge pas) : le calcul se fait alors sur le fil
+ * principal, au même résultat. Un placement finit donc toujours, et n'en bloque aucun autre.
+ */
+const WORKER_TIMEOUT = 8000;
+
 function computeLayout(nodes: GridNode[], edges: GridEdge[]): Promise<Map<string, Point>> {
-  const run = queue.then(() => computeLayoutNow(nodes, edges));
+  const run = queue.then(() =>
+    withTimeout(computeLayoutNow(nodes, edges), WORKER_TIMEOUT).catch((e: unknown) => {
+      console.warn("Placement automatique : Workers indisponibles, calcul sur le fil principal.", e);
+      resetPool();
+      return gridLayout(nodes, edges).positions;
+    }),
+  );
   queue = run.catch(() => undefined);
   return run;
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`no answer from the layout workers after ${ms} ms`)), ms);
+    promise.then(
+      (value) => (clearTimeout(timer), resolve(value)),
+      (error: unknown) => (clearTimeout(timer), reject(error)),
+    );
+  });
+}
+
+/** Workers arrêtés et oubliés : le prochain placement en recrée. */
+function resetPool() {
+  for (const worker of pool.splice(0)) worker.terminate();
 }
 
 /**
@@ -147,7 +176,10 @@ async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<M
 function runChunk(worker: Worker, nodes: GridNode[], edges: GridEdge[], chunk: number): Promise<ChunkResult> {
   return new Promise((resolve, reject) => {
     worker.onmessage = (event: MessageEvent<ChunkResult>) => resolve(event.data);
-    worker.onerror = (event) => reject(new Error(event.message));
+    worker.onerror = (event) => {
+      event.preventDefault();
+      reject(new Error(event.message || `layout worker failed${event.filename ? ` (${event.filename}:${event.lineno})` : ""}`));
+    };
     worker.postMessage({ nodes, edges, chunk });
   });
 }

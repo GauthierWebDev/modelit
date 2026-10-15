@@ -125,4 +125,15 @@ describe("serveur MCP", () => {
     expect(useWorkspaceStore.getState().documents).toHaveLength(2);
     expect(activeDocument().store.getState().doc.entities.map((e) => e.name)).toEqual(["produit"]);
   });
+
+  it("exception dans un outil : résultat en erreur, même identifiant, vrai message", async () => {
+    const response = await handleMcpMessage(
+      { jsonrpc: "2.0", id: 42, method: "tools/call", params: { name: "auto_layout", arguments: {} } },
+      { autoLayout: () => Promise.reject(new Error("layout worker failed")) },
+    );
+    expect(response!.id).toBe(42);
+    const result = response!.result as { content: { text: string }[]; isError?: boolean };
+    expect(result.isError).toBe(true);
+    expect(result.content[0]!.text).toBe("auto_layout failed: layout worker failed");
+  });
 });

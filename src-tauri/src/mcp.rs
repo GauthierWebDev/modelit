@@ -56,6 +56,17 @@ fn error(request: Request, status: u16, message: &str) {
     reply(request, status, &format!("{{\"error\":{}}}", serde_json::to_string(message).unwrap_or_default()));
 }
 
+/// Erreur JSON-RPC (code -32603) qui reprend l'identifiant de la requête : le client l'associe à
+/// son appel, même quand l'interface n'a pas répondu.
+fn rpc_error(request: Request, body: &str, message: &str) {
+    let id = serde_json::from_str::<serde_json::Value>(body)
+        .ok()
+        .and_then(|v| v.get("id").cloned())
+        .unwrap_or(serde_json::Value::Null);
+    let envelope = serde_json::json!({ "jsonrpc": "2.0", "id": id, "error": { "code": -32603, "message": message } });
+    reply(request, 200, &envelope.to_string());
+}
+
 /// Comparaison en temps constant (le jeton ne fuit pas par la durée de la réponse).
 fn same(a: &str, b: &str) -> bool {
     a.len() == b.len() && a.bytes().zip(b.bytes()).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
@@ -91,9 +102,9 @@ fn handle(app: &AppHandle, mut request: Request, port: u16, token: &str, pending
     let (sender, receiver) = mpsc::channel();
     pending.lock().expect("verrou").insert(id, sender);
     let method = header(&request, "Mcp-Method");
-    if app.emit_to("main", REQUEST_EVENT, McpRequest { id, body, method }).is_err() {
+    if app.emit_to("main", REQUEST_EVENT, McpRequest { id, body: body.clone(), method }).is_err() {
         pending.lock().expect("verrou").remove(&id);
-        return error(request, 503, "ModelIt is not ready");
+        return rpc_error(request, &body, "ModelIt is not ready");
     }
     match receiver.recv_timeout(TIMEOUT) {
         Ok(Some(response)) => reply(request, 200, &response),
@@ -103,7 +114,7 @@ fn handle(app: &AppHandle, mut request: Request, port: u16, token: &str, pending
         }
         Err(_) => {
             pending.lock().expect("verrou").remove(&id);
-            error(request, 504, "ModelIt did not answer in time");
+            rpc_error(request, &body, "ModelIt did not answer in time");
         }
     }
 }

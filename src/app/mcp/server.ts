@@ -239,7 +239,12 @@ export async function handleMcpMessage(raw: unknown, hooks: McpHooks = {}, metho
     case "tools/call": {
       const name = String(message.params?.name ?? "");
       const args = (message.params?.arguments ?? {}) as Record<string, unknown>;
-      return ok(await callTool(name, args, hooks));
+      // Une exception dans un outil reste dans le protocole : résultat en erreur, avec son message.
+      try {
+        return ok(await callTool(name, args, hooks));
+      } catch (e) {
+        return ok(failure(`${name} failed: ${e instanceof Error ? e.message : String(e)}`));
+      }
     }
     default:
       return { jsonrpc: "2.0", id, error: { code: -32601, message: `Method not found: ${message.method}` } };
