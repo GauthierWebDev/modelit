@@ -2,9 +2,10 @@ import { deserializeModel, serializeModel } from "@core/index";
 import { t } from "@/i18n";
 import { confirmDialog } from "./dialogStore";
 import { indexedDbStore, removeLegacyLocalStorageCopy } from "@/platform/localStore";
-import { selectIsDirty, useDocumentStore } from "./documentStore";
+import { selectIsDirty } from "./document/documentStore";
 import { usePreferencesStore } from "./preferencesStore";
 import { useUiStore } from "./uiStore";
+import { activeDocument } from "./workspace";
 
 /**
  * Sauvegarde automatique et récupération après un arrêt brutal (override O-22).
@@ -17,6 +18,7 @@ import { useUiStore } from "./uiStore";
  * La copie est aussi écrite quand la fenêtre passe en arrière-plan ou se ferme.
  * Dès que le modèle est enregistré (ou sans modification), la copie est effacée.
  * Au lancement, une copie présente est proposée à la récupération.
+ * Porte sur le document actif ; une copie par document viendra avec les onglets (J-01, phase 2).
  */
 
 const KEY = "modelit/autosave";
@@ -40,7 +42,7 @@ async function write() {
   pending = false;
   lastWrite = Date.now();
   if (!enabled()) return;
-  const state = useDocumentStore.getState();
+  const state = activeDocument().store.getState();
   try {
     if (selectIsDirty(state)) {
       const entry: Entry = { savedAt: new Date().toISOString(), filePath: state.filePath, content: serializeModel(state.doc) };
@@ -79,7 +81,7 @@ async function offerRecovery() {
       cancelLabel: t("file.recoverIgnore"),
       tone: "info",
     });
-    if (ok) useDocumentStore.getState().restore(deserializeModel(entry.content).doc, entry.filePath);
+    if (ok) activeDocument().store.getState().restore(deserializeModel(entry.content).doc, entry.filePath);
     else await indexedDbStore.remove(KEY);
   } catch {
     await indexedDbStore.remove(KEY).catch(() => undefined);
@@ -93,7 +95,7 @@ export function startAutosave() {
   removeLegacyLocalStorageCopy(KEY);
 
   void offerRecovery().then(() => {
-    useDocumentStore.subscribe((state, previous) => {
+    activeDocument().store.subscribe((state, previous) => {
       const changed = state.doc !== previous.doc || state.savedDoc !== previous.savedDoc;
       const transactionEnded = previous.transactionStart !== null && state.transactionStart === null;
       if (!changed && !transactionEnded) return;

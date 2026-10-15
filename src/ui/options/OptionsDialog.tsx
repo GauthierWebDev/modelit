@@ -2,6 +2,7 @@ import { DBMS_LIST, resolveVersion, versionOptions, type Dbms } from "@core/inde
 import type { ReactNode } from "react";
 import { applyDefaultsToCurrent } from "@/app/commands";
 import { usePreferencesStore, type AutosaveBackend, type ThemePreference } from "@/app/preferencesStore";
+import { useDocumentHandle } from "@/app/document/DocumentContext";
 import { useUiStore } from "@/app/uiStore";
 import { checkForUpdatesNow } from "@/app/updates";
 import { LOCALES, t } from "@/i18n";
@@ -16,6 +17,7 @@ import { KeyPatternField } from "@/ui/panels/sections";
  * mises à jour (application native uniquement).
  */
 export function OptionsDialog() {
+  const doc = useDocumentHandle();
   const open = useUiStore((s) => s.optionsOpen);
   const setOpen = useUiStore((s) => s.setOptionsOpen);
   const prefs = usePreferencesStore();
@@ -97,7 +99,7 @@ export function OptionsDialog() {
           type="button"
           className="self-start text-sm text-blue-600 hover:underline dark:text-blue-400"
           onClick={() => {
-            applyDefaultsToCurrent();
+            applyDefaultsToCurrent(doc);
             useUiStore.getState().notify({ kind: "info", text: t("options.applied") });
           }}
         >

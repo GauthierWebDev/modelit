@@ -2,7 +2,7 @@ import { DBMS_LIST, groupLosses, issueMessage, mldLines, mldPlainText, type Loss
 import { useState } from "react";
 import { Copy } from "lucide-react";
 import { useDdl, useLogicalModel } from "@/app/derived";
-import { useDocumentStore } from "@/app/documentStore";
+import { useDocument, useDocumentView } from "@/app/document/DocumentContext";
 import { useUiStore, type BottomTab } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { IconButton } from "@/ui/common/controls";
@@ -13,7 +13,7 @@ export function OutputPanel() {
   const setTab = useUiStore((s) => s.setBottomTab);
   const logical = useLogicalModel();
   const ddl = useDdl();
-  const dbms = useDocumentStore((s) => s.doc.settings.dbms);
+  const dbms = useDocument((s) => s.doc.settings.dbms);
   const errors = logical.issues.filter((i) => i.severity === "error").length;
 
   const copyText = tab === "mld" ? mldPlainText(logical) : tab === "sql" && ddl.ok ? ddl.sql : null;
@@ -128,8 +128,8 @@ function MldView() {
 /** Problèmes, formulés dans le vocabulaire de la vue active : MCD, ou MLD / MPD (override O-24). */
 function IssuesView() {
   const { issues } = useLogicalModel();
-  const select = useUiStore((s) => s.select);
-  const layer = useUiStore((s) => (s.view === "mcd" ? "conceptual" : "logical"));
+  const select = useDocumentView((s) => s.select);
+  const layer = useDocumentView((s) => (s.view === "mcd" ? "conceptual" : "logical"));
   if (issues.length === 0) return <p className="font-sans text-neutral-500">{t("output.noIssues")}</p>;
   return (
     <ul className="font-sans text-sm">

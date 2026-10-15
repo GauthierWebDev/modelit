@@ -10,7 +10,7 @@ import {
 import { KeyRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import * as cmd from "@/app/commands";
-import { useDocumentStore } from "@/app/documentStore";
+import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { Checkbox, CommitInput, ErrorBanner, Field, NumberInput, Section, Select } from "@/ui/common/controls";
@@ -25,8 +25,8 @@ import { CommentSection, KeyPatternField, PathSection, RelationTextSection } fro
  * du document quand rien n'est sélectionné.
  */
 export function Inspector() {
-  const doc = useDocumentStore((s) => s.doc);
-  const selection = useUiStore((s) => s.selection);
+  const doc = useDocument((s) => s.doc);
+  const selection = useDocumentView((s) => s.selection);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => setError(null), [selection]);
   /** Affiche le message d'une commande refusée et le renvoie (pour les champs). */
@@ -76,31 +76,32 @@ function AdvancedToggle() {
 }
 
 function EntityPanel({ doc, entity, report }: { doc: ModelDocument; entity: Entity; report: Report }) {
+  const handle = useDocumentHandle();
   const advanced = useUiStore((s) => s.advanced);
   return (
     <>
       <AdvancedToggle />
       <Section title={t("inspector.entity")}>
         <Field label={t("inspector.name")}>
-          <CommitInput value={entity.name} onCommit={(name) => report(cmd.renameNode(entity.id, name))} />
+          <CommitInput value={entity.name} onCommit={(name) => report(cmd.renameNode(handle, entity.id, name))} />
         </Field>
         <Field label={t("inspector.logicalName")}>
           <CommitInput
             value={entity.logicalName ?? ""}
             placeholder={t("inspector.logicalPlaceholder")}
-            onCommit={(logicalName) => cmd.updateEntity(entity.id, { logicalName: logicalName.trim() || undefined })}
+            onCommit={(logicalName) => cmd.updateEntity(handle, entity.id, { logicalName: logicalName.trim() || undefined })}
           />
         </Field>
         <Checkbox
           label={t("inspector.fictive")}
           checked={entity.fictive}
-          onChange={(fictive) => cmd.updateEntity(entity.id, { fictive })}
+          onChange={(fictive) => cmd.updateEntity(handle, entity.id, { fictive })}
         />
         {advanced && (
           <Checkbox
             label={t("physical.caseSensitive")}
             checked={Boolean(entity.caseSensitive)}
-            onChange={(on) => cmd.updatePhysical(entity.id, (n) => void (n.caseSensitive = on || undefined))}
+            onChange={(on) => cmd.updatePhysical(handle, entity.id, (n) => void (n.caseSensitive = on || undefined))}
           />
         )}
       </Section>
@@ -110,7 +111,7 @@ function EntityPanel({ doc, entity, report }: { doc: ModelDocument; entity: Enti
           <button
             type="button"
             className="flex items-center gap-1 text-xs text-blue-600 hover:underline dark:text-blue-400"
-            onClick={() => report(cmd.addAutoIdentifier(entity.id))}
+            onClick={() => report(cmd.addAutoIdentifier(handle, entity.id))}
           >
             <KeyRound size={12} /> {t("inspector.autoDiscriminant")}
           </button>
@@ -121,17 +122,18 @@ function EntityPanel({ doc, entity, report }: { doc: ModelDocument; entity: Enti
           allowIdentifier
           advanced={advanced}
           dialect={doc.settings.dbms}
-          onChange={(attributes) => report(cmd.setAttributes(entity.id, attributes))}
+          onChange={(attributes) => report(cmd.setAttributes(handle, entity.id, attributes))}
         />
       </Section>
       {!entity.fictive && <ForeignKeysSection tableOf={entity.id} />}
       {advanced && !entity.fictive && <PhysicalSection doc={doc} node={entity} />}
-      <CommentSection value={entity.comment} onCommit={(comment) => cmd.updateEntity(entity.id, { comment })} />
+      <CommentSection value={entity.comment} onCommit={(comment) => cmd.updateEntity(handle, entity.id, { comment })} />
     </>
   );
 }
 
 function AssociationPanel({ doc, association, report }: { doc: ModelDocument; association: Association; report: Report }) {
+  const handle = useDocumentHandle();
   const links = doc.links.filter((l) => l.associationId === association.id);
   const entityName = (link: Link) => doc.entities.find((e) => e.id === link.entityId)?.name ?? "?";
   const advanced = useUiStore((s) => s.advanced);
@@ -141,13 +143,13 @@ function AssociationPanel({ doc, association, report }: { doc: ModelDocument; as
       <AdvancedToggle />
       <Section title={t("inspector.association")}>
         <Field label={t("inspector.name")}>
-          <CommitInput value={association.name} onCommit={(name) => report(cmd.renameNode(association.id, name))} />
+          <CommitInput value={association.name} onCommit={(name) => report(cmd.renameNode(handle, association.id, name))} />
         </Field>
         <Field label={t("inspector.logicalName")}>
           <CommitInput
             value={association.logicalName ?? ""}
             placeholder={t("inspector.logicalPlaceholder")}
-            onCommit={(logicalName) => report(cmd.updateAssociation(association.id, { logicalName: logicalName.trim() || undefined }))}
+            onCommit={(logicalName) => report(cmd.updateAssociation(handle, association.id, { logicalName: logicalName.trim() || undefined }))}
           />
         </Field>
       </Section>
@@ -166,12 +168,12 @@ function AssociationPanel({ doc, association, report }: { doc: ModelDocument; as
           allowIdentifier={false}
           advanced={advanced}
           dialect={doc.settings.dbms}
-          onChange={(attributes) => report(cmd.setAttributes(association.id, attributes))}
+          onChange={(attributes) => report(cmd.setAttributes(handle, association.id, attributes))}
         />
       </Section>
       <ForeignKeysSection linkIds={links.map((l) => l.id)} />
       {advanced && <PhysicalSection doc={doc} node={association} />}
-      <CommentSection value={association.comment} onCommit={(comment) => report(cmd.updateAssociation(association.id, { comment }))} />
+      <CommentSection value={association.comment} onCommit={(comment) => report(cmd.updateAssociation(handle, association.id, { comment }))} />
     </>
   );
 }
@@ -184,6 +186,7 @@ const QUICK_CARDINALITIES: Cardinality[] = [
 ];
 
 function CardinalityButtons({ link, report }: { link: Link; report: Report }) {
+  const handle = useDocumentHandle();
   return (
     <div className="flex overflow-hidden rounded border border-neutral-300 dark:border-neutral-600">
       {QUICK_CARDINALITIES.map((c) => {
@@ -192,7 +195,7 @@ function CardinalityButtons({ link, report }: { link: Link; report: Report }) {
           <button
             key={`${c.min},${c.max}`}
             type="button"
-            onClick={() => report(cmd.setLinkCardinality(link.id, c))}
+            onClick={() => report(cmd.setLinkCardinality(handle, link.id, c))}
             className={`px-2 py-0.5 font-mono text-xs ${
               active ? "bg-blue-600 text-white" : "hover:bg-neutral-100 dark:hover:bg-neutral-700"
             }`}
@@ -206,6 +209,7 @@ function CardinalityButtons({ link, report }: { link: Link; report: Report }) {
 }
 
 function LinkPanel({ doc, link, report }: { doc: ModelDocument; link: Link; report: Report }) {
+  const handle = useDocumentHandle();
   const entity = doc.entities.find((e) => e.id === link.entityId);
   const association = doc.associations.find((a) => a.id === link.associationId);
   const parseMax = (v: string) => (v.trim().toLowerCase() === "n" ? "n" : Number(v));
@@ -221,20 +225,20 @@ function LinkPanel({ doc, link, report }: { doc: ModelDocument; link: Link; repo
             <NumberInput
               min={0}
               value={link.cardinality.min}
-              onCommit={(min) => report(cmd.setLinkCardinality(link.id, { ...link.cardinality, min: min ?? 0 }))}
+              onCommit={(min) => report(cmd.setLinkCardinality(handle, link.id, { ...link.cardinality, min: min ?? 0 }))}
             />
           </Field>
           <Field label={t("inspector.max")}>
             <CommitInput
               value={String(link.cardinality.max)}
-              onCommit={(max) => report(cmd.setLinkCardinality(link.id, { ...link.cardinality, max: parseMax(max) }))}
+              onCommit={(max) => report(cmd.setLinkCardinality(handle, link.id, { ...link.cardinality, max: parseMax(max) }))}
             />
           </Field>
         </div>
         <Checkbox
           label={t("inspector.relativeId")}
           checked={link.relativeId}
-          onChange={(relativeId) => cmd.updateLink(link.id, { relativeId })}
+          onChange={(relativeId) => cmd.updateLink(handle, link.id, { relativeId })}
         />
       </Section>
       <Section title={t("inspector.cascades")}>
@@ -243,7 +247,7 @@ function LinkPanel({ doc, link, report }: { doc: ModelDocument; link: Link; repo
             <Select
               value={link[event] ?? ""}
               options={[{ id: "" as const, label: t("inspector.actionDefault") }, ...REFERENTIAL_ACTIONS.map((a) => ({ id: a, label: a.toUpperCase() }))]}
-              onChange={(value) => cmd.updateLink(link.id, { [event]: value || undefined })}
+              onChange={(value) => cmd.updateLink(handle, link.id, { [event]: value || undefined })}
             />
           </Field>
         ))}
@@ -251,7 +255,7 @@ function LinkPanel({ doc, link, report }: { doc: ModelDocument; link: Link; repo
           <CommitInput
             value={link.foreignKeyConstraintName ?? ""}
             placeholder={t("inspector.constraintNamePlaceholder")}
-            onCommit={(name) => cmd.updateLink(link.id, { foreignKeyConstraintName: name.trim() || undefined })}
+            onCommit={(name) => cmd.updateLink(handle, link.id, { foreignKeyConstraintName: name.trim() || undefined })}
           />
         </Field>
       </Section>
@@ -262,6 +266,7 @@ function LinkPanel({ doc, link, report }: { doc: ModelDocument; link: Link; repo
 }
 
 function DocumentSettingsPanel({ doc }: { doc: ModelDocument }) {
+  const handle = useDocumentHandle();
   const s = doc.settings;
   return (
     <>
@@ -270,13 +275,13 @@ function DocumentSettingsPanel({ doc }: { doc: ModelDocument }) {
           <Select
             value={s.naming.typology}
             options={TYPOLOGIES.map((id) => ({ id, label: t(`typology.${id}`) }))}
-            onChange={(typology) => cmd.updateSettings("history.typology", (d) => void (d.naming.typology = typology))}
+            onChange={(typology) => cmd.updateSettings(handle, "history.typology", (d) => void (d.naming.typology = typology))}
           />
         </Field>
         <Checkbox
           label={t("inspector.stripAccents")}
           checked={s.naming.stripAccents}
-          onChange={(v) => cmd.updateSettings("history.stripAccents", (d) => void (d.naming.stripAccents = v))}
+          onChange={(v) => cmd.updateSettings(handle, "history.stripAccents", (d) => void (d.naming.stripAccents = v))}
         />
       </Section>
       <Section title={t("inspector.keys")}>
@@ -284,21 +289,21 @@ function DocumentSettingsPanel({ doc }: { doc: ModelDocument }) {
           <KeyPatternField
             kind="discriminant"
             value={s.autoIdMask}
-            onChange={(pattern) => cmd.updateSettings("history.autoIdMask", (d) => void (d.autoIdMask = pattern))}
+            onChange={(pattern) => cmd.updateSettings(handle, "history.autoIdMask", (d) => void (d.autoIdMask = pattern))}
           />
         </Field>
         <Field label={t("inspector.primaryKey")}>
           <KeyPatternField
             kind="primaryKey"
             value={s.keys.primary}
-            onChange={(pattern) => cmd.updateSettings("history.primaryKeyMask", (d) => void (d.keys.primary = pattern))}
+            onChange={(pattern) => cmd.updateSettings(handle, "history.primaryKeyMask", (d) => void (d.keys.primary = pattern))}
           />
         </Field>
         <Field label={t("inspector.foreignKey")}>
           <KeyPatternField
             kind="foreignKey"
             value={s.keys.foreign}
-            onChange={(pattern) => cmd.updateSettings("history.foreignKeyMask", (d) => void (d.keys.foreign = pattern))}
+            onChange={(pattern) => cmd.updateSettings(handle, "history.foreignKeyMask", (d) => void (d.keys.foreign = pattern))}
           />
         </Field>
         <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("inspector.keysHelp")}</p>
@@ -307,106 +312,106 @@ function DocumentSettingsPanel({ doc }: { doc: ModelDocument }) {
         <Checkbox
           label={t("inspector.showAttributes")}
           checked={s.display.showAttributes}
-          onChange={(v) => cmd.updateSettings("history.showAttributes", (d) => void (d.display.showAttributes = v))}
+          onChange={(v) => cmd.updateSettings(handle, "history.showAttributes", (d) => void (d.display.showAttributes = v))}
         />
         <Checkbox
           label={t("inspector.grid")}
           checked={s.grid.enabled}
-          onChange={(v) => cmd.updateSettings("history.grid", (d) => void (d.grid.enabled = v))}
+          onChange={(v) => cmd.updateSettings(handle, "history.grid", (d) => void (d.grid.enabled = v))}
         />
         <Field label={t("inspector.gridSize")}>
-          <NumberInput min={2} value={s.grid.size} onCommit={(v) => cmd.updateSettings("history.gridSize", (d) => void (d.grid.size = v ?? 10))} />
+          <NumberInput min={2} value={s.grid.size} onCommit={(v) => cmd.updateSettings(handle, "history.gridSize", (d) => void (d.grid.size = v ?? 10))} />
         </Field>
       </Section>
       <Section title={t("ddl.title")}>
         <Checkbox
           label={t("ddl.foreignKeysInAlter")}
           checked={s.ddl.foreignKeysInAlter}
-          onChange={(v) => cmd.updateSettings("history.ddlOptions", (d) => void (d.ddl.foreignKeysInAlter = v))}
+          onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.foreignKeysInAlter = v))}
         />
         <Checkbox
           label={t("ddl.indexes")}
           checked={s.ddl.indexes}
-          onChange={(v) => cmd.updateSettings("history.ddlOptions", (d) => void (d.ddl.indexes = v))}
+          onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.indexes = v))}
         />
         <Checkbox
           label={t("ddl.sourceColumnOrder")}
           checked={s.ddl.sourceColumnOrder}
-          onChange={(v) => cmd.updateSettings("history.ddlOptions", (d) => void (d.ddl.sourceColumnOrder = v))}
+          onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.sourceColumnOrder = v))}
         />
         <Checkbox
           label={t("ddl.strictRanges")}
           checked={s.ddl.strictRanges}
-          onChange={(v) => cmd.updateSettings("history.ddlOptions", (d) => void (d.ddl.strictRanges = v))}
+          onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.strictRanges = v))}
         />
         <Field label={t("ddl.unsigned")}>
           <Select
             value={s.ddl.unsigned}
             options={(["widen", "check"] as const).map((id) => ({ id, label: t(`ddl.unsigned.${id}`) }))}
-            onChange={(v) => cmd.updateSettings("history.ddlOptions", (d) => void (d.ddl.unsigned = v))}
+            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.unsigned = v))}
           />
         </Field>
         <Field label={t("ddl.enums")}>
           <Select
             value={s.ddl.enums}
             options={(["check", "type"] as const).map((id) => ({ id, label: t(`ddl.enums.${id}`) }))}
-            onChange={(v) => cmd.updateSettings("history.ddlOptions", (d) => void (d.ddl.enums = v))}
+            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.enums = v))}
           />
         </Field>
         <Field label={t("ddl.sets")}>
           <Select
             value={s.ddl.sets}
             options={(["array", "text"] as const).map((id) => ({ id, label: t(`ddl.sets.${id}`) }))}
-            onChange={(v) => cmd.updateSettings("history.ddlOptions", (d) => void (d.ddl.sets = v))}
+            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.sets = v))}
           />
         </Field>
         <Field label={t("ddl.collations")}>
           <Select
             value={s.ddl.collations}
             options={(["icu", "deterministic"] as const).map((id) => ({ id, label: t(`ddl.collations.${id}`) }))}
-            onChange={(v) => cmd.updateSettings("history.ddlOptions", (d) => void (d.ddl.collations = v))}
+            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.collations = v))}
           />
         </Field>
         <Field label={t("ddl.oracleDates")}>
           <Select
             value={s.ddl.oracleDates}
             options={(["timestamp", "date"] as const).map((id) => ({ id, label: t(`ddl.oracleDates.${id}`) }))}
-            onChange={(v) => cmd.updateSettings("history.ddlOptions", (d) => void (d.ddl.oracleDates = v))}
+            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.oracleDates = v))}
           />
         </Field>
         <Field label={t("ddl.emptyStrings")}>
           <Select
             value={s.ddl.emptyStrings}
             options={(["check", "none"] as const).map((id) => ({ id, label: t(`ddl.emptyStrings.${id}`) }))}
-            onChange={(v) => cmd.updateSettings("history.ddlOptions", (d) => void (d.ddl.emptyStrings = v))}
+            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.emptyStrings = v))}
           />
         </Field>
         <Field label={t("ddl.spatial")}>
           <Select
             value={s.ddl.spatial}
             options={(["postgis", "wkb", "wkt"] as const).map((id) => ({ id, label: t(`ddl.spatial.${id}`) }))}
-            onChange={(v) => cmd.updateSettings("history.ddlOptions", (d) => void (d.ddl.spatial = v))}
+            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.spatial = v))}
           />
         </Field>
         <Field label={t("ddl.sqlServerCollation")}>
           <Select
             value={s.ddl.sqlServerCollation}
             options={(["ci_as", "ci_ai", "cs_as"] as const).map((id) => ({ id, label: t(`ddl.sqlServerCollation.${id}`) }))}
-            onChange={(v) => cmd.updateSettings("history.ddlOptions", (d) => void (d.ddl.sqlServerCollation = v))}
+            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.sqlServerCollation = v))}
           />
         </Field>
         <Field label={t("ddl.dboSchema")}>
           <Select
             value={s.ddl.dboSchema}
             options={(["public", "dbo"] as const).map((id) => ({ id, label: t(`ddl.dboSchema.${id}`) }))}
-            onChange={(v) => cmd.updateSettings("history.ddlOptions", (d) => void (d.ddl.dboSchema = v))}
+            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.dboSchema = v))}
           />
         </Field>
         <Field label={t("ddl.constraintNaming")}>
           <Select
             value={s.ddl.constraintNaming}
             options={(["none", "prefix", "suffix"] as const).map((id) => ({ id, label: t(`ddl.constraintNaming.${id}`) }))}
-            onChange={(v) => cmd.updateSettings("history.ddlOptions", (d) => void (d.ddl.constraintNaming = v))}
+            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.constraintNaming = v))}
           />
         </Field>
       </Section>
@@ -414,13 +419,13 @@ function DocumentSettingsPanel({ doc }: { doc: ModelDocument }) {
         <Checkbox
           label={t("inspector.relationArrows")}
           checked={s.display.relationArrows}
-          onChange={(v) => cmd.updateSettings("history.relationArrows", (d) => void (d.display.relationArrows = v))}
+          onChange={(v) => cmd.updateSettings(handle, "history.relationArrows", (d) => void (d.display.relationArrows = v))}
         />
         <Field label={t("inspector.relationLabels")}>
           <Select
             value={s.display.relationLabels}
             options={(["none", "foreignKey", "text"] as const).map((id) => ({ id, label: t(`inspector.relationLabels.${id}`) }))}
-            onChange={(mode) => cmd.updateSettings("history.relationLabels", (d) => void (d.display.relationLabels = mode))}
+            onChange={(mode) => cmd.updateSettings(handle, "history.relationLabels", (d) => void (d.display.relationLabels = mode))}
           />
         </Field>
       </Section>

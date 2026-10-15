@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState, type PointerEvent } from "react";
 import { addAssociation, addEntity, addInheritance, connectNodes, findDiagramLink, removeBend } from "@/app/commands";
 import { useIssuesByTarget } from "@/app/derived";
 import { t } from "@/i18n";
-import { useDocumentStore } from "@/app/documentStore";
+import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { useUiStore } from "@/app/uiStore";
 import { CanvasSurface, hitId, hitIdAt } from "./CanvasSurface";
 import {
@@ -51,8 +51,10 @@ type Gesture =
   | { type: "link"; fromId: Id; start: Point; current: Point; pending: boolean };
 
 export function McdCanvas() {
-  const doc = useDocumentStore((s) => s.doc);
-  const { tool, selection, setTool, select, toggleSelected, notify, activeBend, setActiveBend } = useUiStore();
+  const docHandle = useDocumentHandle();
+  const doc = useDocument((s) => s.doc);
+  const { tool, setTool, notify } = useUiStore();
+  const { selection, select, toggleSelected, activeBend, setActiveBend } = useDocumentView((s) => s);
   const issues = useIssuesByTarget();
   const [gesture, setGesture] = useState<Gesture | null>(null);
 
@@ -157,6 +159,7 @@ export function McdCanvas() {
     const isEntity = doc.entities.some((e) => e.id === fromId);
     if (fromId === toId && !isEntity) return;
     const result = connectNodes(
+      docHandle,
       fromId,
       toId,
       fromId === toId ? reflexivePlacement(a) : { associationPosition: associationPosition(a, b) },
@@ -170,7 +173,7 @@ export function McdCanvas() {
     const hit = hitId(e);
     const target = e.target as Element;
     if (target.closest("[data-bend-delete]") && activeBend) {
-      removeBend(activeBend.linkId, activeBend.index);
+      removeBend(docHandle, activeBend.linkId, activeBend.index);
       return true;
     }
     if (target.closest("[data-badge]") && hit) {
@@ -182,14 +185,14 @@ export function McdCanvas() {
     if (handle && hit && tool === "select") {
       const index = Number(handle.dataset.index);
       if (handle.dataset.handle === "bend" && e.detail >= 2) {
-        removeBend(hit, index);
+        removeBend(docHandle, hit, index);
         return true;
       }
       setActiveBend({ linkId: hit, index });
-      useDocumentStore.getState().begin();
+      docHandle.store.getState().begin();
       const created = handle.dataset.handle === "mid";
       if (created) {
-        useDocumentStore.getState().preview((d) => {
+        docHandle.store.getState().preview((d) => {
           findDiagramLink(d, hit)?.bends.splice(index, 0, { x: snap(point.x, grid), y: snap(point.y, grid) });
         });
       }
@@ -203,9 +206,9 @@ export function McdCanvas() {
       if (tool === "inheritance") {
         // Le triangle est centré sur le clic.
         const at = { x: snap(point.x - INHERITANCE_SIZE.width / 2, grid), y: snap(point.y - INHERITANCE_SIZE.height / 2, grid) };
-        select([addInheritance(at)]);
+        select([addInheritance(docHandle, at)]);
       } else {
-        select([tool === "entity" ? addEntity(position) : addAssociation(position)]);
+        select([tool === "entity" ? addEntity(docHandle, position) : addAssociation(docHandle, position)]);
       }
       setTool("select");
       return true;
@@ -240,7 +243,7 @@ export function McdCanvas() {
       if (l.bends.length && origins.has(linkSourceId(l)) && origins.has(l.entityId)) bendOrigins.set(l.id, l.bends);
     }
     if (origins.size > 0) {
-      useDocumentStore.getState().begin();
+      docHandle.store.getState().begin();
       setGesture({ type: "move", start: point, origins, bendOrigins });
     }
     return true;
@@ -252,7 +255,7 @@ export function McdCanvas() {
       case "move": {
         const dx = point.x - gesture.start.x;
         const dy = point.y - gesture.start.y;
-        useDocumentStore.getState().preview((d) => {
+        docHandle.store.getState().preview((d) => {
           for (const node of diagramNodes(d)) {
             const origin = gesture.origins.get(node.id);
             if (origin) node.position = { x: snap(origin.x + dx, grid), y: snap(origin.y + dy, grid) };
@@ -266,7 +269,7 @@ export function McdCanvas() {
         break;
       }
       case "bend": {
-        useDocumentStore.getState().preview((d) => {
+        docHandle.store.getState().preview((d) => {
           const link = findDiagramLink(d, gesture.linkId);
           if (link?.bends[gesture.index]) link.bends[gesture.index] = { x: snap(point.x, grid), y: snap(point.y, grid) };
         });
@@ -288,9 +291,9 @@ export function McdCanvas() {
   function onPointerUp(e: PointerEvent<SVGSVGElement>, point: Point) {
     if (!gesture) return;
     if (gesture.type === "move") {
-      useDocumentStore.getState().commit(gesture.origins.size > 1 ? "history.moveSelection" : "history.move");
+      docHandle.store.getState().commit(gesture.origins.size > 1 ? "history.moveSelection" : "history.move");
     } else if (gesture.type === "bend") {
-      useDocumentStore.getState().commit(gesture.created ? "history.createBend" : "history.moveBend");
+      docHandle.store.getState().commit(gesture.created ? "history.createBend" : "history.moveBend");
     } else if (gesture.type === "link") {
       if (gesture.pending) return;
       const dragged = Math.hypot(point.x - gesture.start.x, point.y - gesture.start.y) > DRAG_THRESHOLD;
@@ -316,7 +319,7 @@ export function McdCanvas() {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={() => {
-        if (gesture?.type === "move" || gesture?.type === "bend") useDocumentStore.getState().cancel();
+        if (gesture?.type === "move" || gesture?.type === "bend") docHandle.store.getState().cancel();
         setGesture(null);
       }}
       onContextMenu={(e) => {
@@ -332,7 +335,7 @@ export function McdCanvas() {
         const linkId = hitId(e);
         if (!handle || !linkId) return;
         e.preventDefault();
-        removeBend(linkId, Number(handle.dataset.index));
+        removeBend(docHandle, linkId, Number(handle.dataset.index));
       }}
     >
       {geometries.map((g) => (
