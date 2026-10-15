@@ -1,9 +1,13 @@
 //! Coquille native. Toute la logique métier vit côté TypeScript (`src/core`) ;
 //! Rust ne fournit que la fenêtre et l'accès au système (dialogues, fichiers, mises à jour).
 
+mod mcp;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
+        .manage(mcp::McpState::default())
+        .invoke_handler(tauri::generate_handler![mcp::mcp_start, mcp::mcp_stop, mcp::mcp_reply])
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())

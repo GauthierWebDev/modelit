@@ -16,7 +16,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+serde = { version = "1", features = ["derive"] }
 serde_json = "1" # code généré par `generate_context!` (configuration des plugins)
+tiny_http = "0.12" # point d'écoute MCP local (O-47)
 tauri = { version = "2", features = ["macos-private-api"] } # fenêtres flottantes transparentes (O-45, O-46)
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"

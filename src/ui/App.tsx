@@ -11,6 +11,8 @@ import { t } from "@/i18n";
 import { closeAllFloats, nativeWindows } from "@/platform/floatWindows";
 import { onCloseRequested, onMenuAbout, onMenuCloseTab, setWindowTitle } from "@/platform/window";
 import { FloatManager } from "./windows/FloatManager";
+import { McpBridge } from "./mcp/McpBridge";
+import { McpIndicator } from "./mcp/McpIndicator";
 import { AboutDialog } from "./about/AboutDialog";
 import { LogicalCanvas } from "./canvas/LogicalCanvas";
 import { McdCanvas } from "./canvas/McdCanvas";
@@ -94,6 +96,7 @@ function Workbench() {
       </div>
       <FloatingGroups />
       <FloatManager />
+      <McpBridge />
       <DragGhost />
       <ExportDialog />
       <OptionsDialog />
@@ -107,6 +110,7 @@ function Workbench() {
           {dirty && ` — ${t("app.modified")}`}
         </span>
         {status && <span className={status.kind === "error" ? "text-red-600" : ""}>{status.text}</span>}
+        <McpIndicator />
       </footer>
     </div>
   );
