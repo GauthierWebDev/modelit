@@ -11,6 +11,8 @@ export const fr = {
   "tabs.label": "Documents ouverts",
   "tabs.close": "Fermer l'onglet ({key})",
   "tabs.new": "Nouvel onglet ({key})",
+  "collab.title": "Session collaborative",
+  "collab.participants": "{n} participant(s)",
   "collab.passwordTooShort": "Mot de passe trop court : au moins {n} caractères.",
   "collab.startFailed": "Impossible de démarrer le partage : {error}",
   "collab.invalidLink": "Ce n'est pas un lien de session ModelIt.",

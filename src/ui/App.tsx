@@ -12,6 +12,9 @@ import { closeAllFloats, nativeWindows } from "@/platform/floatWindows";
 import { onCloseRequested, onMenuAbout, onMenuCloseTab, setWindowTitle } from "@/platform/window";
 import { FloatManager } from "./windows/FloatManager";
 import { McpBridge } from "./mcp/McpBridge";
+import { CollabBridge } from "./collab/CollabBridge";
+import { CollabIndicator } from "./collab/CollabIndicator";
+import { ShareDialog } from "./collab/ShareDialog";
 import { McpIndicator } from "./mcp/McpIndicator";
 import { AboutDialog } from "./about/AboutDialog";
 import { LogicalCanvas } from "./canvas/LogicalCanvas";
@@ -103,6 +106,8 @@ function Workbench() {
       <OptionsDialog />
       <AboutDialog />
       <ReverseDialog />
+      <ShareDialog />
+      <CollabBridge />
       <DialogHost />
       <TooltipLayer />
       <footer className="flex h-6 flex-none items-center gap-3 border-t border-neutral-200 bg-neutral-50 px-3 text-xs text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900">
@@ -111,6 +116,7 @@ function Workbench() {
           {dirty && ` — ${t("app.modified")}`}
         </span>
         {status && <span className={status.kind === "error" ? "text-red-600" : ""}>{status.text}</span>}
+        <CollabIndicator />
         <McpIndicator />
       </footer>
     </div>

@@ -9,6 +9,8 @@ export const en: Record<MessageKey, string> = {
   "tabs.label": "Open documents",
   "tabs.close": "Close tab ({key})",
   "tabs.new": "New tab ({key})",
+  "collab.title": "Collaborative session",
+  "collab.participants": "{n} participant(s)",
   "collab.passwordTooShort": "Password too short: at least {n} characters.",
   "collab.startFailed": "Cannot start sharing: {error}",
   "collab.invalidLink": "This is not a ModelIt session link.",
