@@ -46,10 +46,10 @@ describe("héritage (override O-18)", () => {
 
   it("une seule entité spécialisée suffit (override O-36) ; aucune : erreur", () => {
     const one = toLogicalModel(personnes().inherit("PERSONNE", ["CLIENT"]).build());
-    expect(one.issues.map((i) => i.message)).not.toContain(MSG.inheritanceNeedsTwoChildren);
+    expect(one.issues.map((i) => i.message)).not.toContain(MSG.inheritanceNeedsChild);
     expect(one.tables.find((t) => t.name === "CLIENT")).toMatchObject({ primaryKey: ["id"], foreignKeys: [expect.objectContaining({ referencedTable: "PERSONNE" })] });
     const none = toLogicalModel(personnes().inherit("PERSONNE", []).build());
-    expect(none.issues.map((i) => i.message)).toContain(MSG.inheritanceNeedsTwoChildren);
+    expect(none.issues.map((i) => i.message)).toContain(MSG.inheritanceNeedsChild);
   });
 
   it("un sous-type ne peut dépendre que d'un surtype", () => {

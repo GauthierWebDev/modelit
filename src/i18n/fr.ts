@@ -375,7 +375,7 @@ export const fr = {
 
   // héritage
   "inheritance.title": "Héritage",
-  "inheritance.help": "Spécialisation / généralisation : une entité générique et au moins deux entités spécialisées. Reliez le triangle aux entités avec l'outil Lien ; la flèche désigne l'entité générique.",
+  "inheritance.help": "Spécialisation / généralisation : une seule entité générique et au moins une entité spécialisée. Reliez le triangle aux entités avec l'outil Lien ; la flèche désigne l'entité générique.",
   "inheritance.constraint": "Contrainte",
   "inheritance.none": "Aucune",
   "inheritance.X": "Exclusivité",
@@ -385,7 +385,7 @@ export const fr = {
   "inheritance.choose": "— choisir —",
   "inheritance.noEntities": "Aucune entité reliée.",
   "inheritance.subtypes": "Entités spécialisées ({n})",
-  "inheritance.needTwo": "Il faut au moins deux entités spécialisées.",
+  "inheritance.needChild": "Il faut au moins une entité spécialisée.",
   "inheritance.link": "Lien d'héritage",
   "inheritance.roleTarget": "entité générique",
   "inheritance.roleSubtype": "entité spécialisée",
@@ -545,7 +545,7 @@ export const fr = {
   "about.tab.about": "À propos",
   "about.tab.changes": "Nouveautés",
   "about.version": "Version {version}",
-  "about.description": "Modélisation de données Merise : du MCD au MLD et aux scripts SQL.",
+  "about.description": "Modélisation de données Merise : du MCD au MPD et aux scripts SQL.",
   "about.maintainer": "Développé et maintenu par {name}",
   "about.repository": "Code source",
   "about.issues": "Signaler un problème",

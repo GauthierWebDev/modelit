@@ -32,7 +32,7 @@ const FR = {
   sqlBlocked: "Impossible de générer le script SQL : voir les erreurs dans le MLD textuel",
   // héritage (O-18, O-27) : entité générique et entités spécialisées
   inheritanceNeedsParent: "Il faut une entité générique",
-  inheritanceNeedsTwoChildren: "Il faut au moins une entité spécialisée",
+  inheritanceNeedsChild: "Il faut au moins une entité spécialisée",
   newerFile: "Attention, ce fichier a été enregistré par une version plus récente de l'application, sa lecture sera aléatoire !",
 
   // propres à l'application
@@ -242,7 +242,7 @@ const EN: Messages = {
   circularReferences: "Warning! Circular references",
   sqlBlocked: "Cannot generate the SQL script: see the errors in the textual logical model",
   inheritanceNeedsParent: "A generic entity is required",
-  inheritanceNeedsTwoChildren: "At least one specialised entity is required",
+  inheritanceNeedsChild: "At least one specialised entity is required",
   newerFile: "Warning: this file was saved by a newer version of the application and may not load correctly!",
 
   emptyName: "The name cannot be empty.",
