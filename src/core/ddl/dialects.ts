@@ -2,7 +2,7 @@ import type { Dbms } from "../dbms/dbms";
 import type { TypeTemplates } from "../dbms/typeMapping";
 import type { DocumentSettings } from "../model/settings";
 import { isAtLeast } from "../dbms/versions";
-import type { ReferentialAction } from "../model/physical";
+import type { ReferentialAction, SqlDialect } from "../model/physical";
 
 /**
  * Capacités des SGBD cibles pour la génération du script (override O-29).
@@ -23,6 +23,13 @@ export const targetOf = (s: Pick<DocumentSettings, "dbms" | "dbmsVersion" | "cus
   version: s.dbmsVersion,
   ...(s.customDbms ? { custom: { name: s.customDbms.name, types: s.customDbms.types } } : {}),
 });
+
+/** Même dialecte : l'expression ou le type d'origine peut être réémis tel quel. */
+export function sameDialect(source: SqlDialect | undefined, target: Dbms) {
+  if (!source) return false;
+  const family = (d: SqlDialect) => (d === "mariadb" ? "mysql" : d);
+  return family(source) === family(target);
+}
 
 // ---------------------------------------------------------------------------------------------
 // Identifiants
