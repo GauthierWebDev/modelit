@@ -16,6 +16,7 @@ import { McpBridge } from "./mcp/McpBridge";
 import { CollabBridge } from "./collab/CollabBridge";
 import { CollabIndicator } from "./collab/CollabIndicator";
 import { DbmsTarget } from "./status/DbmsTarget";
+import { IssuesStatus, SelectionStatus, ZoomStatus } from "./status/StatusItems";
 import { ShareDialog } from "./collab/ShareDialog";
 import { McpIndicator } from "./mcp/McpIndicator";
 import { AboutDialog } from "./about/AboutDialog";
@@ -120,6 +121,9 @@ function Workbench() {
         </span>
         {status && <span className={status.kind === "error" ? "text-red-600" : ""}>{status.text}</span>}
         <div className="ml-auto flex items-center gap-3">
+          <SelectionStatus />
+          <IssuesStatus />
+          <ZoomStatus />
           <CollabIndicator />
           <McpIndicator />
           <DbmsTarget />
