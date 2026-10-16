@@ -4,6 +4,12 @@ Une section `## X.Y.Z — AAAA-MM-JJ` par version, la plus récente en haut. La 
 taguée devient le texte de la release GitHub et les notes proposées par la mise à jour ; tout
 l'historique est affiché dans l'application (À propos → Nouveautés).
 
+## 0.3.1 — 2026-10-16
+
+### Corrections
+
+- Linux : les paquets de la version 0.3.0 (AppImage, .deb, .rpm) n'avaient pas pu être construits ; ils sont de nouveau disponibles, avec la session collaborative.
+
 ## 0.3.0 — 2026-10-16
 
 ### Nouveautés
