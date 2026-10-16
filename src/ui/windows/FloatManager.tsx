@@ -170,7 +170,7 @@ export function FloatManager() {
     })();
     return () => {
       disposed = true;
-      offs.forEach((off) => off());
+      for (const off of offs) off();
     };
   }, []);
 

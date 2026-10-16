@@ -348,7 +348,7 @@ export function sanitizeLayout(raw: unknown): DockLayout {
       if (cleaned) layout.floating.push({ ...cleaned, rect: r });
     }
     layout.hidden = (Array.isArray(input.hidden) ? input.hidden : []).filter((s) => isSection(s) && !seen.has(s));
-    layout.hidden.forEach((s) => seen.add(s));
+    for (const s of layout.hidden) seen.add(s);
     layout.lastPlace = typeof input.lastPlace === "object" && input.lastPlace ? input.lastPlace : {};
     // Section oubliée (ajoutée par une version plus récente, ou disposition abîmée) : à droite,
     // ou masquée si elle ne s'affiche qu'à la demande.

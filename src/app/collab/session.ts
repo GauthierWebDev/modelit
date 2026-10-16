@@ -135,7 +135,11 @@ const me = () => {
   return { name: displayName(identity), color: identity.color };
 };
 
-const fail = (error: string) => useCollabStore.setState({ error });
+/** Échec signalé dans la boîte de session ; renvoie `false` pour `return fail(…)`. */
+const fail = (error: string): false => {
+  useCollabStore.setState({ error });
+  return false;
+};
 
 // ——— Hôte ———
 
@@ -149,10 +153,10 @@ export async function shareActiveTab({
 } = {}): Promise<boolean> {
   if (!transport || useCollabStore.getState().mode !== "idle") return false;
   if (password && password.length < MIN_PASSWORD_LENGTH)
-    return fail(t("collab.passwordTooShort", { n: MIN_PASSWORD_LENGTH })), false;
+    return fail(t("collab.passwordTooShort", { n: MIN_PASSWORD_LENGTH }));
   const tab = activeDocument();
   if (new TextEncoder().encode(JSON.stringify(tab.store.getState().doc)).length > MAX_DOCUMENT_BYTES)
-    return fail(t("collab.tooLarge")), false;
+    return fail(t("collab.tooLarge"));
   useCollabStore.setState({ mode: "starting", error: null });
   presenceSent = null;
   try {
@@ -188,7 +192,14 @@ export async function shareActiveTab({
     const offTabs = useWorkspaceStore.subscribe((s) => {
       if (!s.documents.some((d) => d.id === tab.id)) void stopSharing();
     });
-    host = { session, stop: started.stop, off: () => (offState(), offTabs()) };
+    host = {
+      session,
+      stop: started.stop,
+      off: () => {
+        offState();
+        offTabs();
+      },
+    };
     useCollabStore.setState({
       mode: "host",
       you: "host",
@@ -252,9 +263,9 @@ async function confirmKick(peer: string) {
 /** Rejoint une session par un lien d'invitation (O-05 §4.2) ; la session s'ouvre dans un nouvel onglet. */
 export async function joinFromLink(url: string): Promise<boolean> {
   const parsed = parseLink(url);
-  if (!parsed) return fail(t("collab.invalidLink")), false;
+  if (!parsed) return fail(t("collab.invalidLink"));
   if (!transport) return false;
-  if (useCollabStore.getState().mode !== "idle") return fail(t("collab.alreadyInSession")), false;
+  if (useCollabStore.getState().mode !== "idle") return fail(t("collab.alreadyInSession"));
   useCollabStore.setState({ mode: "joining", error: null });
   presenceSent = null;
   let link: GuestLink;

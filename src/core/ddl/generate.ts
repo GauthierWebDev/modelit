@@ -77,7 +77,7 @@ export function planOrder(
   while (order.length < tables.length) {
     const remaining = tables.filter((t) => !created.has(t));
     const next = remaining.find((t) => pending(t).length === 0) ?? remaining[0]!;
-    pending(next).forEach((fk) => deferred.add(fk));
+    for (const fk of pending(next)) deferred.add(fk);
     created.add(next);
     order.push(next);
   }

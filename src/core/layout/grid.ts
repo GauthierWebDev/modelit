@@ -335,7 +335,9 @@ class State {
   ) {
     this.cellOf = Int32Array.from(cellOf);
     this.nodeAt = new Int32Array(pb.cells).fill(-1);
-    this.cellOf.forEach((c, v) => (this.nodeAt[c] = v));
+    this.cellOf.forEach((c, v) => {
+      this.nodeAt[c] = v;
+    });
     this.px = new Float64Array(pb.n);
     this.py = new Float64Array(pb.n);
     this.edgeMark = new Int32Array(pb.m);
@@ -705,7 +707,9 @@ function initialCells(pb: Problem, rnd: () => number, shuffled: boolean): number
   };
   const cells = Array.from({ length: pb.cells }, (_, i) => i).sort((a, b) => distance(a) - distance(b) || a - b);
   const cellOf = new Array<number>(pb.n);
-  order.forEach((v, i) => (cellOf[v] = cells[i]!));
+  order.forEach((v, i) => {
+    cellOf[v] = cells[i]!;
+  });
   return cellOf;
 }
 
@@ -765,7 +769,9 @@ function forceCells(pb: Problem, rnd: () => number): number[] {
   const rank = (values: Float64Array, slots: number) => {
     const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => values[a]! - values[b]! || a - b);
     const result = new Float64Array(n);
-    order.forEach((v, i) => (result[v] = n > 1 ? (i / (n - 1)) * (slots - 1) : 0));
+    order.forEach((v, i) => {
+      result[v] = n > 1 ? (i / (n - 1)) * (slots - 1) : 0;
+    });
     return result;
   };
   const col = rank(x, pb.cols);

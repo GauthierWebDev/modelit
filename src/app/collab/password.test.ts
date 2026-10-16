@@ -51,7 +51,13 @@ describe("session protégée par mot de passe", () => {
     const net = memoryNetwork();
     const sent: string[] = [];
     const link = net.connect("bob");
-    const spy = { ...link, send: (m: Parameters<typeof link.send>[0]) => (sent.push(JSON.stringify(m)), link.send(m)) };
+    const spy = {
+      ...link,
+      send: (m: Parameters<typeof link.send>[0]) => {
+        sent.push(JSON.stringify(m));
+        link.send(m);
+      },
+    };
     startHost({
       link: net.hostLink,
       doc: emptyDocument(),

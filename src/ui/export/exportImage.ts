@@ -62,13 +62,13 @@ export async function buildSvg(
   const content = root.cloneNode(true) as SVGGElement;
   content.removeAttribute("transform");
   content.removeAttribute("data-export-root");
-  content.querySelectorAll(UI_ONLY).forEach((el) => el.remove());
+  for (const el of content.querySelectorAll(UI_ONLY)) el.remove();
 
   // Recadrage sur le contenu réel (sans les éléments d'interface).
   const hidden = root.querySelectorAll<SVGElement>(UI_ONLY);
-  hidden.forEach((el) => (el.style.display = "none"));
+  for (const el of hidden) el.style.display = "none";
   const box = root.getBBox();
-  hidden.forEach((el) => (el.style.display = ""));
+  for (const el of hidden) el.style.display = "";
   if (box.width === 0 || box.height === 0) throw new ExportError(t("export.empty"));
 
   const x = Math.floor(box.x - MARGIN);

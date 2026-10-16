@@ -139,8 +139,14 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`no answer from the layout workers after ${ms} ms`)), ms);
     promise.then(
-      (value) => (clearTimeout(timer), resolve(value)),
-      (error: unknown) => (clearTimeout(timer), reject(error)),
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
     );
   });
 }
@@ -176,7 +182,7 @@ async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<M
         }
         if (--running === 0) resolve();
       };
-      workers.forEach((worker) => lane(worker).catch(reject));
+      for (const worker of workers) lane(worker).catch(reject);
     });
   } finally {
     // Workers encore occupés (lots abandonnés, ou erreur) : arrêtés et remplacés.

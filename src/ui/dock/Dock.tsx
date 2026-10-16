@@ -181,15 +181,30 @@ export function GroupView({
                 </MenuItem>
               ) : (
                 <>
-                  <MenuItem onSelect={() => (dropGroup({ kind: "zone", zone: "right", index: Infinity }), close())}>
+                  <MenuItem
+                    onSelect={() => {
+                      dropGroup({ kind: "zone", zone: "right", index: Infinity });
+                      close();
+                    }}
+                  >
                     {t("dock.dockRight")}
                   </MenuItem>
-                  <MenuItem onSelect={() => (dropGroup({ kind: "zone", zone: "bottom", index: Infinity }), close())}>
+                  <MenuItem
+                    onSelect={() => {
+                      dropGroup({ kind: "zone", zone: "bottom", index: Infinity });
+                      close();
+                    }}
+                  >
                     {t("dock.dockBottom")}
                   </MenuItem>
                 </>
               )}
-              <MenuItem onSelect={() => (updateDock((l) => closeGroup(l, group.id)), close())}>
+              <MenuItem
+                onSelect={() => {
+                  updateDock((l) => closeGroup(l, group.id));
+                  close();
+                }}
+              >
                 {t("dock.closeGroup")}
               </MenuItem>
               <MenuSeparator />

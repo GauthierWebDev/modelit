@@ -13,12 +13,23 @@ function memoryChannels() {
   const toReplica = new Set<(m: ToReplica) => void>();
   const sent: ToReplica[] = [];
   const owner: Channel<ToReplica, ToMain> = {
-    send: (m) => (sent.push(m), toReplica.forEach((h) => h(structuredClone(m)))),
-    listen: (h) => (toMain.add(h), () => toMain.delete(h)),
+    send: (m) => {
+      sent.push(m);
+      for (const h of toReplica) h(structuredClone(m));
+    },
+    listen: (h) => {
+      toMain.add(h);
+      return () => toMain.delete(h);
+    },
   };
   const replica: Channel<ToMain, ToReplica> = {
-    send: (m) => toMain.forEach((h) => h(structuredClone(m))),
-    listen: (h) => (toReplica.add(h), () => toReplica.delete(h)),
+    send: (m) => {
+      for (const h of toMain) h(structuredClone(m));
+    },
+    listen: (h) => {
+      toReplica.add(h);
+      return () => toReplica.delete(h);
+    },
   };
   return { owner, replica, sent };
 }

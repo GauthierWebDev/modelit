@@ -579,7 +579,8 @@ function createSequence(c: Cursor, schema: ParsedSchema): void {
     ...(qualified.schema ? { schema: qualified.schema } : {}),
   };
   const number = () => {
-    const negative = isPunct(c.peek(), "-") ? (c.next(), -1) : 1;
+    const negative = isPunct(c.peek(), "-") ? -1 : 1;
+    if (negative < 0) c.next();
     const t = c.next();
     return t?.type === "number" ? negative * Number(t.value) : undefined;
   };
@@ -789,11 +790,10 @@ function columnDefinition(tokens: Token[], table: ParsedTable): ParsedColumn | n
       if (seed?.[2]?.type === "number" && Number(seed[2].value) !== 1) column.identityIncrement = Number(seed[2].value);
       if (c.accept("not", "for", "replication")) addSqlServerOption(column, "NOT FOR REPLICATION");
     } else if (c.accept("generated")) {
-      const mode = c.accept("always")
-        ? "always"
-        : c.accept("by", "default", "on", "null")
-          ? "on null"
-          : (c.accept("by", "default"), undefined);
+      let mode: "always" | "on null" | undefined;
+      if (c.accept("always")) mode = "always";
+      else if (c.accept("by", "default", "on", "null")) mode = "on null";
+      else c.accept("by", "default");
       c.accept("as");
       if (c.accept("identity")) {
         column.autoIncrement = true;
