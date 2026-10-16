@@ -81,6 +81,8 @@ ne sont pas concernées.
 - **Placement auto.** (barre d'outils, et après une rétroconception) : range tout le MCD sur une
   grille sans traits qui se croisent ni traversent un objet, en dégageant les cardinalités ;
   disposition commune au MCD, au MLD et au MPD ; calcul en ≈ 0,2 s, en parallèle.
+- **⌘/Ctrl + C, X, V, D** : copier, couper, coller, dupliquer la sélection, dans les trois vues (noms
+  suffixés « _2 », copies décalées ; presse-papiers du système, entre onglets et fenêtres).
 - **Menu ≡** (barre d'outils) : fichier, export d'image, rétroconception, sections affichées, thème,
   options et à propos, avec leurs raccourcis.
 - **Barre d'état** : sélection, problèmes (clic : section Problèmes), zoom, et SGBD cible et version

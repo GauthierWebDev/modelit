@@ -30,6 +30,7 @@ import { ReverseDialog } from "./reverse/ReverseDialog";
 import { TabBar } from "./tabs/TabBar";
 import { DockZone, DragGhost, FloatingGroups } from "./dock/Dock";
 import { useShortcuts } from "./shortcuts";
+import { useClipboard } from "./clipboard";
 import { useApplyTheme } from "./theme";
 import { ToolbarHost } from "./toolbar/ToolbarHost";
 
@@ -47,6 +48,7 @@ export function App() {
 
 function Workbench() {
   useShortcuts();
+  useClipboard();
   useApplyTheme();
   const doc = useDocumentHandle();
   const view = useDocumentView((s) => s.view);

@@ -10,6 +10,7 @@ export * from "./model/document";
 export * from "./model/settings";
 export * from "./model/physical";
 export * from "./model/factory";
+export * from "./model/clipboard";
 export * from "./dbms/dbms";
 export * from "./dbms/typeMapping";
 export * from "./dbms/versions";

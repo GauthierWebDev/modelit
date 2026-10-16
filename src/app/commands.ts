@@ -233,10 +233,10 @@ export function moveNodes(doc: DocumentHandle, positions: Map<Id, Point>, bends 
   });
 }
 
-export function deleteObjects(doc: DocumentHandle, ids: Id[]) {
+export function deleteObjects(doc: DocumentHandle, ids: Id[], label: MessageKey = "history.delete") {
   if (ids.length === 0) return;
   const gone = new Set(ids);
-  change(doc, "history.delete", (d) => {
+  change(doc, label, (d) => {
     d.entities = d.entities.filter((e) => !gone.has(e.id));
     d.associations = d.associations.filter((a) => !gone.has(a.id));
     d.links = d.links.filter((l) => !gone.has(l.id) && !gone.has(l.entityId) && !gone.has(l.associationId));
