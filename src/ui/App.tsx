@@ -15,6 +15,7 @@ import { FloatManager } from "./windows/FloatManager";
 import { McpBridge } from "./mcp/McpBridge";
 import { CollabBridge } from "./collab/CollabBridge";
 import { CollabIndicator } from "./collab/CollabIndicator";
+import { DbmsTarget } from "./status/DbmsTarget";
 import { ShareDialog } from "./collab/ShareDialog";
 import { McpIndicator } from "./mcp/McpIndicator";
 import { AboutDialog } from "./about/AboutDialog";
@@ -118,8 +119,11 @@ function Workbench() {
           {dirty && ` — ${t("app.modified")}`}
         </span>
         {status && <span className={status.kind === "error" ? "text-red-600" : ""}>{status.text}</span>}
-        <CollabIndicator />
-        <McpIndicator />
+        <div className="ml-auto flex items-center gap-3">
+          <CollabIndicator />
+          <McpIndicator />
+          <DbmsTarget />
+        </div>
       </footer>
     </div>
   );

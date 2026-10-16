@@ -1,8 +1,6 @@
 import { useEffect } from "react";
-import { DBMS_LIST, versionOptions } from "@core/index";
 import { ChevronDown, DatabaseZap, FilePlus, FolderOpen, GripVertical, ImageDown, Info, LayoutDashboard, Maximize, Monitor, Moon, MousePointer2, PanelsTopLeft, Redo2, Save, Settings, Spline, Square, Sun, Triangle, Undo2, Users, ZoomIn, ZoomOut } from "lucide-react";
 import type { PointerEvent, ReactNode } from "react";
-import { setDbmsVersion, setTargetDbms } from "@/app/commands";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { selectRedoLabel, selectUndoLabel } from "@/app/document/documentStore";
 import type { ViewMode } from "@/app/document/documentView";
@@ -13,7 +11,7 @@ import { useUiStore, type Tool } from "@/app/uiStore";
 import { chooseTool, showView } from "@/app/viewCommands";
 import { t, type MessageKey } from "@/i18n";
 import { mainCommand } from "@/ui/windows/mainCommands";
-import { FitSelect, IconButton } from "@/ui/common/controls";
+import { IconButton } from "@/ui/common/controls";
 import { Menu, MenuItem } from "@/ui/common/Menu";
 import { updateDock } from "@/app/dock/actions";
 import { setToolbar } from "@/app/dock/layout";
@@ -67,7 +65,6 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
   const zoom = useDocumentView((s) => s.viewport.zoom);
   const undoLabel = useDocument(selectUndoLabel);
   const redoLabel = useDocument(selectRedoLabel);
-  const { dbms, dbmsVersion } = useDocument((s) => s.doc.settings);
   const { undo, redo } = doc.store.getState();
   const { theme, setTheme } = usePreferencesStore();
   const themeIndex = THEMES.findIndex((x) => x.id === theme);
@@ -186,20 +183,6 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
         </IconButton>
       </Group>
       {floating ? <div className="w-1" /> : <div className="flex-1" />}
-      <label className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400" {...tip(t("toolbar.dbmsTooltip"))}>
-        {t("toolbar.dbms")}
-        <FitSelect
-          value={dbms}
-          options={DBMS_LIST.map((d) => ({ id: d.id, label: d.label }))}
-          onChange={(value) => setTargetDbms(doc, value)}
-        />
-        <FitSelect
-          value={dbmsVersion}
-          label={t("toolbar.version")}
-          options={versionOptions(dbms)}
-          onChange={(value) => setDbmsVersion(doc, value)}
-        />
-      </label>
       <IconButton tooltip={t("collab.share")} active={sharing} onClick={() => setShareOpen(true)}>
         <Users size={16} />
       </IconButton>

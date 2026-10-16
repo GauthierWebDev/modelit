@@ -13,7 +13,7 @@ export function McpIndicator() {
   }, []);
   if (!last || Date.now() - last > ACTIVE_FOR || now - last > ACTIVE_FOR) return null;
   return (
-    <span className="ml-auto flex items-center gap-1 text-violet-600 dark:text-violet-400">
+    <span className="flex items-center gap-1 text-violet-600 dark:text-violet-400">
       <Bot size={12} />
       {t("mcp.connected")}
     </span>

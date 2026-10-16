@@ -48,3 +48,35 @@ export function isAtLeast(dbms: Dbms, version: string | undefined, since: string
   const sinceIndex = list.indexOf(since);
   return index >= 0 && sinceIndex >= 0 && index >= sinceIndex;
 }
+
+type VersionFeature = keyof typeof MSG.versionFeature;
+
+/**
+ * Ce qu'apporte une version à la génération, pour la boîte « Cible » (override O-49). Reprend les
+ * seuils `isAtLeast` de `dbms/typeMapping.ts` et `ddl/` : à tenir à jour avec eux (le test vérifie
+ * seulement que chaque seuil est une version connue). Provisoire : liste à valider.
+ */
+const VERSION_FEATURES: { dbms: Dbms; since: string; feature: VersionFeature }[] = [
+  { dbms: "postgresql", since: "10", feature: "identity" },
+  { dbms: "postgresql", since: "11", feature: "include" },
+  { dbms: "postgresql", since: "12", feature: "nondeterministicCollations" },
+  { dbms: "postgresql", since: "13", feature: "genRandomUuid" },
+  { dbms: "postgresql", since: "15", feature: "nullsNotDistinct" },
+  { dbms: "postgresql", since: "15", feature: "negativeScale" },
+  { dbms: "postgresql", since: "16", feature: "isJson" },
+  { dbms: "postgresql", since: "18", feature: "uuidv7" },
+  { dbms: "postgresql", since: "18", feature: "virtualColumns" },
+  { dbms: "oracle", since: "12c", feature: "identity" },
+  { dbms: "oracle", since: "18c", feature: "longNames" },
+  { dbms: "oracle", since: "23ai", feature: "booleanType" },
+  { dbms: "mysql", since: "8.0", feature: "checkEnforced" },
+  { dbms: "db2", since: "11.1", feature: "booleanLiterals" },
+];
+
+/** Seuils déclarés (tests). */
+export const versionFeatureThresholds = () => VERSION_FEATURES.map(({ dbms, since }) => ({ dbms, since }));
+
+/** Libellés de ce que `version` apporte par rapport aux versions plus anciennes ; rien en générique. */
+export function versionFeatures(dbms: Dbms, version: string): string[] {
+  return VERSION_FEATURES.filter((f) => f.dbms === dbms && isAtLeast(dbms, version, f.since)).map((f) => MSG.versionFeature[f.feature]);
+}
