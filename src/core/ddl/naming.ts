@@ -20,12 +20,11 @@ export function tableRef(ctx: Context, tables: LogicalTable[], name: string) {
 
 /** Schéma de la cible pour un schéma source (dbo → public, selon l'option) ; `undefined` : schéma par défaut (O-42). */
 export function schemaOf(ctx: Context, schema: string | undefined): string | undefined {
-  if (!schema) return undefined;
-  const { dbms } = ctx.target;
-  if (!["postgresql", "sqlserver", "db2"].includes(dbms)) return undefined;
-  if (schema.toLowerCase() === "dbo") return dbms === "sqlserver" || ctx.options.dboSchema === "dbo" ? "dbo" : undefined;
-  if (dbms === "postgresql" && schema.toLowerCase() === "public") return undefined;
-  return schema;
+  const rules = ctx.dialect.schemas;
+  if (!schema || !rules) return undefined;
+  const lower = schema.toLowerCase();
+  if (lower === "dbo") return rules.existing === "dbo" || ctx.options.dboSchema === "dbo" ? "dbo" : undefined;
+  return lower === rules.omitted ? undefined : schema;
 }
 
 /** Nom qualifié par son schéma, s'il y en a un (ref.aeroport, ref.seq_client) (O-42). */
@@ -65,15 +64,14 @@ export function constraintName(
 /** CREATE SCHEMA en tête de script pour tout schéma source autre que celui par défaut (O-42). */
 export function declareSchema(ctx: Context, schema: string | undefined, table: LogicalTable) {
   if (!schema) return;
+  const rules = ctx.dialect.schemas;
   const target = schemaOf(ctx, schema);
-  const { dbms } = ctx.target;
-  if (!target) {
-    if (!["postgresql", "sqlserver", "db2"].includes(dbms) && !["dbo", "public"].includes(schema.toLowerCase())) ctx.report.add("name", table.name, MSG.lossSchema(schema));
+  if (!rules || !target) {
+    if (!rules && !["dbo", "public"].includes(schema.toLowerCase())) ctx.report.add("name", table.name, MSG.lossSchema(schema));
     return;
   }
-  if (ctx.used.schemas.has(target.toLowerCase()) || (dbms === "sqlserver" && target.toLowerCase() === "dbo")) return;
-  ctx.used.schemas.add(target.toLowerCase());
-  ctx.script.schemas.push(
-    dbms === "sqlserver" ? `IF SCHEMA_ID(N'${target}') IS NULL EXEC(N'CREATE SCHEMA ${q(ctx, target)}');` : `CREATE SCHEMA IF NOT EXISTS ${q(ctx, target)};`,
-  );
+  const lower = target.toLowerCase();
+  if (ctx.used.schemas.has(lower) || lower === rules.existing) return;
+  ctx.used.schemas.add(lower);
+  ctx.script.schemas.push(rules.create(target, q(ctx, target)));
 }

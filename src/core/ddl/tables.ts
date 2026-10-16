@@ -10,12 +10,11 @@ import { columnRef, constraintName, declareSchema, q, tableName } from "./naming
 /** CREATE TABLE, suivi des contraintes émises en commentaire (désactivées, non traduites). */
 export function createTable(ctx: Context, tables: LogicalTable[], table: LogicalTable, deferred: Set<LogicalForeignKey>, graph: CascadeGraph | null): string {
   const after: string[] = [];
-  const { dbms } = ctx.target;
-  const mysql = dbms === "mysql" || dbms === "mariadb";
-  const sqlitePk =
-    dbms === "sqlite" && table.primaryKey.length === 1 && table.columns.find((c) => c.name === table.primaryKey[0])?.type?.kind === "counter" && !table.primaryKeyName;
-  const lines = table.columns.map((c) => columnLine(ctx, table, c, Boolean(sqlitePk && c.name === table.primaryKey[0]), after));
-  if (table.primaryKey.length > 0 && !sqlitePk) {
+  const d = ctx.dialect;
+  const counterKey = table.columns.find((c) => c.name === table.primaryKey[0])?.type?.kind === "counter";
+  const inlinePk = d.columns.inlineCounterKey && table.primaryKey.length === 1 && counterKey && !table.primaryKeyName;
+  const lines = table.columns.map((c) => columnLine(ctx, table, c, Boolean(inlinePk && c.name === table.primaryKey[0]), after));
+  if (table.primaryKey.length > 0 && !inlinePk) {
     const name = constraintName(ctx, table, table.primaryKeyName, "PK", []);
     const label = table.primaryKeyName ?? "PRIMARY KEY";
     const where = placement(ctx, table, "primary", label, table.primaryKeyState);
@@ -49,8 +48,8 @@ export function createTable(ctx: Context, tables: LogicalTable[], table: Logical
     if (line) lines.push(line);
   }
   // Partitionnement : abandonné, signalé (O-39).
-  if (table.partition) ctx.report.add("physical", table.name, MSG.lossPartition(dbms === "postgresql"));
-  const options = (ctx.script.tableOptions.get(table) ?? "") + (mysql && table.comment ? ` COMMENT=${sqlString(table.comment)}` : "");
+  if (table.partition) ctx.report.add("physical", table.name, MSG.lossPartition(d.partitioning));
+  const options = (ctx.script.tableOptions.get(table) ?? "") + (d.comments === "inline" && table.comment ? ` COMMENT=${sqlString(table.comment)}` : "");
   declareSchema(ctx, table.schema, table);
   const statement = `CREATE TABLE ${tableName(ctx, table)}(\n${lines.map((l) => INDENT + l).join(",\n")}\n)${options};`;
   comments(ctx, table);
@@ -58,14 +57,13 @@ export function createTable(ctx: Context, tables: LogicalTable[], table: Logical
   return [statement, ...after].join("\n");
 }
 
-/** Commentaires : COMMENT ON (PostgreSQL, Oracle, DB2) ; MySQL les porte en ligne ; ailleurs signalés. */
+/** Commentaires : instructions COMMENT ON, ou portés en ligne (MySQL) ; ailleurs signalés. */
 function comments(ctx: Context, table: LogicalTable) {
-  const { dbms } = ctx.target;
   const name = tableName(ctx, table);
   const commented = table.columns.filter((c) => c.comment);
   if (!table.comment && !commented.length) return;
-  if (dbms === "mysql" || dbms === "mariadb") return;
-  if (dbms === "postgresql" || dbms === "oracle" || dbms === "db2") {
+  if (ctx.dialect.comments === "inline") return;
+  if (ctx.dialect.comments === "statement") {
     if (table.comment) ctx.script.epilogue.push(`COMMENT ON TABLE ${name} IS ${sqlString(table.comment)};`);
     for (const c of commented) ctx.script.epilogue.push(`COMMENT ON COLUMN ${name}.${q(ctx, c.name, c.caseSensitive)} IS ${sqlString(c.comment!)};`);
     return;
@@ -75,12 +73,9 @@ function comments(ctx: Context, table: LogicalTable) {
 
 /** Déclencheurs : réémis vers le même dialecte, signalés sinon (leur code est propre au SGBD). */
 function triggers(ctx: Context, table: LogicalTable) {
-  const { dbms } = ctx.target;
   for (const trigger of table.triggers ?? []) {
-    if (sameDialect(trigger.dialect, dbms) && (dbms === "mysql" || dbms === "mariadb")) {
-      ctx.script.epilogue.push(`DELIMITER $$\n${trigger.sql.trim().replace(/;?\s*$/, "")}$$\nDELIMITER ;`);
-    } else if (sameDialect(trigger.dialect, dbms)) {
-      ctx.script.epilogue.push(`${trigger.sql.trim().replace(/;?\s*$/, "")};`);
+    if (sameDialect(trigger.dialect, ctx.target.dbms)) {
+      ctx.script.epilogue.push(ctx.dialect.trigger(trigger.sql.trim().replace(/;?\s*$/, "")));
     } else {
       ctx.report.add("trigger", table.name, MSG.lossTrigger(trigger.name));
     }

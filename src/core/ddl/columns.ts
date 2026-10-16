@@ -1,8 +1,7 @@
-import { isAtLeast } from "../dbms/versions";
 import type { LogicalColumn, LogicalTable } from "../mld/logical";
 import { MSG } from "../validation/messages";
 import { check } from "./checks";
-import { place, placement, sqlServerNulls, stateClause } from "./constraints";
+import { place, placement, singleNullLoss, stateClause } from "./constraints";
 import { sqlString, type Context } from "./context";
 import { sameDialect } from "./dialects";
 import { parseDefault, renderOperand } from "./expressions";
@@ -14,38 +13,37 @@ import { typeOf } from "./types";
 /** Définition d'une colonne dans le CREATE TABLE. */
 export function columnLine(ctx: Context, table: LogicalTable, c: LogicalColumn, inlinePk: boolean, after: string[]): string {
   const { dbms } = ctx.target;
-  const mysql = dbms === "mysql" || dbms === "mariadb";
+  const d = ctx.dialect;
   const parts = [q(ctx, c.name, c.caseSensitive)];
   const generated = c.generated ? generatedClause(ctx, table, c) : null;
   const { sql: type, checks } = typeOf(ctx, table, c, inlinePk);
-  if (generated && dbms === "sqlserver") {
-    // SQL Server : colonne calculée sans type déclaré (déduit de l'expression).
+  if (generated && !d.generated!.typed) {
+    // Colonne calculée sans type déclaré (déduit de l'expression).
     if (type) ctx.report.add("generated", table.name, MSG.lossGeneratedType(type), c.name);
-    parts.push(`AS (${generated.expression})${generated.stored ? " PERSISTED" : ""}`);
+    parts.push(generated);
     return parts.join(" ");
   }
   if (type) parts.push(type);
   if (inlinePk) parts.push("PRIMARY KEY AUTOINCREMENT");
   if (generated) {
-    parts.push(`GENERATED ALWAYS AS (${generated.expression})${dbms === "db2" ? "" : generated.stored ? " STORED" : " VIRTUAL"}`);
+    parts.push(generated);
   } else {
     const defaultValue = defaultClause(ctx, table, c, type);
     if (defaultValue) parts.push(defaultValue);
   }
   if (c.onUpdate) {
-    if (mysql) parts.push(`ON UPDATE ${c.onUpdate.expression}`);
+    if (d.columns.onUpdate) parts.push(`ON UPDATE ${c.onUpdate.expression}`);
     else ctx.report.add("onUpdate", table.name, MSG.lossOnUpdate(c.onUpdate.expression), c.name);
   }
-  // SQLite accepte NULL dans une clé primaire qui n'est pas INTEGER PRIMARY KEY : NOT NULL explicite.
-  const nullablePk = dbms === "sqlite" && !inlinePk && table.primaryKey.includes(c.name);
+  const nullablePk = d.columns.primaryKeyNotNull && !inlinePk && table.primaryKey.includes(c.name);
   if (c.notNull || nullablePk) parts.push("NOT NULL");
   if (c.unique && !table.uniques.some((u) => u.columns.length === 1 && u.columns[0] === c.name)) {
     parts.push("UNIQUE");
-    sqlServerNulls(ctx, table, [c.name], `(${c.name})`);
+    singleNullLoss(ctx, table, [c.name], `(${c.name})`);
   }
   // YEAR (MySQL) : 1901 à 2155 ; contrainte fusionnée avec le CHECK de la colonne s'il y en a un (O-38).
   const yearRange =
-    c.sourceType && /^year\b/i.test(c.sourceType.sql) && !sameDialect(c.sourceType.dialect, dbms) && !mysql
+    c.sourceType && /^year\b/i.test(c.sourceType.sql) && !sameDialect(c.sourceType.dialect, dbms) && d.types.yearRange
       ? `${columnRef(ctx, table, c.name)} BETWEEN 1901 AND 2155`
       : null;
   let merged = false;
@@ -66,10 +64,10 @@ export function columnLine(ctx: Context, table: LogicalTable, c: LogicalColumn, 
   for (const condition of checks) parts.push(`CHECK (${condition})`);
   // NOT FOR REPLICATION, ROWGUIDCOL (SQL Server) : réémis vers SQL Server, abandonnés ailleurs (O-42).
   for (const option of c.sqlServerOptions ?? []) {
-    if (dbms === "sqlserver") parts.splice(option === "ROWGUIDCOL" ? 2 : parts.length, 0, option);
+    if (sameDialect("sqlserver", dbms)) parts.splice(option === "ROWGUIDCOL" ? 2 : parts.length, 0, option);
     else ctx.report.add("physical", table.name, MSG.lossSqlServerOption(option), c.name);
   }
-  if (c.comment && mysql) parts.push(`COMMENT ${sqlString(c.comment)}`);
+  if (c.comment && d.comments === "inline") parts.push(`COMMENT ${sqlString(c.comment)}`);
   if (c.complement?.trim()) parts.push(c.complement.trim());
   return parts.join(" ");
 }
@@ -99,10 +97,8 @@ function defaultClause(ctx: Context, table: LogicalTable, column: LogicalColumn,
   if (parsed?.kind === "string" && column.domain?.kind === "set" && type?.startsWith("TEXT[]")) {
     rendered = `ARRAY[${parsed.value.split(",").filter(Boolean).map(sqlString).join(", ")}]::text[]`;
   }
-  // MySQL : pas de défaut littéral sur TEXT / BLOB / JSON / GEOMETRY ; expression entre parenthèses depuis 8.0.13.
-  if (rendered && (ctx.target.dbms === "mysql" || ctx.target.dbms === "mariadb") && /^(\w*text|\w*blob|json|geometry)\b/i.test(type ?? "")) {
-    rendered = ctx.target.dbms === "mysql" && ctx.target.version === "5.7" ? null : rendered.startsWith("(") ? rendered : `(${rendered})`;
-  }
+  // Défaut que le type de la colonne n'admet pas tel quel (MySQL : TEXT, BLOB…).
+  if (rendered && ctx.dialect.columns.defaultFor) rendered = ctx.dialect.columns.defaultFor(rendered, type ?? "");
   if (rendered) return `DEFAULT ${rendered}`;
   // Colonne NOT NULL : un INSERT sans valeur échouera — entrée P0 explicite (O-42).
   const required = column.notNull || table.primaryKey.includes(column.name);
@@ -112,9 +108,10 @@ function defaultClause(ctx: Context, table: LogicalTable, column: LogicalColumn,
 }
 
 /** Colonne calculée : clause pour la cible, ou `null` (colonne ordinaire, perte signalée). */
-function generatedClause(ctx: Context, table: LogicalTable, column: LogicalColumn): { expression: string; stored: boolean } | null {
+function generatedClause(ctx: Context, table: LogicalTable, column: LogicalColumn): string | null {
   const generated = column.generated!;
-  const { dbms, version } = ctx.target;
+  const rules = ctx.dialect.generated;
+  const { dbms } = ctx.target;
   const expression = sameDialect(generated.dialect, dbms)
     ? generated.expression
     : translateGenerated(generated.expression, generated.dialect, {
@@ -122,20 +119,17 @@ function generatedClause(ctx: Context, table: LogicalTable, column: LogicalColum
         columnType: (name) => table.columns.find((c) => c.name.toLowerCase() === name.toLowerCase())?.type,
         caseSensitive: (name) => Boolean(table.columns.find((c) => c.name === name)?.caseSensitive),
       });
-  const supported = ["postgresql", "mysql", "mariadb", "sqlite", "oracle", "sqlserver", "db2"].includes(dbms);
-  if (expression === null || !supported) {
+  if (expression === null || !rules) {
     ctx.report.add("generated", table.name, MSG.lossGenerated(generated.expression), column.name);
     return null;
   }
   let stored = generated.stored;
-  const virtualOk = dbms === "postgresql" ? isAtLeast("postgresql", version, "18") : dbms !== "db2";
-  const storedOk = dbms !== "oracle";
-  if (!stored && !virtualOk) {
+  if (!stored && !rules.virtual) {
     stored = true;
     ctx.report.add("generated", table.name, MSG.lossGeneratedMode("VIRTUAL", "STORED"), column.name);
-  } else if (stored && !storedOk) {
+  } else if (stored && !rules.stored) {
     stored = false;
     ctx.report.add("generated", table.name, MSG.lossGeneratedMode("STORED", "VIRTUAL"), column.name);
   }
-  return { expression, stored };
+  return rules.clause(expression, stored);
 }

@@ -30,6 +30,8 @@ export { formatLossGroup, groupLosses, type Loss, type LossCategory, type LossGr
  * Le script est assemblé ici ; chaque partie a son module : types des colonnes (types.ts),
  * colonnes (columns.ts), CHECK (checks.ts), contraintes (constraints.ts), index (indexes.ts),
  * séquences (sequences.ts), tables (tables.ts), noms (naming.ts), pertes (losses.ts).
+ * Ce qui diffère selon le SGBD cible est décrit par son dialecte (targets/), ce qui tient au
+ * dialecte d'origine d'une colonne par sources.ts.
  */
 
 export type DdlResult = { ok: true; sql: string; losses: Loss[] } | { ok: false; error: string };
@@ -85,7 +87,7 @@ function script(ctx: Context, model: LogicalModel): string {
   const { order, deferred } = planOrder(tables, alterAll && canAlter);
   // SQLite accepte les références vers des tables créées plus loin : tout reste en ligne.
   if (!canAlter) deferred.clear();
-  const graph = ctx.target.dbms === "sqlserver" ? new CascadeGraph() : null;
+  const graph = ctx.dialect.constraints.singleCascadePath ? new CascadeGraph() : null;
 
   const statements = order.map((t) => createTable(ctx, tables, t, deferred, graph));
   for (const table of order) {

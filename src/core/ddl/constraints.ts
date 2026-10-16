@@ -1,4 +1,3 @@
-import { isAtLeast } from "../dbms/versions";
 import type { LogicalForeignKey, LogicalKey, LogicalTable } from "../mld/logical";
 import type { ConstraintState } from "../model/physical";
 import { MSG } from "../validation/messages";
@@ -6,22 +5,17 @@ import { describeKey, type Context } from "./context";
 import { referentialAction } from "./dialects";
 import { expressionIndex, include, keyColumns, keyIndex } from "./indexes";
 import { columnRef, constraintName, q, tableName, tableRef } from "./naming";
+import type { ConstraintKind } from "./targets/dialect";
 
-export type ConstraintKind = "check" | "unique" | "primary" | "foreign";
 export type Placement = "inline" | "comment" | "after";
 
 // ---------------------------------------------------------------------------------------------
 // États des contraintes (O-39)
 
-/**
- * DEFERRABLE [INITIALLY …] pour la cible, ou rien (signalé si la source l'avait). PostgreSQL et
- * SQLite ne diffèrent pas les CHECK ; MySQL, SQL Server, DB2 ne diffèrent rien.
- */
+/** DEFERRABLE [INITIALLY …] pour la cible, ou rien (signalé si la source l'avait). */
 export function stateClause(ctx: Context, table: LogicalTable, kind: ConstraintKind, label: string, state?: ConstraintState): string {
   if (!state?.deferrable || state.disabled) return "";
-  const { dbms } = ctx.target;
-  const supported = dbms === "oracle" || (kind !== "check" && dbms === "postgresql") || (kind === "foreign" && dbms === "sqlite");
-  if (!supported) {
+  if (!ctx.dialect.constraints.deferrable(kind)) {
     ctx.report.add(kind === "check" ? "check" : kind === "foreign" ? "action" : "index", table.name, kind === "check" ? MSG.lossDeferrableCheck(label) : MSG.lossDeferrable(label));
     return "";
   }
@@ -39,14 +33,13 @@ export function placement(ctx: Context, table: LogicalTable, kind: ConstraintKin
     return "comment";
   }
   if (!state?.notValidated) return "inline";
-  const { dbms } = ctx.target;
-  if (dbms === "oracle" || (dbms === "postgresql" && (kind === "check" || kind === "foreign"))) return "after";
+  if (ctx.dialect.constraints.notValidated(kind)) return "after";
   ctx.report.add(category, table.name, MSG.lossNotValidated(label, state.dialect));
   return "inline";
 }
 
 /** Suffixe d'une contrainte ajoutée sans valider les lignes existantes. */
-export const notValidatedSuffix = (ctx: Context) => (ctx.target.dbms === "oracle" ? " ENABLE NOVALIDATE" : " NOT VALID");
+export const notValidatedSuffix = (ctx: Context) => ctx.dialect.constraints.notValidatedSuffix;
 
 /**
  * Contrainte placée selon son état ; renvoie la ligne à mettre dans le CREATE TABLE, ou `null`
@@ -108,7 +101,7 @@ export function foreignKey(ctx: Context, tables: LogicalTable[], table: LogicalT
 export const foreignKeyLabel = (fk: LogicalForeignKey) => fk.name ?? `FOREIGN KEY(${fk.columns.join(", ")})`;
 
 /**
- * Graphe des cascades SQL Server : une nouvelle cascade est refusée si elle crée un second chemin
+ * Graphe des cascades (SQL Server) : une nouvelle cascade est refusée si elle crée un second chemin
  * entre deux tables, ou un cycle (y compris réflexif).
  */
 export class CascadeGraph {
@@ -139,11 +132,10 @@ export class CascadeGraph {
  * script (préfixe : sur expression) ou si la cible ne sait pas l'exprimer (signalé) (O-35).
  */
 export function uniqueLine(ctx: Context, table: LogicalTable, unique: LogicalKey, after: string[]): string | null {
-  const { dbms } = ctx.target;
-  const mysql = dbms === "mysql" || dbms === "mariadb";
+  const d = ctx.dialect;
   const label = describeKey(unique);
-  if (unique.method && unique.method !== "btree" && !mysql) {
-    // Hors MySQL, une méthode autre que B-tree ne garantit pas l'unicité (PostgreSQL : HASH non unique).
+  if (unique.method && unique.method !== "btree" && !d.uniques.methods) {
+    // Une méthode autre que B-tree ne garantit pas l'unicité (PostgreSQL : HASH non unique).
     ctx.report.add("index", table.name, MSG.lossIndexMethod(unique.name ?? label, unique.method.toUpperCase()));
   }
   // Sur expression ou conditionnelle : index unique en fin de script (O-39).
@@ -151,12 +143,12 @@ export function uniqueLine(ctx: Context, table: LogicalTable, unique: LogicalKey
     ctx.script.epilogue.push(...expressionIndex(ctx, table, unique));
     return null;
   }
-  if (unique.prefixes && !mysql) {
+  if (unique.prefixes && !d.indexes.nativePrefixes) {
     ctx.script.epilogue.push(...keyIndex(ctx, table, unique, true));
     return null;
   }
-  // Plusieurs NULL admis (index filtré SQL Server « IS NOT NULL ») : vers SQL Server, même index filtré (O-41).
-  if (unique.nulls === "distinct" && dbms === "sqlserver") {
+  // Plusieurs NULL admis (index filtré SQL Server « IS NOT NULL ») : là où UNIQUE n'en admet qu'un, même index filtré (O-41).
+  if (unique.nulls === "distinct" && d.uniques.singleNull) {
     const filter = unique.columns.map((c) => `${columnRef(ctx, table, c)} IS NOT NULL`).join(" AND ");
     const indexName = q(ctx, constraintName(ctx, table, unique.name, "AK", unique.columns, true)!);
     ctx.script.epilogue.push(`CREATE UNIQUE INDEX ${indexName} ON ${tableName(ctx, table)}(${keyColumns(ctx, table, unique)}) WHERE ${filter};`);
@@ -165,16 +157,16 @@ export function uniqueLine(ctx: Context, table: LogicalTable, unique: LogicalKey
   const where = placement(ctx, table, "unique", unique.name ?? label, unique.state);
   const name = constraintName(ctx, table, unique.name, "AK", unique.columns);
   const columns = keyColumns(ctx, table, unique);
-  const method = mysql && unique.method ? ` USING ${unique.method.toUpperCase()}` : "";
+  const method = d.uniques.methods && unique.method ? ` USING ${unique.method.toUpperCase()}` : "";
   const equalNulls = unique.nulls === "not distinct" || unique.nulls === "oracle";
   const nulls = equalNulls ? nullsClause(ctx, table, unique) : "";
-  if (!equalNulls) sqlServerNulls(ctx, table, unique.columns, unique.name ?? label);
-  // Oracle : dans une clé composée, les NULL sont égaux entre eux (O-39).
-  if (!equalNulls && dbms === "oracle" && unique.columns.length > 1 && unique.columns.some((c) => nullable(table, c))) {
+  if (!equalNulls) singleNullLoss(ctx, table, unique.columns, unique.name ?? label);
+  // Dans une clé composée, les NULL y sont égaux entre eux (Oracle) (O-39).
+  if (!equalNulls && d.uniques.equalNulls === "composite" && unique.columns.length > 1 && unique.columns.some((c) => nullable(table, c))) {
     ctx.report.add("index", table.name, MSG.lossOracleCompositeNulls(unique.name ?? label));
   }
-  // INCLUDE sur une contrainte UNIQUE : PostgreSQL 11+ seulement (O-42).
-  const covering = unique.include?.length && dbms === "postgresql" ? include(ctx, table, unique) : "";
+  // INCLUDE sur une contrainte UNIQUE (O-42).
+  const covering = unique.include?.length && d.uniques.include ? include(ctx, table, unique) : "";
   if (unique.include?.length && !covering) ctx.report.add("index", table.name, MSG.lossInclude(unique.name ?? label));
   const state = stateClause(ctx, table, "unique", unique.name ?? label, unique.state);
   const definition = `${name ? `CONSTRAINT ${q(ctx, name)} ` : ""}UNIQUE${nulls}(${columns})${covering}${method}${state}`;
@@ -185,27 +177,27 @@ export function uniqueLine(ctx: Context, table: LogicalTable, unique: LogicalKey
 const nullable = (table: LogicalTable, name: string) => !table.primaryKey.includes(name) && !table.columns.find((c) => c.name === name)?.notNull;
 
 /**
- * NULL égaux dans une clé composée (Oracle) ou NULLS NOT DISTINCT (PostgreSQL) (O-39) : PostgreSQL
- * 15+ l'exprime ; SQL Server et Oracle le font nativement ; ailleurs, signalé. Une ligne
- * entièrement NULL, qu'Oracle ignore, devient un doublon ailleurs : signalé si possible.
+ * NULL égaux dans une clé composée (Oracle) ou NULLS NOT DISTINCT (PostgreSQL) (O-39) : exprimés
+ * nativement ou par une clause, sinon signalés. Une ligne entièrement NULL, qu'Oracle ignore,
+ * devient un doublon ailleurs : signalé si possible.
  */
 function nullsClause(ctx: Context, table: LogicalTable, unique: LogicalKey): string {
-  const { dbms, version } = ctx.target;
+  const equal = ctx.dialect.uniques.equalNulls;
   const label = unique.name ?? describeKey(unique);
   const allNullable = unique.columns.every((c) => nullable(table, c));
-  if (dbms === "oracle") {
+  if (equal === "composite") {
     if (unique.nulls === "not distinct" && allNullable) ctx.report.add("index", table.name, MSG.lossNullsAllNull(label));
     return "";
   }
-  if (unique.nulls === "oracle" && allNullable && (dbms === "postgresql" || dbms === "sqlserver")) ctx.report.add("index", table.name, MSG.lossNullsAllNull(label));
-  if (dbms === "sqlserver") return "";
-  if (dbms === "postgresql" && isAtLeast("postgresql", version, "15")) return " NULLS NOT DISTINCT";
+  if (unique.nulls === "oracle" && allNullable && equal !== null) ctx.report.add("index", table.name, MSG.lossNullsAllNull(label));
+  if (equal === "native") return "";
+  if (equal?.clause) return equal.clause;
   ctx.report.add("index", table.name, MSG.lossNullsNotDistinct(label));
   return "";
 }
 
-/** SQL Server : une contrainte UNIQUE n'admet qu'un seul NULL, contrairement aux autres SGBD (O-39). */
-export function sqlServerNulls(ctx: Context, table: LogicalTable, columns: string[], label: string) {
-  if (ctx.target.dbms !== "sqlserver") return;
+/** Une contrainte UNIQUE n'y admet qu'un seul NULL, contrairement aux autres SGBD (SQL Server) (O-39). */
+export function singleNullLoss(ctx: Context, table: LogicalTable, columns: string[], label: string) {
+  if (!ctx.dialect.uniques.singleNull) return;
   if (columns.some((name) => nullable(table, name))) ctx.report.add("index", table.name, MSG.lossSqlServerNulls(label));
 }

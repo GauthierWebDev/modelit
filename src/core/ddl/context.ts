@@ -1,8 +1,11 @@
-import type { LogicalKey, LogicalTable } from "../mld/logical";
+import type { LogicalColumn, LogicalKey, LogicalTable } from "../mld/logical";
 import type { DataType } from "../model/datatype";
+import type { CheckConstraint } from "../model/physical";
 import type { DdlOptions } from "../model/settings";
 import { maxIdentifierLength, type Target } from "./dialects";
+import { parseCondition } from "./expressions";
 import { LossReport } from "./losses";
+import { dialectOf, type Dialect } from "./targets";
 
 /** Options de génération dont le script dépend. */
 export type Options = Pick<
@@ -29,6 +32,8 @@ export const DEFAULT_OPTIONS: Options = {
 /** État d'une génération, partagé par les modules du script. */
 export interface Context {
   readonly target: Target;
+  /** Règles propres au SGBD cible. */
+  readonly dialect: Dialect;
   readonly options: Options;
   readonly report: LossReport;
   /** Longueur maximale d'un identifiant pour la cible. */
@@ -58,6 +63,7 @@ export interface Context {
 export function createContext(target: Target, options: Options): Context {
   return {
     target,
+    dialect: dialectOf(target),
     options,
     report: new LossReport(),
     maxName: maxIdentifierLength(target),
@@ -73,3 +79,11 @@ export const sqlString = (value: string) => `'${value.replaceAll("'", "''")}'`;
 export const describeKey = (key: LogicalKey) => `(${key.columns.map((c, i) => (key.prefixes?.[i] ? `${c}(${key.prefixes[i]})` : c)).join(", ")})`;
 
 export const describe = (type: DataType) => JSON.stringify(type);
+
+/** Conditions des CHECK actifs de la colonne et de la table (une contrainte désactivée ne protège rien, O-42). */
+export function activeConditions(table: LogicalTable, column: LogicalColumn) {
+  return [column.check, ...table.checks]
+    .filter((c): c is CheckConstraint => Boolean(c) && !c!.state?.disabled)
+    .map((c) => parseCondition(c.expression))
+    .filter((c) => c !== null);
+}

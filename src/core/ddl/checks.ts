@@ -3,7 +3,7 @@ import type { CheckConstraint, SqlDialect } from "../model/physical";
 import { sqlTypeToDataType } from "../reverse/types";
 import { MSG } from "../validation/messages";
 import type { Context } from "./context";
-import { enforcesCheck, sameDialect, type Target } from "./dialects";
+import { enforcesCheck, sameDialect } from "./dialects";
 import { likeToRegex, type Condition, type Operand, parseCondition, renderCondition, typeConflict, type TypeFamily } from "./expressions";
 import { effectiveCollationClass, freeTypeFallback, icuCollations } from "./types";
 
@@ -21,9 +21,9 @@ export function check(ctx: Context, table: LogicalTable, check: CheckConstraint,
   }
   // Typage strict (PostgreSQL, DB2) : un CHECK qui compare des familles de types différentes
   // après conversion (ex. YEAR devenu texte) ferait échouer le script (O-35).
-  if (ctx.target.dbms === "postgresql" || ctx.target.dbms === "db2") {
+  if (ctx.dialect.constraints.strictCheckTyping) {
     const condition = parseCondition(check.expression);
-    const conflict = condition && typeConflict(condition, (name) => familyOf(table, name, ctx.target));
+    const conflict = condition && typeConflict(condition, (name) => familyOf(ctx, table, name));
     if (conflict) {
       ctx.report.add("check", table.name, MSG.lossCheckTypes(check.expression, conflict), column);
       return null;
@@ -61,7 +61,7 @@ function sqlServerLikes(ctx: Context, c: Condition, table: LogicalTable): Condit
     case "like": {
       const regex = c.pattern.kind === "string" ? likeToRegex(c.pattern.value) : null;
       if (!regex) return c;
-      if (ctx.target.dbms !== "postgresql") return null;
+      if (!ctx.dialect.constraints.regex) return null;
       const column = c.operand.kind === "column" ? table.columns.find((col) => col.name.toLowerCase() === (c.operand as { name: string }).name.toLowerCase()) : undefined;
       const klass = column ? effectiveCollationClass(ctx, column) : undefined;
       const insensitive = klass === "ci" || klass === "ai_ci";
@@ -93,12 +93,13 @@ function booleanLiterals(c: Condition, table: LogicalTable): Condition {
 }
 
 /** Famille du type d'une colonne pour la cible (cohérence des CHECK, O-35). */
-function familyOf(table: LogicalTable, name: string, target: Target): TypeFamily | undefined {
+function familyOf(ctx: Context, table: LogicalTable, name: string): TypeFamily | undefined {
+  const { dbms } = ctx.target;
   const column = table.columns.find((c) => c.name.toLowerCase() === name.toLowerCase());
   const type = column?.type;
   if (!type) return undefined;
   if (column.domain) return "text";
-  if (column.sourceType && sameDialect(column.sourceType.dialect, target.dbms)) return undefined;
+  if (column.sourceType && sameDialect(column.sourceType.dialect, dbms)) return undefined;
   switch (type.kind) {
     case "integer":
     case "decimal":
@@ -116,9 +117,9 @@ function familyOf(table: LogicalTable, name: string, target: Target): TypeFamily
       return "boolean";
     case "free": {
       // Type libre réémis tel quel ou remplacé par du texte : famille d'après sa conversion.
-      const fallback = column.sourceType ? freeTypeFallback(type.sql, target).sql : type.sql;
-      const parsed = sqlTypeToDataType(fallback, false, target.dbms);
-      return parsed && parsed.kind !== "free" ? familyOf({ ...table, columns: [{ ...column, type: parsed, sourceType: undefined }] }, name, target) : undefined;
+      const fallback = column.sourceType ? freeTypeFallback(ctx, type.sql).sql : type.sql;
+      const parsed = sqlTypeToDataType(fallback, false, dbms);
+      return parsed && parsed.kind !== "free" ? familyOf(ctx, { ...table, columns: [{ ...column, type: parsed, sourceType: undefined }] }, name) : undefined;
     }
     default:
       return undefined;
