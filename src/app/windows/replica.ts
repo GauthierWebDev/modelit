@@ -22,9 +22,9 @@ enablePatches();
 /** Dernier état reçu (nom du document, boîte modale ouverte…). */
 export const useMirrorStore = create<{ state: MirrorState | null }>(() => ({ state: null }));
 
-const UI_KEYS = ["tool", "exportOpen", "optionsOpen", "reverseOpen", "shareOpen", "about"] as const;
+const UI_KEYS = ["tool", "exportOpen", "optionsOpen", "modelSettingsOpen", "reverseOpen", "shareOpen", "about"] as const;
 /** Boîtes de dialogue : elles s'ouvrent dans la fenêtre principale, jamais dans une flottante. */
-const DIALOG_KEYS = ["exportOpen", "optionsOpen", "reverseOpen", "shareOpen", "about"] as const;
+const DIALOG_KEYS = ["exportOpen", "optionsOpen", "modelSettingsOpen", "reverseOpen", "shareOpen", "about"] as const;
 
 export interface Replica {
   handle: DocumentHandle;
@@ -90,7 +90,7 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
     for (const key of UI_KEYS) if (s[key] !== p[key]) Object.assign(patch, { [key]: s[key] });
     if (!Object.keys(patch).length) return;
     send({ type: "ui", patch });
-    if (DIALOG_KEYS.some((k) => k in patch)) useUiStore.setState({ exportOpen: false, optionsOpen: false, reverseOpen: false, shareOpen: false, about: null });
+    if (DIALOG_KEYS.some((k) => k in patch)) useUiStore.setState({ exportOpen: false, optionsOpen: false, modelSettingsOpen: false, reverseOpen: false, shareOpen: false, about: null });
   });
 
   // Disposition : la principale l'applique et l'enregistre ; elle revient par le stockage partagé.

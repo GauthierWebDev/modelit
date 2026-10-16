@@ -45,6 +45,7 @@ export type UiPatch = Partial<{
   tool: Tool;
   exportOpen: boolean;
   optionsOpen: boolean;
+  modelSettingsOpen: boolean;
   reverseOpen: boolean;
   shareOpen: boolean;
   about: AboutTab | null;

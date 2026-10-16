@@ -34,7 +34,7 @@ export function snapshot(): MirrorState {
     redoLabel: selectRedoLabel(state),
     view: { view: view.view, selection: view.selection, viewport: view.viewport, activeBend: view.activeBend },
     ui: { tool: ui.tool },
-    modal: useDialogStore.getState().queue.length > 0 || ui.exportOpen || ui.optionsOpen || ui.reverseOpen || ui.shareOpen || ui.about !== null,
+    modal: useDialogStore.getState().queue.length > 0 || ui.exportOpen || ui.optionsOpen || ui.modelSettingsOpen || ui.reverseOpen || ui.shareOpen || ui.about !== null,
     collab: collabMirror(),
   };
 }

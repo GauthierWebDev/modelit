@@ -8,7 +8,7 @@ import { revealSection } from "@/app/dock/actions";
 import type { DocumentHandle } from "@/app/document/handle";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
-import { MOD } from "@/ui/shortcuts";
+import { MOD, MODEL_SETTINGS_SHORTCUT } from "@/ui/shortcuts";
 import { mainCommand } from "@/ui/windows/mainCommands";
 import { snap, INHERITANCE_SIZE } from "./geometry";
 import { useContextMenu } from "./ContextMenu";
@@ -25,7 +25,7 @@ export type Action =
 
 const SEPARATOR: Action = { kind: "separator" };
 /** Actions encore permises dans une session en lecture seule. */
-const READ_ONLY_ALLOWED = new Set(["copy", "selectAll", "fit"]);
+const READ_ONLY_ALLOWED = new Set(["copy", "selectAll", "fit", "modelSettings"]);
 
 const notifyError = (message: string | null) => message && useUiStore.getState().notify({ kind: "error", text: message });
 
@@ -156,6 +156,14 @@ function buildContextActions(
       },
       { kind: "item", id: "autoLayout", label: t("actions.autoLayout"), run: () => mainCommand({ name: "autoLayout" }) },
       { kind: "item", id: "fit", label: t("actions.fit"), shortcut: "⇧F", run: () => fitToWindow(doc) },
+      SEPARATOR,
+      {
+        kind: "item",
+        id: "modelSettings",
+        label: t("menu.modelSettings"),
+        shortcut: MODEL_SETTINGS_SHORTCUT,
+        run: () => useUiStore.getState().setModelSettingsOpen(true),
+      },
     ];
   }
 

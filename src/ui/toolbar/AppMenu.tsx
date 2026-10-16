@@ -5,17 +5,17 @@ import { t } from "@/i18n";
 import { IconButton } from "@/ui/common/controls";
 import { Menu, MenuCheck, MenuItem, MenuLabel, MenuSeparator } from "@/ui/common/Menu";
 import { SectionChecks } from "@/ui/dock/Dock";
-import { MOD } from "@/ui/shortcuts";
+import { MOD, MODEL_SETTINGS_SHORTCUT } from "@/ui/shortcuts";
 import { mainCommand } from "@/ui/windows/mainCommands";
 
 const THEMES: ThemePreference[] = ["system", "light", "dark"];
 
 /**
- * Menu ≡ de la barre d'outils (override O-51) : fichier, échanges, affichage, application.
+ * Menu ≡ de la barre d'outils (override O-51) : fichier, échanges, modèle (O-55), affichage, application.
  * Ses commandes visent la fenêtre principale, y compris depuis la barre flottante.
  */
 export function AppMenu() {
-  const { setOptionsOpen, setExportOpen, setReverseOpen, setAbout } = useUiStore();
+  const { setOptionsOpen, setModelSettingsOpen, setExportOpen, setReverseOpen, setAbout } = useUiStore();
   const { theme, setTheme } = usePreferencesStore();
   return (
     <Menu
@@ -50,6 +50,10 @@ export function AppMenu() {
               {t("menu.exportImage")}
             </MenuItem>
             <MenuItem onSelect={run(() => setReverseOpen(true))}>{t("menu.reverse")}</MenuItem>
+            <MenuSeparator />
+            <MenuItem shortcut={MODEL_SETTINGS_SHORTCUT} onSelect={run(() => setModelSettingsOpen(true))}>
+              {t("menu.modelSettings")}
+            </MenuItem>
             <MenuSeparator />
             <MenuLabel>{t("toolbar.sections")}</MenuLabel>
             <SectionChecks close={close} withReset />

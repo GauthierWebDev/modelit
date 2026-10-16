@@ -6,7 +6,7 @@
  * ou bien elle est masquée. Un groupe vide n'existe pas.
  */
 
-export const SECTIONS = ["properties", "attributes", "model", "mld", "sql", "issues", "session"] as const;
+export const SECTIONS = ["properties", "attributes", "mld", "sql", "issues", "session"] as const;
 /** Sections affichées seulement à la demande : masquées par défaut (« session » : O-05 §7). */
 const HIDDEN_BY_DEFAULT: SectionId[] = ["session"];
 export type SectionId = (typeof SECTIONS)[number];
@@ -65,11 +65,14 @@ const group = (sections: SectionId[], id = newGroupId()): Group => ({
   collapsed: false,
 });
 
-/** Disposition par défaut : celle d'avant O-46, plus les rubriques sous les propriétés (O-50). */
+/**
+ * Disposition par défaut : celle d'avant O-46, plus les rubriques sous les propriétés (O-50) ; la
+ * section Modèle est devenue la boîte « Paramètres du modèle » (O-55).
+ */
 export function defaultLayout(): DockLayout {
   return {
     zones: {
-      right: { groups: [group(["properties", "model"], "right"), { ...group(["attributes"], "attributes"), weight: 1.5 }], size: 320 },
+      right: { groups: [group(["properties"], "right"), { ...group(["attributes"], "attributes"), weight: 1.5 }], size: 320 },
       bottom: { groups: [group(["mld", "sql", "issues"], "bottom")], size: 224 },
     },
     floating: [],

@@ -50,11 +50,15 @@ export interface Preferences {
   dock: DockLayout;
   /** Blocs repliables des sections (« Avancé », clés étrangères…) dépliés (O-50) ; absents = repliés. */
   disclosures: Record<string, boolean>;
+  /** Dernier onglet de la boîte « Paramètres du modèle » (O-55). */
+  modelSettingsTab: ModelSettingsTab;
   /** Assistants IA par MCP (override O-47) : désactivé par défaut. */
   mcp: McpPreferences;
   /** Identité en session collaborative (O-05 §3). */
   identity: IdentityPreferences;
 }
+
+export type ModelSettingsTab = "naming" | "script" | "conversions";
 
 export interface McpPreferences {
   enabled: boolean;
@@ -74,6 +78,7 @@ interface PreferencesState extends Preferences {
   setUpdateCheck: (enabled: boolean) => void;
   setLastSeenVersion: (version: string) => void;
   setDisclosure: (id: string, open: boolean) => void;
+  setModelSettingsTab: (tab: ModelSettingsTab) => void;
   /** Applique une opération de `dock/layout.ts` à la disposition. */
   updateDock: (change: (layout: DockLayout) => DockLayout) => void;
   setMcp: (patch: Partial<McpPreferences>) => void;
@@ -98,6 +103,7 @@ const initial: Preferences = {
   lastSeenVersion: "",
   dock: defaultLayout(),
   disclosures: {},
+  modelSettingsTab: "naming",
   mcp: { enabled: false, port: 47321, token: "" },
   identity: newIdentity(),
 };
@@ -116,6 +122,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       setUpdateCheck: (updateCheck) => set({ updateCheck }),
       setLastSeenVersion: (lastSeenVersion) => set({ lastSeenVersion }),
       setDisclosure: (id, open) => set((s) => ({ disclosures: { ...s.disclosures, [id]: open } })),
+      setModelSettingsTab: (modelSettingsTab) => set({ modelSettingsTab }),
       updateDock: (change) => set((s) => ({ dock: change(s.dock) })),
       setMcp: (patch) => set((s) => ({ mcp: { ...s.mcp, ...patch } })),
       setIdentity: (patch) => set((s) => ({ identity: { ...s.identity, ...patch, name: (patch.name ?? s.identity.name).slice(0, 40) } })),

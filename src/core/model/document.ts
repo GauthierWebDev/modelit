@@ -274,3 +274,19 @@ export const diagramNodes = (doc: Pick<ModelDocument, "entities" | "associations
 export const isMultiple = (c: Cardinality) => c.max === "n" || c.max > 1;
 
 export const formatCardinality = (c: Cardinality) => `${c.min},${c.max}`;
+
+/**
+ * SGBD d'origine des rubriques issues d'une rétroconception (types, valeurs par défaut et CHECK
+ * annotés, O-28, O-29) : les conversions qui les concernent sont mises en avant (O-55).
+ */
+export function sourceDialects(doc: Pick<ModelDocument, "entities" | "associations">): Set<SqlDialect> {
+  const found = new Set<SqlDialect>();
+  for (const node of [...doc.entities, ...doc.associations]) {
+    for (const a of node.attributes) {
+      for (const dialect of [a.sourceType?.dialect, a.defaultValue?.dialect, a.check?.dialect]) if (dialect) found.add(dialect);
+      if (a.unsigned) found.add("mysql");
+    }
+  }
+  found.delete("generic");
+  return found;
+}
