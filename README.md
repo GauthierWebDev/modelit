@@ -1,58 +1,59 @@
 # ModelIt
 
-Outil de modélisation de données Merise (MCD → MLD → SQL), natif sur macOS, Linux et Windows.
+**ModelIt** est un logiciel de modélisation de bases de données selon la méthode **Merise**. On
+dessine le modèle conceptuel (MCD : entités, associations, cardinalités, héritages) ; ModelIt en
+déduit en temps réel le modèle logique (MLD), le modèle physique pour le SGBD choisi (MPD) et le
+script SQL de création des tables.
 
-## Prérequis
+- **Neuf SGBD cibles** : PostgreSQL, MySQL, MariaDB, SQL Server, Oracle, SQLite, DB2, Sybase,
+  Access, avec leur version.
+- **Rétroconception** : un script SQL existant, de n'importe lequel de ces SGBD, redevient un MCD.
+- **Trois vues** d'un même modèle (MCD, MLD, MPD), placement automatique lisible, export d'image.
+- Application **native** pour macOS, Windows et Linux, en français et en anglais, avec mises à
+  jour automatiques. Libre et gratuite (GPL-3.0).
 
-- Node.js ≥ 20 et pnpm
-- Pour l'application native : Rust via [rustup](https://rustup.rs)
-  (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`)
-  et, sous macOS, les Xcode Command Line Tools (`xcode-select --install`).
+## Installation
 
-## Commandes
+### Depuis les releases (recommandé)
 
-| Commande | Effet |
+Télécharger l'installeur de son système sur la
+[dernière release](https://github.com/GauthierWebDev/modelit/releases/latest) :
+
+| Système | Fichier |
 |---|---|
-| `pnpm install` | Installe les dépendances |
-| `pnpm tauri dev` | Lance l'application native avec rechargement à chaud |
-| `pnpm tauri build` | Produit l'installeur de la plateforme courante |
-| `pnpm dev` | Lance l'interface seule dans le navigateur (http://localhost:1420) |
-| `pnpm test` | Tests du cœur métier (Vitest) |
-| `pnpm typecheck` | Vérification TypeScript |
-| `scripts/sgbd.sh up` puis `wait` | Démarre PostgreSQL 18 (et PostGIS), MySQL, Oracle et SQL Server dans Docker (facultatif ; ex. `up postgres postgis mysql`) |
-| `pnpm test:sgbd` | Exécute réellement les scripts générés sur ces SGBD (`scripts/sgbd.sh down` ensuite) |
+| macOS ≥ 13.3 (Apple Silicon et Intel) | `ModelIt_<version>_universal.dmg` |
+| Windows (x64) | `ModelIt_<version>_x64-setup.exe` (ou `…_x64_en-US.msi`) |
+| Linux (x86-64) | `ModelIt_<version>_amd64.AppImage`, `…_amd64.deb` ou `ModelIt-<version>-1.x86_64.rpm` |
 
-## Intégration continue et release
+Les fichiers `.sig`, `latest.json` et `.app.tar.gz` servent aux mises à jour automatiques.
 
-`.github/workflows/ci.yml` : tests sur Linux, Windows et macOS, scripts SQL exécutés sur
-PostgreSQL et MySQL (Docker), puis build de l'application native sur les trois OS. Sur `main` et
-les pull requests, les installeurs sont joints au run (artefacts, 7 jours).
+Les binaires ne sont pas signés par Apple ni par Microsoft :
 
-La version est définie dans `package.json` uniquement (Tauri la lit). Pour publier :
+- **macOS** : après avoir glissé ModelIt dans Applications, Gatekeeper le dit « endommagé » tant
+  que l'attribut de quarantaine n'est pas retiré : `xattr -cr /Applications/ModelIt.app`.
+- **Windows** : SmartScreen avertit ; « Informations complémentaires » → « Exécuter quand même ».
 
-1. passer `version` de `package.json` à la nouvelle version (ex. 0.2.0) ;
-2. ajouter en tête de `CHANGELOG.md` la section `## 0.2.0 — AAAA-MM-JJ` (obligatoire : vérifiée
-   par les tests). Elle devient le texte de la release GitHub, les notes proposées par la mise à
-   jour, et s'affiche dans l'application (À propos → Nouveautés, ouvert une fois après la mise à jour) ;
-3. committer, puis `git tag v0.2.0 && git push origin v0.2.0`.
+Une fois installé, ModelIt cherche les nouvelles versions à chaque lancement (désactivable dans les
+options générales) et les installe sur accord.
 
-Le tag produit une release GitHub en brouillon : macOS (universel Apple Silicon + Intel,
-macOS ≥ 13.3), Windows (MSI, NSIS), Linux (deb, rpm, AppImage), avec `latest.json` et les
-signatures de mise à jour. Une fois la release publiée, les applications installées la proposent
-(au lancement, au plus une fois par jour, ou via Options → Rechercher maintenant).
+### Depuis le code source
 
-**Clé de signature des mises à jour** : la clé publique est dans `src-tauri/tauri.conf.json`, la
-clé privée dans le secret GitHub `TAURI_SIGNING_PRIVATE_KEY` (et son mot de passe éventuel dans
-`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). Sans elle, plus aucune mise à jour ne peut être publiée
-pour les versions installées : la conserver hors du dépôt, en lieu sûr.
+Prérequis : Node.js ≥ 20 et pnpm ; pour l'application native, Rust via [rustup](https://rustup.rs)
+et, sous macOS, les Xcode Command Line Tools (`xcode-select --install`).
 
-Les binaires ne sont pas signés par Apple ni par Microsoft : sous macOS, Gatekeeper bloque
-l'application (« endommagée ») tant que l'attribut de quarantaine n'est pas retiré
-(`xattr -cr /Applications/ModelIt.app`) ; sous Windows, SmartScreen avertit (« Informations
-complémentaires » → « Exécuter quand même »). Les mises à jour, téléchargées par l'application,
-ne sont pas concernées.
+```sh
+git clone https://github.com/GauthierWebDev/modelit.git
+cd modelit
+pnpm install
+pnpm tauri dev      # lance l'application native
+pnpm tauri build    # ou produit l'installeur du système courant (src-tauri/target/…/bundle)
+```
 
-## Utilisation rapide
+`pnpm dev` lance l'interface seule dans le navigateur (http://localhost:1420), sans les fonctions
+natives (fichiers, fenêtres flottantes, session collaborative). Une copie construite ainsi ne se
+met pas à jour automatiquement : seules les releases le font.
+
+## Prise en main
 
 - **⌘/Ctrl + 1, 2, 3** : vues MCD, MLD, MPD.
 - **E** / **A** / **H** / **L** / **V** : outils Entité, Association, Héritage, Lien, Sélection (vue MCD).
@@ -85,10 +86,63 @@ ne sont pas concernées.
   options et à propos, avec leurs raccourcis.
 - **Barre d'état** : sélection, problèmes (clic : section Problèmes), zoom, et SGBD cible et version
   (boîte « Cible »).
-- Le panneau de droite édite l'objet sélectionné (ou les paramètres du document).
+- Les sections de droite éditent l'objet sélectionné (Propriétés, Rubriques) et les paramètres du
+  document (Modèle).
 - Le MLD textuel, le script SQL et les problèmes se mettent à jour en temps réel.
 - ⌘/Ctrl + Z, ⇧⌘/Ctrl + Z, ⌘/Ctrl + S, ⌘/Ctrl + O, ⌘/Ctrl + N, Suppr, ⌘/Ctrl + A, ⌘/Ctrl + I.
 - Molette : défilement ; ⌘/Ctrl + molette ou pincement : zoom ; ⇧F : ajuster à la fenêtre.
+
+## Développement
+
+### Prérequis
+
+- Node.js ≥ 20 et pnpm
+- Pour l'application native : Rust via [rustup](https://rustup.rs)
+  (`curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`)
+  et, sous macOS, les Xcode Command Line Tools (`xcode-select --install`).
+
+### Commandes
+
+| Commande | Effet |
+|---|---|
+| `pnpm install` | Installe les dépendances |
+| `pnpm tauri dev` | Lance l'application native avec rechargement à chaud |
+| `pnpm tauri build` | Produit l'installeur de la plateforme courante |
+| `pnpm dev` | Lance l'interface seule dans le navigateur (http://localhost:1420) |
+| `pnpm test` | Tests du cœur métier (Vitest) |
+| `pnpm typecheck` | Vérification TypeScript |
+| `scripts/sgbd.sh up` puis `wait` | Démarre PostgreSQL 18 (et PostGIS), MySQL, Oracle et SQL Server dans Docker (facultatif ; ex. `up postgres postgis mysql`) |
+| `pnpm test:sgbd` | Exécute réellement les scripts générés sur ces SGBD (`scripts/sgbd.sh down` ensuite) |
+
+### Intégration continue et release
+
+`.github/workflows/ci.yml` : tests sur Linux, Windows et macOS, scripts SQL exécutés sur
+PostgreSQL et MySQL (Docker), puis build de l'application native sur les trois OS. Sur `main` et
+les pull requests, les installeurs sont joints au run (artefacts, 7 jours).
+
+La version est définie dans `package.json` uniquement (Tauri la lit). Pour publier :
+
+1. passer `version` de `package.json` à la nouvelle version (ex. 0.2.0) ;
+2. ajouter en tête de `CHANGELOG.md` la section `## 0.2.0 — AAAA-MM-JJ` (obligatoire : vérifiée
+   par les tests). Elle devient le texte de la release GitHub, les notes proposées par la mise à
+   jour, et s'affiche dans l'application (À propos → Nouveautés, ouvert une fois après la mise à jour) ;
+3. committer, puis `git tag v0.2.0 && git push origin v0.2.0`.
+
+Le tag produit une release GitHub en brouillon : macOS (universel Apple Silicon + Intel,
+macOS ≥ 13.3), Windows (MSI, NSIS), Linux (deb, rpm, AppImage), avec `latest.json` et les
+signatures de mise à jour. Une fois la release publiée, les applications installées la proposent
+(à chaque lancement, ou via Options → Rechercher maintenant).
+
+**Clé de signature des mises à jour** : la clé publique est dans `src-tauri/tauri.conf.json`, la
+clé privée dans le secret GitHub `TAURI_SIGNING_PRIVATE_KEY` (et son mot de passe éventuel dans
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`). Sans elle, plus aucune mise à jour ne peut être publiée
+pour les versions installées : la conserver hors du dépôt, en lieu sûr.
+
+Les binaires ne sont pas signés par Apple ni par Microsoft : sous macOS, Gatekeeper bloque
+l'application (« endommagée ») tant que l'attribut de quarantaine n'est pas retiré
+(`xattr -cr /Applications/ModelIt.app`) ; sous Windows, SmartScreen avertit (« Informations
+complémentaires » → « Exécuter quand même »). Les mises à jour, téléchargées par l'application,
+ne sont pas concernées.
 
 ## Licence
 
