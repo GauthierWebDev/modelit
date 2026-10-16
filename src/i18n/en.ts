@@ -53,7 +53,8 @@ export const en: Record<MessageKey, string> = {
   "collab.copyKept": "A copy of the document stays open in an “Untitled” tab.",
   "collab.share": "Share the tab (collaborative session)",
   "collab.shareTitle": "Share this tab",
-  "collab.shareHelp": "Participants join through a link and work with you live. No server: the session stops when you stop it, close the tab or quit ModelIt.",
+  "collab.shareHelp":
+    "Participants join through a link and work with you live. No server: the session stops when you stop it, close the tab or quit ModelIt.",
   "collab.password": "Password (optional, at least {n} characters)",
   "collab.allowAi": "Allow guests' AI assistants",
   "collab.start": "Start sharing",
@@ -78,7 +79,8 @@ export const en: Record<MessageKey, string> = {
   "collab.unavailable": "Sharing is only available in the installed app.",
   "mcp.title": "AI assistants (MCP)",
   "mcp.enable": "Let AI assistants read and change the open model",
-  "mcp.help": "An MCP-compatible assistant (Claude Code, Claude Desktop…) acts on the active tab; each change can be undone with ⌘/Ctrl + Z. Access is limited to this computer, with a token.",
+  "mcp.help":
+    "An MCP-compatible assistant (Claude Code, Claude Desktop…) acts on the active tab; each change can be undone with ⌘/Ctrl + Z. Access is limited to this computer, with a token.",
   "mcp.port": "Port",
   "mcp.listening": "Listening on {url}",
   "mcp.starting": "Starting…",
@@ -173,14 +175,16 @@ export const en: Record<MessageKey, string> = {
   "customDbms.takeLibrary": "Use the version from my DBMSs",
   "customDbms.resetAll": "Reset all",
   "customDbms.remove": "Back to {dbms}",
-  "customDbms.help": "An empty field uses the base type (shown greyed). Variables: {n} length (text, binary), {p} and {s} precision and scale (decimal).",
+  "customDbms.help":
+    "An empty field uses the base type (shown greyed). Variables: {n} length (text, binary), {p} and {s} precision and scale (decimal).",
   "customDbms.helpStandard": "SQL types emitted for each conceptual type.",
   "customDbms.redefined": "redefined",
   "customDbms.library": "My DBMSs",
   "customDbms.basedOnLabel": "based on {dbms}",
   "customDbms.typesCount": "{n} redefined type(s)",
   "customDbms.editTypes": "Customize types…",
-  "customDbms.libraryEmpty": "No custom DBMS. Customize a model's target (model settings, SQL types tab), then save it to your DBMSs.",
+  "customDbms.libraryEmpty":
+    "No custom DBMS. Customize a model's target (model settings, SQL types tab), then save it to your DBMSs.",
   "customDbms.rename": "Rename",
   "customDbms.duplicate": "Duplicate",
   "customDbms.delete": "Delete",
@@ -218,7 +222,8 @@ export const en: Record<MessageKey, string> = {
   "sqlType.xml": "XML",
   "sqlType.geometry": "Geometry",
   "sqlType.geography": "Geography",
-  "modelSettings.noSource": "This model does not come from a script: these settings only apply to tables imported by reverse engineering.",
+  "modelSettings.noSource":
+    "This model does not come from a script: these settings only apply to tables imported by reverse engineering.",
   "modelSettings.present": "in this model",
   "modelSettings.source.all": "All source DBMSs",
   "modelSettings.source.mysql": "MySQL",
@@ -236,7 +241,8 @@ export const en: Record<MessageKey, string> = {
   "toolbar.detach": "Detach toolbar",
   "toolbar.dock": "Dock toolbar",
   "common.close": "Close",
-  "physical.help": "Outside the CDM: reapplied to the script when the target DBMS allows it, otherwise listed in the conversion report.",
+  "physical.help":
+    "Outside the CDM: reapplied to the script when the target DBMS allows it, otherwise listed in the conversion report.",
   "physical.primaryKeyName": "Primary key name",
   "physical.checks": "CHECK constraints",
   "physical.addCheck": "Add a CHECK",
@@ -283,7 +289,8 @@ export const en: Record<MessageKey, string> = {
   "mcd.derived": "Derived data: {expression}",
   "mcd.alternate": "Alternate key {tag} (UNIQUE)",
   "mcd.alternateScope": "{tag} per {scope}",
-  "mcd.alternateScopeTip": "Alternate key {tag} relative to the association “{scope}”: unique for a given linked occurrence",
+  "mcd.alternateScopeTip":
+    "Alternate key {tag} relative to the association “{scope}”: unique for a given linked occurrence",
   "mcd.alternateExpression": "Alternate key {tag} on the expression {expression}",
   "mcd.alternateCondition": "Conditional alternate key {tag}: unique only when {condition}",
   "mcd.alternatePrefix": "Alternate key {tag} on a prefix: only the first {n} characters are unique",
@@ -380,7 +387,8 @@ export const en: Record<MessageKey, string> = {
   "inspector.autoIdMask": "Auto discriminant",
   "inspector.primaryKey": "Primary key",
   "inspector.foreignKey": "Foreign key",
-  "inspector.keysHelp": "Discriminant: conceptual name (CDM). Primary and foreign keys: logical names (LDM, PDM, SQL). Duplicate foreign keys: _2, _3… suffix.",
+  "inspector.keysHelp":
+    "Discriminant: conceptual name (CDM). Primary and foreign keys: logical names (LDM, PDM, SQL). Duplicate foreign keys: _2, _3… suffix.",
   "inspector.showAttributes": "Attributes",
   "inspector.grid": "Snap to grid",
   "inspector.gridSize": "Grid size",
@@ -392,7 +400,8 @@ export const en: Record<MessageKey, string> = {
   "inspector.relationLabels.text": "Custom text",
   "inspector.relationText": "Link text (LDM / PDM)",
   "inspector.relationTextPlaceholder": "e.g. places, belongs to…",
-  "inspector.relationTextHelp": "Shown on the line between the tables when “Text on links” is set to “Custom text” (model settings, with nothing selected).",
+  "inspector.relationTextHelp":
+    "Shown on the line between the tables when “Text on links” is set to “Custom text” (model settings, with nothing selected).",
   "inspector.relationTextNone": "This link creates no foreign key: it has no line between tables.",
   "pattern.custom": "Custom…",
   "pattern.customLabel": "Custom pattern",
@@ -462,7 +471,8 @@ export const en: Record<MessageKey, string> = {
   "fk.inTable": "Added to table “{table}”",
 
   "inheritance.title": "Inheritance",
-  "inheritance.help": "Specialisation / generalisation: a single generic entity and at least one specialised entity. Connect the triangle to the entities with the Link tool; the arrow points to the generic entity.",
+  "inheritance.help":
+    "Specialisation / generalisation: a single generic entity and at least one specialised entity. Connect the triangle to the entities with the Link tool; the arrow points to the generic entity.",
   "inheritance.constraint": "Constraint",
   "inheritance.none": "None",
   "inheritance.X": "Exclusive",
@@ -490,6 +500,7 @@ export const en: Record<MessageKey, string> = {
   "canvas.bendHandle": "Drag to move · click then press Delete (or right-click) to remove",
   "canvas.deleteBend": "Remove this bend (Delete)",
   "canvas.compositeKey": "Composite primary key",
+  "canvas.label": "Modeling canvas",
 
   "export.title": "Export image",
   "export.format": "Format",
@@ -588,12 +599,15 @@ export const en: Record<MessageKey, string> = {
   "history.relationText": "Link text",
 
   "reverse.title": "Reverse engineering (SQL → CDM)",
-  "reverse.help": "Paste or open a table creation script, whatever the DBMS and its version. Only the table structure is read (columns, types, keys, comments); everything else (indexes, CHECK, views, functions, triggers, data…) is ignored without error.",
+  "reverse.help":
+    "Paste or open a table creation script, whatever the DBMS and its version. Only the table structure is read (columns, types, keys, comments); everything else (indexes, CHECK, views, functions, triggers, data…) is ignored without error.",
   "reverse.open": "Open an SQL file…",
   "reverse.placeholder": "CREATE TABLE customer (\n  id INT PRIMARY KEY,\n  name VARCHAR(50) NOT NULL\n);",
   "reverse.run": "Generate the CDM",
-  "reverse.target": "The new model uses the general options (target DBMS, key patterns): it can be regenerated for any DBMS.",
-  "reverse.report": "Tables read: {tables} — entities: {entities}, associations: {associations}, inheritances: {inheritances}. Statements ignored: {ignored}.",
+  "reverse.target":
+    "The new model uses the general options (target DBMS, key patterns): it can be regenerated for any DBMS.",
+  "reverse.report":
+    "Tables read: {tables} — entities: {entities}, associations: {associations}, inheritances: {inheritances}. Statements ignored: {ignored}.",
   "reverse.warnings": "Warnings",
   "reverse.noTable": "No table found in the script.",
   "reverse.done": "CDM generated from the script: {tables} table(s).",
@@ -619,7 +633,8 @@ export const en: Record<MessageKey, string> = {
   "options.autosave.indexeddb": "On (local IndexedDB database)",
   "options.autosave.off": "Off",
   "options.autosaveDelay": "Delay between two saves (min)",
-  "options.autosaveDelayHelp": "0 = after every operation; 1 = at most one save per minute. Decimals allowed (0.5 = 30 s).",
+  "options.autosaveDelayHelp":
+    "0 = after every operation; 1 = at most one save per minute. Decimals allowed (0.5 = 30 s).",
   "options.updates": "Updates",
   "options.updateCheck": "Check for updates at startup",
   "options.updateHelp": "At every launch, on ModelIt's GitHub releases. Nothing is installed without your consent.",
@@ -631,7 +646,8 @@ export const en: Record<MessageKey, string> = {
   "update.upToDate": "ModelIt is up to date.",
   "update.downloading": "Downloading the update…",
   "update.downloadingPercent": "Downloading the update: {percent}%",
-  "update.notConfigured": "This copy of ModelIt is a development build: it cannot update itself. Install the latest version from the releases page.",
+  "update.notConfigured":
+    "This copy of ModelIt is a development build: it cannot update itself. Install the latest version from the releases page.",
   "update.checkFailed": "Unable to check for updates: {error}",
   "update.installFailed": "The update failed: {error}",
   "about.title": "About ModelIt",
@@ -642,7 +658,8 @@ export const en: Record<MessageKey, string> = {
   "about.maintainer": "Developed and maintained by {name}",
   "about.repository": "Source code",
   "about.issues": "Report an issue",
-  "about.legal": "This program is free software: you can redistribute it and modify it under the terms of the GNU General Public License (GPL), version 3 or later. It comes with absolutely no warranty.",
+  "about.legal":
+    "This program is free software: you can redistribute it and modify it under the terms of the GNU General Public License (GPL), version 3 or later. It comes with absolutely no warranty.",
   "about.license": "Read the license",
   "about.font": "Inter typeface, under the SIL Open Font License 1.1.",
   "about.installed": "installed",

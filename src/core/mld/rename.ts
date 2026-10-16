@@ -7,7 +7,12 @@ import type { LogicalModel } from "./logical";
  * Comparaison sans tenir compte de la casse, comme la plupart des SGBD. Un nom vide (retour au nom
  * par défaut) n'est pas contrôlé ici.
  */
-export function checkLogicalRename(model: LogicalModel, table: string, column: string | null, name: string): string | null {
+export function checkLogicalRename(
+  model: LogicalModel,
+  table: string,
+  column: string | null,
+  name: string,
+): string | null {
   const next = name.trim().toLowerCase();
   if (!next) return null;
   if (column === null) {

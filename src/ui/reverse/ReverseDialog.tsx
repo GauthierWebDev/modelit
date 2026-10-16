@@ -1,12 +1,12 @@
-import { DBMS_LIST, detectDialect, reverseEngineer, type ReverseReport, type SqlDialect } from "@core/index";
+import { DBMS_LIST, detectDialect, type ReverseReport, reverseEngineer, type SqlDialect } from "@core/index";
 import { FileUp } from "lucide-react";
 import { useState } from "react";
+import { showError } from "@/app/dialogStore";
 import { newModelDocument } from "@/app/modelDefaults";
 import { useUiStore } from "@/app/uiStore";
 import { showView } from "@/app/viewCommands";
 import { openInTab } from "@/app/workspace";
 import { t } from "@/i18n";
-import { showError } from "@/app/dialogStore";
 import { openTextFile } from "@/platform/files";
 import { autoLayoutTables } from "@/ui/canvas/autoLayout";
 import { Modal } from "@/ui/common/Modal";
@@ -62,7 +62,11 @@ export function ReverseDialog() {
             <FileUp size={14} /> {t("reverse.open")}
           </button>
           <div className="flex-1" />
-          <button type="button" className="rounded px-3 py-1 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => setOpen(false)}>
+          <button
+            type="button"
+            className="rounded px-3 py-1 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            onClick={() => setOpen(false)}
+          >
             {t("common.close")}
           </button>
           <button
@@ -89,14 +93,20 @@ export function ReverseDialog() {
         className="h-64 w-full resize-y rounded border border-neutral-300 bg-white p-2 font-mono text-xs outline-none focus:border-blue-500 dark:border-neutral-600 dark:bg-neutral-800"
       />
       <div className="mt-2 flex items-center gap-2 text-sm">
-        <label htmlFor="reverse-dialect" className="text-neutral-600 dark:text-neutral-300">{t("reverse.dialect")}</label>
+        <label htmlFor="reverse-dialect" className="text-neutral-600 dark:text-neutral-300">
+          {t("reverse.dialect")}
+        </label>
         <select
           id="reverse-dialect"
           className="rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-sm dark:border-neutral-600 dark:bg-neutral-800"
           value={dialect}
           onChange={(e) => setDialect(e.target.value as SqlDialect | "auto")}
         >
-          <option value="auto">{sql.trim() ? t("reverse.dialectAutoDetected", { dialect: dialectLabel(detectDialect(sql)) }) : t("reverse.dialectAuto")}</option>
+          <option value="auto">
+            {sql.trim()
+              ? t("reverse.dialectAutoDetected", { dialect: dialectLabel(detectDialect(sql)) })
+              : t("reverse.dialectAuto")}
+          </option>
           {DBMS_LIST.map((d) => (
             <option key={d.id} value={d.id}>
               {d.label}
@@ -108,18 +118,25 @@ export function ReverseDialog() {
       <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t("reverse.target")}</p>
       {report && (
         <div role="status" className="mt-3 rounded border border-neutral-200 p-2 text-sm dark:border-neutral-700">
-          <p>{report.tables === 0 ? t("reverse.noTable") : t("reverse.report", {
+          <p>
+            {report.tables === 0
+              ? t("reverse.noTable")
+              : t("reverse.report", {
                   tables: report.tables,
                   entities: report.entities,
                   associations: report.associations,
                   inheritances: report.inheritances,
                   ignored: report.ignored,
-                })}</p>
+                })}
+          </p>
           {report.warnings.length > 0 && (
             <>
-              <p className="mt-2 text-xs font-semibold tracking-wide text-amber-700 uppercase dark:text-amber-400">{t("reverse.warnings")}</p>
+              <p className="mt-2 text-xs font-semibold tracking-wide text-amber-700 uppercase dark:text-amber-400">
+                {t("reverse.warnings")}
+              </p>
               <ul className="mt-1 list-disc pl-5 text-xs text-neutral-600 dark:text-neutral-300">
                 {report.warnings.map((w, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, jamais réordonnée
                   <li key={i}>{w}</li>
                 ))}
               </ul>
@@ -132,5 +149,7 @@ export function ReverseDialog() {
 }
 
 function dialectLabel(dialect: SqlDialect) {
-  return dialect === "generic" ? t("reverse.dialectGeneric") : (DBMS_LIST.find((d) => d.id === dialect)?.label ?? dialect);
+  return dialect === "generic"
+    ? t("reverse.dialectGeneric")
+    : (DBMS_LIST.find((d) => d.id === dialect)?.label ?? dialect);
 }

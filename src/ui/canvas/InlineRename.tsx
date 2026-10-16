@@ -1,5 +1,5 @@
-import { displayedSqlType, sameDialect, targetOf, type Id, type LogicalColumn } from "@core/index";
-import { useEffect, useRef, type KeyboardEvent } from "react";
+import { displayedSqlType, type Id, type LogicalColumn, sameDialect, targetOf } from "@core/index";
+import { type KeyboardEvent, useEffect, useRef } from "react";
 import { renameLogical, setColumnSqlType } from "@/app/commands";
 import { useLogicalModel } from "@/app/derived";
 import { useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
@@ -119,7 +119,17 @@ export function InlineEditor({
 }
 
 /** Renommage d'un titre de table ou d'une colonne du MLD / MPD (override O-56). */
-export function InlineRename({ target, layouts, mode, onClose }: { target: RenameTarget; layouts: TableLayout[]; mode: LogicalViewMode; onClose: () => void }) {
+export function InlineRename({
+  target,
+  layouts,
+  mode,
+  onClose,
+}: {
+  target: RenameTarget;
+  layouts: TableLayout[];
+  mode: LogicalViewMode;
+  onClose: () => void;
+}) {
   const doc = useDocumentHandle();
   const logical = useLogicalModel();
   const layout = layouts.find((l) => l.sourceId === target.sourceId);
@@ -135,8 +145,17 @@ export function InlineRename({ target, layouts, mode, onClose }: { target: Renam
     const settings = doc.store.getState().doc.settings;
     return (
       <InlineEditor
-        box={{ x: layout.x + layout.typeX - 3, y: layout.y + row.y, width: layout.constraintsX - layout.typeX - 2, height: ROW_HEIGHT }}
-        value={row.column.sourceType && sameDialect(row.column.sourceType.dialect, settings.dbms) ? row.column.sourceType.sql : ""}
+        box={{
+          x: layout.x + layout.typeX - 3,
+          y: layout.y + row.y,
+          width: layout.constraintsX - layout.typeX - 2,
+          height: ROW_HEIGHT,
+        }}
+        value={
+          row.column.sourceType && sameDialect(row.column.sourceType.dialect, settings.dbms)
+            ? row.column.sourceType.sql
+            : ""
+        }
         placeholder={displayedSqlType({ type: row.column.type }, targetOf(settings)) ?? undefined}
         title={false}
         onClose={onClose}
@@ -152,7 +171,12 @@ export function InlineRename({ target, layouts, mode, onClose }: { target: Renam
   // Ligne : du début du nom jusqu'au type (MPD) ou au bord de la table ; titre : toute la largeur.
   const left = row ? PAD_X + row.indent - 3 : 2;
   const box = row
-    ? { x: layout.x + left, y: layout.y + row.y, width: (mode === "mpd" ? layout.typeX - 4 : layout.width - 2) - left, height: ROW_HEIGHT }
+    ? {
+        x: layout.x + left,
+        y: layout.y + row.y,
+        width: (mode === "mpd" ? layout.typeX - 4 : layout.width - 2) - left,
+        height: ROW_HEIGHT,
+      }
     : { x: layout.x + left, y: layout.y + 2, width: layout.width - 4, height: TITLE_HEIGHT - 4 };
   return (
     <InlineEditor

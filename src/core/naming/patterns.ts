@@ -42,7 +42,9 @@ const normalize = (alias: string) =>
     .toLowerCase();
 
 /** Table alias normalisé → variable, alias ambigus exclus. */
-export function aliasIndex(aliases: Record<PatternVariable, Record<string, string[]>> = PATTERN_ALIASES): Map<string, PatternVariable> {
+export function aliasIndex(
+  aliases: Record<PatternVariable, Record<string, string[]>> = PATTERN_ALIASES,
+): Map<string, PatternVariable> {
   const owners = new Map<string, Set<PatternVariable>>();
   for (const [variable, byLanguage] of Object.entries(aliases) as [PatternVariable, Record<string, string[]>][]) {
     // Le nom canonique est toujours un alias de sa variable.
@@ -59,7 +61,10 @@ export function aliasIndex(aliases: Record<PatternVariable, Record<string, strin
 const INDEX = aliasIndex();
 const VARIABLE = /<([^<>]+)>/g;
 
-export type ParsedPattern = { ok: true; pattern: string } | { ok: false; empty: true } | { ok: false; unknown: string[] };
+export type ParsedPattern =
+  | { ok: true; pattern: string }
+  | { ok: false; empty: true }
+  | { ok: false; unknown: string[] };
 
 /** Schéma saisi (alias de toute langue) → schéma canonique, en vérifiant les variables permises. */
 export function parsePattern(input: string, kind: PatternKind, index = INDEX): ParsedPattern {

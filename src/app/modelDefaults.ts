@@ -1,4 +1,4 @@
-import { emptyDocument, resolveVersion, type DocumentSettings, type ModelDocument } from "@core/index";
+import { type DocumentSettings, emptyDocument, type ModelDocument, resolveVersion } from "@core/index";
 import type { Draft } from "immer";
 import { usePreferencesStore } from "./preferencesStore";
 

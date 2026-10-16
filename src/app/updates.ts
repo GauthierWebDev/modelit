@@ -1,6 +1,6 @@
 import { t } from "@/i18n";
+import { type AvailableUpdate, checkForUpdate, updatesConfigured, updatesSupported } from "@/platform/updater";
 import { APP_INFO, CHANGELOG } from "./appInfo";
-import { checkForUpdate, updatesConfigured, updatesSupported, type AvailableUpdate } from "@/platform/updater";
 import { alertDialog, confirmDialog, showError } from "./dialogStore";
 import { confirmLoseAllChanges } from "./fileCommands";
 import { usePreferencesStore } from "./preferencesStore";
@@ -36,7 +36,13 @@ async function run(manual: boolean) {
   busy = true;
   try {
     if (!(await updatesConfigured())) {
-      if (manual) await alertDialog({ title: t("update.title"), message: t("update.notConfigured"), okLabel: t("common.ok"), tone: "info" });
+      if (manual)
+        await alertDialog({
+          title: t("update.title"),
+          message: t("update.notConfigured"),
+          okLabel: t("common.ok"),
+          tone: "info",
+        });
       return;
     }
     let update: AvailableUpdate | null;
@@ -48,7 +54,13 @@ async function run(manual: boolean) {
       return;
     }
     if (!update) {
-      if (manual) await alertDialog({ title: t("update.title"), message: t("update.upToDate"), okLabel: t("common.ok"), tone: "info" });
+      if (manual)
+        await alertDialog({
+          title: t("update.title"),
+          message: t("update.upToDate"),
+          okLabel: t("common.ok"),
+          tone: "info",
+        });
       return;
     }
     await offer(update);
@@ -77,7 +89,10 @@ async function offer(update: AvailableUpdate) {
       const percent = ratio === null ? null : Math.floor(ratio * 100);
       if (percent === shown) return;
       shown = percent ?? -1;
-      ui.notify({ kind: "info", text: percent === null ? t("update.downloading") : t("update.downloadingPercent", { percent }) });
+      ui.notify({
+        kind: "info",
+        text: percent === null ? t("update.downloading") : t("update.downloadingPercent", { percent }),
+      });
     });
   } catch (e) {
     ui.notify(null);

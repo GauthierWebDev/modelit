@@ -1,7 +1,14 @@
 import { Check, Copy, LogOut, Square, Users } from "lucide-react";
-import { useState } from "react";
-import { joinFromLink, leaveSession, setGuestsAi, shareActiveTab, stopSharing, useCollabStore } from "@/app/collab/session";
+import { type ReactNode, useState } from "react";
 import { MIN_PASSWORD_LENGTH } from "@/app/collab/password";
+import {
+  joinFromLink,
+  leaveSession,
+  setGuestsAi,
+  shareActiveTab,
+  stopSharing,
+  useCollabStore,
+} from "@/app/collab/session";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { collabAvailable } from "@/platform/collab";
@@ -18,7 +25,13 @@ function LinkRow({ label, value }: { label: string; value: string }) {
     <div className="flex flex-col gap-1">
       <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</span>
       <div className="flex gap-2">
-        <input readOnly aria-label={label} value={value} className={`${inputClass} flex-1 font-mono text-xs`} onFocus={(e) => e.target.select()} />
+        <input
+          readOnly
+          aria-label={label}
+          value={value}
+          className={`${inputClass} flex-1 font-mono text-xs`}
+          onFocus={(e) => e.target.select()}
+        />
         <button
           type="button"
           className={secondary}
@@ -56,13 +69,17 @@ export function ShareDialog() {
   const tooShort = password.length > 0 && password.length < MIN_PASSWORD_LENGTH;
 
   const closeButton = (
-    <button type="button" className="rounded px-3 py-1 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={close}>
+    <button
+      type="button"
+      className="rounded px-3 py-1 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+      onClick={close}
+    >
       {t("common.close")}
     </button>
   );
 
-  let body;
-  let footer;
+  let body: ReactNode;
+  let footer: ReactNode;
   if (mode === "host" && links) {
     body = (
       <div className="flex flex-col gap-3">
@@ -81,7 +98,9 @@ export function ShareDialog() {
       </>
     );
   } else if (mode === "guest") {
-    body = <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.inSession", { host: hostName })}</p>;
+    body = (
+      <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.inSession", { host: hostName })}</p>
+    );
     footer = (
       <>
         <button type="button" className={`${secondary} text-red-600`} onClick={() => void leaveSession()}>
@@ -106,8 +125,16 @@ export function ShareDialog() {
           <h3 className="text-sm font-semibold">{t("collab.shareTitle")}</h3>
           <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.shareHelp")}</p>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-neutral-500 dark:text-neutral-400">{t("collab.password", { n: MIN_PASSWORD_LENGTH })}</span>
-            <input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+            <span className="text-neutral-500 dark:text-neutral-400">
+              {t("collab.password", { n: MIN_PASSWORD_LENGTH })}
+            </span>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputClass}
+            />
           </label>
           <Checkbox label={t("collab.allowAi")} checked={allowAi} onChange={setAllowAi} />
           <div>
@@ -116,7 +143,11 @@ export function ShareDialog() {
               data-autofocus
               disabled={busy || tooShort}
               className={primary}
-              onClick={() => void shareActiveTab({ ...(password ? { password } : {}), aiAllowed: allowAi }).then(() => setPassword(""))}
+              onClick={() =>
+                void shareActiveTab({ ...(password ? { password } : {}), aiAllowed: allowAi }).then(() =>
+                  setPassword(""),
+                )
+              }
             >
               {mode === "starting" ? t("collab.starting") : t("collab.start")}
             </button>

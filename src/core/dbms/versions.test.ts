@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { deserializeModel, FILE_FORMAT } from "../io/modelFile";
-import { sqlType } from "./typeMapping";
-import { DBMS_VERSIONS, GENERIC_VERSION, isAtLeast, latestVersion, resolveVersion, versionFeatureThresholds, versionFeatures } from "./versions";
 import { MSG } from "../validation/messages";
+import { sqlType } from "./typeMapping";
+import {
+  DBMS_VERSIONS,
+  GENERIC_VERSION,
+  isAtLeast,
+  latestVersion,
+  resolveVersion,
+  versionFeatures,
+  versionFeatureThresholds,
+} from "./versions";
 
 describe("versions des SGBD (override O-04)", () => {
   it("comparaison de versions", () => {
@@ -43,7 +51,9 @@ describe("versions des SGBD (override O-04)", () => {
   });
 
   it("chaque seuil est une version connue de son SGBD", () => {
-    const unknown = versionFeatureThresholds().filter(({ dbms, since }) => !DBMS_VERSIONS[dbms].some((v) => v.id === since));
+    const unknown = versionFeatureThresholds().filter(
+      ({ dbms, since }) => !DBMS_VERSIONS[dbms].some((v) => v.id === since),
+    );
     expect(unknown).toEqual([]);
   });
 });

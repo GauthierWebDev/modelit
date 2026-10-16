@@ -2,16 +2,16 @@ import { emptyDocument } from "@core/index";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as cmd from "../commands";
 import { useDialogStore } from "../dialogStore";
+import { groupOf } from "../dock/layout";
 import { createDocumentViewStore } from "../document/documentView";
 import { documentName } from "../fileCommands";
+import { usePreferencesStore } from "../preferencesStore";
 import { activeDocument, closeTab, openInTab, resetWorkspace, useWorkspaceStore } from "../workspace";
 import { startGuest } from "./guest";
 import { startHost } from "./host";
 import { buildLink, parseLink } from "./link";
 import { memoryNetwork } from "./memoryNetwork";
 import { verifier } from "./password";
-import { groupOf } from "../dock/layout";
-import { usePreferencesStore } from "../preferencesStore";
 import {
   answerPassword,
   joinFromLink,
@@ -37,7 +37,11 @@ describe("gestionnaire de session", () => {
     useCollabStore.setState({ mode: "idle", tabId: null, links: null, participants: [], guest: null, error: null });
     net = memoryNetwork();
     setCollabTransport({
-      startHost: async () => ({ addr: JSON.stringify({ id: "hote" }), link: net.hostLink, stop: async () => undefined }),
+      startHost: async () => ({
+        addr: JSON.stringify({ id: "hote" }),
+        link: net.hostLink,
+        stop: async () => undefined,
+      }),
       connect: async () => net.connect(`peer${++peers}`),
     });
   });
@@ -63,7 +67,12 @@ describe("gestionnaire de session", () => {
 
     it("un invité rejoint et modifie : l'onglet de l'hôte suit", async () => {
       await shareActiveTab();
-      const bob = startGuest({ link: net.connect("bob"), secret: parseLink(useCollabStore.getState().links!.edit)!.secret, name: "Bob", color: "#000" });
+      const bob = startGuest({
+        link: net.connect("bob"),
+        secret: parseLink(useCollabStore.getState().links!.edit)!.secret,
+        name: "Bob",
+        color: "#000",
+      });
       await net.settle();
       expect(useCollabStore.getState().participants.map((p) => p.name)).toContain("Bob");
       cmd.addEntity({ id: "b", store: bob.store, view: createDocumentViewStore() }, { x: 0, y: 0 });
@@ -74,7 +83,12 @@ describe("gestionnaire de session", () => {
     it("arrêter : l'onglet redevient ordinaire, avec son fichier ; l'invité l'apprend", async () => {
       activeDocument().store.getState().markSaved("/m/bibliotheque.mcd");
       await shareActiveTab();
-      const bob = startGuest({ link: net.connect("bob"), secret: parseLink(useCollabStore.getState().links!.read)!.secret, name: "Bob", color: "#000" });
+      const bob = startGuest({
+        link: net.connect("bob"),
+        secret: parseLink(useCollabStore.getState().links!.read)!.secret,
+        name: "Bob",
+        color: "#000",
+      });
       await net.settle();
       await stopSharing();
       await net.settle();
@@ -95,7 +109,12 @@ describe("gestionnaire de session", () => {
 
     it("présence : au plus 20 envois par seconde, le dernier état part toujours", async () => {
       await shareActiveTab();
-      const bob = startGuest({ link: net.connect("bob"), secret: parseLink(useCollabStore.getState().links!.edit)!.secret, name: "Bob", color: "#000" });
+      const bob = startGuest({
+        link: net.connect("bob"),
+        secret: parseLink(useCollabStore.getState().links!.edit)!.secret,
+        name: "Bob",
+        color: "#000",
+      });
       await net.settle();
       const seen: number[] = [];
       bob.state.subscribe((s) => {
@@ -130,14 +149,24 @@ describe("gestionnaire de session", () => {
 
     it("chat : les messages des autres comptent comme non lus, pas les miens", async () => {
       await shareActiveTab();
-      const bob = startGuest({ link: net.connect("bob"), secret: parseLink(useCollabStore.getState().links!.edit)!.secret, name: "Bob", color: "#000" });
+      const bob = startGuest({
+        link: net.connect("bob"),
+        secret: parseLink(useCollabStore.getState().links!.edit)!.secret,
+        name: "Bob",
+        color: "#000",
+      });
       await net.settle();
       markChatRead();
       sendChat("Bienvenue");
       bob.sendChat("Merci");
       bob.sendChat("Je commence");
       await net.settle();
-      expect(useCollabStore.getState().chat.filter((m) => m.kind === "text").map((m) => m.text)).toEqual(["Bienvenue", "Merci", "Je commence"]);
+      expect(
+        useCollabStore
+          .getState()
+          .chat.filter((m) => m.kind === "text")
+          .map((m) => m.text),
+      ).toEqual(["Bienvenue", "Merci", "Je commence"]);
       expect(useCollabStore.getState().unread).toBe(2);
       runCollabAction({ kind: "read" });
       expect(useCollabStore.getState().unread).toBe(0);
@@ -145,7 +174,12 @@ describe("gestionnaire de session", () => {
 
     it("modèle de plus de 5 Mo : partage refusé", async () => {
       const doc = activeDocument();
-      doc.store.setState({ doc: { ...doc.store.getState().doc, entities: [{ id: "big", kind: "entity", name: "x".repeat(5 * 1024 * 1024), attributes: [], fictive: false }] } });
+      doc.store.setState({
+        doc: {
+          ...doc.store.getState().doc,
+          entities: [{ id: "big", kind: "entity", name: "x".repeat(5 * 1024 * 1024), attributes: [], fictive: false }],
+        },
+      });
       expect(await shareActiveTab()).toBe(false);
       expect(useCollabStore.getState()).toMatchObject({ mode: "idle", error: expect.stringContaining("5 Mo") });
     });
@@ -179,7 +213,11 @@ describe("gestionnaire de session", () => {
       expect(useCollabStore.getState().mode).toBe("guest");
       expect(useWorkspaceStore.getState().documents).toHaveLength(before + 1);
       expect(documentName(activeDocument())).toBe("Bibliothèque — session de Alice");
-      expect(activeDocument().store.getState().doc.entities.map((e) => e.name)).toEqual(["LIVRE"]);
+      expect(
+        activeDocument()
+          .store.getState()
+          .doc.entities.map((e) => e.name),
+      ).toEqual(["LIVRE"]);
     });
 
     it("lien invalide : message, aucune connexion", async () => {
@@ -208,7 +246,10 @@ describe("gestionnaire de session", () => {
       expect(useCollabStore.getState().guest).toMatchObject({ status: "password" });
       await answerPassword("mot de passe solide");
       await net.settle();
-      expect(useCollabStore.getState()).toMatchObject({ mode: "guest", guest: { status: "connected", role: "editor" } });
+      expect(useCollabStore.getState()).toMatchObject({
+        mode: "guest",
+        guest: { status: "connected", role: "editor" },
+      });
     });
 
     it("quitter : copie gardée, pas de message", async () => {

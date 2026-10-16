@@ -1,23 +1,34 @@
-import { useEffect } from "react";
-import { ChevronDown, GripVertical, LayoutDashboard, MousePointer2, Redo2, Spline, Square, Triangle, Undo2, Users } from "lucide-react";
-import { AppMenu } from "./AppMenu";
-import { DisplayMenu } from "./DisplayMenu";
+import {
+  ChevronDown,
+  GripVertical,
+  LayoutDashboard,
+  MousePointer2,
+  Redo2,
+  Spline,
+  Square,
+  Triangle,
+  Undo2,
+  Users,
+} from "lucide-react";
 import type { PointerEvent, ReactNode } from "react";
+import { useEffect } from "react";
+import { useCollabStore } from "@/app/collab/session";
+import { updateDock } from "@/app/dock/actions";
+import { setToolbar } from "@/app/dock/layout";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { selectRedoLabel, selectUndoLabel } from "@/app/document/documentStore";
 import type { ViewMode } from "@/app/document/documentView";
-import { useCollabStore } from "@/app/collab/session";
-import { useSessionReadOnly } from "@/ui/collab/readOnly";
-import { useUiStore, type Tool } from "@/app/uiStore";
+import { type Tool, useUiStore } from "@/app/uiStore";
 import { chooseTool, showView, toolAvailable } from "@/app/viewCommands";
-import { t, type MessageKey } from "@/i18n";
-import { mainCommand } from "@/ui/windows/mainCommands";
+import { type MessageKey, t } from "@/i18n";
+import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { IconButton } from "@/ui/common/controls";
 import { Menu, MenuItem } from "@/ui/common/Menu";
-import { updateDock } from "@/app/dock/actions";
-import { setToolbar } from "@/app/dock/layout";
 import { tip } from "@/ui/common/Tooltip";
 import { MOD } from "@/ui/shortcuts";
+import { mainCommand } from "@/ui/windows/mainCommands";
+import { AppMenu } from "./AppMenu";
+import { DisplayMenu } from "./DisplayMenu";
 
 /** Barre d'outils principale. */
 
@@ -32,7 +43,15 @@ const TOOLS: { id: Tool; label: MessageKey; icon: ReactNode; key: string }[] = [
 /** Icône de l'association : droite en haut et en bas, arrondie sur les côtés (override O-27). */
 function AssociationIcon() {
   return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+    <svg
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      aria-hidden="true"
+    >
       <rect x={2} y={7} width={20} height={10} rx={5} />
     </svg>
   );
@@ -47,7 +66,13 @@ export const views = (): { id: ViewMode; label: string; title: string }[] =>
  * thème et options sont dans le menu ≡, le zoom dans la barre d'état. `floating` : barre flottante, largeur ajustée à son
  * contenu ; `onGripDown` : poignée de déplacement (gérée par `ToolbarHost`).
  */
-export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; onGripDown?: (e: PointerEvent<HTMLElement>) => void }) {
+export function Toolbar({
+  floating = false,
+  onGripDown,
+}: {
+  floating?: boolean;
+  onGripDown?: (e: PointerEvent<HTMLElement>) => void;
+}) {
   const { tool, setShareOpen } = useUiStore();
   const sharing = useCollabStore((s) => s.mode === "host" || s.mode === "guest");
   const doc = useDocumentHandle();
@@ -69,6 +94,7 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
           : "flex items-center gap-1 border-b border-neutral-200 bg-neutral-50 py-1 pr-2 pl-1 dark:border-neutral-700 dark:bg-neutral-900"
       }
     >
+      {/* biome-ignore lint/a11y/useSemanticElements: poignée de déplacement au pointeur, hors de l'ordre de tabulation */}
       <span
         role="button"
         tabIndex={-1}

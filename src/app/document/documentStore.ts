@@ -1,7 +1,7 @@
 import type { ModelDocument } from "@core/index";
-import type { MessageKey } from "@/i18n";
-import { produce, type Draft } from "immer";
+import { type Draft, produce } from "immer";
 import { createStore, type StoreApi } from "zustand/vanilla";
+import type { MessageKey } from "@/i18n";
 
 /**
  * État d'un document ouvert et historique annuler / rétablir. Une instance par document
@@ -110,7 +110,15 @@ export const createDocumentStore = (initial: ModelDocument): DocumentStore =>
     },
 
     load(doc, filePath, unsaved = false) {
-      set({ doc, savedDoc: unsaved ? { ...doc } : doc, filePath, recovered: false, past: [], future: [], transactionStart: null });
+      set({
+        doc,
+        savedDoc: unsaved ? { ...doc } : doc,
+        filePath,
+        recovered: false,
+        past: [],
+        future: [],
+        transactionStart: null,
+      });
     },
 
     restore(doc, filePath) {

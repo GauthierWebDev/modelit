@@ -1,5 +1,5 @@
-import { model } from "@core/testing/builder";
 import { MSG } from "@core/index";
+import { model } from "@core/testing/builder";
 import { describe, expect, it } from "vitest";
 import { renameAttribute } from "./commands";
 import { createDocumentHandle } from "./document/handle";

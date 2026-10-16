@@ -49,9 +49,31 @@ export interface GuestSession {
 }
 
 const createGuestState = () =>
-  create<GuestState>(() => ({ status: "connecting", role: null, you: null, participants: [], aiAllowed: false, ended: null, rejected: null, password: null, presence: {}, chat: [], title: null }));
+  create<GuestState>(() => ({
+    status: "connecting",
+    role: null,
+    you: null,
+    participants: [],
+    aiAllowed: false,
+    ended: null,
+    rejected: null,
+    password: null,
+    presence: {},
+    chat: [],
+    title: null,
+  }));
 
-export function startGuest({ link, secret, name, color }: { link: GuestLink; secret: string; name: string; color: string }): GuestSession {
+export function startGuest({
+  link,
+  secret,
+  name,
+  color,
+}: {
+  link: GuestLink;
+  secret: string;
+  name: string;
+  color: string;
+}): GuestSession {
   const state = createGuestState();
   let current = link;
   const canEdit = () => state.getState().status === "connected" && state.getState().role === "editor";

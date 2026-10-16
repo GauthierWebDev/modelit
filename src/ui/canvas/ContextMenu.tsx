@@ -28,7 +28,9 @@ export const useContextMenu = create<ContextMenuState>()((set) => ({
 export function blockNativeContextMenu(): () => void {
   const onContextMenu = (e: MouseEvent) => {
     const target = e.target;
-    const editable = target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+    const editable =
+      target instanceof HTMLElement &&
+      (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
     if (editable || window.getSelection()?.toString()) return;
     e.preventDefault();
   };
@@ -77,14 +79,20 @@ export function ContextMenuLayer() {
     <div
       ref={ref}
       role="menu"
-      style={{ left: position?.left ?? menu.x, top: position?.top ?? menu.y, visibility: position ? "visible" : "hidden" }}
+      style={{
+        left: position?.left ?? menu.x,
+        top: position?.top ?? menu.y,
+        visibility: position ? "visible" : "hidden",
+      }}
       className="fixed z-50 min-w-52 rounded border border-neutral-200 bg-white py-1 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
       onContextMenu={(e) => e.preventDefault()}
     >
       {menu.actions.map((action, i) =>
         action.kind === "separator" ? (
-          <div key={`sep-${i}`} role="separator" className="my-1 border-t border-neutral-200 dark:border-neutral-700" />
+          // biome-ignore lint/suspicious/noArrayIndexKey: séparateur sans identité propre
+          <hr key={`sep-${i}`} className="my-1 border-t border-neutral-200 dark:border-neutral-700" />
         ) : action.kind === "row" ? (
+          // biome-ignore lint/a11y/useSemanticElements: groupe de boutons d'un menu (motif ARIA menu), pas un formulaire
           <div key={action.id} role="group" className="flex gap-0.5 px-2 py-0.5">
             {action.items.map((item) => (
               <span key={item.id} className="inline-flex" {...tip(item.label)}>
@@ -105,6 +113,7 @@ export function ContextMenuLayer() {
             ))}
           </div>
         ) : (
+          // biome-ignore lint/a11y/useAriaPropsSupportedByRole: rôle menuitemcheckbox quand l'action est cochable
           <button
             key={action.id}
             type="button"
@@ -121,7 +130,9 @@ export function ContextMenuLayer() {
               {action.checked ? <Check size={14} /> : action.icon}
             </span>
             <span className="flex-1">{action.label}</span>
-            {action.shortcut && <span className="pl-6 text-xs text-neutral-400 dark:text-neutral-500">{action.shortcut}</span>}
+            {action.shortcut && (
+              <span className="pl-6 text-xs text-neutral-400 dark:text-neutral-500">{action.shortcut}</span>
+            )}
           </button>
         ),
       )}

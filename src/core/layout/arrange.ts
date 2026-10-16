@@ -28,9 +28,21 @@ export function alignBoxes(boxes: Box[], alignment: Alignment): Map<string, Poin
   const bottom = Math.max(...boxes.map((b) => b.y + b.height));
   for (const b of boxes) {
     const dx =
-      alignment === "left" ? left - b.x : alignment === "right" ? right - b.x - b.width : alignment === "center" ? (left + right) / 2 - b.x - b.width / 2 : 0;
+      alignment === "left"
+        ? left - b.x
+        : alignment === "right"
+          ? right - b.x - b.width
+          : alignment === "center"
+            ? (left + right) / 2 - b.x - b.width / 2
+            : 0;
     const dy =
-      alignment === "top" ? top - b.y : alignment === "bottom" ? bottom - b.y - b.height : alignment === "middle" ? (top + bottom) / 2 - b.y - b.height / 2 : 0;
+      alignment === "top"
+        ? top - b.y
+        : alignment === "bottom"
+          ? bottom - b.y - b.height
+          : alignment === "middle"
+            ? (top + bottom) / 2 - b.y - b.height / 2
+            : 0;
     if (dx || dy) offsets.set(b.id, { x: dx, y: dy });
   }
   return offsets;

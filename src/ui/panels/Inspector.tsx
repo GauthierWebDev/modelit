@@ -1,22 +1,31 @@
 import {
-  bendsOf,
-  REFERENTIAL_ACTIONS,
   type Association,
+  bendsOf,
   type Cardinality,
   type Entity,
   type Link,
   type ModelDocument,
+  REFERENTIAL_ACTIONS,
 } from "@core/index";
 import { ChevronRight } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import * as cmd from "@/app/commands";
 import { revealSection } from "@/app/dock/actions";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
-import { Checkbox, CommitInput, ErrorBanner, Field, IconButton, NumberInput, Section, Select } from "@/ui/common/controls";
-import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { arrangeActions } from "@/ui/canvas/objectActions";
+import { useSessionReadOnly } from "@/ui/collab/readOnly";
+import {
+  Checkbox,
+  CommitInput,
+  ErrorBanner,
+  Field,
+  IconButton,
+  NumberInput,
+  Section,
+  Select,
+} from "@/ui/common/controls";
 import { ForeignKeysSection } from "./ForeignKeysSection";
 import { InheritanceLinkPanel, InheritancePanel } from "./InheritancePanels";
 import { PhysicalSection } from "./PhysicalSection";
@@ -30,6 +39,7 @@ export function PropertiesSection() {
   const doc = useDocument((s) => s.doc);
   const selection = useDocumentView((s) => s.selection);
   const [error, setError] = useState<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: effacer l'erreur quand la sélection change
   useEffect(() => setError(null), [selection]);
   /** Affiche le message d'une commande refusée et le renvoie (pour les champs). */
   const report = (message: string | null) => {
@@ -37,12 +47,16 @@ export function PropertiesSection() {
     return message;
   };
 
-  let content;
+  let content: ReactNode;
   if (selection.length === 0) {
     content = (
       <div className="p-3 text-sm text-neutral-500">
         <p>{t("dock.noSelection")}</p>
-        <button type="button" className="mt-1 text-blue-600 hover:underline dark:text-blue-400" onClick={() => useUiStore.getState().setModelSettingsOpen(true)}>
+        <button
+          type="button"
+          className="mt-1 text-blue-600 hover:underline dark:text-blue-400"
+          onClick={() => useUiStore.getState().setModelSettingsOpen(true)}
+        >
           {t("menu.modelSettings")}
         </button>
       </div>
@@ -82,8 +96,13 @@ export function ReadOnly({ children }: { children: ReactNode }) {
   if (!readOnly) return <>{children}</>;
   return (
     <>
-      <p className="mx-3 mt-3 rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">{t("collab.readOnlyNote")}</p>
-      <fieldset disabled className="contents [&_:is(input,select,textarea,button)]:cursor-not-allowed [&_:is(input,select,textarea,button)]:opacity-50">
+      <p className="mx-3 mt-3 rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
+        {t("collab.readOnlyNote")}
+      </p>
+      <fieldset
+        disabled
+        className="contents [&_:is(input,select,textarea,button)]:cursor-not-allowed [&_:is(input,select,textarea,button)]:opacity-50"
+      >
         {children}
       </fieldset>
     </>
@@ -135,7 +154,9 @@ function EntityPanel({ doc, entity, report }: { doc: ModelDocument; entity: Enti
           <CommitInput
             value={entity.logicalName ?? ""}
             placeholder={t("inspector.logicalPlaceholder")}
-            onCommit={(logicalName) => cmd.updateEntity(handle, entity.id, { logicalName: logicalName.trim() || undefined })}
+            onCommit={(logicalName) =>
+              cmd.updateEntity(handle, entity.id, { logicalName: logicalName.trim() || undefined })
+            }
           />
         </Field>
         <Checkbox
@@ -151,7 +172,11 @@ function EntityPanel({ doc, entity, report }: { doc: ModelDocument; entity: Enti
           <Checkbox
             label={t("physical.caseSensitive")}
             checked={Boolean(entity.caseSensitive)}
-            onChange={(on) => cmd.updatePhysical(handle, entity.id, (n) => void (n.caseSensitive = on || undefined))}
+            onChange={(on) =>
+              cmd.updatePhysical(handle, entity.id, (n) => {
+                n.caseSensitive = on || undefined;
+              })
+            }
           />
         </PhysicalSection>
       )}
@@ -160,7 +185,15 @@ function EntityPanel({ doc, entity, report }: { doc: ModelDocument; entity: Enti
   );
 }
 
-function AssociationPanel({ doc, association, report }: { doc: ModelDocument; association: Association; report: Report }) {
+function AssociationPanel({
+  doc,
+  association,
+  report,
+}: {
+  doc: ModelDocument;
+  association: Association;
+  report: Report;
+}) {
   const handle = useDocumentHandle();
   const links = doc.links.filter((l) => l.associationId === association.id);
   const entityName = (link: Link) => doc.entities.find((e) => e.id === link.entityId)?.name ?? "?";
@@ -169,13 +202,18 @@ function AssociationPanel({ doc, association, report }: { doc: ModelDocument; as
     <>
       <Section title={t("inspector.association")}>
         <Field label={t("inspector.name")}>
-          <CommitInput value={association.name} onCommit={(name) => report(cmd.renameNode(handle, association.id, name))} />
+          <CommitInput
+            value={association.name}
+            onCommit={(name) => report(cmd.renameNode(handle, association.id, name))}
+          />
         </Field>
         <Field label={t("inspector.logicalName")}>
           <CommitInput
             value={association.logicalName ?? ""}
             placeholder={t("inspector.logicalPlaceholder")}
-            onCommit={(logicalName) => report(cmd.updateAssociation(handle, association.id, { logicalName: logicalName.trim() || undefined }))}
+            onCommit={(logicalName) =>
+              report(cmd.updateAssociation(handle, association.id, { logicalName: logicalName.trim() || undefined }))
+            }
           />
         </Field>
         <AttributesLink count={association.attributes.length} />
@@ -191,7 +229,10 @@ function AssociationPanel({ doc, association, report }: { doc: ModelDocument; as
       </Section>
       <ForeignKeysSection linkIds={links.map((l) => l.id)} />
       <PhysicalSection doc={doc} node={association} />
-      <CommentSection value={association.comment} onCommit={(comment) => report(cmd.updateAssociation(handle, association.id, { comment }))} />
+      <CommentSection
+        value={association.comment}
+        onCommit={(comment) => report(cmd.updateAssociation(handle, association.id, { comment }))}
+      />
     </>
   );
 }
@@ -243,13 +284,17 @@ function LinkPanel({ doc, link, report }: { doc: ModelDocument; link: Link; repo
             <NumberInput
               min={0}
               value={link.cardinality.min}
-              onCommit={(min) => report(cmd.setLinkCardinality(handle, link.id, { ...link.cardinality, min: min ?? 0 }))}
+              onCommit={(min) =>
+                report(cmd.setLinkCardinality(handle, link.id, { ...link.cardinality, min: min ?? 0 }))
+              }
             />
           </Field>
           <Field label={t("inspector.max")}>
             <CommitInput
               value={String(link.cardinality.max)}
-              onCommit={(max) => report(cmd.setLinkCardinality(handle, link.id, { ...link.cardinality, max: parseMax(max) }))}
+              onCommit={(max) =>
+                report(cmd.setLinkCardinality(handle, link.id, { ...link.cardinality, max: parseMax(max) }))
+              }
             />
           </Field>
         </div>
@@ -264,7 +309,10 @@ function LinkPanel({ doc, link, report }: { doc: ModelDocument; link: Link; repo
           <Field key={event} label={event === "onDelete" ? "ON DELETE" : "ON UPDATE"}>
             <Select
               value={link[event] ?? ""}
-              options={[{ id: "" as const, label: t("inspector.actionDefault") }, ...REFERENTIAL_ACTIONS.map((a) => ({ id: a, label: a.toUpperCase() }))]}
+              options={[
+                { id: "" as const, label: t("inspector.actionDefault") },
+                ...REFERENTIAL_ACTIONS.map((a) => ({ id: a, label: a.toUpperCase() })),
+              ]}
               onChange={(value) => cmd.updateLink(handle, link.id, { [event]: value || undefined })}
             />
           </Field>

@@ -39,6 +39,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      # Format, lint et ordre des imports (Biome) : indépendants de l'OS, vérifiés une fois.
+      - if: runner.os == 'Linux'
+        run: pnpm exec biome ci
       # Inclut l'exécution des scripts PostgreSQL 18 dans PGlite et SQLite (node:sqlite).
       - run: pnpm test
       # Budgets de temps du placement automatique, mesurés seuls (le reste de la suite fausserait la mesure).

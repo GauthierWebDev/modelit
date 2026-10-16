@@ -26,7 +26,9 @@ export const getLocale = () => current;
 
 export function t(key: MessageKey, params?: Record<string, string | number>): string {
   const text = catalogs[current][key] ?? fr[key] ?? key;
-  return params ? text.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match)) : text;
+  return params
+    ? text.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match))
+    : text;
 }
 
 /** Langue par défaut : celle du système si elle est prise en charge, sinon l'anglais. */

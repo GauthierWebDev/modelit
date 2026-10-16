@@ -1,19 +1,19 @@
-import { DBMS_LIST, resolveVersion, versionOptions, type Dbms } from "@core/index";
+import { DBMS_LIST, type Dbms, resolveVersion, versionOptions } from "@core/index";
 import type { ReactNode } from "react";
 import { applyDefaultsToCurrent } from "@/app/commands";
-import { usePreferencesStore, type AutosaveBackend, type ThemePreference } from "@/app/preferencesStore";
 import { useDocumentHandle } from "@/app/document/DocumentContext";
+import { type AutosaveBackend, type ThemePreference, usePreferencesStore } from "@/app/preferencesStore";
 import { useUiStore } from "@/app/uiStore";
 import { checkForUpdatesNow } from "@/app/updates";
 import { LOCALES, t } from "@/i18n";
 import { mcpAvailable } from "@/platform/mcp";
 import { updatesSupported } from "@/platform/updater";
-import { McpOptions } from "@/ui/mcp/McpOptions";
-import { CustomDbmsLibrary } from "./CustomDbmsLibrary";
 import { IdentityOptions } from "@/ui/collab/IdentityOptions";
 import { Checkbox, CommitInput, Field, inputClass, Select } from "@/ui/common/controls";
 import { Modal } from "@/ui/common/Modal";
+import { McpOptions } from "@/ui/mcp/McpOptions";
 import { KeyPatternField } from "@/ui/panels/sections";
+import { CustomDbmsLibrary } from "./CustomDbmsLibrary";
 
 /**
  * Options générales (override O-21) : réglages du poste, conservés dans le localStorage.
@@ -56,7 +56,11 @@ export function OptionsDialog() {
           />
         </Field>
         <Field label={t("options.language")}>
-          <Select value={prefs.locale} options={LOCALES.map((id) => ({ id, label: t(`language.${id}`) }))} onChange={prefs.setLocale} />
+          <Select
+            value={prefs.locale}
+            options={LOCALES.map((id) => ({ id, label: t(`language.${id}`) }))}
+            onChange={prefs.setLocale}
+          />
         </Field>
       </Group>
 
@@ -91,13 +95,25 @@ export function OptionsDialog() {
           </div>
         </Field>
         <Field label={t("inspector.autoIdMask")}>
-          <KeyPatternField kind="discriminant" value={defaults.autoIdMask} onChange={(autoIdMask) => prefs.setDefaults({ autoIdMask })} />
+          <KeyPatternField
+            kind="discriminant"
+            value={defaults.autoIdMask}
+            onChange={(autoIdMask) => prefs.setDefaults({ autoIdMask })}
+          />
         </Field>
         <Field label={t("inspector.primaryKey")}>
-          <KeyPatternField kind="primaryKey" value={defaults.primaryKey} onChange={(primaryKey) => prefs.setDefaults({ primaryKey })} />
+          <KeyPatternField
+            kind="primaryKey"
+            value={defaults.primaryKey}
+            onChange={(primaryKey) => prefs.setDefaults({ primaryKey })}
+          />
         </Field>
         <Field label={t("inspector.foreignKey")}>
-          <KeyPatternField kind="foreignKey" value={defaults.foreignKey} onChange={(foreignKey) => prefs.setDefaults({ foreignKey })} />
+          <KeyPatternField
+            kind="foreignKey"
+            value={defaults.foreignKey}
+            onChange={(foreignKey) => prefs.setDefaults({ foreignKey })}
+          />
         </Field>
         <button
           type="button"
@@ -178,7 +194,9 @@ export function OptionsDialog() {
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="border-b border-neutral-200 py-3 first:pt-0 last:border-b-0 dark:border-neutral-700">
-      <h3 className="mb-2 text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:text-neutral-400">{title}</h3>
+      <h3 className="mb-2 text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:text-neutral-400">
+        {title}
+      </h3>
       <div className="flex flex-col gap-2">{children}</div>
     </section>
   );
@@ -200,6 +218,7 @@ function Segmented<T extends string>({
   return (
     <div role="radiogroup" className="flex overflow-hidden rounded border border-neutral-300 dark:border-neutral-600">
       {options.map((o) => (
+        // biome-ignore lint/a11y/useSemanticElements: bouton radio stylé (motif ARIA radiogroup)
         <button
           key={o.id}
           type="button"

@@ -15,7 +15,8 @@ export const fr = {
   "collab.participants": "{n} participant(s)",
   "collab.name": "Votre nom",
   "collab.color": "Votre couleur",
-  "collab.identityHelp": "Nom et couleur sous lesquels les autres participants vous voient. Sans nom saisi, un nom aléatoire est utilisé.",
+  "collab.identityHelp":
+    "Nom et couleur sous lesquels les autres participants vous voient. Sans nom saisi, un nom aléatoire est utilisé.",
   "dock.section.session": "Session",
   "collab.unread": "{n} message(s) non lu(s)",
   "collab.chat": "Chat",
@@ -34,7 +35,8 @@ export const fr = {
   "collab.you": "vous",
   "collab.kick": "Exclure {name}",
   "collab.kickTitle": "Exclure un participant",
-  "collab.kickConfirm": "Exclure {name} de la session ? Il ou elle pourra revenir avec un lien, tant que vous ne redémarrez pas le partage.",
+  "collab.kickConfirm":
+    "Exclure {name} de la session ? Il ou elle pourra revenir avec un lien, tant que vous ne redémarrez pas le partage.",
   "collab.kickOk": "Exclure",
   "collab.readOnlyNote": "Lecture seule : vous pouvez consulter le modèle, pas le modifier.",
   "collab.tooLarge": "Modèle trop volumineux pour être partagé (5 Mo au plus).",
@@ -55,7 +57,8 @@ export const fr = {
   "collab.copyKept": "Une copie du document reste ouverte dans un onglet « Sans titre ».",
   "collab.share": "Partager l'onglet (session collaborative)",
   "collab.shareTitle": "Partager cet onglet",
-  "collab.shareHelp": "Les participants rejoignent par un lien et travaillent avec vous en direct. Aucun serveur : la session s'arrête quand vous l'arrêtez, fermez l'onglet ou quittez ModelIt.",
+  "collab.shareHelp":
+    "Les participants rejoignent par un lien et travaillent avec vous en direct. Aucun serveur : la session s'arrête quand vous l'arrêtez, fermez l'onglet ou quittez ModelIt.",
   "collab.password": "Mot de passe (facultatif, au moins {n} caractères)",
   "collab.allowAi": "Autoriser les assistants IA des invités",
   "collab.start": "Démarrer le partage",
@@ -80,7 +83,8 @@ export const fr = {
   "collab.unavailable": "Le partage n'est disponible que dans l'application installée.",
   "mcp.title": "Assistants IA (MCP)",
   "mcp.enable": "Permettre aux assistants IA de lire et modifier le modèle ouvert",
-  "mcp.help": "Un assistant compatible MCP (Claude Code, Claude Desktop…) agit sur l'onglet actif ; chaque modification s'annule avec ⌘/Ctrl + Z. Accès réservé à ce poste, avec un jeton.",
+  "mcp.help":
+    "Un assistant compatible MCP (Claude Code, Claude Desktop…) agit sur l'onglet actif ; chaque modification s'annule avec ⌘/Ctrl + Z. Accès réservé à ce poste, avec un jeton.",
   "mcp.port": "Port",
   "mcp.listening": "À l'écoute sur {url}",
   "mcp.starting": "Démarrage…",
@@ -175,14 +179,16 @@ export const fr = {
   "customDbms.takeLibrary": "Reprendre la version de mes SGBD",
   "customDbms.resetAll": "Tout rétablir",
   "customDbms.remove": "Revenir à {dbms}",
-  "customDbms.help": "Un champ vide reprend le type de la base (en filigrane). Variables : {n} longueur (texte, binaire), {p} et {s} précision et échelle (décimal).",
+  "customDbms.help":
+    "Un champ vide reprend le type de la base (en filigrane). Variables : {n} longueur (texte, binaire), {p} et {s} précision et échelle (décimal).",
   "customDbms.helpStandard": "Types SQL émis pour chaque type conceptuel.",
   "customDbms.redefined": "redéfini",
   "customDbms.library": "Mes SGBD",
   "customDbms.basedOnLabel": "basé sur {dbms}",
   "customDbms.typesCount": "{n} type(s) redéfini(s)",
   "customDbms.editTypes": "Personnaliser les types…",
-  "customDbms.libraryEmpty": "Aucun SGBD personnalisé. Personnalisez la cible d'un modèle (paramètres du modèle, onglet Types SQL), puis enregistrez-le dans vos SGBD.",
+  "customDbms.libraryEmpty":
+    "Aucun SGBD personnalisé. Personnalisez la cible d'un modèle (paramètres du modèle, onglet Types SQL), puis enregistrez-le dans vos SGBD.",
   "customDbms.rename": "Renommer",
   "customDbms.duplicate": "Dupliquer",
   "customDbms.delete": "Supprimer",
@@ -190,7 +196,8 @@ export const fr = {
   "customDbms.deleteNote": "Supprimer un SGBD de la bibliothèque ne change aucun modèle : chacun garde sa copie.",
   "customDbms.nameRequired": "Le nom ne peut pas être vide.",
   "customDbms.deleteConfirm": "Supprimer « {name} » de mes SGBD ?",
-  "customDbms.libraryHelp": "Les types se modifient depuis un modèle (paramètres du modèle, onglet Types SQL), puis « Mettre à jour mes SGBD ».",
+  "customDbms.libraryHelp":
+    "Les types se modifient depuis un modèle (paramètres du modèle, onglet Types SQL), puis « Mettre à jour mes SGBD ».",
   "sqlType.asciiVariable": "Texte ASCII variable",
   "sqlType.asciiFixed": "Texte ASCII fixe",
   "sqlType.asciiLarge": "Texte ASCII volumineux",
@@ -220,7 +227,8 @@ export const fr = {
   "sqlType.xml": "XML",
   "sqlType.geometry": "Géométrique",
   "sqlType.geography": "Géographique",
-  "modelSettings.noSource": "Ce modèle ne vient d'aucun script : ces réglages ne servent qu'aux tables issues d'une rétroconception.",
+  "modelSettings.noSource":
+    "Ce modèle ne vient d'aucun script : ces réglages ne servent qu'aux tables issues d'une rétroconception.",
   "modelSettings.present": "présent dans ce modèle",
   "modelSettings.source.all": "Tous les SGBD source",
   "modelSettings.source.mysql": "MySQL",
@@ -238,7 +246,8 @@ export const fr = {
   "toolbar.detach": "Détacher la barre",
   "toolbar.dock": "Ancrer la barre",
   "common.close": "Fermer",
-  "physical.help": "Hors MCD : réappliquées au script quand le SGBD cible le permet, sinon signalées dans le rapport de pertes.",
+  "physical.help":
+    "Hors MCD : réappliquées au script quand le SGBD cible le permet, sinon signalées dans le rapport de pertes.",
   "physical.primaryKeyName": "Nom de la clé primaire",
   "physical.checks": "Contraintes CHECK",
   "physical.addCheck": "Ajouter un CHECK",
@@ -285,7 +294,8 @@ export const fr = {
   "mcd.derived": "Donnée calculée : {expression}",
   "mcd.alternate": "Identifiant alternatif {tag} (UNIQUE)",
   "mcd.alternateScope": "{tag} par {scope}",
-  "mcd.alternateScopeTip": "Identifiant alternatif {tag} relatif à l'association « {scope} » : unique pour une même occurrence liée",
+  "mcd.alternateScopeTip":
+    "Identifiant alternatif {tag} relatif à l'association « {scope} » : unique pour une même occurrence liée",
   "mcd.alternateExpression": "Identifiant alternatif {tag} sur l'expression {expression}",
   "mcd.alternateCondition": "Identifiant alternatif {tag} conditionnel : unique seulement si {condition}",
   "mcd.alternatePrefix": "Identifiant alternatif {tag} sur préfixe : seuls les {n} premiers caractères sont uniques",
@@ -374,7 +384,8 @@ export const fr = {
   "inspector.constraintName": "Nom de contrainte",
   "inspector.constraintNamePlaceholder": "(anonyme)",
   "inspector.path": "Tracé",
-  "inspector.pathHelp": "Faites glisser le milieu d'un segment pour créer une cassure ; cliquez une cassure puis Suppr pour la supprimer.",
+  "inspector.pathHelp":
+    "Faites glisser le milieu d'un segment pour créer une cassure ; cliquez une cassure puis Suppr pour la supprimer.",
   "inspector.straighten": "Supprimer les cassures ({n})",
   "inspector.comment": "Commentaire",
   "inspector.logicalNames": "Noms logiques",
@@ -384,7 +395,8 @@ export const fr = {
   "inspector.autoIdMask": "Discriminant auto.",
   "inspector.primaryKey": "Clé primaire",
   "inspector.foreignKey": "Clé étrangère",
-  "inspector.keysHelp": "Discriminant : nom conceptuel (MCD). Clés primaire et étrangère : noms logiques (MLD, MPD, SQL). Clés étrangères en double : suffixe _2, _3…",
+  "inspector.keysHelp":
+    "Discriminant : nom conceptuel (MCD). Clés primaire et étrangère : noms logiques (MLD, MPD, SQL). Clés étrangères en double : suffixe _2, _3…",
   "inspector.showAttributes": "Rubriques",
   "inspector.grid": "Grille magnétique",
   "inspector.gridSize": "Pas de grille",
@@ -396,7 +408,8 @@ export const fr = {
   "inspector.relationLabels.text": "Texte libre",
   "inspector.relationText": "Texte du lien (MLD / MPD)",
   "inspector.relationTextPlaceholder": "ex. passe, appartient à…",
-  "inspector.relationTextHelp": "Affiché sur le trait entre les tables quand « Texte sur les liens » vaut « Texte libre » (paramètres du modèle, sans rien sélectionner).",
+  "inspector.relationTextHelp":
+    "Affiché sur le trait entre les tables quand « Texte sur les liens » vaut « Texte libre » (paramètres du modèle, sans rien sélectionner).",
   "inspector.relationTextNone": "Ce lien ne crée pas de clé étrangère : il n'a pas de trait entre tables.",
   "pattern.custom": "Libre…",
   "pattern.customLabel": "Schéma libre",
@@ -469,7 +482,8 @@ export const fr = {
 
   // héritage
   "inheritance.title": "Héritage",
-  "inheritance.help": "Spécialisation / généralisation : une seule entité générique et au moins une entité spécialisée. Reliez le triangle aux entités avec l'outil Lien ; la flèche désigne l'entité générique.",
+  "inheritance.help":
+    "Spécialisation / généralisation : une seule entité générique et au moins une entité spécialisée. Reliez le triangle aux entités avec l'outil Lien ; la flèche désigne l'entité générique.",
   "inheritance.constraint": "Contrainte",
   "inheritance.none": "Aucune",
   "inheritance.X": "Exclusivité",
@@ -499,6 +513,7 @@ export const fr = {
   "canvas.bendHandle": "Glisser pour déplacer · cliquer puis Suppr (ou clic droit) pour supprimer",
   "canvas.deleteBend": "Supprimer ce point de cassure (Suppr)",
   "canvas.compositeKey": "Clé primaire composée",
+  "canvas.label": "Zone de modélisation",
 
   // export
   "export.title": "Exporter l'image",
@@ -602,12 +617,15 @@ export const fr = {
 
   // rétroconception
   "reverse.title": "Rétroconception (SQL → MCD)",
-  "reverse.help": "Collez ou ouvrez un script de création de tables, quel que soit le SGBD et sa version. Seule la structure des tables est lue (colonnes, types, clés, commentaires) ; le reste (index, CHECK, vues, fonctions, déclencheurs, données…) est ignoré sans erreur.",
+  "reverse.help":
+    "Collez ou ouvrez un script de création de tables, quel que soit le SGBD et sa version. Seule la structure des tables est lue (colonnes, types, clés, commentaires) ; le reste (index, CHECK, vues, fonctions, déclencheurs, données…) est ignoré sans erreur.",
   "reverse.open": "Ouvrir un fichier SQL…",
   "reverse.placeholder": "CREATE TABLE client (\n  id INT PRIMARY KEY,\n  nom VARCHAR(50) NOT NULL\n);",
   "reverse.run": "Générer le MCD",
-  "reverse.target": "Le nouveau modèle reprend les réglages des options générales (SGBD cible, schémas de clés) : il peut être régénéré vers n'importe quel SGBD.",
-  "reverse.report": "Tables lues : {tables} — entités : {entities}, associations : {associations}, héritages : {inheritances}. Instructions ignorées : {ignored}.",
+  "reverse.target":
+    "Le nouveau modèle reprend les réglages des options générales (SGBD cible, schémas de clés) : il peut être régénéré vers n'importe quel SGBD.",
+  "reverse.report":
+    "Tables lues : {tables} — entités : {entities}, associations : {associations}, héritages : {inheritances}. Instructions ignorées : {ignored}.",
   "reverse.warnings": "Avertissements",
   "reverse.noTable": "Aucune table trouvée dans le script.",
   "reverse.done": "MCD généré à partir du script : {tables} table(s).",
@@ -626,7 +644,8 @@ export const fr = {
   "options.smoothBends": "Lisser les cassures",
   "options.smoothBendsHelp": "Les liens brisés sont tracés en courbes au lieu d'angles vifs.",
   "options.defaults": "Nouveaux modèles",
-  "options.defaultsHelp": "Réglages appliqués à chaque nouveau modèle. Le modèle ouvert garde les siens, enregistrés dans son fichier.",
+  "options.defaultsHelp":
+    "Réglages appliqués à chaque nouveau modèle. Le modèle ouvert garde les siens, enregistrés dans son fichier.",
   "options.applyToCurrent": "Appliquer au modèle ouvert",
   "options.applied": "Options appliquées au modèle ouvert.",
   "options.autosave": "Sauvegarde automatique",
@@ -634,10 +653,12 @@ export const fr = {
   "options.autosave.indexeddb": "Activée (base de données locale IndexedDB)",
   "options.autosave.off": "Désactivée",
   "options.autosaveDelay": "Délai entre deux sauvegardes (min)",
-  "options.autosaveDelayHelp": "0 = après chaque opération ; 1 = au plus une sauvegarde par minute. Décimales acceptées (0,5 = 30 s).",
+  "options.autosaveDelayHelp":
+    "0 = après chaque opération ; 1 = au plus une sauvegarde par minute. Décimales acceptées (0,5 = 30 s).",
   "options.updates": "Mises à jour",
   "options.updateCheck": "Rechercher les mises à jour au lancement",
-  "options.updateHelp": "À chaque lancement, sur les releases GitHub de ModelIt. Rien n'est installé sans votre accord.",
+  "options.updateHelp":
+    "À chaque lancement, sur les releases GitHub de ModelIt. Rien n'est installé sans votre accord.",
   "options.checkNow": "Rechercher maintenant",
   "update.title": "Mise à jour",
   "update.available": "ModelIt {version} est disponible (version installée : {current}).",
@@ -646,7 +667,8 @@ export const fr = {
   "update.upToDate": "ModelIt est à jour.",
   "update.downloading": "Téléchargement de la mise à jour…",
   "update.downloadingPercent": "Téléchargement de la mise à jour : {percent} %",
-  "update.notConfigured": "Cette copie de ModelIt est un build de développement : elle ne peut pas se mettre à jour automatiquement. Installez la dernière version depuis la page des releases.",
+  "update.notConfigured":
+    "Cette copie de ModelIt est un build de développement : elle ne peut pas se mettre à jour automatiquement. Installez la dernière version depuis la page des releases.",
   "update.checkFailed": "Impossible de rechercher les mises à jour : {error}",
   "update.installFailed": "La mise à jour a échoué : {error}",
   "about.title": "À propos de ModelIt",
@@ -657,7 +679,8 @@ export const fr = {
   "about.maintainer": "Développé et maintenu par {name}",
   "about.repository": "Code source",
   "about.issues": "Signaler un problème",
-  "about.legal": "Ce programme est un logiciel libre : vous pouvez le redistribuer et le modifier selon les termes de la licence publique générale GNU (GPL), version 3 ou ultérieure. Il est distribué sans aucune garantie.",
+  "about.legal":
+    "Ce programme est un logiciel libre : vous pouvez le redistribuer et le modifier selon les termes de la licence publique générale GNU (GPL), version 3 ou ultérieure. Il est distribué sans aucune garantie.",
   "about.license": "Lire la licence",
   "about.font": "Police Inter, sous licence SIL Open Font License 1.1.",
   "about.installed": "installée",

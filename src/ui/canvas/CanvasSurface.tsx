@@ -1,7 +1,8 @@
 import type { Point } from "@core/index";
-import { useEffect, useRef, type MouseEvent, type PointerEvent, type ReactNode } from "react";
+import { type MouseEvent, type PointerEvent, type ReactNode, useEffect, useRef } from "react";
 import { useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import type { Viewport } from "@/app/document/documentView";
+import { t } from "@/i18n";
 import { RemoteCursors, reportCursor, useIsSessionTab, usePresenceReporting } from "@/ui/collab/RemoteCursors";
 import { setCanvasElement, setCanvasSize, zoomBy } from "./viewport";
 
@@ -76,6 +77,8 @@ export function CanvasSurface({
   return (
     <svg
       ref={svgRef}
+      role="application"
+      aria-label={t("canvas.label")}
       data-canvas=""
       tabIndex={-1}
       className={`h-full w-full touch-none select-none bg-(--mcd-canvas) outline-none ${className}`}
@@ -116,17 +119,49 @@ export function CanvasSurface({
       onDoubleClick={(e) => handlers.onDoubleClick?.(e, modelPoint(e))}
     >
       <defs>
-        <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+        <marker
+          id="arrow"
+          viewBox="0 0 10 10"
+          refX="10"
+          refY="5"
+          markerWidth="9"
+          markerHeight="9"
+          orient="auto-start-reverse"
+        >
           <path d="M0,0 L10,5 L0,10 z" fill="var(--mcd-link)" />
         </marker>
-        <marker id="arrow-selected" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+        <marker
+          id="arrow-selected"
+          viewBox="0 0 10 10"
+          refX="10"
+          refY="5"
+          markerWidth="9"
+          markerHeight="9"
+          orient="auto-start-reverse"
+        >
           <path d="M0,0 L10,5 L0,10 z" fill="var(--mcd-selection)" />
         </marker>
         {/* Flèche vers l'entité générique d'un héritage (O-27) */}
-        <marker id="arrow-inherit" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <marker
+          id="arrow-inherit"
+          viewBox="0 0 10 10"
+          refX="10"
+          refY="5"
+          markerWidth="7"
+          markerHeight="7"
+          orient="auto-start-reverse"
+        >
           <path d="M0,0 L10,5 L0,10 z" fill="var(--mcd-inherit-stroke)" />
         </marker>
-        <marker id="arrow-inherit-selected" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <marker
+          id="arrow-inherit-selected"
+          viewBox="0 0 10 10"
+          refX="10"
+          refY="5"
+          markerWidth="7"
+          markerHeight="7"
+          orient="auto-start-reverse"
+        >
           <path d="M0,0 L10,5 L0,10 z" fill="var(--mcd-selection)" />
         </marker>
       </defs>

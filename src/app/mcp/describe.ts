@@ -1,4 +1,4 @@
-import { formatCardinality, sqlType, type Attribute, type ModelDocument } from "@core/index";
+import { type Attribute, formatCardinality, type ModelDocument, sqlType } from "@core/index";
 
 /**
  * Le MCD sous une forme compacte, pour un assistant IA (override O-47) : identifiants, noms,

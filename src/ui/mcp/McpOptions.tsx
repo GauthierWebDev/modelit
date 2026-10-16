@@ -32,7 +32,9 @@ export function McpOptions() {
           <Field label={t("mcp.port")}>
             <NumberInput min={1024} value={port} onCommit={(v) => v && v <= 65535 && setMcp({ port: Math.round(v) })} />
           </Field>
-          <p className={`text-xs ${status === "error" ? "text-red-600 dark:text-red-400" : "text-neutral-500 dark:text-neutral-400"}`}>
+          <p
+            className={`text-xs ${status === "error" ? "text-red-600 dark:text-red-400" : "text-neutral-500 dark:text-neutral-400"}`}
+          >
             {status === "on"
               ? t("mcp.listening", { url: `http://127.0.0.1:${port}/mcp` })
               : status === "error"

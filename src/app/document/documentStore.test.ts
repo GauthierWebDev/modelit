@@ -2,7 +2,9 @@ import { emptyDocument } from "@core/index";
 import { describe, expect, it } from "vitest";
 import { createDocumentStore, selectIsDirty, selectRedoLabel, selectUndoLabel } from "./documentStore";
 
-const rename = (name: string) => (d: { settings: { naming: { typology: string } } }) => void (d.settings.naming.typology = name);
+const rename = (name: string) => (d: { settings: { naming: { typology: string } } }) => {
+  d.settings.naming.typology = name;
+};
 const typology = (store: ReturnType<typeof createDocumentStore>) => store.getState().doc.settings.naming.typology;
 
 describe("store de document", () => {

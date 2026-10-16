@@ -18,7 +18,10 @@ function on(event: string, handler: (payload: Payload) => void): () => void {
   let off: (() => void) | undefined;
   let disposed = false;
   void import("@tauri-apps/api/event").then(({ listen }) =>
-    listen<Payload>(event, (e) => handler(e.payload)).then((f) => (disposed ? f() : (off = f))),
+    listen<Payload>(event, (e) => handler(e.payload)).then((f) => {
+      if (disposed) f();
+      else off = f;
+    }),
   );
   return () => {
     disposed = true;
@@ -26,7 +29,7 @@ function on(event: string, handler: (payload: Payload) => void): () => void {
   };
 }
 
-const parse = <T,>(data: string | null): T | null => {
+const parse = <T>(data: string | null): T | null => {
   try {
     return data ? (JSON.parse(data) as T) : null;
   } catch {
@@ -57,9 +60,11 @@ export async function connectGuestTransport(addr: string): Promise<GuestLink> {
   const closers = new Set<() => void>();
   const offMessage = on("collab://guest-message", ({ data }) => {
     const message = parse<ToGuest>(data);
-    if (message) handlers.forEach((h) => h(message));
+    if (message) for (const h of handlers) h(message);
   });
-  const offClose = on("collab://guest-close", () => closers.forEach((h) => h()));
+  const offClose = on("collab://guest-close", () => {
+    for (const h of closers) h();
+  });
   try {
     await invoke("collab_guest_connect", { addr });
   } catch (e) {
@@ -69,8 +74,14 @@ export async function connectGuestTransport(addr: string): Promise<GuestLink> {
   }
   return {
     send: (message: ToHost) => void invoke("collab_guest_send", { data: JSON.stringify(message) }),
-    onMessage: (handler) => (handlers.add(handler), () => handlers.delete(handler)),
-    onClose: (handler) => (closers.add(handler), () => closers.delete(handler)),
+    onMessage: (handler) => {
+      handlers.add(handler);
+      return () => handlers.delete(handler);
+    },
+    onClose: (handler) => {
+      closers.add(handler);
+      return () => closers.delete(handler);
+    },
     close: () => {
       offMessage();
       offClose();

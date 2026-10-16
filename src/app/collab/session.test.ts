@@ -3,20 +3,32 @@ import { describe, expect, it } from "vitest";
 import * as cmd from "../commands";
 import { createDocumentViewStore } from "../document/documentView";
 import type { DocumentHandle } from "../document/handle";
-import { startGuest, type GuestSession } from "./guest";
-import { startHost, type HostSession } from "./host";
+import { type GuestSession, startGuest } from "./guest";
+import { type HostSession, startHost } from "./host";
 import { memoryNetwork as network } from "./memoryNetwork";
 import type { SessionStore } from "./sessionStore";
 
-const handle = (store: SessionStore): DocumentHandle => ({ id: crypto.randomUUID(), store, view: createDocumentViewStore() });
+const handle = (store: SessionStore): DocumentHandle => ({
+  id: crypto.randomUUID(),
+  store,
+  view: createDocumentViewStore(),
+});
 /** Comparaison indépendante de l'ordre des clés (la géométrie est un dictionnaire). */
 const canonical = (value: unknown): unknown =>
   Array.isArray(value)
     ? value.map(canonical)
     : value && typeof value === "object"
-      ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => [k, canonical(v)]))
+      ? Object.fromEntries(
+          Object.entries(value)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([k, v]) => [k, canonical(v)]),
+        )
       : value;
-const names = (store: SessionStore) => store.getState().doc.entities.map((e) => e.name).sort();
+const names = (store: SessionStore) =>
+  store
+    .getState()
+    .doc.entities.map((e) => e.name)
+    .sort();
 
 function session() {
   const net = network();
@@ -26,7 +38,8 @@ function session() {
     secrets: { editor: "edit-secret", reader: "read-secret" },
     me: { id: "alice", name: "Alice", color: "#e11d48" },
   });
-  const join = (peer: string, secret = "edit-secret"): GuestSession => startGuest({ link: net.connect(peer), secret, name: peer, color: "#2563eb" });
+  const join = (peer: string, secret = "edit-secret"): GuestSession =>
+    startGuest({ link: net.connect(peer), secret, name: peer, color: "#2563eb" });
   const bob = join("bob");
   const claire = join("claire");
   net.flush();
@@ -90,10 +103,23 @@ describe("session collaborative", () => {
     ]);
     net.flush();
     const attrs = () => h.bob.store.getState().doc.entities[0]!.attributes;
-    cmd.setAttributes(h.bob, id, attrs().map((a) => (a.id === "r1" ? { ...a, name: "code_client" } : a)));
-    cmd.setAttributes(h.claire, id, h.claire.store.getState().doc.entities[0]!.attributes.map((a) => (a.id === "r2" ? { ...a, name: "nom_complet" } : a)));
+    cmd.setAttributes(
+      h.bob,
+      id,
+      attrs().map((a) => (a.id === "r1" ? { ...a, name: "code_client" } : a)),
+    );
+    cmd.setAttributes(
+      h.claire,
+      id,
+      h.claire.store
+        .getState()
+        .doc.entities[0]!.attributes.map((a) => (a.id === "r2" ? { ...a, name: "nom_complet" } : a)),
+    );
     converged();
-    expect(host.store.getState().doc.entities[0]!.attributes.map((a) => a.name)).toEqual(["code_client", "nom_complet"]);
+    expect(host.store.getState().doc.entities[0]!.attributes.map((a) => a.name)).toEqual([
+      "code_client",
+      "nom_complet",
+    ]);
   });
 
   it("annuler n'annule que ses propres actions", () => {
@@ -123,20 +149,40 @@ describe("session collaborative", () => {
     const link = net.connect("mallory");
     startGuest({ link, secret: "read-secret", name: "M", color: "#000" });
     net.flush();
-    link.send({ type: "ops", ops: [{ t: "add", coll: "entities", value: { id: "x", kind: "entity", name: "X", attributes: [], fictive: false }, after: null }] });
+    link.send({
+      type: "ops",
+      ops: [
+        {
+          t: "add",
+          coll: "entities",
+          value: { id: "x", kind: "entity", name: "X", attributes: [], fictive: false },
+          after: null,
+        },
+      ],
+    });
     net.flush();
     expect(host.store.getState().doc.entities).toEqual([]);
   });
 
   it("IA d'un invité : refusée tant que l'hôte ne l'autorise pas", () => {
     const { h, net, host, bob, converged } = session();
-    h.bob.store.getState().change("history.ai", (d) => void d.entities.push({ id: "ia", kind: "entity", name: "IA", attributes: [], fictive: false }));
+    h.bob.store
+      .getState()
+      .change(
+        "history.ai",
+        (d) => void d.entities.push({ id: "ia", kind: "entity", name: "IA", attributes: [], fictive: false }),
+      );
     net.flush();
     expect(host.store.getState().doc.entities).toEqual([]);
     expect(bob.state.getState().rejected).toBe("ai-disabled");
     host.setAiAllowed(true);
     net.flush();
-    h.bob.store.getState().change("history.ai", (d) => void d.entities.push({ id: "ia2", kind: "entity", name: "IA2", attributes: [], fictive: false }));
+    h.bob.store
+      .getState()
+      .change(
+        "history.ai",
+        (d) => void d.entities.push({ id: "ia2", kind: "entity", name: "IA2", attributes: [], fictive: false }),
+      );
     converged();
     expect(names(host.store)).toContain("IA2");
   });
@@ -147,7 +193,9 @@ describe("session collaborative", () => {
     net.flush();
     const store = h.alice.store.getState();
     store.begin();
-    h.alice.store.getState().preview((d) => void (d.layout.positions[id] = { x: 100, y: 100 }));
+    h.alice.store.getState().preview((d) => {
+      d.layout.positions[id] = { x: 100, y: 100 };
+    });
     cmd.renameNode(h.bob, id, "RENOMME_PAR_BOB");
     net.flush(); // reçu pendant le glisser
     h.alice.store.getState().commit("history.move");
@@ -189,8 +237,11 @@ describe("session collaborative", () => {
   it("200 actions mêlées, livraisons irrégulières : tous convergent (graine fixe)", () => {
     for (const seed of [1, 7, 42]) {
       let state = seed;
-      const random = () => ((state = (state * 1103515245 + 12345) % 2 ** 31) / 2 ** 31);
-      const pick = <T,>(list: T[]): T | undefined => list[Math.floor(random() * list.length)];
+      const random = () => {
+        state = (state * 1103515245 + 12345) % 2 ** 31;
+        return state / 2 ** 31;
+      };
+      const pick = <T>(list: T[]): T | undefined => list[Math.floor(random() * list.length)];
       const { h, net, converged } = session();
       const actors = [h.alice, h.bob, h.claire];
       for (let step = 0; step < 200; step++) {
@@ -208,7 +259,11 @@ describe("session collaborative", () => {
             if (entity) cmd.deleteObjects(actor, [entity.id]);
             break;
           case 3:
-            if (entity) cmd.setAttributes(actor, entity.id, [...entity.attributes, { id: `a${seed}-${step}`, name: `r${step}`, identifier: false, notNull: false, unique: false }]);
+            if (entity)
+              cmd.setAttributes(actor, entity.id, [
+                ...entity.attributes,
+                { id: `a${seed}-${step}`, name: `r${step}`, identifier: false, notNull: false, unique: false },
+              ]);
             break;
           case 4:
             if (entity) cmd.moveNodes(actor, new Map([[entity.id, { x: step, y: step }]]));
@@ -218,7 +273,8 @@ describe("session collaborative", () => {
             break;
           case 6: {
             const other = pick(doc.entities);
-            if (entity && other && entity.id !== other.id) cmd.connectNodes(actor, entity.id, other.id, { associationPosition: { x: 0, y: 0 } });
+            if (entity && other && entity.id !== other.id)
+              cmd.connectNodes(actor, entity.id, other.id, { associationPosition: { x: 0, y: 0 } });
             break;
           }
         }
@@ -228,4 +284,3 @@ describe("session collaborative", () => {
     }
   });
 });
-

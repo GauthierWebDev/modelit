@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
+import { showError } from "@/app/dialogStore";
 import { useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import type { ViewMode } from "@/app/document/documentView";
 import { fileName } from "@/app/fileCommands";
 import { usePreferencesStore } from "@/app/preferencesStore";
 import { useUiStore } from "@/app/uiStore";
-import { showError } from "@/app/dialogStore";
+import { t } from "@/i18n";
 import { saveExportFile } from "@/platform/files";
 import { inputClass } from "@/ui/common/controls";
-import { t } from "@/i18n";
 import { tip } from "@/ui/common/Tooltip";
 import { views } from "@/ui/toolbar/Toolbar";
 import { DPI_OPTIONS, ExportError, FORMATS, renderExport } from "./exportImage";
@@ -76,7 +76,12 @@ export function ExportDialog() {
 
   const label = "text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:text-neutral-400";
   return (
-    <div data-ui-only className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onMouseDown={() => setOpen(false)}>
+    // biome-ignore lint/a11y/noStaticElementInteractions: fond de la boîte, un clic à l'extérieur la ferme
+    <div
+      data-ui-only
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+      onMouseDown={() => setOpen(false)}
+    >
       <div
         role="dialog"
         aria-label={t("export.title")}
@@ -113,7 +118,11 @@ export function ExportDialog() {
           </label>
           <label className="grid grid-cols-[7rem_1fr] items-center gap-2">
             <span className={label}>{t("export.colors")}</span>
-            <select className={inputClass} value={prefs.theme} onChange={(e) => setPrefs({ theme: e.target.value as "light" | "dark" })}>
+            <select
+              className={inputClass}
+              value={prefs.theme}
+              onChange={(e) => setPrefs({ theme: e.target.value as "light" | "dark" })}
+            >
               <option value="light">{t("export.themeLight")}</option>
               <option value="dark">{t("export.themeDark")}</option>
             </select>
@@ -132,7 +141,12 @@ export function ExportDialog() {
                 {t("export.transparent")}
               </label>
               <label className="flex items-center gap-1">
-                <input type="radio" name="background" checked={!transparent} onChange={() => setPrefs({ transparent: false })} />
+                <input
+                  type="radio"
+                  name="background"
+                  checked={!transparent}
+                  onChange={() => setPrefs({ transparent: false })}
+                />
                 {t("export.color")}
               </label>
               <input
@@ -148,7 +162,11 @@ export function ExportDialog() {
           {prefs.format !== "svg" && (
             <label className="grid grid-cols-[7rem_1fr] items-center gap-2">
               <span className={label}>{t("export.resolution")}</span>
-              <select className={inputClass} value={prefs.dpi} onChange={(e) => setPrefs({ dpi: Number(e.target.value) })}>
+              <select
+                className={inputClass}
+                value={prefs.dpi}
+                onChange={(e) => setPrefs({ dpi: Number(e.target.value) })}
+              >
                 {DPI_OPTIONS.map((d) => (
                   <option key={d} value={d}>
                     {t("export.dpi", { dpi: d, percent: Math.round((d / 96) * 100) })}
@@ -159,7 +177,11 @@ export function ExportDialog() {
           )}
         </div>
         <div className="mt-4 flex justify-end gap-2">
-          <button type="button" className="rounded px-3 py-1 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => setOpen(false)}>
+          <button
+            type="button"
+            className="rounded px-3 py-1 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            onClick={() => setOpen(false)}
+          >
             {t("common.cancel")}
           </button>
           <button

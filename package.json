@@ -17,6 +17,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:sgbd": "SGBD_DOCKER=1 vitest run src/core/ddl/sgbd.test.ts",
@@ -40,6 +42,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@electric-sql/pglite": "^0.5.9",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2.12.2",

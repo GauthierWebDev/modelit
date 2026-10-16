@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { useCollabStore } from "../collab/session";
 import { addEntity, renameNode } from "../commands";
 import { selectUndoLabel } from "../document/documentStore";
 import { activeDocument, openInTab, resetWorkspace } from "../workspace";
-import { useCollabStore } from "../collab/session";
 import { startOwner } from "./owner";
 import type { Channel, MainCommand, ToMain, ToReplica } from "./protocol";
 import { startReplica } from "./replica";
@@ -13,12 +13,23 @@ function memoryChannels() {
   const toReplica = new Set<(m: ToReplica) => void>();
   const sent: ToReplica[] = [];
   const owner: Channel<ToReplica, ToMain> = {
-    send: (m) => (sent.push(m), toReplica.forEach((h) => h(structuredClone(m)))),
-    listen: (h) => (toMain.add(h), () => toMain.delete(h)),
+    send: (m) => {
+      sent.push(m);
+      for (const h of toReplica) h(structuredClone(m));
+    },
+    listen: (h) => {
+      toMain.add(h);
+      return () => toMain.delete(h);
+    },
   };
   const replica: Channel<ToMain, ToReplica> = {
-    send: (m) => toMain.forEach((h) => h(structuredClone(m))),
-    listen: (h) => (toReplica.add(h), () => toReplica.delete(h)),
+    send: (m) => {
+      for (const h of toMain) h(structuredClone(m));
+    },
+    listen: (h) => {
+      toReplica.add(h);
+      return () => toReplica.delete(h);
+    },
   };
   return { owner, replica, sent };
 }
@@ -95,7 +106,10 @@ describe("synchronisation entre fenêtres", () => {
     const store = activeDocument().store;
     const before = channels.sent.length;
     store.getState().begin();
-    for (let x = 1; x <= 10; x++) store.getState().preview((d) => void (d.layout.positions[id] = { x, y: 0 }));
+    for (let x = 1; x <= 10; x++)
+      store.getState().preview((d) => {
+        d.layout.positions[id] = { x, y: 0 };
+      });
     expect(channels.sent.length).toBe(before);
     store.getState().commit("history.move");
     expect(channels.sent.length).toBe(before + 1);

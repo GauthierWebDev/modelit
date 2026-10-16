@@ -73,7 +73,10 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
     tokens.push({ type, value, raw, pos: start });
   };
   const inRoutine = () => {
-    const head = tokens.slice(statementStart, statementStart + 10).filter((t) => t.type === "word").map((t) => t.value.toLowerCase());
+    const head = tokens
+      .slice(statementStart, statementStart + 10)
+      .filter((t) => t.type === "word")
+      .map((t) => t.value.toLowerCase());
     return head[0] === "create" && head.some((w) => ["trigger", "procedure", "function", "package"].includes(w));
   };
 
@@ -124,7 +127,10 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
     // Commandes SQL*Plus / SQLcl (SET, PROMPT, REM…) : en début d'instruction, terminées par la fin
     // de ligne et non par « ; » — sans quoi elles avaleraient l'instruction suivante (O-39).
     if (sqlPlus && atStatementStart(tokens) && atLineStart(sql, i)) {
-      const command = /^(set|prompt|rem|remark|spool|whenever|define|undefine|exit|quit|connect|conn|show|column|ttitle|btitle|pause|host|timing|clear|break|compute|var|variable|print|exec|execute|@@?)(?=[\s;]|$)/i.exec(rest);
+      const command =
+        /^(set|prompt|rem|remark|spool|whenever|define|undefine|exit|quit|connect|conn|show|column|ttitle|btitle|pause|host|timing|clear|break|compute|var|variable|print|exec|execute|@@?)(?=[\s;]|$)/i.exec(
+          rest,
+        );
       // SET … = … ; (PostgreSQL, MySQL, SQL Server) reste une instruction SQL normale.
       const line = rest.slice(0, (rest.indexOf("\n") + 1 || rest.length + 1) - 1);
       // EXEC / EXECUTE : commande SQL*Plus seulement si le script est Oracle (sinon T-SQL : EXEC proc …).
@@ -136,7 +142,7 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
       }
     }
     // DELIMITER (client MySQL) : change le séparateur jusqu'au prochain DELIMITER
-    if (/^delimiter\s+\S+/i.test(rest) && aloneOnLine(sql, i, (/^delimiter\s+\S+/i.exec(rest)![0]).length)) {
+    if (/^delimiter\s+\S+/i.test(rest) && aloneOnLine(sql, i, /^delimiter\s+\S+/i.exec(rest)![0].length)) {
       const match = /^delimiter\s+(\S+)/i.exec(rest)!;
       delimiter = match[1]!;
       push("end", ";", match[0]);

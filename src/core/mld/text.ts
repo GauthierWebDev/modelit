@@ -24,7 +24,8 @@ export interface MldLine {
  */
 export function uniqueColumnNames(table: LogicalTable): Set<string> {
   const names = new Set(table.columns.filter((c) => c.unique).map((c) => c.name));
-  for (const k of table.uniques) if (k.columns.length === 1 && !k.prefixes?.[0] && !k.expression && !k.where) names.add(k.columns[0]!);
+  for (const k of table.uniques)
+    if (k.columns.length === 1 && !k.prefixes?.[0] && !k.expression && !k.where) names.add(k.columns[0]!);
   return names;
 }
 

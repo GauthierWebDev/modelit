@@ -13,7 +13,9 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
   if (!text) return autoIncrement ? { kind: "counter" } : undefined;
   const lower = text.toLowerCase();
   // Arguments, échelle négative comprise (Oracle NUMBER(12,-3)) (O-39).
-  const args = [...(/\(([^)]*)\)/.exec(lower)?.[1] ?? "").replace(/-\s+/g, "-").matchAll(/-?\d+|max/g)].map((m) => m[0]);
+  const args = [...(/\(([^)]*)\)/.exec(lower)?.[1] ?? "").replace(/-\s+/g, "-").matchAll(/-?\d+|max/g)].map(
+    (m) => m[0],
+  );
   const n = args[0] === "max" ? undefined : args[0] !== undefined ? Number(args[0]) : undefined;
   const scale = args[1] !== undefined ? Number(args[1]) : undefined;
   // Nom du type sans arguments ni modificateurs MySQL.
@@ -34,7 +36,11 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
   const unicode = /^(n|national\b)/.test(base) || /\bunicode\b/.test(base);
   if (/^(n?clob|n?text|ntext|longtext|mediumtext|tinytext|long|long varchar|memo|citext)$/.test(base))
     return { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "large" };
-  if (/^(n?varchar2?|character varying|char varying|national character varying|national char varying|varchar_ignorecase|string)$/.test(base))
+  if (
+    /^(n?varchar2?|character varying|char varying|national character varying|national char varying|varchar_ignorecase|string)$/.test(
+      base,
+    )
+  )
     return large
       ? { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "large" }
       : { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "variable", size: n };
@@ -44,13 +50,18 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
   // Binaire
   if (/^(blob|longblob|mediumblob|tinyblob|bytea|image|long raw)$/.test(base) || (base === "varbinary" && large))
     return { kind: "text", encoding: "binary", length: "large" };
-  if (/^(varbinary|raw|bit varying|varbit)$/.test(base)) return { kind: "text", encoding: "binary", length: "variable", size: n };
+  if (/^(varbinary|raw|bit varying|varbit)$/.test(base))
+    return { kind: "text", encoding: "binary", length: "variable", size: n };
   if (base === "binary") return { kind: "text", encoding: "binary", length: "fixed", size: n ?? 1 };
-  if (base === "bit") return n !== undefined && n > 1 ? { kind: "text", encoding: "binary", length: "fixed", size: n } : { kind: "boolean" };
+  if (base === "bit")
+    return n !== undefined && n > 1
+      ? { kind: "text", encoding: "binary", length: "fixed", size: n }
+      : { kind: "boolean" };
 
   // Entiers
   // TINYINT(1) : booléen par convention MySQL.
-  if (/^(tinyint|int1|byte)$/.test(base)) return base === "tinyint" && n === 1 ? { kind: "boolean" } : { kind: "integer", bits: 8 };
+  if (/^(tinyint|int1|byte)$/.test(base))
+    return base === "tinyint" && n === 1 ? { kind: "boolean" } : { kind: "integer", bits: 8 };
   if (/^(smallint|int2|short)$/.test(base)) return { kind: "integer", bits: 16 };
   if (/^(mediumint|int|integer|int4|long integer)$/.test(base)) return { kind: "integer", bits: 32 };
   if (/^(bigint|int8)$/.test(base)) return { kind: "integer", bits: 64 };
@@ -70,7 +81,8 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
   if (/^(money|currency)$/.test(base)) return { kind: "money" };
   if (base === "real" && dialect === "sqlite") return { kind: "real", precision: "double" };
   if (/^(real|float4|binary_float|single)$/.test(base)) return { kind: "real", precision: "single" };
-  if (base === "float" && n === undefined && (dialect === "mysql" || dialect === "mariadb")) return { kind: "real", precision: "single" };
+  if (base === "float" && n === undefined && (dialect === "mysql" || dialect === "mariadb"))
+    return { kind: "real", precision: "single" };
   if (base === "float") return { kind: "real", precision: n !== undefined && n <= 24 ? "single" : "double" };
   if (/^(double|double precision|float8|binary_double)$/.test(base)) return { kind: "real", precision: "double" };
 
@@ -80,9 +92,11 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
   // YEAR (MySQL) : année sur 4 chiffres, 1901–2155 → entier 16 bits (O-35).
   if (base === "year") return { kind: "integer", bits: 16 };
   // TIMESTAMP (SQL Server) : synonyme de ROWVERSION, numéro de version de la ligne (O-41).
-  if ((base === "timestamp" && dialect === "sqlserver") || base === "rowversion") return { kind: "free", sql: "ROWVERSION" };
+  if ((base === "timestamp" && dialect === "sqlserver") || base === "rowversion")
+    return { kind: "free", sql: "ROWVERSION" };
   // TIMESTAMP (MySQL) : stocké en UTC et converti selon le fuseau de session, comme TIMESTAMPTZ.
-  if (base === "timestamp" && (dialect === "mysql" || dialect === "mariadb")) return { kind: "datetime", withTimeZone: true };
+  if (base === "timestamp" && (dialect === "mysql" || dialect === "mariadb"))
+    return { kind: "datetime", withTimeZone: true };
   if (/^(time|timetz|time with time zone)$/.test(base)) return { kind: "time" };
   // Précision des fractions de seconde, si elle est écrite et diffère du défaut (6) (O-39).
   const fraction = n !== undefined && n !== 6 ? { precision: n } : {};
@@ -91,13 +105,18 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
   if (/^(timestamp|datetime2)$/.test(base)) return { kind: "datetime", withTimeZone: false, ...fraction };
   // DATETIME SQL Server : arrondi au 1/300 s, soit 3 décimales (O-42).
   if (base === "datetime" && dialect === "sqlserver") return { kind: "datetime", withTimeZone: false, precision: 3 };
-  if (/^(datetime|smalldatetime|bigdatetime)$/.test(base)) return { kind: "datetime", withTimeZone: false, ...(base === "datetime" && n !== undefined ? fraction : {}) };
+  if (/^(datetime|smalldatetime|bigdatetime)$/.test(base))
+    return { kind: "datetime", withTimeZone: false, ...(base === "datetime" && n !== undefined ? fraction : {}) };
 
   // Autres
   if (/^(boolean|bool|logical|yesno)$/.test(base)) return { kind: "boolean" };
   if (/^(xml|xmltype)$/.test(base)) return { kind: "xml" };
   if (/^(geography)$/.test(base)) return { kind: "geography" };
-  if (/^(geometry|st_geometry|sdo_geometry|point|linestring|polygon|multipoint|multilinestring|multipolygon|geometrycollection)$/.test(base))
+  if (
+    /^(geometry|st_geometry|sdo_geometry|point|linestring|polygon|multipoint|multilinestring|multipolygon|geometrycollection)$/.test(
+      base,
+    )
+  )
     return { kind: "geometry" };
 
   return { kind: "free", sql: text };

@@ -2,25 +2,49 @@ import type { LogicalForeignKey, LogicalTable } from "../mld/logical";
 import { MSG } from "../validation/messages";
 import { check } from "./checks";
 import { columnLine } from "./columns";
-import { foreignKey, foreignKeyLabel, place, placement, stateClause, uniqueLine, type CascadeGraph } from "./constraints";
-import { INDENT, sqlString, type Context } from "./context";
+import {
+  type CascadeGraph,
+  foreignKey,
+  foreignKeyLabel,
+  place,
+  placement,
+  stateClause,
+  uniqueLine,
+} from "./constraints";
+import { type Context, INDENT, sqlString } from "./context";
 import { sameDialect } from "./dialects";
 import { columnRef, constraintName, declareSchema, q, tableName } from "./naming";
 
 /** CREATE TABLE, suivi des contraintes émises en commentaire (désactivées, non traduites). */
-export function createTable(ctx: Context, tables: LogicalTable[], table: LogicalTable, deferred: Set<LogicalForeignKey>, graph: CascadeGraph | null): string {
+export function createTable(
+  ctx: Context,
+  tables: LogicalTable[],
+  table: LogicalTable,
+  deferred: Set<LogicalForeignKey>,
+  graph: CascadeGraph | null,
+): string {
   const after: string[] = [];
   const d = ctx.dialect;
   const counterKey = table.columns.find((c) => c.name === table.primaryKey[0])?.type?.kind === "counter";
   const inlinePk = d.columns.inlineCounterKey && table.primaryKey.length === 1 && counterKey && !table.primaryKeyName;
-  const lines = table.columns.map((c) => columnLine(ctx, table, c, Boolean(inlinePk && c.name === table.primaryKey[0]), after));
+  const lines = table.columns.map((c) =>
+    columnLine(ctx, table, c, Boolean(inlinePk && c.name === table.primaryKey[0]), after),
+  );
   if (table.primaryKey.length > 0 && !inlinePk) {
     const name = constraintName(ctx, table, table.primaryKeyName, "PK", []);
     const label = table.primaryKeyName ?? "PRIMARY KEY";
     const where = placement(ctx, table, "primary", label, table.primaryKeyState);
     const columns = table.primaryKey.map((c) => columnRef(ctx, table, c)).join(", ");
     const definition = `${name ? `CONSTRAINT ${q(ctx, name)} ` : ""}PRIMARY KEY(${columns})${stateClause(ctx, table, "primary", label, table.primaryKeyState)}`;
-    const line = place(ctx, table, definition, where, after, table.primaryKeyState, () => constraintName(ctx, table, undefined, "PK", [], true)!);
+    const line = place(
+      ctx,
+      table,
+      definition,
+      where,
+      after,
+      table.primaryKeyState,
+      () => constraintName(ctx, table, undefined, "PK", [], true)!,
+    );
     if (line) lines.push(line);
   }
   for (const unique of table.uniques) {
@@ -44,12 +68,22 @@ export function createTable(ctx: Context, tables: LogicalTable[], table: Logical
     if (deferred.has(fk)) continue;
     const where = placement(ctx, table, "foreign", foreignKeyLabel(fk), fk.state);
     const definition = foreignKey(ctx, tables, table, fk, graph);
-    const line = place(ctx, table, definition, where, after, fk.state, () => constraintName(ctx, table, undefined, "FK", [fk.referencedTable], true)!);
+    const line = place(
+      ctx,
+      table,
+      definition,
+      where,
+      after,
+      fk.state,
+      () => constraintName(ctx, table, undefined, "FK", [fk.referencedTable], true)!,
+    );
     if (line) lines.push(line);
   }
   // Partitionnement : abandonné, signalé (O-39).
   if (table.partition) ctx.report.add("physical", table.name, MSG.lossPartition(d.partitioning));
-  const options = (ctx.script.tableOptions.get(table) ?? "") + (d.comments === "inline" && table.comment ? ` COMMENT=${sqlString(table.comment)}` : "");
+  const options =
+    (ctx.script.tableOptions.get(table) ?? "") +
+    (d.comments === "inline" && table.comment ? ` COMMENT=${sqlString(table.comment)}` : "");
   declareSchema(ctx, table.schema, table);
   const statement = `CREATE TABLE ${tableName(ctx, table)}(\n${lines.map((l) => INDENT + l).join(",\n")}\n)${options};`;
   comments(ctx, table);
@@ -65,7 +99,10 @@ function comments(ctx: Context, table: LogicalTable) {
   if (ctx.dialect.comments === "inline") return;
   if (ctx.dialect.comments === "statement") {
     if (table.comment) ctx.script.epilogue.push(`COMMENT ON TABLE ${name} IS ${sqlString(table.comment)};`);
-    for (const c of commented) ctx.script.epilogue.push(`COMMENT ON COLUMN ${name}.${q(ctx, c.name, c.caseSensitive)} IS ${sqlString(c.comment!)};`);
+    for (const c of commented)
+      ctx.script.epilogue.push(
+        `COMMENT ON COLUMN ${name}.${q(ctx, c.name, c.caseSensitive)} IS ${sqlString(c.comment!)};`,
+      );
     return;
   }
   ctx.report.add("comment", table.name, MSG.lossComments(Number(Boolean(table.comment)) + commented.length));

@@ -1,8 +1,23 @@
-import { bendsOf, bestChunk, decidedChunk, diagramLinks, diagramNodes, gridLayout, LAYOUT_CHUNKS, linkSourceId, positionOf, type ChunkResult, type GridEdge, type GridNode, type Id, type Point } from "@core/index";
+import {
+  bendsOf,
+  bestChunk,
+  type ChunkResult,
+  decidedChunk,
+  diagramLinks,
+  diagramNodes,
+  type GridEdge,
+  type GridNode,
+  gridLayout,
+  type Id,
+  LAYOUT_CHUNKS,
+  linkSourceId,
+  type Point,
+  positionOf,
+} from "@core/index";
 import { moveNodes } from "@/app/commands";
 import { logicalModelOf } from "@/app/derived";
 import type { DocumentHandle } from "@/app/document/handle";
-import { associationNamesByLink, center, nodeLayout, reflexiveBends, type Rect } from "./geometry";
+import { associationNamesByLink, center, nodeLayout, type Rect, reflexiveBends } from "./geometry";
 import { tableLayouts } from "./logicalGeometry";
 import { fitToWindow } from "./viewport";
 
@@ -124,8 +139,14 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`no answer from the layout workers after ${ms} ms`)), ms);
     promise.then(
-      (value) => (clearTimeout(timer), resolve(value)),
-      (error: unknown) => (clearTimeout(timer), reject(error)),
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
     );
   });
 }
@@ -161,7 +182,7 @@ async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<M
         }
         if (--running === 0) resolve();
       };
-      workers.forEach((worker) => lane(worker).catch(reject));
+      for (const worker of workers) lane(worker).catch(reject);
     });
   } finally {
     // Workers encore occupés (lots abandonnés, ou erreur) : arrêtés et remplacés.
@@ -178,7 +199,11 @@ function runChunk(worker: Worker, nodes: GridNode[], edges: GridEdge[], chunk: n
     worker.onmessage = (event: MessageEvent<ChunkResult>) => resolve(event.data);
     worker.onerror = (event) => {
       event.preventDefault();
-      reject(new Error(event.message || `layout worker failed${event.filename ? ` (${event.filename}:${event.lineno})` : ""}`));
+      reject(
+        new Error(
+          event.message || `layout worker failed${event.filename ? ` (${event.filename}:${event.lineno})` : ""}`,
+        ),
+      );
     };
     worker.postMessage({ nodes, edges, chunk });
   });

@@ -29,7 +29,9 @@ describe("renommer une table ou une colonne du MLD", () => {
   });
 
   it("refuse le nom d'une autre colonne de la même table", () => {
-    expect(checkLogicalRename(logical, "COMMANDE", "date", "ID_COMMANDE")).toBe(MSG.columnNameTaken("COMMANDE", "ID_COMMANDE"));
+    expect(checkLogicalRename(logical, "COMMANDE", "date", "ID_COMMANDE")).toBe(
+      MSG.columnNameTaken("COMMANDE", "ID_COMMANDE"),
+    );
     expect(checkLogicalRename(logical, "COMMANDE", "date", "nom")).toBeNull();
     expect(checkLogicalRename(logical, "COMMANDE", "date", "  ")).toBeNull();
   });

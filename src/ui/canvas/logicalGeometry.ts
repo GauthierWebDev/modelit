@@ -1,7 +1,5 @@
 import {
   displayedSqlType,
-  targetOf,
-  uniqueColumnNames,
   type Id,
   type LogicalColumn,
   type LogicalForeignKey,
@@ -9,8 +7,21 @@ import {
   type LogicalTable,
   type ModelDocument,
   type Point,
+  targetOf,
+  uniqueColumnNames,
 } from "@core/index";
-import { BOLD_WEIGHT, center, clipToRect, PAD_X, ROW_HEIGHT, textWidth, TITLE_HEIGHT, TITLE_WEIGHT, type Rect, type TextStyle } from "./geometry";
+import {
+  BOLD_WEIGHT,
+  center,
+  clipToRect,
+  PAD_X,
+  type Rect,
+  ROW_HEIGHT,
+  type TextStyle,
+  TITLE_HEIGHT,
+  TITLE_WEIGHT,
+  textWidth,
+} from "./geometry";
 
 /**
  * Mise en page des vues MLD et MPD (override O-01).
@@ -110,7 +121,9 @@ export function tableLayouts(model: LogicalModel, doc: ModelDocument, mode: Logi
     const typeX = PAD_X + nameWidth + COLUMN_GAP;
     const constraintsX = typeX + (typeWidth ? typeWidth + COLUMN_GAP : 0);
     const contentWidth = mode === "mpd" ? constraintsX + constraintsWidth + PAD_X : nameWidth + 2 * PAD_X;
-    const width = Math.ceil(Math.max(MIN_WIDTH, contentWidth, textWidth(table.name, { weight: TITLE_WEIGHT }) + 2 * PAD_X));
+    const width = Math.ceil(
+      Math.max(MIN_WIDTH, contentWidth, textWidth(table.name, { weight: TITLE_WEIGHT }) + 2 * PAD_X),
+    );
     const rows = raw.map((r, i) => ({ ...r, y: TITLE_HEIGHT + 4 + i * ROW_HEIGHT }));
     const height = TITLE_HEIGHT + 4 + Math.max(1, rows.length) * ROW_HEIGHT + 6;
     const position = positions[table.source.id] ?? { x: 0, y: 0 };

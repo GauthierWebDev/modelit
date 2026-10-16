@@ -61,7 +61,13 @@ export function groupLosses(losses: Loss[]): LossGroup[] {
     const group = groups.find((g) => g.message === l.message && g.category === l.category && g.priority === l.priority);
     if (group) {
       if (place && !group.places.includes(place)) group.places.push(place);
-    } else groups.push({ category: l.category, message: l.message, ...(l.priority ? { priority: l.priority } : {}), places: place ? [place] : [] });
+    } else
+      groups.push({
+        category: l.category,
+        message: l.message,
+        ...(l.priority ? { priority: l.priority } : {}),
+        places: place ? [place] : [],
+      });
   }
   return groups;
 }
@@ -69,4 +75,8 @@ export function groupLosses(losses: Loss[]): LossGroup[] {
 /** Ligne de rapport : « lieu — message », ou « message : lieu1, lieu2… » pour un groupe. */
 export const formatLossGroup = (g: LossGroup) =>
   (g.priority ? `[${g.priority}] ` : "") +
-  (g.places.length === 0 ? g.message : g.places.length === 1 ? `${g.places[0]} — ${g.message}` : `${g.message} : ${g.places.join(", ")}`);
+  (g.places.length === 0
+    ? g.message
+    : g.places.length === 1
+      ? `${g.places[0]} — ${g.message}`
+      : `${g.message} : ${g.places.join(", ")}`);

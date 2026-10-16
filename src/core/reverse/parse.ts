@@ -1,6 +1,5 @@
-import type { ConstraintState, ReferentialAction, SequenceDefinition } from "../model/physical";
-import type { SqlDialect } from "../model/physical";
-import { splitStatements, tokenize, type Token } from "./tokenize";
+import type { ConstraintState, ReferentialAction, SequenceDefinition, SqlDialect } from "../model/physical";
+import { splitStatements, type Token, tokenize } from "./tokenize";
 
 /**
  * Lecture d'un script SQL de création (overrides O-28, O-29), quel que soit le SGBD et sa version.
@@ -177,7 +176,11 @@ class Cursor {
       parts.push(this.next()!);
     }
     const token = parts.at(-1)!;
-    return { name: token.value, quoted: token.type === "quoted", ...(parts.length > 1 ? { schema: parts.at(-2)!.value } : {}) };
+    return {
+      name: token.value,
+      quoted: token.type === "quoted",
+      ...(parts.length > 1 ? { schema: parts.at(-2)!.value } : {}),
+    };
   }
   /** Groupe entre parenthèses commençant ici : renvoie son contenu (sans les parenthèses). */
   group(): Token[] | null {
@@ -225,10 +228,41 @@ export function joinRaw(tokens: Token[]): string {
     const unary =
       t.type === "number" &&
       isPunct(previous, "-") &&
-      (k === 1 || (before?.type === "punct" && before.value !== ")") || isWord(before, "between", "and", "or", "not", "in", "then", "else", "when", "default", "by", "with", "values", "is", "like", "return"));
+      (k === 1 ||
+        (before?.type === "punct" && before.value !== ")") ||
+        isWord(
+          before,
+          "between",
+          "and",
+          "or",
+          "not",
+          "in",
+          "then",
+          "else",
+          "when",
+          "default",
+          "by",
+          "with",
+          "values",
+          "is",
+          "like",
+          "return",
+        ));
     const tight =
-      k === 0 || unary || isPunct(t, ")") || isPunct(t, ",") || isPunct(t, "(") || isPunct(previous, "(") || isPunct(t, ".") || isPunct(previous, ".") || isPunct(t, "::") || isPunct(previous, "::");
-    out += (tight && !(isPunct(t, "(") && previous?.type === "word" && isWord(previous, "in", "and", "or", "not")) ? "" : " ") + t.raw;
+      k === 0 ||
+      unary ||
+      isPunct(t, ")") ||
+      isPunct(t, ",") ||
+      isPunct(t, "(") ||
+      isPunct(previous, "(") ||
+      isPunct(t, ".") ||
+      isPunct(previous, ".") ||
+      isPunct(t, "::") ||
+      isPunct(previous, "::");
+    out +=
+      (tight && !(isPunct(t, "(") && previous?.type === "word" && isWord(previous, "in", "and", "or", "not"))
+        ? ""
+        : " ") + t.raw;
   });
   return out.trim();
 }
@@ -246,7 +280,11 @@ function keyItems(tokens: Token[]): { columns: string[]; prefixes: (number | nul
     const c = new Cursor(items);
     const first = c.peek();
     // c ou c(10)
-    if (isName(first) && (items.length === 1 || (isPunct(items[1], "(") && items[2]?.type === "number" && isPunct(items[3], ")") && items.length === 4))) {
+    if (
+      isName(first) &&
+      (items.length === 1 ||
+        (isPunct(items[1], "(") && items[2]?.type === "number" && isPunct(items[3], ")") && items.length === 4))
+    ) {
       columns.push(first!.value);
       prefixes.push(items.length === 4 ? Number(items[2]!.value) : null);
       continue;
@@ -266,7 +304,10 @@ function keyItems(tokens: Token[]): { columns: string[]; prefixes: (number | nul
     if (isWord(first, "to_tsvector") && isPunct(items[1], "(")) {
       c.next();
       const args = splitCommas(c.group() ?? []);
-      const names = (args.at(-1) ?? []).filter(isName).filter((t) => !isWord(t, "coalesce")).map((t) => t.value);
+      const names = (args.at(-1) ?? [])
+        .filter(isName)
+        .filter((t) => !isWord(t, "coalesce"))
+        .map((t) => t.value);
       if (!names.length) return null;
       fulltext = true;
       for (const name of names) {
@@ -335,14 +376,30 @@ function constraintState(c: Cursor, table?: ParsedTable): ConstraintState | unde
     } else if (c.accept("using", "index")) {
       if (table && !table.storage.includes("USING INDEX")) table.storage.push("USING INDEX");
       // USING INDEX [nom | (CREATE INDEX …)] [TABLESPACE t] [PCTFREE n]… : jusqu'au mot d'état suivant.
-      while (!c.done() && !isWord(c.peek(), "deferrable", "not", "initially", "enable", "disable", "validate", "novalidate", "rely", "norely")) {
+      while (
+        !c.done() &&
+        !isWord(
+          c.peek(),
+          "deferrable",
+          "not",
+          "initially",
+          "enable",
+          "disable",
+          "validate",
+          "novalidate",
+          "rely",
+          "norely",
+        )
+      ) {
         if (isPunct(c.peek(), "(")) c.skipGroup();
         else c.next();
       }
     } else break;
   }
   if (deferrable) state.deferrable = deferred ? "deferred" : "immediate";
-  return Object.values(state).some((v) => v !== undefined) ? Object.fromEntries(Object.entries(state).filter(([, v]) => v !== undefined)) : undefined;
+  return Object.values(state).some((v) => v !== undefined)
+    ? Object.fromEntries(Object.entries(state).filter(([, v]) => v !== undefined))
+    : undefined;
 }
 
 /** Actions référentielles (toutes conservées) et état de la contrainte. */
@@ -380,7 +437,13 @@ function expressionItems(tokens: Token[], tableColumns: string[]): Omit<ParsedKe
     if (!isWord(items[0], "case") || !isWord(items[1], "when") || !isWord(items.at(-1), "end")) return null;
     const then = items.findIndex((t) => isWord(t, "then"));
     const column = items.slice(then + 1, -1);
-    if (then < 0 || column.length !== 1 || !isName(column[0]) || items.slice(2, then).some((t) => isWord(t, "case", "when", "else"))) return null;
+    if (
+      then < 0 ||
+      column.length !== 1 ||
+      !isName(column[0]) ||
+      items.slice(2, then).some((t) => isWord(t, "case", "when", "else"))
+    )
+      return null;
     return { column: column[0]!.value, condition: joinRaw(items.slice(2, then)) };
   });
   if (conditional.every((x) => x !== null) && new Set(conditional.map((x) => x!.condition.toLowerCase())).size === 1) {
@@ -406,7 +469,9 @@ function indexBody(c: Cursor, tableColumns?: string[]): Omit<ParsedKey, "name"> 
   const nullsNotDistinct = c.accept("nulls", "not", "distinct");
   if (!items) {
     const expression = tableColumns ? expressionItems(group, tableColumns) : null;
-    return expression && { ...expression, ...(method ? { method } : {}), ...(nullsNotDistinct ? { nullsNotDistinct } : {}) };
+    return (
+      expression && { ...expression, ...(method ? { method } : {}), ...(nullsNotDistinct ? { nullsNotDistinct } : {}) }
+    );
   }
   return {
     columns: items.columns,
@@ -423,7 +488,8 @@ function tableConstraint(tokens: Token[], table: ParsedTable): boolean {
   let name: string | undefined;
   if (c.accept("constraint")) name = c.qualifiedName() ?? undefined;
   if (c.accept("primary", "key")) {
-    while (isWord(c.peek(), "clustered", "nonclustered") || (isWord(c.peek(), "using") && !isWord(c.peek(1), "index"))) c.next();
+    while (isWord(c.peek(), "clustered", "nonclustered") || (isWord(c.peek(), "using") && !isWord(c.peek(1), "index")))
+      c.next();
     table.primaryKey = columnList(c.group());
     table.primaryKeyName = name;
     const state = constraintState(c, table);
@@ -440,7 +506,13 @@ function tableConstraint(tokens: Token[], table: ParsedTable): boolean {
     if (isName(c.peek()) && !isWord(c.peek(), "using") && !isPunct(c.peek(), "(")) name = c.qualifiedName() ?? name;
     const key = indexBody(c);
     const state = constraintState(c, table);
-    if (key?.columns.length) table.uniques.push({ name, ...key, ...(nullsNotDistinct ? { nullsNotDistinct } : {}), ...(state ? { state } : {}) });
+    if (key?.columns.length)
+      table.uniques.push({
+        name,
+        ...key,
+        ...(nullsNotDistinct ? { nullsNotDistinct } : {}),
+        ...(state ? { state } : {}),
+      });
     return true;
   }
   if (c.accept("foreign", "key")) {
@@ -459,10 +531,13 @@ function tableConstraint(tokens: Token[], table: ParsedTable): boolean {
     return true;
   }
   // Index MySQL déclarés dans la table : [FULLTEXT | SPATIAL] KEY / INDEX [nom] [USING …] (colonnes)
-  const kind = isWord(c.peek(), "fulltext", "spatial") ? (c.next()!.value.toLowerCase() as "fulltext" | "spatial") : undefined;
+  const kind = isWord(c.peek(), "fulltext", "spatial")
+    ? (c.next()!.value.toLowerCase() as "fulltext" | "spatial")
+    : undefined;
   if (!name && (isWord(c.peek(), "key", "index") || kind)) {
     if (isWord(c.peek(), "key", "index")) c.next();
-    const indexName = isPunct(c.peek(), "(") || isWord(c.peek(), "using") ? undefined : (c.qualifiedName() ?? undefined);
+    const indexName =
+      isPunct(c.peek(), "(") || isWord(c.peek(), "using") ? undefined : (c.qualifiedName() ?? undefined);
     const key = indexBody(c);
     if (key?.columns.length) table.indexes.push({ name: indexName, ...key, ...(kind ? { kind } : {}) });
     return true;
@@ -478,12 +553,17 @@ function tableConstraint(tokens: Token[], table: ParsedTable): boolean {
 export function sequenceOfDefault(text: string): string | undefined {
   // (NEXT VALUE FOR s) : parenthèses englobantes (SQL Server) (O-41).
   while (/^\(.*\)$/s.test(text.trim())) text = text.trim().slice(1, -1);
-  const last = (name: string) => name.split(".").at(-1)!.replace(/^"|"$/g, "").replace(/^\[|\]$/g, "");
+  const last = (name: string) =>
+    name
+      .split(".")
+      .at(-1)!
+      .replace(/^"|"$/g, "")
+      .replace(/^\[|\]$/g, "");
   const pg = /^nextval\s*\(\s*'([^']+)'(?:\s*::\s*regclass)?\s*\)$/i.exec(text.trim());
   if (pg) return last(pg[1]!);
   const oracle = /^((?:"[^"]+"|[\w$#]+)(?:\s*\.\s*(?:"[^"]+"|[\w$#]+))?)\s*\.\s*nextval$/i.exec(text.trim());
   if (oracle) return last(oracle[1]!.replace(/\s+/g, ""));
-  const standard = /^next\s+value\s+for\s+((?:"[^"]+"|[\w$#\[\]]+)(?:\.(?:"[^"]+"|[\w$#\[\]]+))?)$/i.exec(text.trim());
+  const standard = /^next\s+value\s+for\s+((?:"[^"]+"|[\w$#[\]]+)(?:\.(?:"[^"]+"|[\w$#[\]]+))?)$/i.exec(text.trim());
   if (standard) return last(standard[1]!).replace(/^\[|\]$/g, "");
   return undefined;
 }
@@ -494,9 +574,13 @@ function createSequence(c: Cursor, schema: ParsedSchema): void {
   const qualified = c.qualified();
   const name = qualified?.name;
   if (!name) return void schema.ignored++;
-  const sequence: SequenceDefinition & { ownedBy?: { table: string; column: string } } = { name, ...(qualified.schema ? { schema: qualified.schema } : {}) };
+  const sequence: SequenceDefinition & { ownedBy?: { table: string; column: string } } = {
+    name,
+    ...(qualified.schema ? { schema: qualified.schema } : {}),
+  };
   const number = () => {
-    const negative = isPunct(c.peek(), "-") ? (c.next(), -1) : 1;
+    const negative = isPunct(c.peek(), "-") ? -1 : 1;
+    if (negative < 0) c.next();
     const t = c.next();
     return t?.type === "number" ? negative * Number(t.value) : undefined;
   };
@@ -542,13 +626,17 @@ function alterSequence(c: Cursor, schema: ParsedSchema): void {
  *         (éventuellement dans IF :NEW.col IS NULL THEN … END IF;) END;
  * Rien d'autre dans le corps. Renvoie la colonne, la séquence et le mode, ou `null`.
  */
-function sequenceTrigger(tokens: Token[]): { table: string; column: string; sequence: string; trigger: "on null" | "always" } | null {
+function sequenceTrigger(
+  tokens: Token[],
+): { table: string; column: string; sequence: string; trigger: "on null" | "always" } | null {
   const text = tokens
     .map((t) => (t.type === "word" ? t.value.toLowerCase() : t.type === "quoted" ? `"${t.value}"` : t.raw))
     .join(" ");
   const name = `(?:"[^"]+"|[\\w$#]+)`;
   const qualified = `(?:${name} \\. )?(${name})`;
-  const head = new RegExp(`^trigger ${qualified} before insert on ${qualified} for each row(?: when \\( new \\. (${name}) is null \\))? begin (.*) end(?: ${name})?$`).exec(text);
+  const head = new RegExp(
+    `^trigger ${qualified} before insert on ${qualified} for each row(?: when \\( new \\. (${name}) is null \\))? begin (.*) end(?: ${name})?$`,
+  ).exec(text);
   if (!head) return null;
   const unquote = (n: string) => n.replace(/^"|"$/g, "");
   let body = head[4]!;
@@ -559,13 +647,20 @@ function sequenceTrigger(tokens: Token[]): { table: string; column: string; sequ
     conditional = true;
   }
   const assign = new RegExp(`^: new \\. (${name}) := ${qualified} \\. nextval ;$`).exec(body);
-  const select = new RegExp(`^select ${qualified} \\. nextval into : new \\. (${name}) from (?:sys \\. )?dual ;$`).exec(body);
+  const select = new RegExp(`^select ${qualified} \\. nextval into : new \\. (${name}) from (?:sys \\. )?dual ;$`).exec(
+    body,
+  );
   const column = assign?.[1] ?? select?.[2];
   const sequence = assign?.[2] ?? select?.[1];
   if (!column || !sequence) return null;
   const condition = guard?.[1] ?? head[3];
   if (condition && unquote(condition).toLowerCase() !== unquote(column).toLowerCase()) return null;
-  return { table: unquote(head[2]!), column: unquote(column), sequence: unquote(sequence), trigger: conditional ? "on null" : "always" };
+  return {
+    table: unquote(head[2]!),
+    column: unquote(column),
+    sequence: unquote(sequence),
+    trigger: conditional ? "on null" : "always",
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -573,10 +668,39 @@ function sequenceTrigger(tokens: Token[]): { table: string; column: string; sequ
 
 /** Mots qui terminent le type d'une colonne. */
 const AFTER_TYPE = new Set([
-  "not", "null", "primary", "unique", "default", "references", "check", "constraint", "auto_increment",
-  "autoincrement", "identity", "generated", "collate", "comment", "on", "as", "key", "charset", "encode",
-  "sparse", "rowguidcol", "masked", "storage", "compression", "invisible", "visible", "enable", "disable",
-  "filestream", "encrypted", "column_format", "srid", "using",
+  "not",
+  "null",
+  "primary",
+  "unique",
+  "default",
+  "references",
+  "check",
+  "constraint",
+  "auto_increment",
+  "autoincrement",
+  "identity",
+  "generated",
+  "collate",
+  "comment",
+  "on",
+  "as",
+  "key",
+  "charset",
+  "encode",
+  "sparse",
+  "rowguidcol",
+  "masked",
+  "storage",
+  "compression",
+  "invisible",
+  "visible",
+  "enable",
+  "disable",
+  "filestream",
+  "encrypted",
+  "column_format",
+  "srid",
+  "using",
 ]);
 
 function columnDefinition(tokens: Token[], table: ParsedTable): ParsedColumn | null {
@@ -633,7 +757,8 @@ function columnDefinition(tokens: Token[], table: ParsedTable): ParsedColumn | n
       const expression: Token[] = [];
       while (!c.done()) {
         const t = c.peek()!;
-        if (t.type === "word" && AFTER_TYPE.has(t.value.toLowerCase()) && !isWord(t, "null") && expression.length) break;
+        if (t.type === "word" && AFTER_TYPE.has(t.value.toLowerCase()) && !isWord(t, "null") && expression.length)
+          break;
         if (isPunct(t, "(")) {
           const group = c.group() ?? [];
           expression.push({ type: "punct", value: "(", raw: "(" }, ...group, { type: "punct", value: ")", raw: ")" });
@@ -663,9 +788,12 @@ function columnDefinition(tokens: Token[], table: ParsedTable): ParsedColumn | n
       const seed = c.group();
       if (seed?.[0]?.type === "number") column.identityStart = Number(seed[0].value);
       if (seed?.[2]?.type === "number" && Number(seed[2].value) !== 1) column.identityIncrement = Number(seed[2].value);
-      if (c.accept("not", "for", "replication")) (column.sqlServerOptions ??= []).push("NOT FOR REPLICATION");
+      if (c.accept("not", "for", "replication")) addSqlServerOption(column, "NOT FOR REPLICATION");
     } else if (c.accept("generated")) {
-      const mode = c.accept("always") ? "always" : c.accept("by", "default", "on", "null") ? "on null" : (c.accept("by", "default"), undefined);
+      let mode: "always" | "on null" | undefined;
+      if (c.accept("always")) mode = "always";
+      else if (c.accept("by", "default", "on", "null")) mode = "on null";
+      else c.accept("by", "default");
       c.accept("as");
       if (c.accept("identity")) {
         column.autoIncrement = true;
@@ -689,9 +817,9 @@ function columnDefinition(tokens: Token[], table: ParsedTable): ParsedColumn | n
       c.next();
       c.skipGroup();
     } else if (c.accept("rowguidcol")) {
-      (column.sqlServerOptions ??= []).push("ROWGUIDCOL");
+      addSqlServerOption(column, "ROWGUIDCOL");
     } else if (c.accept("not", "for", "replication")) {
-      (column.sqlServerOptions ??= []).push("NOT FOR REPLICATION");
+      addSqlServerOption(column, "NOT FOR REPLICATION");
     } else if (c.accept("character", "set") || c.accept("charset")) {
       c.next();
     } else {
@@ -700,6 +828,12 @@ function columnDefinition(tokens: Token[], table: ParsedTable): ParsedColumn | n
     name = undefined;
   }
   return column;
+}
+
+/** Option de colonne SQL Server (ROWGUIDCOL, NOT FOR REPLICATION), réémise vers SQL Server (O-42). */
+function addSqlServerOption(column: ParsedColumn, option: string) {
+  column.sqlServerOptions ??= [];
+  column.sqlServerOptions.push(option);
 }
 
 /** Expression d'une colonne calculée, puis STORED / VIRTUAL / PERSISTED. */
@@ -715,14 +849,33 @@ function generatedColumn(c: Cursor, column: ParsedColumn) {
     } else tokens.push(c.next()!);
   }
   // (expr) : parenthèses englobantes retirées.
-  const wrapped = groups === 1 && isPunct(tokens[0], "(") && isPunct(tokens.at(-1), ")") && tokens.filter((t) => t.type === "punct" && t.value === "(").length >= 1 && tokens.length >= 2 && wrapsAll(tokens);
+  const wrapped =
+    groups === 1 &&
+    isPunct(tokens[0], "(") &&
+    isPunct(tokens.at(-1), ")") &&
+    tokens.filter((t) => t.type === "punct" && t.value === "(").length >= 1 &&
+    tokens.length >= 2 &&
+    wrapsAll(tokens);
   const expression = tokens.length ? (wrapped ? tokens.slice(1, -1) : tokens) : null;
   let stored = false;
   while (isWord(c.peek(), "stored", "virtual", "persisted")) stored = !isWord(c.next(), "virtual") || stored;
   if (expression) column.generated = { expression: joinRaw(expression), stored };
 }
 
-const GENERATED_STOP = new Set(["stored", "virtual", "persisted", "not", "null", "constraint", "primary", "unique", "check", "references", "default", "comment"]);
+const GENERATED_STOP = new Set([
+  "stored",
+  "virtual",
+  "persisted",
+  "not",
+  "null",
+  "constraint",
+  "primary",
+  "unique",
+  "check",
+  "references",
+  "default",
+  "comment",
+]);
 
 /** La première parenthèse ferme-t-elle à la fin ? */
 function wrapsAll(tokens: Token[]): boolean {
@@ -810,7 +963,12 @@ function createTable(c: Cursor, schema: ParsedSchema): void {
       if (!table.storage.includes(label)) table.storage.push(label);
       if (label === "LOB") {
         c.skipGroup();
-        while (!c.done() && !isPunct(c.peek(), "(") && !(STORAGE_CLAUSES.has(c.peek()!.value.toLowerCase()) && c.peek()!.type === "word")) c.next();
+        while (
+          !c.done() &&
+          !isPunct(c.peek(), "(") &&
+          !(STORAGE_CLAUSES.has(c.peek()!.value.toLowerCase()) && c.peek()!.type === "word")
+        )
+          c.next();
         c.skipGroup();
       } else if (label === "STORAGE") c.skipGroup();
       else if (["TABLESPACE", "PCTFREE", "PCTUSED", "INITRANS", "MAXTRANS"].includes(label)) c.next();
@@ -836,7 +994,8 @@ function alterTable(c: Cursor, schema: ParsedSchema, statement: Token[]): void {
     return;
   }
   let used = false;
-  const columnNamed = (n: string | undefined) => table.columns.find((col) => col.name.toLowerCase() === n?.toLowerCase());
+  const columnNamed = (n: string | undefined) =>
+    table.columns.find((col) => col.name.toLowerCase() === n?.toLowerCase());
   for (const action of splitCommas(c.tokens.slice(c.i))) {
     const a = new Cursor(action);
     // SQL Server (O-41) : [NO]CHECK CONSTRAINT nom|ALL — active ou désactive une contrainte existante.
@@ -879,7 +1038,9 @@ function alterTable(c: Cursor, schema: ParsedSchema, statement: Token[]): void {
       const before = { checks: table.checks.length, fks: table.foreignKeys.length };
       if (a.accept("add") && tableConstraint(action.slice(a.i), table)) {
         used = true;
-        if (unchecked) for (const x of [...table.checks.slice(before.checks), ...table.foreignKeys.slice(before.fks)]) x.state = { ...x.state, notValidated: true };
+        if (unchecked)
+          for (const x of [...table.checks.slice(before.checks), ...table.foreignKeys.slice(before.fks)])
+            x.state = { ...x.state, notValidated: true };
       }
       continue;
     }
@@ -911,7 +1072,10 @@ function alterTable(c: Cursor, schema: ParsedSchema, statement: Token[]): void {
         else target.default = text;
       } else if (a.accept("add", "generated")) target.autoIncrement = true;
       else if (a.accept("set", "data", "type") || a.accept("type")) {
-        const definition = columnDefinition([{ type: "word", value: target.name, raw: target.name }, ...action.slice(a.i)], table);
+        const definition = columnDefinition(
+          [{ type: "word", value: target.name, raw: target.name }, ...action.slice(a.i)],
+          table,
+        );
         if (definition) target.type = definition.type;
       } else used = false;
       continue;
@@ -953,7 +1117,12 @@ function createIndex(c: Cursor, schema: ParsedSchema, unique: boolean, kind?: "f
   const table = findTable(schema, c.qualifiedName());
   // Colonnes, préfixes (left / substr), plein texte (to_tsvector), expression, index partiel
   // (WHERE ; motif Oracle CASE WHEN … THEN col END) (O-39).
-  const key = table ? indexBody(c, table.columns.map((col) => col.name)) : null;
+  const key = table
+    ? indexBody(
+        c,
+        table.columns.map((col) => col.name),
+      )
+    : null;
   // SQL Server : INCLUDE (colonnes couvertes) — sans effet sur l'unicité (O-41).
   // INCLUDE (colonnes couvertes) : conservé (SQL Server, PostgreSQL 11+), sans effet sur l'unicité (O-42).
   if (key && c.accept("include")) key.include = columnList(c.group());
@@ -965,15 +1134,43 @@ function createIndex(c: Cursor, schema: ParsedSchema, unique: boolean, kind?: "f
     c.i += end < 0 ? rest.length : end;
     // Idiome SQL Server « UNIQUE avec plusieurs NULL » : WHERE c IS NOT NULL pour chaque colonne
     // indexée, et rien d'autre → UNIQUE ordinaire (NULL distincts), pas une unicité conditionnelle (O-41).
-    const conjuncts = joinRaw(end < 0 ? rest : rest.slice(0, end)).split(/\s+and\s+/i).map((p) => /^\(?\s*\[?"?([\w$#]+)"?\]?\s+is\s+not\s+null\s*\)?$/i.exec(p.trim())?.[1]?.toLowerCase());
-    if (unique && conjuncts.every(Boolean) && conjuncts.length === key.columns.length && key.columns.every((col) => conjuncts.includes(col.toLowerCase())) && !key.expression) {
+    const conjuncts = joinRaw(end < 0 ? rest : rest.slice(0, end))
+      .split(/\s+and\s+/i)
+      .map((p) => /^\(?\s*\[?"?([\w$#]+)"?\]?\s+is\s+not\s+null\s*\)?$/i.exec(p.trim())?.[1]?.toLowerCase());
+    if (
+      unique &&
+      conjuncts.every(Boolean) &&
+      conjuncts.length === key.columns.length &&
+      key.columns.every((col) => conjuncts.includes(col.toLowerCase())) &&
+      !key.expression
+    ) {
       delete key.where;
       key.nullsDistinct = true;
     }
   }
   // Options physiques de l'index (Oracle, PostgreSQL) : sans effet sur l'unicité ; les clauses de
   // stockage sont notées sur la table (rapport) (O-39).
-  while (!c.done() && (STORAGE_CLAUSES.has(c.peek()!.value.toLowerCase()) || c.peek()!.type === "number" || isWord(c.peek(), "online", "compute", "statistics", "local", "global", "reverse", "visible", "invisible", "nosort", "parallel", "noparallel", "with", "on"))) {
+  while (
+    !c.done() &&
+    (STORAGE_CLAUSES.has(c.peek()!.value.toLowerCase()) ||
+      c.peek()!.type === "number" ||
+      isWord(
+        c.peek(),
+        "online",
+        "compute",
+        "statistics",
+        "local",
+        "global",
+        "reverse",
+        "visible",
+        "invisible",
+        "nosort",
+        "parallel",
+        "noparallel",
+        "with",
+        "on",
+      ))
+  ) {
     // SQL Server : WITH (options) / ON [groupe de fichiers].
     if (isWord(c.peek(), "with", "on") && table) {
       const label = isWord(c.next(), "with") ? "WITH (options d'index)" : "ON [groupe de fichiers]";
@@ -1028,12 +1225,16 @@ function extendedProperty(c: Cursor, schema: ParsedSchema): void {
   const parameters = new Map<string, string>();
   for (const part of splitCommas(c.tokens.slice(c.i))) {
     const [key, equal, value] = part;
-    if (key?.type === "word" && key.value.startsWith("@") && isPunct(equal, "=") && value) parameters.set(key.value.slice(1).toLowerCase(), value.value);
+    if (key?.type === "word" && key.value.startsWith("@") && isPunct(equal, "=") && value)
+      parameters.set(key.value.slice(1).toLowerCase(), value.value);
   }
   const table = findTable(schema, parameters.get("level1name"));
   if (parameters.get("name")?.toLowerCase() !== "ms_description" || !table) return void schema.ignored++;
   const level2 = parameters.get("level2type")?.toLowerCase();
-  const column = level2 === "column" ? table.columns.find((col) => col.name.toLowerCase() === parameters.get("level2name")?.toLowerCase()) : undefined;
+  const column =
+    level2 === "column"
+      ? table.columns.find((col) => col.name.toLowerCase() === parameters.get("level2name")?.toLowerCase())
+      : undefined;
   if (column) column.comment = parameters.get("value");
   else if (!level2) table.comment = parameters.get("value");
   else schema.ignored++;
@@ -1045,7 +1246,9 @@ function extendedProperty(c: Cursor, schema: ParsedSchema): void {
  */
 function createTrigger(c: Cursor, schema: ParsedSchema, raw: string): void {
   const pattern = sequenceTrigger(c.tokens.slice(c.i - 1));
-  const target = pattern && findTable(schema, pattern.table)?.columns.find((col) => col.name.toLowerCase() === pattern.column.toLowerCase());
+  const target =
+    pattern &&
+    findTable(schema, pattern.table)?.columns.find((col) => col.name.toLowerCase() === pattern.column.toLowerCase());
   if (pattern && target && !target.sequence && !target.autoIncrement) {
     target.sequence = { name: pattern.sequence, trigger: pattern.trigger };
     return;
@@ -1090,12 +1293,23 @@ function createType(c: Cursor, schema: ParsedSchema): void {
 }
 
 export function parseSql(sql: string, dialect?: SqlDialect): ParsedSchema {
-  const schema: ParsedSchema = { tables: [], enumTypes: new Map(), collations: new Map(), sequences: new Map(), ignored: 0, skipped: [], warnings: [] };
+  const schema: ParsedSchema = {
+    tables: [],
+    enumTypes: new Map(),
+    collations: new Map(),
+    sequences: new Map(),
+    ignored: 0,
+    skipped: [],
+    warnings: [],
+  };
   for (const statement of splitStatements(tokenize(sql, { dialect, warnings: schema.warnings }))) {
     const c = new Cursor(statement);
     const first = statement[0]!;
     const last = statement.at(-1)!;
-    const raw = first.pos !== undefined && last.pos !== undefined ? sql.slice(first.pos, last.pos + last.raw.length) : joinRaw(statement);
+    const raw =
+      first.pos !== undefined && last.pos !== undefined
+        ? sql.slice(first.pos, last.pos + last.raw.length)
+        : joinRaw(statement);
     try {
       if (c.accept("create")) {
         c.accept("or", "replace");
@@ -1105,8 +1319,11 @@ export function parseSql(sql: string, dialect?: SqlDialect): ParsedSchema {
           while (!c.done() && !isWord(c.peek(), "trigger", "procedure", "function", "view", "event")) c.next();
         }
         const unique = c.accept("unique");
-        const kind = isWord(c.peek(), "fulltext", "spatial") ? (c.next()!.value.toLowerCase() as "fulltext" | "spatial") : undefined;
-        while (isWord(c.peek(), "global", "local", "temporary", "temp", "unlogged", "virtual", "external", "transient")) c.next();
+        const kind = isWord(c.peek(), "fulltext", "spatial")
+          ? (c.next()!.value.toLowerCase() as "fulltext" | "spatial")
+          : undefined;
+        while (isWord(c.peek(), "global", "local", "temporary", "temp", "unlogged", "virtual", "external", "transient"))
+          c.next();
         if (!unique && !kind && c.accept("table")) createTable(c, schema);
         else if (isWord(c.peek(), "index", "clustered", "nonclustered")) createIndex(c, schema, unique, kind);
         else if (c.accept("trigger")) createTrigger(c, schema, raw);
@@ -1156,6 +1373,23 @@ function resolveSequences(schema: ParsedSchema) {
 
 /** Clauses de stockage (Oracle, PostgreSQL) reconnues après la définition d'une table ou d'un index. */
 const STORAGE_CLAUSES = new Set([
-  "tablespace", "pctfree", "pctused", "initrans", "maxtrans", "storage", "logging", "nologging", "compress",
-  "nocompress", "lob", "cache", "nocache", "parallel", "noparallel", "monitoring", "nomonitoring", "segment", "organization",
+  "tablespace",
+  "pctfree",
+  "pctused",
+  "initrans",
+  "maxtrans",
+  "storage",
+  "logging",
+  "nologging",
+  "compress",
+  "nocompress",
+  "lob",
+  "cache",
+  "nocache",
+  "parallel",
+  "noparallel",
+  "monitoring",
+  "nomonitoring",
+  "segment",
+  "organization",
 ]);

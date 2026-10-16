@@ -1,5 +1,5 @@
-import { model } from "@core/testing/builder";
 import { MSG, toLogicalModel } from "@core/index";
+import { model } from "@core/testing/builder";
 import { describe, expect, it } from "vitest";
 import { renameLogical } from "./commands";
 import { createDocumentHandle } from "./document/handle";
@@ -18,7 +18,13 @@ describe("renommer une table ou une colonne du MLD", () => {
   const table = (doc: ReturnType<typeof setup>, name: string) => logical(doc).tables.find((t) => t.name === name)!;
   const rename = (doc: ReturnType<typeof setup>, tableName: string, column: string | null, name: string) => {
     const t = table(doc, tableName);
-    return renameLogical(doc, logical(doc), t, column === null ? null : t.columns.find((c) => c.name === column)!, name);
+    return renameLogical(
+      doc,
+      logical(doc),
+      t,
+      column === null ? null : t.columns.find((c) => c.name === column)!,
+      name,
+    );
   };
 
   it("titre : nom logique de l'entité ; vide, le nom dérivé revient", () => {
@@ -35,10 +41,18 @@ describe("renommer une table ou une colonne du MLD", () => {
     const before = table(doc, "Client").columns.find((c) => c.attributeId)!.name;
     const column = table(doc, "Client").columns.find((c) => c.name !== before && c.attributeId)!.name;
     expect(rename(doc, "Client", column, "nom_du_client")).toBeNull();
-    const attribute = doc.store.getState().doc.entities.find((e) => e.name === "Client")!.attributes.find((a) => a.name === "Nom client")!;
+    const attribute = doc.store
+      .getState()
+      .doc.entities.find((e) => e.name === "Client")!
+      .attributes.find((a) => a.name === "Nom client")!;
     expect(attribute.logicalName).toBe("nom_du_client");
     doc.store.getState().undo();
-    expect(doc.store.getState().doc.entities.find((e) => e.name === "Client")!.attributes.find((a) => a.name === "Nom client")!.logicalName).toBeUndefined();
+    expect(
+      doc.store
+        .getState()
+        .doc.entities.find((e) => e.name === "Client")!
+        .attributes.find((a) => a.name === "Nom client")!.logicalName,
+    ).toBeUndefined();
   });
 
   it("clé étrangère : nom de la clé (O-07)", () => {

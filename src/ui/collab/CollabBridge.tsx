@@ -28,7 +28,11 @@ function PasswordPrompt() {
       footer={
         <>
           <div className="flex-1" />
-          <button type="button" className="rounded px-3 py-1 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={() => void leaveSession()}>
+          <button
+            type="button"
+            className="rounded px-3 py-1 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            onClick={() => void leaveSession()}
+          >
             {t("common.cancel")}
           </button>
           <button
@@ -79,7 +83,10 @@ export function CollabBridge() {
     void onOpenLink((url) => {
       useUiStore.getState().setShareOpen(true);
       void joinFromLink(url);
-    }).then((f) => (disposed ? f() : (off = f)));
+    }).then((f) => {
+      if (disposed) f();
+      else off = f;
+    });
     return () => {
       disposed = true;
       off?.();

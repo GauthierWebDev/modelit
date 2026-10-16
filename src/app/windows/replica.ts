@@ -1,10 +1,10 @@
-import { enablePatches, produce, produceWithPatches } from "immer";
 import type { ModelDocument } from "@core/index";
+import { enablePatches, produce, produceWithPatches } from "immer";
 import { create } from "zustand";
 import { createStore } from "zustand/vanilla";
 import { applyCollabMirror } from "../collab/session";
 import type { DocumentState } from "../document/documentStore";
-import { createDocumentViewStore, ZOOM_MAX, ZOOM_MIN, type DocumentViewState } from "../document/documentView";
+import { createDocumentViewStore, type DocumentViewState, ZOOM_MAX, ZOOM_MIN } from "../document/documentView";
 import type { DocumentHandle } from "../document/handle";
 import { newModelDocument } from "../modelDefaults";
 import { usePreferencesStore } from "../preferencesStore";
@@ -22,7 +22,15 @@ enablePatches();
 /** Dernier état reçu (nom du document, boîte modale ouverte…). */
 export const useMirrorStore = create<{ state: MirrorState | null }>(() => ({ state: null }));
 
-const UI_KEYS = ["tool", "exportOpen", "optionsOpen", "modelSettingsOpen", "reverseOpen", "shareOpen", "about"] as const;
+const UI_KEYS = [
+  "tool",
+  "exportOpen",
+  "optionsOpen",
+  "modelSettingsOpen",
+  "reverseOpen",
+  "shareOpen",
+  "about",
+] as const;
 /** Boîtes de dialogue : elles s'ouvrent dans la fenêtre principale, jamais dans une flottante. */
 const DIALOG_KEYS = ["exportOpen", "optionsOpen", "modelSettingsOpen", "reverseOpen", "shareOpen", "about"] as const;
 
@@ -77,9 +85,13 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
     select: (selection) => forwardView({ selection, activeBend: null }),
     toggleSelected: (id) => {
       const { selection } = view.getState();
-      forwardView({ activeBend: null, selection: selection.includes(id) ? selection.filter((x) => x !== id) : [...selection, id] });
+      forwardView({
+        activeBend: null,
+        selection: selection.includes(id) ? selection.filter((x) => x !== id) : [...selection, id],
+      });
     },
-    setViewport: (viewport) => forwardView({ viewport: { ...viewport, zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, viewport.zoom)) } }),
+    setViewport: (viewport) =>
+      forwardView({ viewport: { ...viewport, zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, viewport.zoom)) } }),
     setActiveBend: (activeBend) => forwardView({ activeBend }),
   });
 
@@ -90,11 +102,21 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
     for (const key of UI_KEYS) if (s[key] !== p[key]) Object.assign(patch, { [key]: s[key] });
     if (!Object.keys(patch).length) return;
     send({ type: "ui", patch });
-    if (DIALOG_KEYS.some((k) => k in patch)) useUiStore.setState({ exportOpen: false, optionsOpen: false, modelSettingsOpen: false, reverseOpen: false, shareOpen: false, about: null });
+    if (DIALOG_KEYS.some((k) => k in patch))
+      useUiStore.setState({
+        exportOpen: false,
+        optionsOpen: false,
+        modelSettingsOpen: false,
+        reverseOpen: false,
+        shareOpen: false,
+        about: null,
+      });
   });
 
   // Disposition : la principale l'applique et l'enregistre ; elle revient par le stockage partagé.
-  usePreferencesStore.setState({ updateDock: (change) => send({ type: "dock", layout: change(usePreferencesStore.getState().dock) }) });
+  usePreferencesStore.setState({
+    updateDock: (change) => send({ type: "dock", layout: change(usePreferencesStore.getState().dock) }),
+  });
 
   const offChannel = channel.listen((message) => {
     if (message.type !== "state") return;

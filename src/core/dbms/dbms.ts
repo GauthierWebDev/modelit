@@ -1,13 +1,4 @@
-export type Dbms =
-  | "access"
-  | "db2"
-  | "mariadb"
-  | "mysql"
-  | "oracle"
-  | "postgresql"
-  | "sqlserver"
-  | "sqlite"
-  | "sybase";
+export type Dbms = "access" | "db2" | "mariadb" | "mysql" | "oracle" | "postgresql" | "sqlserver" | "sqlite" | "sybase";
 
 /** Ordre d'affichage. Le SGBD « Personnalisé » viendra en L9. */
 export const DBMS_LIST: { id: Dbms; label: string }[] = [

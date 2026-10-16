@@ -51,8 +51,20 @@ describe("session protégée par mot de passe", () => {
     const net = memoryNetwork();
     const sent: string[] = [];
     const link = net.connect("bob");
-    const spy = { ...link, send: (m: Parameters<typeof link.send>[0]) => (sent.push(JSON.stringify(m)), link.send(m)) };
-    startHost({ link: net.hostLink, doc: emptyDocument(), secrets: { editor: "e", reader: "r" }, me: { id: "a", name: "A", color: "#000" }, password: await verifier("secret-tres-long") });
+    const spy = {
+      ...link,
+      send: (m: Parameters<typeof link.send>[0]) => {
+        sent.push(JSON.stringify(m));
+        link.send(m);
+      },
+    };
+    startHost({
+      link: net.hostLink,
+      doc: emptyDocument(),
+      secrets: { editor: "e", reader: "r" },
+      me: { id: "a", name: "A", color: "#000" },
+      password: await verifier("secret-tres-long"),
+    });
     const bob = startGuest({ link: spy, secret: "e", name: "Bob", color: "#111" });
     await net.settle();
     await bob.answer("secret-tres-long");

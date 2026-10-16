@@ -1,4 +1,4 @@
-import { standard, type Dialect } from "./dialect";
+import { type Dialect, standard } from "./dialect";
 
 /** SQLite : affinités de types, clé primaire de compteur en ligne. */
 export const sqlite = (): Dialect => ({

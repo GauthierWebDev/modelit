@@ -4,8 +4,8 @@ import type { DataType } from "../model/datatype";
 import type { SqlDialect } from "../model/physical";
 import { integerRange, sqlTypeToDataType } from "../reverse/types";
 import { MSG } from "../validation/messages";
-import { activeConditions, describe, type Context } from "./context";
 import { collationClass, translateCollation } from "./collation";
+import { activeConditions, type Context, describe } from "./context";
 import { fitName, sameDialect, sqliteAffinity } from "./dialects";
 import { excludesEmptyString, impliesNonNegative, referencedColumns, valueBounds } from "./expressions";
 import { columnRef, q } from "./naming";
@@ -16,13 +16,19 @@ import type { Usage } from "./targets";
  * Type de la colonne pour la cible, et CHECK qu'il implique (domaine ENUM / SET, non-signé).
  * Chaque écart avec la source est signalé une fois, avec ce qui est réellement émis (O-35).
  */
-export function typeOf(ctx: Context, table: LogicalTable, column: LogicalColumn, inlinePrimaryKey: boolean): { sql: string | null; checks: string[] } {
+export function typeOf(
+  ctx: Context,
+  table: LogicalTable,
+  column: LogicalColumn,
+  inlinePrimaryKey: boolean,
+): { sql: string | null; checks: string[] } {
   const { dbms, version } = ctx.target;
   const d = ctx.dialect.types;
   const counters = ctx.dialect.counters;
   const checks: string[] = [];
   const ref = () => columnRef(ctx, table, column.name);
-  const loss = (category: "type" | "domain" | "unsigned" | "autoIncrement", message: string) => ctx.report.add(category, table.name, message, column.name);
+  const loss = (category: "type" | "domain" | "unsigned" | "autoIncrement", message: string) =>
+    ctx.report.add(category, table.name, message, column.name);
   const source = column.sourceType;
   const same = Boolean(source && sameDialect(source.dialect, dbms));
   const type = column.type && column.type.kind === "text" ? { ...column.type, collation: undefined } : column.type;
@@ -41,7 +47,8 @@ export function typeOf(ctx: Context, table: LogicalTable, column: LogicalColumn,
       if (d.enumTypes && ctx.options.enums === "type") return { sql: enumType(ctx, table, column, list), checks };
       checks.push(`${ref()} IN (${list})`);
       // MySQL ramène une valeur saisie dans une autre casse (ACTIF) à la valeur de l'ENUM (actif) (O-38).
-      const klass = column.type?.kind === "text" && column.type.collation ? collationClass(column.type.collation) : undefined;
+      const klass =
+        column.type?.kind === "text" && column.type.collation ? collationClass(column.type.collation) : undefined;
       if (klass === "ci" || klass === "ai_ci") {
         const insensitive = collate.trim() !== "" && ctx.options.collations !== "deterministic";
         loss("domain", MSG.lossEnumCase(insensitive));
@@ -68,7 +75,8 @@ export function typeOf(ctx: Context, table: LogicalTable, column: LogicalColumn,
       // Type élargi : plage couverte. Les négatifs restent interdits par un CHECK (>= 0), sauf
       // sur une clé étrangère (bornée par la colonne référencée) ou si un CHECK les exclut déjà (O-37).
       // TINYINT SQL Server : 0 à 255, toujours rétabli par un CHECK, même si un autre CHECK existe (O-42).
-      if (!column.foreign && source?.dialect === "sqlserver" && /^\s*tinyint\b/i.test(source.sql)) checks.push(`${ref()} BETWEEN 0 AND 255`);
+      if (!column.foreign && source?.dialect === "sqlserver" && /^\s*tinyint\b/i.test(source.sql))
+        checks.push(`${ref()} BETWEEN 0 AND 255`);
       else if (!column.foreign && !alreadyNonNegative(table, column)) checks.push(`${ref()} >= 0`);
       const bits = type.kind === "integer" ? type.bits : (type.bits ?? 32);
       effective =
@@ -83,7 +91,12 @@ export function typeOf(ctx: Context, table: LogicalTable, column: LogicalColumn,
   }
 
   // Oracle DATE (date et heure à la seconde) : TIMESTAMP(0), ou DATE en option — heure perdue (O-39).
-  if (source?.dialect === "oracle" && /^date$/i.test(source.sql.trim()) && effective.kind === "datetime" && ctx.options.oracleDates === "date") {
+  if (
+    source?.dialect === "oracle" &&
+    /^date$/i.test(source.sql.trim()) &&
+    effective.kind === "datetime" &&
+    ctx.options.oracleDates === "date"
+  ) {
     const sql = sqlType({ kind: "date" }, dbms, version, ctx.target.custom?.types) ?? "DATE";
     loss("type", MSG.lossOracleDate(sql));
     return { sql, checks };
@@ -96,7 +109,8 @@ export function typeOf(ctx: Context, table: LogicalTable, column: LogicalColumn,
     // Sans IDENTITY / SERIAL… (SQLite hors clé primaire simple, Oracle avant 12c) : simple entier.
     const native = /identity|serial|auto_?increment|counter/i.test(sql) || inlinePrimaryKey;
     if (!native) loss("autoIncrement", MSG.lossAutoIncrement());
-    if (counters.narrowOnly && effective.bits === 64) loss("type", MSG.lossType("BIGINT AUTOINCREMENT", counters.narrowOnly));
+    if (counters.narrowOnly && effective.bits === 64)
+      loss("type", MSG.lossType("BIGINT AUTOINCREMENT", counters.narrowOnly));
     sql = identityStart(ctx, table, column, sql);
     if (d.unsigned && column.unsigned) sql = sql.replace(/^(\w+)/, "$1 UNSIGNED");
     // GENERATED ALWAYS / BY DEFAULT ON NULL (O-39). MySQL : un NULL reçoit déjà une valeur.
@@ -108,10 +122,12 @@ export function typeOf(ctx: Context, table: LogicalTable, column: LogicalColumn,
       // Vers SQL Server : IDENTITY refuse une valeur fournie, que la source acceptait (O-42).
       loss("autoIncrement", MSG.lossSqlServerIdentity());
     } else if (column.identity === "on null" && !counters.nullTakesNextValue) {
-      if (counters.onNullIdentity && /BY DEFAULT AS IDENTITY/i.test(sql)) sql = sql.replace(/BY DEFAULT AS IDENTITY/i, "BY DEFAULT ON NULL AS IDENTITY");
+      if (counters.onNullIdentity && /BY DEFAULT AS IDENTITY/i.test(sql))
+        sql = sql.replace(/BY DEFAULT AS IDENTITY/i, "BY DEFAULT ON NULL AS IDENTITY");
       else loss("autoIncrement", MSG.lossIdentityOnNull());
     }
-    if (/^\s*number\b/i.test(source?.sql ?? "") || /^NUMBER\(/i.test(sql)) integerLosses(ctx, table, column, sql, checks);
+    if (/^\s*number\b/i.test(source?.sql ?? "") || /^NUMBER\(/i.test(sql))
+      integerLosses(ctx, table, column, sql, checks);
     return { sql, checks };
   }
 
@@ -120,12 +136,19 @@ export function typeOf(ctx: Context, table: LogicalTable, column: LogicalColumn,
     const unbounded = d.unboundedDecimal;
     if (effective.precision === undefined && unbounded !== "native") {
       if ("sql" in unbounded) return { sql: unbounded.sql, checks };
-      const bounded = sqlType({ kind: "decimal", ...unbounded }, dbms, version, ctx.target.custom?.types) ?? "DECIMAL(38,10)";
+      const bounded =
+        sqlType({ kind: "decimal", ...unbounded }, dbms, version, ctx.target.custom?.types) ?? "DECIMAL(38,10)";
       loss("type", MSG.lossDecimalUnbounded(source?.sql ?? "NUMERIC", bounded));
       return { sql: bounded, checks };
     }
     if (effective.scale < 0 && !d.negativeScale) {
-      const widened = sqlType({ kind: "decimal", precision: (effective.precision ?? 38) - effective.scale, scale: 0 }, dbms, version, ctx.target.custom?.types) ?? "NUMERIC";
+      const widened =
+        sqlType(
+          { kind: "decimal", precision: (effective.precision ?? 38) - effective.scale, scale: 0 },
+          dbms,
+          version,
+          ctx.target.custom?.types,
+        ) ?? "NUMERIC";
       loss("type", MSG.lossNegativeScale(source?.sql ?? describe(effective), widened));
       return { sql: widened, checks };
     }
@@ -137,14 +160,31 @@ export function typeOf(ctx: Context, table: LogicalTable, column: LogicalColumn,
     if (fallback.loss) loss("type", fallback.loss);
     else if (fallback.lossy) loss("type", MSG.lossType(effective.sql, fallback.sql));
     // RAW(16) DEFAULT SYS_GUID() lu comme UUID (O-39) : approximation.
-    if (source.dialect === "oracle" && /^raw\b/i.test(source.sql.trim()) && /^(uuid|uniqueidentifier)$/i.test(fallback.sql)) loss("type", MSG.lossRawUuid());
+    if (
+      source.dialect === "oracle" &&
+      /^raw\b/i.test(source.sql.trim()) &&
+      /^(uuid|uniqueidentifier)$/i.test(fallback.sql)
+    )
+      loss("type", MSG.lossRawUuid());
     return { sql: fallback.sql + collate, checks };
   }
   // Texte long (LOB) là où la cible ne sait pas le comparer : borné, avec perte.
-  const bound = effective.kind === "text" && effective.length === "large" && effective.encoding !== "binary" ? d.boundedText(usage(table, column.name)) : undefined;
+  const bound =
+    effective.kind === "text" && effective.length === "large" && effective.encoding !== "binary"
+      ? d.boundedText(usage(table, column.name))
+      : undefined;
   if (effective.kind === "text" && bound !== undefined) {
-    const bounded = sqlType({ ...effective, length: "variable", size: bound }, dbms, version, ctx.target.custom?.types)!;
-    if (!column.foreign) loss("type", MSG.lossType(source?.sql ?? sqlType(effective, dbms, version, ctx.target.custom?.types) ?? "TEXT", bounded));
+    const bounded = sqlType(
+      { ...effective, length: "variable", size: bound },
+      dbms,
+      version,
+      ctx.target.custom?.types,
+    )!;
+    if (!column.foreign)
+      loss(
+        "type",
+        MSG.lossType(source?.sql ?? sqlType(effective, dbms, version, ctx.target.custom?.types) ?? "TEXT", bounded),
+      );
     return { sql: bounded + collate, checks };
   }
   let sql = sqlType(effective, dbms, version, ctx.target.custom?.types);
@@ -162,7 +202,8 @@ export function typeOf(ctx: Context, table: LogicalTable, column: LogicalColumn,
     // Élargi pour couvrir la plage, négatifs exclus (CHECK ou clé étrangère) : rien de perdu.
   } else if (d.affinities) {
     // Affinités seules (SQLite : TEXT, INTEGER, NUMERIC…) : seul un changement d'affinité compte.
-    if (source && !domain && sqliteAffinity(source.sql) !== sqliteAffinity(sql)) loss("type", MSG.lossType(source.sql, sql));
+    if (source && !domain && sqliteAffinity(source.sql) !== sqliteAffinity(sql))
+      loss("type", MSG.lossType(source.sql, sql));
   } else if (digits) {
     integerLosses(ctx, table, column, sql, checks);
   } else if (column.foreign && (effective.kind === "integer" || effective.kind === "text")) {
@@ -170,7 +211,8 @@ export function typeOf(ctx: Context, table: LogicalTable, column: LogicalColumn,
   } else if (effective.kind !== "free" && !domain && !sameType(sqlTypeToDataType(sql, false, dbms), effective)) {
     loss("type", MSG.lossType(source?.sql ?? describe(effective), sql));
   }
-  if (d.unsigned && column.unsigned && (effective.kind === "integer" || effective.kind === "decimal")) sql += " UNSIGNED";
+  if (d.unsigned && column.unsigned && (effective.kind === "integer" || effective.kind === "decimal"))
+    sql += " UNSIGNED";
   // TINYINT(1) lu comme booléen : MySQL y accepte d'autres valeurs que 0 / 1 (−128 à 127) (O-38).
   if (source && /^tinyint\s*\(\s*1\s*\)/i.test(source.sql) && effective.kind === "boolean" && !d.tinyintBoolean) {
     loss("type", MSG.lossTinyintBoolean(sql));
@@ -236,8 +278,13 @@ function alreadyNonNegative(table: LogicalTable, column: LogicalColumn): boolean
 }
 
 /** Clause COLLATE pour la cible (vide si sans objet) ; une collation intransposable est signalée. */
-function collationClause(ctx: Context, table: LogicalTable, column: LogicalColumn, source: SqlDialect | undefined): string {
-  const name = column.type?.kind === "text" ? column.type.collation ?? assumedCollation(ctx, column) : undefined;
+function collationClause(
+  ctx: Context,
+  table: LogicalTable,
+  column: LogicalColumn,
+  source: SqlDialect | undefined,
+): string {
+  const name = column.type?.kind === "text" ? (column.type.collation ?? assumedCollation(ctx, column)) : undefined;
   if (!name) return "";
   const result = translateCollation(name, source, ctx.target, ctx.options.collations !== "deterministic");
   if (result.kind === "dropped") {
@@ -245,8 +292,15 @@ function collationClause(ctx: Context, table: LogicalTable, column: LogicalColum
     return "";
   }
   if (result.preamble && !ctx.script.preamble.includes(result.preamble)) ctx.script.preamble.unshift(result.preamble);
-  if (result.approximation) ctx.report.add("collation", table.name, MSG.lossCollationApprox(name, result.approximation), column.name);
-  if (column.domain && ctx.dialect.types.enumTypes && ctx.options.enums === "type" && column.domain.kind === "enum" && result.sql) {
+  if (result.approximation)
+    ctx.report.add("collation", table.name, MSG.lossCollationApprox(name, result.approximation), column.name);
+  if (
+    column.domain &&
+    ctx.dialect.types.enumTypes &&
+    ctx.options.enums === "type" &&
+    column.domain.kind === "enum" &&
+    result.sql
+  ) {
     ctx.report.add("collation", table.name, MSG.lossCollationEnumType(name), column.name);
   }
   return result.sql ? ` ${result.sql}` : "";
@@ -260,8 +314,11 @@ function assumedCollation(ctx: Context, column: LogicalColumn): string | undefin
   const source = column.sourceType;
   if (source?.dialect !== "sqlserver" || sameDialect(source.dialect, ctx.target.dbms)) return undefined;
   if (column.type?.kind !== "text" || column.type.encoding === "binary") return undefined;
-  const name = { ci_as: "Latin1_General_CI_AS", ci_ai: "Latin1_General_CI_AI", cs_as: "Latin1_General_CS_AS" }[ctx.options.sqlServerCollation];
-  if (!ctx.report.has(MSG.lossSqlServerCollation(name))) ctx.report.add("collation", "", MSG.lossSqlServerCollation(name));
+  const name = { ci_as: "Latin1_General_CI_AS", ci_ai: "Latin1_General_CI_AI", cs_as: "Latin1_General_CS_AS" }[
+    ctx.options.sqlServerCollation
+  ];
+  if (!ctx.report.has(MSG.lossSqlServerCollation(name)))
+    ctx.report.add("collation", "", MSG.lossSqlServerCollation(name));
   return name;
 }
 
@@ -272,7 +329,7 @@ export function icuCollations(ctx: Context): boolean {
 
 /** Classe de collation effective d'une colonne (déclarée ou supposée) (O-42). */
 export function effectiveCollationClass(ctx: Context, column: LogicalColumn) {
-  const name = column.type?.kind === "text" ? column.type.collation ?? assumedCollation(ctx, column) : undefined;
+  const name = column.type?.kind === "text" ? (column.type.collation ?? assumedCollation(ctx, column)) : undefined;
   return name ? collationClass(name) : undefined;
 }
 
@@ -325,7 +382,12 @@ function usage(table: LogicalTable, column: string): Usage {
   const lower = column.toLowerCase();
   const cites = (expression: string) => referencedColumns(expression).some((c) => c.toLowerCase() === lower);
   const self = table.columns.find((c) => c.name === column);
-  const keys = [table.primaryKey, ...table.uniques.map((u) => u.columns), ...table.indexes.map((i) => i.columns), ...table.foreignKeys.map((fk) => fk.columns)];
+  const keys = [
+    table.primaryKey,
+    ...table.uniques.map((u) => u.columns),
+    ...table.indexes.map((i) => i.columns),
+    ...table.foreignKeys.map((fk) => fk.columns),
+  ];
   return {
     compared: Boolean(self?.check && cites(self.check.expression)) || table.checks.some((c) => cites(c.expression)),
     keyed: Boolean(self?.unique) || keys.some((k) => k.some((c) => c.toLowerCase() === lower)),
@@ -334,18 +396,29 @@ function usage(table: LogicalTable, column: string): Usage {
 
 /** Équivalents des types libres courants (UUID, JSON, INTERVAL) ; sinon texte, avec perte. */
 export function freeTypeFallback(ctx: Context, sql: string): { sql: string; lossy: boolean; loss?: string } {
-  const base = sql.trim().toLowerCase().replace(/\(.*\)/, "");
+  const base = sql
+    .trim()
+    .toLowerCase()
+    .replace(/\(.*\)/, "");
   const { free } = ctx.dialect.types;
   // ROWVERSION / TIMESTAMP SQL Server : numéro de version automatique, sans équivalent (O-41).
-  if (base === "rowversion" && free.rowversion) return { sql: free.rowversion, lossy: false, loss: MSG.lossRowversion(free.rowversion) };
+  if (base === "rowversion" && free.rowversion)
+    return { sql: free.rowversion, lossy: false, loss: MSG.lossRowversion(free.rowversion) };
   // INTERVAL Oracle → PostgreSQL : la précision du premier champ (jours, années) n'y existe pas (O-39).
-  const interval = /^interval\s+(day|year)\s*(?:\(\s*(\d+)\s*\))?\s+to\s+(second|month)\s*(?:\(\s*(\d+)\s*\))?$/i.exec(sql.trim());
+  const interval = /^interval\s+(day|year)\s*(?:\(\s*(\d+)\s*\))?\s+to\s+(second|month)\s*(?:\(\s*(\d+)\s*\))?$/i.exec(
+    sql.trim(),
+  );
   if (interval && free.intervals) {
     const [, first, , last, fraction] = interval;
     const emitted = `INTERVAL ${first!.toUpperCase()} TO ${last!.toUpperCase()}${fraction !== undefined ? `(${fraction})` : ""}`;
     return { sql: emitted, lossy: false, loss: MSG.lossIntervalDays(sql.trim(), emitted) };
   }
-  const known = base === "uuid" || base === "uniqueidentifier" ? free.uuid : base === "json" || base === "jsonb" ? free.json : undefined;
+  const known =
+    base === "uuid" || base === "uniqueidentifier"
+      ? free.uuid
+      : base === "json" || base === "jsonb"
+        ? free.json
+        : undefined;
   if (known) return { sql: known, lossy: !["uuid", "json", "jsonb", "uniqueidentifier"].includes(known.toLowerCase()) };
   const { dbms, version, custom } = ctx.target;
   const text = sqlType({ kind: "text", encoding: "unicode", length: "large" }, dbms, version, custom?.types) ?? "TEXT";

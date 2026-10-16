@@ -58,7 +58,12 @@ export async function replicaChannel<Out, In>() {
  * Ouvre (ou replace) une fenêtre flottante : sans cadre, transparente, rattachée à la principale
  * (devant elle, derrière les autres applications avec elle). Ouverte sans prendre le focus.
  */
-export async function openFloat(label: string, url: string, rect: ScreenRect, { resizable, focusable }: { resizable: boolean; focusable: boolean }) {
+export async function openFloat(
+  label: string,
+  url: string,
+  rect: ScreenRect,
+  { resizable, focusable }: { resizable: boolean; focusable: boolean },
+) {
   const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
   const existing = await WebviewWindow.getByLabel(label);
   if (existing) return placeFloat(label, rect);
@@ -104,7 +109,6 @@ export async function openFloats(): Promise<string[]> {
   return (await getAllWebviewWindows()).map((w) => w.label).filter((l) => l.startsWith("float-"));
 }
 
-
 export async function closeAllFloats() {
   for (const label of await openFloats()) await closeFloat(label);
 }
@@ -140,7 +144,6 @@ export async function onGeometryChange(handler: () => void): Promise<() => void>
     offResized();
   };
 }
-
 
 /** Rend le focus à la fenêtre principale (clavier et raccourcis du canevas). */
 export async function focusMain() {

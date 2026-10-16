@@ -2,7 +2,7 @@ import type { LogicalColumn, LogicalTable } from "../mld/logical";
 import { MSG } from "../validation/messages";
 import { check } from "./checks";
 import { place, placement, singleNullLoss, stateClause } from "./constraints";
-import { sqlString, type Context } from "./context";
+import { type Context, sqlString } from "./context";
 import { sameDialect } from "./dialects";
 import { parseDefault, renderOperand } from "./expressions";
 import { translateGenerated } from "./generatedExpression";
@@ -11,7 +11,13 @@ import { sequenceDefault } from "./sequences";
 import { typeOf } from "./types";
 
 /** Définition d'une colonne dans le CREATE TABLE. */
-export function columnLine(ctx: Context, table: LogicalTable, c: LogicalColumn, inlinePk: boolean, after: string[]): string {
+export function columnLine(
+  ctx: Context,
+  table: LogicalTable,
+  c: LogicalColumn,
+  inlinePk: boolean,
+  after: string[],
+): string {
   const { dbms } = ctx.target;
   const d = ctx.dialect;
   const parts = [q(ctx, c.name, c.caseSensitive)];
@@ -55,7 +61,15 @@ export function columnLine(ctx: Context, table: LogicalTable, c: LogicalColumn, 
     if (expression !== null) {
       const active = where === "inline";
       const definition = `${name}CHECK (${yearRange && active ? `(${expression}) AND ${yearRange}` : expression})${stateClause(ctx, table, "check", label, c.check.state)}`;
-      const line = place(ctx, table, definition, where, after, c.check.state, () => constraintName(ctx, table, undefined, "CK", [c.name], true)!);
+      const line = place(
+        ctx,
+        table,
+        definition,
+        where,
+        after,
+        c.check.state,
+        () => constraintName(ctx, table, undefined, "CK", [c.name], true)!,
+      );
       if (line) parts.push(line);
       merged = Boolean(yearRange) && active;
     } else after.push(`-- ${MSG.untranslatedCheck(`${table.name}.${c.name}`, c.check.expression)}`);
@@ -80,13 +94,23 @@ function defaultClause(ctx: Context, table: LogicalTable, column: LogicalColumn,
   const parsed = parseDefault(value.expression);
   let rendered = parsed && renderOperand(parsed, ctx.target);
   // SYSDATE dans une colonne devenue DATE (option) : date du jour (O-39).
-  if (parsed?.kind === "date" && (parsed.fn === "localtimestamp" || parsed.fn === "localtimestamp_seconds") && /^DATE\b/i.test(type ?? "")) {
+  if (
+    parsed?.kind === "date" &&
+    (parsed.fn === "localtimestamp" || parsed.fn === "localtimestamp_seconds") &&
+    /^DATE\b/i.test(type ?? "")
+  ) {
     rendered = renderOperand({ kind: "date", fn: "current_date" }, ctx.target);
   }
   // SYS_GUID() (Oracle), NEWSEQUENTIALID() (SQL Server, croissant) → UUID aléatoire : approximation (O-39, O-41).
   // NEWSEQUENTIALID() → uuidv7() (croissant) à partir de PostgreSQL 18 : rien de perdu (O-42).
   const uuidSource = /^\(*\s*(sys_guid|newsequentialid)\s*\(/i.exec(value.expression)?.[1];
-  if (parsed?.kind === "function" && parsed.fn.startsWith("uuid") && uuidSource && rendered && !/^\(*\s*(sys_guid|newsequentialid|uuidv7)/i.test(rendered)) {
+  if (
+    parsed?.kind === "function" &&
+    parsed.fn.startsWith("uuid") &&
+    uuidSource &&
+    rendered &&
+    !/^\(*\s*(sys_guid|newsequentialid|uuidv7)/i.test(rendered)
+  ) {
     ctx.report.add("default", table.name, MSG.lossUuidDefault(`${uuidSource.toUpperCase()}()`, rendered), column.name);
   }
   // Booléen (TINYINT(1) MySQL) : 0 / 1 → FALSE / TRUE (O-35).

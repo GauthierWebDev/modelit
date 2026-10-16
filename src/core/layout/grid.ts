@@ -99,24 +99,44 @@ const quantize = (x: number) => Math.round(x * 1e6) / 1e6;
 // ---------------------------------------------------------------------------------------------
 // Géométrie
 
-const orient = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+const orient = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) =>
+  (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
 
 /** Intersection stricte de deux segments (extrémités partagées exclues) ; recouvrement colinéaire compris. */
-function segmentsCross(px: number, py: number, qx: number, qy: number, rx: number, ry: number, sx: number, sy: number): boolean {
+function segmentsCross(
+  px: number,
+  py: number,
+  qx: number,
+  qy: number,
+  rx: number,
+  ry: number,
+  sx: number,
+  sy: number,
+): boolean {
   const d1 = orient(rx, ry, sx, sy, px, py);
   const d2 = orient(rx, ry, sx, sy, qx, qy);
   const d3 = orient(px, py, qx, qy, rx, ry);
   const d4 = orient(px, py, qx, qy, sx, sy);
   if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
   if (d1 === 0 && d2 === 0) {
-    const overlap = (u: number, v: number, w: number, z: number) => Math.min(Math.max(u, v), Math.max(w, z)) - Math.max(Math.min(u, v), Math.min(w, z));
+    const overlap = (u: number, v: number, w: number, z: number) =>
+      Math.min(Math.max(u, v), Math.max(w, z)) - Math.max(Math.min(u, v), Math.min(w, z));
     return overlap(px, qx, rx, sx) > 1e-6 || overlap(py, qy, ry, sy) > 1e-6;
   }
   return false;
 }
 
 /** Le segment traverse-t-il le rectangle centré en (cx, cy), de demi-dimensions hx, hy ? (Liang-Barsky) */
-function segmentHitsBox(px: number, py: number, qx: number, qy: number, cx: number, cy: number, hx: number, hy: number): boolean {
+function segmentHitsBox(
+  px: number,
+  py: number,
+  qx: number,
+  qy: number,
+  cx: number,
+  cy: number,
+  hx: number,
+  hy: number,
+): boolean {
   const dx = qx - px;
   const dy = qy - py;
   let t0 = 0;
@@ -213,7 +233,8 @@ class Problem {
     edges: GridEdge[],
     readonly options: GridOptions,
   ) {
-    const n = (this.n = nodes.length);
+    const n = nodes.length;
+    this.n = n;
     // Géométrie de recherche : cellules de taille moyenne, plus proches de l'affichage final
     // (colonnes ajustées à leur contenu) que des cellules à la taille du plus grand objet.
     const mean = (f: (x: GridNode) => number) => nodes.reduce((sum, x) => sum + f(x), 0) / n;
@@ -267,7 +288,11 @@ class Problem {
     this.offX = new Float64Array(n);
     this.offY = new Float64Array(n);
     nodes.forEach((x, v) => {
-      const box = placeInCell(x, Math.max(x.width, this.cellW - options.gapX), Math.max(x.height, this.cellH - options.gapY));
+      const box = placeInCell(
+        x,
+        Math.max(x.width, this.cellW - options.gapX),
+        Math.max(x.height, this.cellH - options.gapY),
+      );
       this.offX[v] = box.x + (x.mcdWidth ?? x.width) / 2;
       this.offY[v] = box.y + (x.mcdHeight ?? x.height) / 2;
     });
@@ -310,7 +335,9 @@ class State {
   ) {
     this.cellOf = Int32Array.from(cellOf);
     this.nodeAt = new Int32Array(pb.cells).fill(-1);
-    this.cellOf.forEach((c, v) => (this.nodeAt[c] = v));
+    this.cellOf.forEach((c, v) => {
+      this.nodeAt[c] = v;
+    });
     this.px = new Float64Array(pb.n);
     this.py = new Float64Array(pb.n);
     this.edgeMark = new Int32Array(pb.m);
@@ -520,7 +547,8 @@ class State {
     }
     for (let v = 0; v < pb.n; v++) {
       const list = pb.incident[v]!;
-      for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) cost += this.angleTerm(v, list[i]!, list[j]!, quality);
+      for (let i = 0; i < list.length; i++)
+        for (let j = i + 1; j < list.length; j++) cost += this.angleTerm(v, list[i]!, list[j]!, quality);
     }
     return cost;
   }
@@ -573,7 +601,8 @@ class State {
         for (let b = a + 1; b < list.length; b++) {
           const e = list[a]!;
           const f = list[b]!;
-          if (this.nodeMark[x] === stamp || this.edgeMark[e] === stamp || this.edgeMark[f] === stamp) cost += this.angleTerm(x, e, f);
+          if (this.nodeMark[x] === stamp || this.edgeMark[e] === stamp || this.edgeMark[f] === stamp)
+            cost += this.angleTerm(x, e, f);
         }
       }
     }
@@ -678,7 +707,9 @@ function initialCells(pb: Problem, rnd: () => number, shuffled: boolean): number
   };
   const cells = Array.from({ length: pb.cells }, (_, i) => i).sort((a, b) => distance(a) - distance(b) || a - b);
   const cellOf = new Array<number>(pb.n);
-  order.forEach((v, i) => (cellOf[v] = cells[i]!));
+  order.forEach((v, i) => {
+    cellOf[v] = cells[i]!;
+  });
   return cellOf;
 }
 
@@ -738,14 +769,18 @@ function forceCells(pb: Problem, rnd: () => number): number[] {
   const rank = (values: Float64Array, slots: number) => {
     const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => values[a]! - values[b]! || a - b);
     const result = new Float64Array(n);
-    order.forEach((v, i) => (result[v] = n > 1 ? (i / (n - 1)) * (slots - 1) : 0));
+    order.forEach((v, i) => {
+      result[v] = n > 1 ? (i / (n - 1)) * (slots - 1) : 0;
+    });
     return result;
   };
   const col = rank(x, pb.cols);
   const row = rank(y, pb.rows);
   const taken = new Uint8Array(pb.cells);
   const cellOf = new Array<number>(n);
-  const byDegree = Array.from({ length: n }, (_, i) => i).sort((a, b) => pb.incident[b]!.length - pb.incident[a]!.length || a - b);
+  const byDegree = Array.from({ length: n }, (_, i) => i).sort(
+    (a, b) => pb.incident[b]!.length - pb.incident[a]!.length || a - b,
+  );
   for (const v of byDegree) {
     let best = -1;
     let bestD = Infinity;
@@ -913,9 +948,15 @@ export interface ChunkResult {
 }
 
 /** Calcule le lot de départs `chunk` (0 … LAYOUT_CHUNKS - 1). */
-export function gridLayoutChunk(nodes: GridNode[], edges: GridEdge[], chunk: number, options: Partial<GridOptions> = {}): ChunkResult {
+export function gridLayoutChunk(
+  nodes: GridNode[],
+  edges: GridEdge[],
+  chunk: number,
+  options: Partial<GridOptions> = {},
+): ChunkResult {
   const opts = { ...DEFAULTS, ...options };
-  if (nodes.length === 0) return { chunk, positions: [], cost: 0, quality: { through: 0, crossings: 0, closeAngles: 0 } };
+  if (nodes.length === 0)
+    return { chunk, positions: [], cost: 0, quality: { through: 0, crossings: 0, closeAngles: 0 } };
   const pb = new Problem(nodes, edges, opts);
   const large = pb.n > LOCAL_SEARCH_ABOVE;
   const radius = large ? RADIUS : Infinity;
@@ -946,7 +987,10 @@ export function gridLayoutChunk(nodes: GridNode[], edges: GridEdge[], chunk: num
   }
 
   const corners = fittedCorners(pb, best!.cells);
-  const positions = nodes.map((node, v): [string, Point] => [node.id, { x: Math.round(corners[v]!.x), y: Math.round(corners[v]!.y) }]);
+  const positions = nodes.map((node, v): [string, Point] => [
+    node.id,
+    { x: Math.round(corners[v]!.x), y: Math.round(corners[v]!.y) },
+  ]);
   return { chunk, positions, cost: best!.cost, quality: best!.quality };
 }
 
@@ -973,6 +1017,7 @@ export function bestChunk(results: ChunkResult[]): GridLayoutResult {
 /** Tous les lots, l'un après l'autre jusqu'à décision (tests, ou absence de Web Worker). */
 export function gridLayout(nodes: GridNode[], edges: GridEdge[], options: Partial<GridOptions> = {}): GridLayoutResult {
   const results: ChunkResult[] = [];
-  for (let chunk = 0; chunk < LAYOUT_CHUNKS && !decidedChunk(results); chunk++) results.push(gridLayoutChunk(nodes, edges, chunk, options));
+  for (let chunk = 0; chunk < LAYOUT_CHUNKS && !decidedChunk(results); chunk++)
+    results.push(gridLayoutChunk(nodes, edges, chunk, options));
   return bestChunk(results);
 }

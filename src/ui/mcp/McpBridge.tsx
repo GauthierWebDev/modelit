@@ -53,13 +53,23 @@ export function McpBridge() {
         .then((response) => respond(response ? JSON.stringify(response) : null))
         .catch((e: unknown) => {
           const id = (message as { id?: unknown } | null)?.id ?? null;
-          respond(JSON.stringify({ jsonrpc: "2.0", id, error: { code: -32603, message: e instanceof Error ? e.message : String(e) } }));
+          respond(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              id,
+              error: { code: -32603, message: e instanceof Error ? e.message : String(e) },
+            }),
+          );
         });
-    }).then((f) => (disposed ? f() : (off = f)));
+    }).then((f) => {
+      if (disposed) f();
+      else off = f;
+    });
     let offReleased: (() => void) | undefined;
-    void onMcpReleased(() => useMcpStore.setState({ status: "released", error: null })).then((f) =>
-      disposed ? f() : (offReleased = f),
-    );
+    void onMcpReleased(() => useMcpStore.setState({ status: "released", error: null })).then((f) => {
+      if (disposed) f();
+      else offReleased = f;
+    });
     return () => {
       disposed = true;
       off?.();

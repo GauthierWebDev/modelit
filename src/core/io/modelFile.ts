@@ -1,9 +1,9 @@
 import { TYPE_KEYS, type TypeTemplates } from "../dbms/typeMapping";
 import { resolveVersion } from "../dbms/versions";
+import type { ModelDocument } from "../model/document";
+import { type DocumentSettings, defaultSettings } from "../model/settings";
 import { migrateLegacyPattern } from "../naming/patterns";
 import { MSG } from "../validation/messages";
-import type { ModelDocument } from "../model/document";
-import { defaultSettings, type DocumentSettings } from "../model/settings";
 
 /**
  * Format de fichier natif : JSON textuel, versionné, lisible et compatible git (NF5).
@@ -111,7 +111,10 @@ function normalize(model: RawModel): ModelDocument {
   settings.autoIdMask = migrateLegacyPattern(settings.autoIdMask);
   settings.keys.primary = migrateLegacyPattern(settings.keys.primary);
   settings.keys.foreign = migrateLegacyPattern(settings.keys.foreign);
-  settings.dbmsVersion = resolveVersion(settings.dbms, typeof raw.dbmsVersion === "string" ? raw.dbmsVersion : undefined);
+  settings.dbmsVersion = resolveVersion(
+    settings.dbms,
+    typeof raw.dbmsVersion === "string" ? raw.dbmsVersion : undefined,
+  );
   settings.customDbms = readCustomDbms(raw.customDbms);
   if (!settings.customDbms) delete settings.customDbms;
   const layout = model.layout;
@@ -141,7 +144,9 @@ const asArray = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 function readCustomDbms(raw: unknown): DocumentSettings["customDbms"] {
   if (!isRecord(raw) || typeof raw.id !== "string" || typeof raw.name !== "string") return undefined;
   const types: TypeTemplates = {};
-  if (isRecord(raw.types)) for (const key of TYPE_KEYS) if (typeof raw.types[key] === "string" && raw.types[key].trim()) types[key] = raw.types[key];
+  if (isRecord(raw.types))
+    for (const key of TYPE_KEYS)
+      if (typeof raw.types[key] === "string" && raw.types[key].trim()) types[key] = raw.types[key];
   return { id: raw.id, name: raw.name, types };
 }
 

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { updateDock } from "@/app/dock/actions";
+import { type DragItem, type DropTarget, moveGroup, moveSection } from "@/app/dock/layout";
 import { usePreferencesStore } from "@/app/preferencesStore";
-import { moveGroup, moveSection, type DragItem, type DropTarget } from "@/app/dock/layout";
 
 /**
  * Glisser-déposer des onglets et des groupes (override O-46) : état partagé par les cibles,
@@ -17,7 +17,11 @@ import { moveGroup, moveSection, type DragItem, type DropTarget } from "@/app/do
 
 let screenOrigin = { x: 0, y: 0 };
 export const setScreenOrigin = (origin: { x: number; y: number }) => (screenOrigin = origin);
-export const toScreen = <R extends { x: number; y: number }>(r: R): R => ({ ...r, x: r.x + screenOrigin.x, y: r.y + screenOrigin.y });
+export const toScreen = <R extends { x: number; y: number }>(r: R): R => ({
+  ...r,
+  x: r.x + screenOrigin.x,
+  y: r.y + screenOrigin.y,
+});
 
 let dropDelegate: ((item: DragItem, screen: { x: number; y: number }) => void) | null = null;
 export const setDropDelegate = (delegate: typeof dropDelegate) => (dropDelegate = delegate);
@@ -46,7 +50,12 @@ export function targetAt(x: number, y: number, item: DragItem): DropTarget {
   const group = element?.closest<HTMLElement>("[data-drop-group]")?.dataset.dropGroup;
   if (group && item.kind === "section" && group !== item.group) return { kind: "group", group };
   const slot = element?.closest<HTMLElement>("[data-drop-zone]");
-  if (slot) return { kind: "zone", zone: slot.dataset.dropZone as "right" | "bottom", index: Number(slot.dataset.dropIndex ?? 0) };
+  if (slot)
+    return {
+      kind: "zone",
+      zone: slot.dataset.dropZone as "right" | "bottom",
+      index: Number(slot.dataset.dropIndex ?? 0),
+    };
   // Groupe entier : toute la zone d'ancrage (et ses abords) est une cible.
   if (item.kind === "group") {
     const zone = zoneTargetAt(x, y);
@@ -57,7 +66,9 @@ export function targetAt(x: number, y: number, item: DragItem): DropTarget {
   const sy = y + screenOrigin.y;
   const header = usePreferencesStore
     .getState()
-    .dock.floating.find((g) => sx >= g.rect.x && sx <= g.rect.x + g.rect.width && sy >= g.rect.y && sy <= g.rect.y + 34);
+    .dock.floating.find(
+      (g) => sx >= g.rect.x && sx <= g.rect.x + g.rect.width && sy >= g.rect.y && sy <= g.rect.y + 34,
+    );
   if (header && item.kind === "section" && header.id !== item.group) return { kind: "group", group: header.id };
   return { kind: "float", rect: { x: x - 24 + screenOrigin.x, y: y - 14 + screenOrigin.y, ...FLOAT_SIZE } };
 }
@@ -72,9 +83,12 @@ const ZONE_SNAP = 48;
 export function zoneTargetAt(x: number, y: number): DropTarget | null {
   for (const zone of document.querySelectorAll<HTMLElement>("[data-dock-zone]")) {
     const r = zone.getBoundingClientRect();
-    if (x < r.left - ZONE_SNAP || x > r.right + ZONE_SNAP || y < r.top - ZONE_SNAP || y > r.bottom + ZONE_SNAP) continue;
+    if (x < r.left - ZONE_SNAP || x > r.right + ZONE_SNAP || y < r.top - ZONE_SNAP || y > r.bottom + ZONE_SNAP)
+      continue;
     const name = zone.dataset.dockZone as "right" | "bottom";
-    const groups = [...zone.querySelectorAll<HTMLElement>(":scope > [data-group-id], :scope > .contents > [data-group-id]")];
+    const groups = [
+      ...zone.querySelectorAll<HTMLElement>(":scope > [data-group-id], :scope > .contents > [data-group-id]"),
+    ];
     const index = groups.filter((g) => {
       const b = g.getBoundingClientRect();
       return name === "right" ? b.top + b.height / 2 < y : b.left + b.width / 2 < x;
@@ -95,7 +109,12 @@ const THRESHOLD = 4;
  * Démarre un glisser depuis un `pointerdown` ; `onClick` si le pointeur n'a pas bougé.
  * `onDrop` reçoit la cible au relâchement.
  */
-export function startDrag(event: { clientX: number; clientY: number; pointerId: number }, item: DragItem, onDrop: (target: DropTarget) => void, onClick?: () => void) {
+export function startDrag(
+  event: { clientX: number; clientY: number; pointerId: number },
+  item: DragItem,
+  onDrop: (target: DropTarget) => void,
+  onClick?: () => void,
+) {
   const start = { x: event.clientX, y: event.clientY };
   let moving = false;
   const move = (e: PointerEvent) => {
@@ -103,7 +122,11 @@ export function startDrag(event: { clientX: number; clientY: number; pointerId: 
     moving = true;
     const target = targetAt(e.clientX, e.clientY, item);
     const state = useDragStore.getState();
-    useDragStore.setState({ item, pointer: { x: e.clientX, y: e.clientY }, target: sameTarget(state.target, target) ? state.target : target });
+    useDragStore.setState({
+      item,
+      pointer: { x: e.clientX, y: e.clientY },
+      target: sameTarget(state.target, target) ? state.target : target,
+    });
   };
   const end = (e: PointerEvent) => {
     window.removeEventListener("pointermove", move);

@@ -1,5 +1,5 @@
 import { isAtLeast } from "../../dbms/versions";
-import { standard, type Dialect } from "./dialect";
+import { type Dialect, standard } from "./dialect";
 
 /** Méthodes d'index de PostgreSQL autres que B-tree (non uniques). */
 const METHODS = ["hash", "gin", "gist", "brin", "spgist"];

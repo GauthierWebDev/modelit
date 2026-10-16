@@ -43,7 +43,8 @@ export function isBinaryCollation(name: string): boolean {
  */
 export function collationClass(name: string, declared?: Map<string, Record<string, string>>): CollationClass {
   const n = name.replace(/^"|"$/g, "").toLowerCase();
-  if (n === "c" || n === "posix" || n === "binary" || n === "ucs_basic" || n.endsWith("_bin") || n.endsWith("_bin2")) return "binary";
+  if (n === "c" || n === "posix" || n === "binary" || n === "ucs_basic" || n.endsWith("_bin") || n.endsWith("_bin2"))
+    return "binary";
   const icu = declared?.get(n);
   if (icu && icu.deterministic === "false") {
     if (/ks-level1/.test(icu.locale ?? "")) return "ai_ci";
@@ -92,17 +93,36 @@ export function defaultCollationClass(dialect: SqlDialect): CollationClass | und
 function languageSpecific(name: string): boolean {
   const n = name.toLowerCase();
   if (!/_ci$|_ci_a[is]\b/.test(n)) return false;
-  return !/^(utf8mb4|utf8mb3|utf8|latin1|ascii|ucs2|utf16|utf32)_(general|unicode|unicode_520|0900_ai|0900_as)_ci$/.test(n) && !/^(sql_)?latin1_general(_\d+)?_ci_a[is]$/.test(n);
+  return (
+    !/^(utf8mb4|utf8mb3|utf8|latin1|ascii|ucs2|utf16|utf32)_(general|unicode|unicode_520|0900_ai|0900_as)_ci$/.test(
+      n,
+    ) && !/^(sql_)?latin1_general(_\d+)?_ci_a[is]$/.test(n)
+  );
 }
 
-export function translateCollation(name: string, source: SqlDialect | undefined, target: Target, icu = true): CollationResult {
+export function translateCollation(
+  name: string,
+  source: SqlDialect | undefined,
+  target: Target,
+  icu = true,
+): CollationResult {
   const klass = collationClass(name);
   // Serveur sans ICU (option) : collation déterministe par défaut, comparaisons sensibles (O-38).
-  if (!icu && target.dbms === "postgresql" && (klass === "ci" || klass === "ai_ci") && !(source && sameFamily(source, target.dbms))) {
+  if (
+    !icu &&
+    target.dbms === "postgresql" &&
+    (klass === "ci" || klass === "ai_ci") &&
+    !(source && sameFamily(source, target.dbms))
+  ) {
     return { kind: "emit", sql: "", approximation: "deterministic" };
   }
   const result = translateClass(name, source, target);
-  if (result.kind === "emit" && !result.approximation && !(source && sameFamily(source, target.dbms)) && languageSpecific(name)) {
+  if (
+    result.kind === "emit" &&
+    !result.approximation &&
+    !(source && sameFamily(source, target.dbms)) &&
+    languageSpecific(name)
+  ) {
     return { ...result, approximation: "language" };
   }
   return result;
@@ -152,9 +172,14 @@ function translateClass(name: string, source: SqlDialect | undefined, target: Ta
     case "mysql":
       return { kind: "emit", sql: klass === "ci" ? "COLLATE utf8mb4_0900_as_ci" : "COLLATE utf8mb4_0900_ai_ci" };
     case "mariadb":
-      return klass === "ai_ci" ? { kind: "emit", sql: "COLLATE utf8mb4_unicode_ci" } : { kind: "emit", sql: "COLLATE utf8mb4_unicode_ci", approximation: "accents" };
+      return klass === "ai_ci"
+        ? { kind: "emit", sql: "COLLATE utf8mb4_unicode_ci" }
+        : { kind: "emit", sql: "COLLATE utf8mb4_unicode_ci", approximation: "accents" };
     case "sqlserver":
-      return { kind: "emit", sql: klass === "ci" ? "COLLATE Latin1_General_100_CI_AS" : "COLLATE Latin1_General_100_CI_AI" };
+      return {
+        kind: "emit",
+        sql: klass === "ci" ? "COLLATE Latin1_General_100_CI_AS" : "COLLATE Latin1_General_100_CI_AI",
+      };
     case "sqlite":
       // NOCASE : casse ASCII seulement, accents distingués.
       return { kind: "emit", sql: "COLLATE NOCASE", approximation: "nocase" };

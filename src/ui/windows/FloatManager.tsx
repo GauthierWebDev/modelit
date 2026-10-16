@@ -1,6 +1,14 @@
 import { useEffect } from "react";
 import { updateDock } from "@/app/dock/actions";
-import { findGroup, keepOnScreen, moveGroup, setFloatingRect, setToolbar, type DockLayout, type DragItem } from "@/app/dock/layout";
+import {
+  type DockLayout,
+  type DragItem,
+  findGroup,
+  keepOnScreen,
+  moveGroup,
+  setFloatingRect,
+  setToolbar,
+} from "@/app/dock/layout";
 import { usePreferencesStore } from "@/app/preferencesStore";
 import { startOwner } from "@/app/windows/owner";
 import type { ToMain, ToReplica } from "@/app/windows/protocol";
@@ -14,9 +22,9 @@ import {
   openFloats,
   ownerChannel,
   placeFloat,
+  type ScreenRect,
   screens,
   toolbarLabel,
-  type ScreenRect,
 } from "@/platform/floatWindows";
 import { dropItem, setScreenOrigin, targetAt, useDragStore } from "@/ui/dock/drag";
 import { useToolbarBand } from "@/ui/toolbar/ToolbarHost";
@@ -45,11 +53,21 @@ function desiredFloats(layout: DockLayout) {
     const p = layout.toolbar.position ?? { x: inner.x + (inner.width - TOOLBAR_START.width) / 2, y: inner.y + 56 };
     // Fenêtre focalisable : sous macOS, une fenêtre qui ne peut pas prendre le focus ne reçoit pas le
     // survol (ni effet de survol, ni infobulle). Elle rend le focus après chaque clic (FloatRoot).
-    floats.set(toolbarLabel, { url: "/?float=toolbar", rect: { ...p, ...TOOLBAR_START }, resizable: false, focusable: true });
+    floats.set(toolbarLabel, {
+      url: "/?float=toolbar",
+      rect: { ...p, ...TOOLBAR_START },
+      resizable: false,
+      focusable: true,
+    });
   }
   // Un groupe contient des champs de saisie (Propriétés, Modèle) : il doit pouvoir prendre le focus.
   for (const g of layout.floating) {
-    floats.set(groupLabel(g.id), { url: `/?float=group&id=${encodeURIComponent(g.id)}`, rect: g.rect, resizable: true, focusable: true });
+    floats.set(groupLabel(g.id), {
+      url: `/?float=group&id=${encodeURIComponent(g.id)}`,
+      rect: g.rect,
+      resizable: true,
+      focusable: true,
+    });
   }
   return floats;
 }
@@ -86,15 +104,20 @@ function onMoved(message: Extract<ToMain, { type: "moved" }>) {
   const { float, rect, pointer, final } = message;
   const layout = usePreferencesStore.getState().dock;
   if (!pointer) {
-    if (float.kind === "toolbar" && layout.toolbar.floating) updateDock((l) => setToolbar(l, { position: { x: rect.x, y: rect.y } }));
+    if (float.kind === "toolbar" && layout.toolbar.floating)
+      updateDock((l) => setToolbar(l, { position: { x: rect.x, y: rect.y } }));
     if (float.kind === "group" && findGroup(layout, float.id)) updateDock((l) => setFloatingRect(l, float.id, rect));
     return;
   }
   const p = toClient(pointer);
   if (float.kind === "toolbar") {
-    const over = p.y > -TOOLBAR_BAND_ABOVE && p.y < TOOLBAR_BAND && p.x >= -ZONE_MARGIN && p.x <= inner.width + ZONE_MARGIN;
+    const over =
+      p.y > -TOOLBAR_BAND_ABOVE && p.y < TOOLBAR_BAND && p.x >= -ZONE_MARGIN && p.x <= inner.width + ZONE_MARGIN;
     if (useToolbarBand.getState().over !== (over && !final)) useToolbarBand.setState({ over: over && !final });
-    if (final) updateDock((l) => setToolbar(l, over ? { floating: false } : { floating: true, position: { x: rect.x, y: rect.y } }));
+    if (final)
+      updateDock((l) =>
+        setToolbar(l, over ? { floating: false } : { floating: true, position: { x: rect.x, y: rect.y } }),
+      );
     return;
   }
   const item: DragItem = { kind: "group", group: float.id };
@@ -147,7 +170,7 @@ export function FloatManager() {
     })();
     return () => {
       disposed = true;
-      offs.forEach((off) => off());
+      for (const off of offs) off();
     };
   }, []);
 

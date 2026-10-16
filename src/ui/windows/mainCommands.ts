@@ -1,5 +1,5 @@
-import { newDocument, newTab, openDocument, saveDocument } from "@/app/fileCommands";
 import { runCollabAction } from "@/app/collab/session";
+import { newDocument, newTab, openDocument, saveDocument } from "@/app/fileCommands";
 import type { MainCommand } from "@/app/windows/protocol";
 import { activeDocument } from "@/app/workspace";
 import { autoLayoutTables } from "@/ui/canvas/autoLayout";

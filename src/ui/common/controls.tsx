@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { usePreferencesStore } from "@/app/preferencesStore";
 import { t } from "@/i18n";
 import { tip } from "./Tooltip";
@@ -25,6 +25,7 @@ export function CommitInput({
   onEnter,
 }: {
   value: string;
+  // biome-ignore lint/suspicious/noConfusingVoidType: un rappel qui ne renvoie rien (void) est accepté ; une chaîne est un message d'erreur
   onCommit: (value: string) => string | null | void;
   placeholder?: string;
   className?: string;
@@ -54,6 +55,7 @@ export function CommitInput({
         className={`${inputClass} ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
         value={draft}
         placeholder={placeholder}
+        // biome-ignore lint/a11y/noAutofocus: demandé explicitement par l'appelant (saisie qui vient de s'ouvrir)
         autoFocus={autoFocus}
         ref={(input) => {
           if (!input || !pendingSelect.current || input !== document.activeElement) return;
@@ -113,7 +115,12 @@ export function Checkbox({
 }) {
   return (
     <label className="inline-flex items-center gap-1.5 text-sm select-none" {...tip(tooltip)}>
-      <input type="checkbox" className="accent-blue-600" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <input
+        type="checkbox"
+        className="accent-blue-600"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
       {label}
     </label>
   );
@@ -143,6 +150,7 @@ export function Select<T extends string>({
 
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: le champ est passé en children
     <label className="grid grid-cols-[7rem_1fr] items-start gap-2 text-sm">
       <span className="pt-0.5 text-neutral-500 dark:text-neutral-400">{label}</span>
       {children}
@@ -175,7 +183,11 @@ export function Section({
   return (
     <section className="border-b border-neutral-200 px-3 py-3 dark:border-neutral-700">
       <div className={`flex items-center justify-between ${open ? "mb-2" : ""}`}>
-        {collapsible ? <DisclosureToggle id={collapsible} open={open} title={title} summary={summary} /> : <h3 className={sectionTitle}>{title}</h3>}
+        {collapsible ? (
+          <DisclosureToggle id={collapsible} open={open} title={title} summary={summary} />
+        ) : (
+          <h3 className={sectionTitle}>{title}</h3>
+        )}
         {open && actions}
       </div>
       {open && <div className="flex flex-col gap-2">{children}</div>}
@@ -198,9 +210,20 @@ export function Disclosure({ id, title, children }: { id: string; title: string;
  * En-tête cliquable d'un bloc repliable. Pas un <button> : il reste utilisable dans un
  * formulaire désactivé (session en lecture seule), où l'on consulte sans modifier.
  */
-function DisclosureToggle({ id, open, title, summary }: { id: string; open: boolean; title: string; summary?: ReactNode }) {
+function DisclosureToggle({
+  id,
+  open,
+  title,
+  summary,
+}: {
+  id: string;
+  open: boolean;
+  title: string;
+  summary?: ReactNode;
+}) {
   const toggle = () => usePreferencesStore.getState().setDisclosure(id, !open);
   return (
+    // biome-ignore lint/a11y/useSemanticElements: utilisable dans un formulaire désactivé (voir ci-dessus)
     <span
       role="button"
       tabIndex={0}
@@ -225,7 +248,12 @@ export function ErrorBanner({ message, onClose }: { message: string | null; onCl
   return (
     <div className="mx-3 mt-3 flex items-start gap-2 rounded border border-red-300 bg-red-50 px-2 py-1.5 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
       <span className="flex-1">{message}</span>
-      <button className="text-red-500 hover:text-red-700" onClick={onClose} aria-label={t("common.close")}>
+      <button
+        type="button"
+        className="text-red-500 hover:text-red-700"
+        onClick={onClose}
+        aria-label={t("common.close")}
+      >
         ×
       </button>
     </div>

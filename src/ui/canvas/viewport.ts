@@ -1,8 +1,8 @@
-import { diagramNodes, positionOf, type ModelDocument, type Point } from "@core/index";
+import { diagramNodes, type ModelDocument, type Point, positionOf } from "@core/index";
 import { logicalModelOf } from "@/app/derived";
 import type { ViewMode } from "@/app/document/documentView";
 import type { DocumentHandle } from "@/app/document/handle";
-import { associationNamesByLink, nodeLayout, type NodeLayout, type Rect } from "./geometry";
+import { associationNamesByLink, type NodeLayout, nodeLayout, type Rect } from "./geometry";
 import { tableLayouts } from "./logicalGeometry";
 
 /**
@@ -43,7 +43,8 @@ export function zoomTo(
   setViewport({ zoom, x: anchor.x - modelX * zoom, y: anchor.y - modelY * zoom });
   // Le zoom peut avoir été borné : recaler sur la valeur effective.
   const effective = doc.view.getState().viewport.zoom;
-  if (effective !== zoom) setViewport({ zoom: effective, x: anchor.x - modelX * effective, y: anchor.y - modelY * effective });
+  if (effective !== zoom)
+    setViewport({ zoom: effective, x: anchor.x - modelX * effective, y: anchor.y - modelY * effective });
 }
 
 export const zoomBy = (doc: DocumentHandle, factor: number, anchor?: Point) =>
@@ -52,7 +53,9 @@ export const zoomBy = (doc: DocumentHandle, factor: number, anchor?: Point) =>
 /** Emprise de la vue : objets, et en MCD les cassures des liens (boucles des réflexives, qui débordent). */
 function rectsOf(doc: ModelDocument, view: ViewMode): Rect[] {
   if (view !== "mcd") return tableLayouts(logicalModelOf(doc), doc, view);
-  const bends = Object.values(doc.layout.bends).flatMap((points) => points.map((b) => ({ x: b.x, y: b.y, width: 0, height: 0 })));
+  const bends = Object.values(doc.layout.bends).flatMap((points) =>
+    points.map((b) => ({ x: b.x, y: b.y, width: 0, height: 0 })),
+  );
   return [...layoutsOf(doc).values(), ...bends];
 }
 
@@ -97,7 +100,10 @@ export function objectRects(doc: DocumentHandle, ids: string[]): Rect[] {
 export function clientToModel(doc: DocumentHandle, client: Point): Point {
   const rect = canvasElement?.getBoundingClientRect() ?? { left: 0, top: 0 };
   const { viewport } = doc.view.getState();
-  return { x: (client.x - rect.left - viewport.x) / viewport.zoom, y: (client.y - rect.top - viewport.y) / viewport.zoom };
+  return {
+    x: (client.x - rect.left - viewport.x) / viewport.zoom,
+    y: (client.y - rect.top - viewport.y) / viewport.zoom,
+  };
 }
 
 /**
@@ -114,7 +120,11 @@ export function revealObjects(doc: DocumentHandle, ids: string[]) {
   const maxX = Math.max(...rects.map((r) => r.x + r.width));
   const maxY = Math.max(...rects.map((r) => r.y + r.height));
   const z = viewport.zoom;
-  const visible = minX * z + viewport.x >= 0 && minY * z + viewport.y >= 0 && maxX * z + viewport.x <= size.width && maxY * z + viewport.y <= size.height;
+  const visible =
+    minX * z + viewport.x >= 0 &&
+    minY * z + viewport.y >= 0 &&
+    maxX * z + viewport.x <= size.width &&
+    maxY * z + viewport.y <= size.height;
   if (visible) return;
   setViewport({ zoom: z, x: size.width / 2 - ((minX + maxX) / 2) * z, y: size.height / 2 - ((minY + maxY) / 2) * z });
 }

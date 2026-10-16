@@ -1,5 +1,5 @@
-import { produce, type Draft } from "immer";
 import type { Attribute, Id, ModelDocument, Point } from "@core/index";
+import { type Draft, produce } from "immer";
 
 /**
  * Opérations de session (O-05 ; J-01, phase 5a, D11) : différence entre deux états d'un document,
@@ -31,7 +31,13 @@ export type Op =
 
 const same = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b);
 
-function diffItems(before: readonly Item[], after: readonly Item[], coll: CollectionName, owner: Id | undefined, ops: Op[]) {
+function diffItems(
+  before: readonly Item[],
+  after: readonly Item[],
+  coll: CollectionName,
+  owner: Id | undefined,
+  ops: Op[],
+) {
   const previous = new Map(before.map((x) => [x.id, x]));
   const next = new Map(after.map((x) => [x.id, x]));
   const where = owner ? { coll, owner } : { coll };
@@ -47,7 +53,9 @@ function diffItems(before: readonly Item[], after: readonly Item[], coll: Collec
     for (const field of new Set([...Object.keys(old), ...Object.keys(x)])) {
       if (field === "id" || (nested && field === "attributes")) continue;
       if (same(old[field], x[field])) continue;
-      ops.push(field in x ? { t: "set", ...where, id: x.id, field, value: x[field] } : { t: "set", ...where, id: x.id, field });
+      ops.push(
+        field in x ? { t: "set", ...where, id: x.id, field, value: x[field] } : { t: "set", ...where, id: x.id, field },
+      );
     }
     if (nested && old.attributes !== x.attributes) {
       diffItems(old.attributes as Item[], x.attributes as Item[], coll, x.id, ops);
@@ -71,10 +79,12 @@ export function diff(before: ModelDocument, after: ModelDocument): Op[] {
   if (before.settings !== after.settings) {
     const a = before.settings as unknown as Record<string, unknown>;
     const b = after.settings as unknown as Record<string, unknown>;
-    for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) if (!same(a[key], b[key])) ops.push({ t: "setting", key, value: b[key] });
+    for (const key of new Set([...Object.keys(a), ...Object.keys(b)]))
+      if (!same(a[key], b[key])) ops.push({ t: "setting", key, value: b[key] });
   }
   for (const coll of COLLECTIONS) {
-    if (before[coll] !== after[coll]) diffItems(before[coll] as unknown as Item[], after[coll] as unknown as Item[], coll, undefined, ops);
+    if (before[coll] !== after[coll])
+      diffItems(before[coll] as unknown as Item[], after[coll] as unknown as Item[], coll, undefined, ops);
   }
   if (before.layout.positions !== after.layout.positions) {
     diffRecord(before.layout.positions, after.layout.positions, (id, value) => ({ t: "position", id, value }), ops);

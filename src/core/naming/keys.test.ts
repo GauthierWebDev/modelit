@@ -27,8 +27,12 @@ describe("schémas de nommage des clés (override O-13)", () => {
 
   it("le schéma de clé primaire ne touche ni les identifiants manuels ni un nom logique saisi", () => {
     const naming = { typology: "conceptual", stripAccents: false } as const;
-    expect(attributeLogicalName(createAttribute("numero", { identifier: true }), "user", naming, "id_<table>")).toBe("numero");
-    expect(attributeLogicalName(createAttribute("code", { autoKey: true, logicalName: "pk" }), "user", naming, "id_<table>")).toBe("pk");
+    expect(attributeLogicalName(createAttribute("numero", { identifier: true }), "user", naming, "id_<table>")).toBe(
+      "numero",
+    );
+    expect(
+      attributeLogicalName(createAttribute("code", { autoKey: true, logicalName: "pk" }), "user", naming, "id_<table>"),
+    ).toBe("pk");
   });
 
   it("suffixes _2, _3", () => {

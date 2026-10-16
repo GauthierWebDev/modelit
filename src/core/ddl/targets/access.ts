@@ -1,4 +1,4 @@
-import { standard, type Dialect } from "./dialect";
+import { type Dialect, standard } from "./dialect";
 
 export const access = (): Dialect => ({
   ...standard,

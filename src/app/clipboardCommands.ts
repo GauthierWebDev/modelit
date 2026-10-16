@@ -1,7 +1,7 @@
-import { extractFragment, parseFragment, pasteFragment, type Id, type Point } from "@core/index";
+import { extractFragment, type Id, type Point, parseFragment, pasteFragment } from "@core/index";
 import { selectReadOnlyTab, useCollabStore } from "./collab/session";
-import type { DocumentHandle } from "./document/handle";
 import { deleteObjects } from "./commands";
+import type { DocumentHandle } from "./document/handle";
 
 /**
  * Copier, couper, coller, dupliquer (override O-52). Le texte copié est un fragment JSON
@@ -42,7 +42,9 @@ export function pasteText(doc: DocumentHandle, text: string | null = lastCopied,
   const fragment = parseFragment(text);
   if (!fragment) return false;
   let pasted: Id[] = [];
-  doc.store.getState().change("history.paste", (d) => void (pasted = pasteFragment(d, fragment, at)));
+  doc.store.getState().change("history.paste", (d) => {
+    pasted = pasteFragment(d, fragment, at);
+  });
   doc.view.getState().select(pasted);
   return true;
 }
@@ -53,7 +55,9 @@ export function duplicateSelection(doc: DocumentHandle): boolean {
   const fragment = extractFragment(doc.store.getState().doc, selection(doc));
   if (!fragment) return false;
   let pasted: Id[] = [];
-  doc.store.getState().change("history.duplicate", (d) => void (pasted = pasteFragment(d, fragment)));
+  doc.store.getState().change("history.duplicate", (d) => {
+    pasted = pasteFragment(d, fragment);
+  });
   doc.view.getState().select(pasted);
   return true;
 }

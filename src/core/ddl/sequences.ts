@@ -21,7 +21,9 @@ export function countSequenceUsers(ctx: Context, tables: LogicalTable[]) {
 export function sequenceDefault(ctx: Context, table: LogicalTable, column: LogicalColumn): string | null {
   const rules = ctx.dialect.sequences;
   const sequence = column.sequence!;
-  const definition = table.sequences?.find((s) => s.name.toLowerCase() === sequence.name.toLowerCase()) ?? { name: sequence.name };
+  const definition = table.sequences?.find((s) => s.name.toLowerCase() === sequence.name.toLowerCase()) ?? {
+    name: sequence.name,
+  };
   const name = qualifiedName(ctx, definition.schema, definition.name);
   if (!rules) {
     const required = column.notNull || table.primaryKey.includes(column.name);
@@ -31,9 +33,12 @@ export function sequenceDefault(ctx: Context, table: LogicalTable, column: Logic
   declareSequence(ctx, rules, definition, table);
   // PostgreSQL : la séquence appartient à la colonne qu'elle seule alimente (supprimée avec elle) (O-40).
   // OWNED BY : séquence et table dans le même schéma (exigence de PostgreSQL) (O-42).
-  const sameSchema = (schemaOf(ctx, definition.schema) ?? "").toLowerCase() === (schemaOf(ctx, table.schema) ?? "").toLowerCase();
+  const sameSchema =
+    (schemaOf(ctx, definition.schema) ?? "").toLowerCase() === (schemaOf(ctx, table.schema) ?? "").toLowerCase();
   if (rules.ownedBy && sameSchema && ctx.used.sequenceUsers.get(sequence.name.toLowerCase()) === 1) {
-    ctx.script.epilogue.push(`ALTER SEQUENCE ${name} OWNED BY ${tableName(ctx, table)}.${q(ctx, column.name, column.caseSensitive)};`);
+    ctx.script.epilogue.push(
+      `ALTER SEQUENCE ${name} OWNED BY ${tableName(ctx, table)}.${q(ctx, column.name, column.caseSensitive)};`,
+    );
   }
   if (sequence.trigger) ctx.report.add("default", table.name, MSG.lossSequenceTrigger(sequence.trigger), column.name);
   return `DEFAULT ${rules.next(name)}`;
@@ -47,7 +52,9 @@ function declareSequence(ctx: Context, rules: SequenceRules, s: SequenceDefiniti
   declareSchema(ctx, s.schema, table);
   // Type des valeurs (AS INT), là où la cible l'exprime ; ailleurs, type par défaut (signalé) (O-41).
   if (s.type) {
-    const type = { int: "INTEGER", integer: "INTEGER", bigint: "BIGINT", smallint: "SMALLINT", tinyint: "TINYINT" }[s.type];
+    const type = { int: "INTEGER", integer: "INTEGER", bigint: "BIGINT", smallint: "SMALLINT", tinyint: "TINYINT" }[
+      s.type
+    ];
     const emitted = type && rules.valueType(type);
     if (emitted) parts.push(`AS ${emitted}`);
     else ctx.report.add("default", table.name, MSG.lossSequenceType(s.type.toUpperCase()));
@@ -56,7 +63,8 @@ function declareSequence(ctx: Context, rules: SequenceRules, s: SequenceDefiniti
   if (s.increment !== undefined) parts.push(`INCREMENT BY ${s.increment}`);
   if (s.min !== undefined) parts.push(`MINVALUE ${s.min}`);
   if (s.max !== undefined) parts.push(`MAXVALUE ${s.max}`);
-  if (s.cache !== undefined) parts.push(s.cache <= 1 && rules.noCache ? rules.noCache : `CACHE ${Math.max(1, s.cache)}`);
+  if (s.cache !== undefined)
+    parts.push(s.cache <= 1 && rules.noCache ? rules.noCache : `CACHE ${Math.max(1, s.cache)}`);
   if (s.cycle !== undefined) parts.push(s.cycle ? "CYCLE" : rules.noCycle);
   ctx.script.preamble.push(`${parts.join(" ")};`);
 }

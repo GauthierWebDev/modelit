@@ -9,18 +9,28 @@ export function memoryNetwork() {
   const hostHandlers = new Set<(peer: string, m: ToHost) => void>();
   const hostClose = new Set<(peer: string) => void>();
   const guests = new Map<string, { handlers: Set<(m: ToGuest) => void>; close: Set<() => void>; open: boolean }>();
-  const clone = <T,>(m: T): T => structuredClone(m);
+  const clone = <T>(m: T): T => structuredClone(m);
 
   const hostLink: HostLink = {
-    send: (peer, m) => queue.push(() => guests.get(peer)?.open && guests.get(peer)!.handlers.forEach((h) => h(clone(m)))),
-    onMessage: (h) => (hostHandlers.add(h), () => hostHandlers.delete(h)),
-    onClose: (h) => (hostClose.add(h), () => hostClose.delete(h)),
+    send: (peer, m) =>
+      queue.push(() => {
+        const g = guests.get(peer);
+        if (g?.open) for (const h of g.handlers) h(clone(m));
+      }),
+    onMessage: (h) => {
+      hostHandlers.add(h);
+      return () => hostHandlers.delete(h);
+    },
+    onClose: (h) => {
+      hostClose.add(h);
+      return () => hostClose.delete(h);
+    },
     close: (peer) => {
       const g = guests.get(peer);
       if (!g?.open) return;
       queue.push(() => {
         g.open = false;
-        g.close.forEach((h) => h());
+        for (const h of g.close) h();
       });
     },
   };
@@ -28,12 +38,21 @@ export function memoryNetwork() {
     const g = { handlers: new Set<(m: ToGuest) => void>(), close: new Set<() => void>(), open: true };
     guests.set(peer, g);
     return {
-      send: (m) => queue.push(() => g.open && hostHandlers.forEach((h) => h(peer, clone(m)))),
-      onMessage: (h) => (g.handlers.add(h), () => g.handlers.delete(h)),
-      onClose: (h) => (g.close.add(h), () => g.close.delete(h)),
+      send: (m) =>
+        queue.push(() => {
+          if (g.open) for (const h of hostHandlers) h(peer, clone(m));
+        }),
+      onMessage: (h) => {
+        g.handlers.add(h);
+        return () => g.handlers.delete(h);
+      },
+      onClose: (h) => {
+        g.close.add(h);
+        return () => g.close.delete(h);
+      },
       close: () => {
         g.open = false;
-        hostClose.forEach((h) => h(peer));
+        for (const h of hostClose) h(peer);
       },
     };
   };
@@ -53,4 +72,3 @@ export function memoryNetwork() {
   };
   return { hostLink, connect, flush, settle };
 }
-

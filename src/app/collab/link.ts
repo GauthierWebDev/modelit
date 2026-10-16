@@ -13,12 +13,16 @@ const toBase64Url = (text: string) =>
     .replace(/=+$/, "");
 
 const fromBase64Url = (value: string) => {
-  const base64 = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const base64 = value
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+    .padEnd(Math.ceil(value.length / 4) * 4, "=");
   return new TextDecoder().decode(Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)));
 };
 
 /** Secret de lien : 16 octets aléatoires, en hexadécimal. */
-export const newSecret = () => [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, "0")).join("");
+export const newSecret = () =>
+  [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, "0")).join("");
 
 export function buildLink(addr: string, secret: string): string {
   return `modelit://join?a=${toBase64Url(addr)}&s=${secret}`;

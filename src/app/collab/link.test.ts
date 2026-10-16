@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { buildLink, newSecret, parseLink } from "./link";
 
-const ADDR = JSON.stringify({ id: "a1b2c3", addrs: [{ Relay: "https://euw1-1.relay.iroh.link./" }, { Ip: "192.168.1.12:51000" }] });
+const ADDR = JSON.stringify({
+  id: "a1b2c3",
+  addrs: [{ Relay: "https://euw1-1.relay.iroh.link./" }, { Ip: "192.168.1.12:51000" }],
+});
 
 /** Liens d'invitation (O-05 §4.1, D15). */
 describe("liens d'invitation", () => {

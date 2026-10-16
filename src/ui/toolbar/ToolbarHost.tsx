@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent } from "react";
+import { type PointerEvent, useRef, useState } from "react";
 import { create } from "zustand";
 import { updateDock } from "@/app/dock/actions";
 import { setToolbar } from "@/app/dock/layout";
@@ -52,7 +52,10 @@ export function ToolbarHost() {
         state.floating = true;
         state.offset = { x: 16, y: 16 };
       }
-      current = { position: { x: ev.clientX - state.offset.x, y: ev.clientY - state.offset.y }, overBand: ev.clientY < DOCK_BAND };
+      current = {
+        position: { x: ev.clientX - state.offset.x, y: ev.clientY - state.offset.y },
+        overBand: ev.clientY < DOCK_BAND,
+      };
       setDrag(current);
     };
     const up = () => {
@@ -63,7 +66,9 @@ export function ToolbarHost() {
       const { position, overBand } = current;
       if (nativeWindows()) {
         // La barre devient une fenêtre native, à la même place à l'écran.
-        updateDock((l) => setToolbar(l, overBand ? { floating: false } : { floating: true, position: position && toScreen(position) }));
+        updateDock((l) =>
+          setToolbar(l, overBand ? { floating: false } : { floating: true, position: position && toScreen(position) }),
+        );
         return;
       }
       // Dans la page, la barre reste entièrement visible (ses dimensions naturelles sont gardées).
@@ -96,7 +101,9 @@ export function ToolbarHost() {
           ref={floatingRef}
           data-floating-toolbar=""
           className="fixed z-40 w-max"
-          style={position ? { left: position.x, top: position.y } : { left: "50%", top: 56, transform: "translateX(-50%)" }}
+          style={
+            position ? { left: position.x, top: position.y } : { left: "50%", top: 56, transform: "translateX(-50%)" }
+          }
         >
           <Toolbar floating onGripDown={onGripDown} />
         </div>

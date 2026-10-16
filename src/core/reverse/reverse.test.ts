@@ -43,10 +43,17 @@ describe("lecture multi-dialectes (override O-28)", () => {
     expect(client.triggers).toEqual([expect.objectContaining({ name: "t", dialect: "postgresql" })]);
     expect(client.comment).toBe("Clients actifs");
     expect(client.attributes[0]).toMatchObject({ name: "id", identifier: true, type: { kind: "counter" } });
-    expect(client.attributes[1]).toMatchObject({ name: "nom", notNull: true, type: { kind: "text", length: "variable", size: 80 } });
+    expect(client.attributes[1]).toMatchObject({
+      name: "nom",
+      notNull: true,
+      type: { kind: "text", length: "variable", size: 80 },
+    });
     expect(mldOf(sql)).toBe("client = (_id_, nom, email);\ncommande = (_id_, #client_id, passee_le);");
     const commande = doc.entities.find((e) => e.name === "commande")!;
-    expect(commande.attributes.find((a) => a.name === "passee_le")!.type).toEqual({ kind: "datetime", withTimeZone: true });
+    expect(commande.attributes.find((a) => a.name === "passee_le")!.type).toEqual({
+      kind: "datetime",
+      withTimeZone: true,
+    });
     expect(doc.links.find((l) => l.entityId === commande.id)!.onDelete).toBe("cascade");
   });
 
@@ -73,8 +80,16 @@ describe("lecture multi-dialectes (override O-28)", () => {
     expect(produit.comment).toBe("Catalogue");
     const [id, libelle, prix, actif] = produit.attributes;
     expect(id).toMatchObject({ identifier: true, type: { kind: "counter" } });
-    expect(libelle).toMatchObject({ unique: true, notNull: true, comment: "Nom affiché", type: { collation: "utf8mb4_bin" } });
-    expect(prix).toMatchObject({ type: { kind: "decimal", precision: 10, scale: 2 }, defaultValue: { expression: "'0.00'", dialect: "mysql" } });
+    expect(libelle).toMatchObject({
+      unique: true,
+      notNull: true,
+      comment: "Nom affiché",
+      type: { collation: "utf8mb4_bin" },
+    });
+    expect(prix).toMatchObject({
+      type: { kind: "decimal", precision: 10, scale: 2 },
+      defaultValue: { expression: "'0.00'", dialect: "mysql" },
+    });
     expect(actif!.type).toEqual({ kind: "boolean" });
   });
 
@@ -90,8 +105,17 @@ describe("lecture multi-dialectes (override O-28)", () => {
     `;
     const { doc } = reverse(sql);
     expect(doc.entities.map((e) => e.name)).toEqual(["Service", "Employe"]);
-    expect(doc.entities[0]!.attributes[1]!.type).toEqual({ kind: "text", encoding: "unicode", length: "variable", size: 50 });
-    expect(doc.entities[1]!.attributes.find((a) => a.name === "Photo")!.type).toEqual({ kind: "text", encoding: "binary", length: "large" });
+    expect(doc.entities[0]!.attributes[1]!.type).toEqual({
+      kind: "text",
+      encoding: "unicode",
+      length: "variable",
+      size: 50,
+    });
+    expect(doc.entities[1]!.attributes.find((a) => a.name === "Photo")!.type).toEqual({
+      kind: "text",
+      encoding: "binary",
+      length: "large",
+    });
     // FK nullable : 0,1 côté Employe
     expect(doc.links.find((l) => l.entityId === doc.entities[1]!.id)!.cardinality).toEqual({ min: 0, max: 1 });
   });
@@ -122,7 +146,9 @@ describe("lecture multi-dialectes (override O-28)", () => {
   });
 
   it("SQLite : INTEGER PRIMARY KEY AUTOINCREMENT", () => {
-    const { doc } = reverse("CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY AUTOINCREMENT, texte TEXT NOT NULL);");
+    const { doc } = reverse(
+      "CREATE TABLE IF NOT EXISTS note (id INTEGER PRIMARY KEY AUTOINCREMENT, texte TEXT NOT NULL);",
+    );
     expect(doc.entities[0]!.attributes[0]).toMatchObject({ identifier: true, type: { kind: "counter" } });
   });
 
@@ -232,9 +258,15 @@ describe("aller-retour SQL → MCD → SQL", () => {
 
 describe("Oracle : options de stockage d'un index (O-39)", () => {
   it("notées sur la table, donc au rapport", () => {
-    const sql = "CREATE TABLE t (id NUMBER(5) PRIMARY KEY, c VARCHAR2(10 CHAR));\nCREATE UNIQUE INDEX ux_c ON t (c) TABLESPACE idx PCTFREE 5;";
-    const result = generateDdl(toLogicalModel(reverseEngineer(sql, emptyDocument(), "oracle").doc), { dbms: "postgresql", version: "18" });
-    expect(result.ok && result.losses).toContainEqual(expect.objectContaining({ table: "t", message: expect.stringContaining("INDEX TABLESPACE, INDEX PCTFREE") }));
+    const sql =
+      "CREATE TABLE t (id NUMBER(5) PRIMARY KEY, c VARCHAR2(10 CHAR));\nCREATE UNIQUE INDEX ux_c ON t (c) TABLESPACE idx PCTFREE 5;";
+    const result = generateDdl(toLogicalModel(reverseEngineer(sql, emptyDocument(), "oracle").doc), {
+      dbms: "postgresql",
+      version: "18",
+    });
+    expect(result.ok && result.losses).toContainEqual(
+      expect.objectContaining({ table: "t", message: expect.stringContaining("INDEX TABLESPACE, INDEX PCTFREE") }),
+    );
   });
 });
 
@@ -253,7 +285,16 @@ describe("types", () => {
   });
 
   it("le lecteur ne plante sur aucun texte", () => {
-    for (const text of ["", "CREATE", "CREATE TABLE", "CREATE TABLE (", "CREATE TABLE t (a", "'unterminated", "$$ x", "ALTER TABLE"]) {
+    for (const text of [
+      "",
+      "CREATE",
+      "CREATE TABLE",
+      "CREATE TABLE (",
+      "CREATE TABLE t (a",
+      "'unterminated",
+      "$$ x",
+      "ALTER TABLE",
+    ]) {
       expect(() => parseSql(text)).not.toThrow();
     }
   });
@@ -261,7 +302,11 @@ describe("types", () => {
 
 describe("SGBD d'origine du modèle (O-55)", () => {
   it("repère le dialecte des rubriques rétroconçues", () => {
-    const mysql = reverseEngineer("CREATE TABLE t (id INT UNSIGNED PRIMARY KEY, etat ENUM('a','b'));", emptyDocument(), "mysql").doc;
+    const mysql = reverseEngineer(
+      "CREATE TABLE t (id INT UNSIGNED PRIMARY KEY, etat ENUM('a','b'));",
+      emptyDocument(),
+      "mysql",
+    ).doc;
     expect([...sourceDialects(mysql)]).toEqual(["mysql"]);
     const oracle = reverseEngineer("CREATE TABLE t (id NUMBER(4) PRIMARY KEY, d DATE);", emptyDocument(), "oracle").doc;
     expect([...sourceDialects(oracle)]).toEqual(["oracle"]);
