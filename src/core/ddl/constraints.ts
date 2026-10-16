@@ -217,7 +217,9 @@ export function uniqueLine(ctx: Context, table: LogicalTable, unique: LogicalKey
   }
   // INCLUDE sur une contrainte UNIQUE (O-42).
   const covering = unique.include?.length && d.uniques.include ? include(ctx, table, unique) : "";
-  if (unique.include?.length && !covering) ctx.report.add("index", table.name, MSG.lossInclude(unique.name ?? label));
+  // Sinon, include() a déjà signalé la perte s'il y en a une.
+  if (unique.include?.length && !d.uniques.include)
+    ctx.report.add("index", table.name, MSG.lossInclude(unique.name ?? label));
   const state = stateClause(ctx, table, "unique", unique.name ?? label, unique.state);
   const definition = `${name ? `CONSTRAINT ${q(ctx, name)} ` : ""}UNIQUE${nulls}(${columns})${covering}${method}${state}`;
   return place(
@@ -249,7 +251,10 @@ function nullsClause(ctx: Context, table: LogicalTable, unique: LogicalKey): str
       ctx.report.add("index", table.name, MSG.lossNullsAllNull(label));
     return "";
   }
-  if (unique.nulls === "oracle" && allNullable && equal !== null)
+  // Seulement si les NULL deviennent égaux ici : sans NULLS NOT DISTINCT, les lignes entièrement
+  // NULL restent admises en double, comme dans Oracle.
+  const equalized = equal === "native" || (equal !== null && equal.clause !== null);
+  if (unique.nulls === "oracle" && allNullable && equalized)
     ctx.report.add("index", table.name, MSG.lossNullsAllNull(label));
   if (equal === "native") return "";
   if (equal?.clause) return equal.clause;
