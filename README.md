@@ -76,7 +76,8 @@ met pas à jour automatiquement : seules les releases le font.
 - **Rapport de pertes** : ce que le SGBD cible ne sait pas exprimer est listé au-dessus du script
   (onglet Script LDD) et en commentaire en tête de celui-ci, une ligne par perte identique. Options
   du script (FK en ALTER TABLE, index, ordre des colonnes, noms des contraintes, non-signés, ENUM,
-  SET, collations, DATE Oracle, chaîne vide Oracle, fidélité stricte des plages, types spatiaux, collation SQL Server supposée, schéma dbo) : paramètres du modèle, section « Script SQL ».
+  SET, collations, DATE Oracle, chaîne vide Oracle, fidélité stricte des plages, types spatiaux, collation SQL Server supposée, schéma dbo) : boîte « Paramètres du modèle », onglets Script SQL et
+  Conversions (regroupées par SGBD source, celles du modèle mises en avant).
 - **Section Rubriques** : liste compacte des rubriques de l'objet sélectionné (Entrée pour enchaîner
   les saisies, Alt + ↑ / ↓ ou glisser pour réordonner, Suppr pour supprimer) et détail de la rubrique
   choisie.
@@ -90,12 +91,15 @@ met pas à jour automatiquement : seules les releases le font.
   disposition commune au MCD, au MLD et au MPD ; calcul en ≈ 0,2 s, en parallèle.
 - **⌘/Ctrl + C, X, V, D** : copier, couper, coller, dupliquer la sélection, dans les trois vues (noms
   suffixés « _2 », copies décalées ; presse-papiers du système, entre onglets et fenêtres).
-- **Menu ≡** (barre d'outils) : fichier, export d'image, rétroconception, sections affichées, thème,
-  options et à propos, avec leurs raccourcis.
+- **Menu ≡** (barre d'outils) : fichier, export d'image, rétroconception, paramètres du modèle,
+  sections affichées, thème, options et à propos, avec leurs raccourcis.
+- **⌥⌘ / Ctrl + Alt + ,** : paramètres du modèle (nommage et clés, script SQL, conversions), aussi au
+  clic droit dans le vide du schéma.
+- **Menu Affichage** (œil, barre d'outils) : rubriques dans le schéma, grille et son pas, flèches et
+  texte des liens entre tables.
 - **Barre d'état** : sélection, problèmes (clic : section Problèmes), zoom, et SGBD cible et version
   (boîte « Cible »).
-- Les sections de droite éditent l'objet sélectionné (Propriétés, Rubriques) et les paramètres du
-  document (Modèle).
+- Les sections de droite éditent l'objet sélectionné (Propriétés, Rubriques).
 - Le MLD textuel, le script SQL et les problèmes se mettent à jour en temps réel.
 - ⌘/Ctrl + Z, ⇧⌘/Ctrl + Z, ⌘/Ctrl + S, ⌘/Ctrl + O, ⌘/Ctrl + N, Suppr, ⌘/Ctrl + A, ⌘/Ctrl + I.
 - Molette : défilement ; ⌘/Ctrl + molette ou pincement : zoom ; ⇧F : ajuster à la fenêtre.
