@@ -4,6 +4,34 @@ Une section `## X.Y.Z — AAAA-MM-JJ` par version, la plus récente en haut. La 
 taguée devient le texte de la release GitHub et les notes proposées par la mise à jour ; tout
 l'historique est affiché dans l'application (À propos → Nouveautés).
 
+## 0.4.0 — 2026-10-16
+
+### Nouveautés
+
+- Copier, couper, coller et dupliquer (⌘/Ctrl + C, X, V, D) dans les trois vues, entre onglets et entre fenêtres : les copies sont renommées (« Client_2 ») et décalées.
+- Menus au clic droit selon ce qui est sous le pointeur (vide, entité, association, patte…), et bouton « ⋯ » d'actions rapides sur l'objet sélectionné : ajouter une rubrique, copier, dupliquer, supprimer.
+- Renommer sur place par double-clic : entités, associations et rubriques dans le MCD ; titres de tables, colonnes et clés étrangères dans le MLD et le MPD.
+- Créer une entité et relier des tables directement depuis le MLD et le MPD : le MCD suit.
+- Aligner (gauche, centre, droite, haut, milieu, bas) et répartir plusieurs objets ; déplacer la sélection aux flèches (Maj : dix pas).
+- Sélection de plusieurs tables dans le MLD et le MPD : Maj + clic, rectangle tracé dans le vide, glisser groupé.
+- SGBD personnalisés : redéfinissez le type SQL de chaque type (Compteur → BIGSERIAL…) à partir d'un SGBD et d'une version, enregistrez-les dans « Mes SGBD » pour les réutiliser. Un modèle personnalisé l'indique partout : barre d'état, script (« basé sur PostgreSQL 18 »).
+- Dans le MPD, double-clic sur le type d'une colonne pour le fixer pour ce SGBD.
+- Section « Rubriques » : liste compacte (type, identifiant, NOT NULL, UNIQUE), saisie à la chaîne avec Entrée, réordonnancement au clavier ou à la souris, et détail de la rubrique choisie.
+
+### Améliorations
+
+- Barre d'outils allégée : fichiers, export, rétroconception, options et thème passent dans le menu ≡ ; la barre tient sur une petite fenêtre.
+- Barre d'état enrichie : sélection, problèmes (un clic ouvre la section), zoom, et SGBD cible avec ce que sa version permet.
+- Paramètres du modèle dans une boîte à onglets (⌥⌘/Ctrl + Alt + ,) : nommage et clés, script SQL, conversions regroupées par SGBD source, types SQL. Les réglages d'affichage passent dans le menu « Affichage » (œil) de la barre d'outils.
+- Blocs « Avancé », clés étrangères et commentaire repliables ; leur état est retenu.
+- Le MPD affiche le type réellement émis dans le script.
+- La recherche de mise à jour a lieu à chaque lancement.
+
+### À savoir
+
+- La section « Modèle » est remplacée par la boîte « Paramètres du modèle » ; une disposition enregistrée qui la contenait est réparée automatiquement.
+- Dans le MLD et le MPD, glisser dans le vide trace désormais un rectangle de sélection, comme dans le MCD : la vue se déplace à la molette, au pavé tactile ou au bouton du milieu.
+
 ## 0.3.1 — 2026-10-16
 
 ### Corrections
