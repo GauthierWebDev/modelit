@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { t } from "@/i18n";
 import { tip } from "./Tooltip";
 
@@ -193,50 +193,3 @@ export function IconButton({
     </span>
   );
 }
-
-/**
- * Liste déroulante aussi large que son plus long libellé, plus une petite marge, sans dépasser
- * `max` px (barre d'outils, O-45). Largeur fixée avant le premier affichage : elle ne dépend ni du
- * conteneur ni de la fenêtre, et ne varie pas d'une image à l'autre.
- */
-export function FitSelect<T extends string>({
-  value,
-  options,
-  onChange,
-  max = 120,
-  label,
-}: {
-  value: T;
-  options: { id: T; label: string }[];
-  onChange: (value: T) => void;
-  max?: number;
-  label?: string;
-}) {
-  const ref = useRef<HTMLSelectElement>(null);
-  const labels = options.map((o) => o.label).join("\n");
-  useLayoutEffect(() => {
-    const select = ref.current;
-    if (!select) return;
-    // Largeur naturelle d'une liste = son plus long libellé, flèche et marges du moteur comprises
-    // (celles des listes natives de macOS sont plus larges qu'ailleurs) ; mesurée avant l'affichage.
-    select.style.width = "auto";
-    const natural = select.getBoundingClientRect().width;
-    select.style.width = `${Math.min(max, Math.ceil(natural + 4))}px`;
-  }, [labels, max]);
-  return (
-    <select
-      ref={ref}
-      aria-label={label}
-      className={inputClass.replace("w-full ", "")}
-      value={value}
-      onChange={(e) => onChange(e.target.value as T)}
-    >
-      {options.map((o) => (
-        <option key={o.id} value={o.id}>
-          {o.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
