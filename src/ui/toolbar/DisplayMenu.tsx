@@ -36,11 +36,9 @@ export function DisplayMenu() {
             disabled={readOnly}
             checked={s.display.showAttributes}
             onSelect={() =>
-              cmd.updateSettings(
-                handle,
-                "history.showAttributes",
-                (d) => void (d.display.showAttributes = !s.display.showAttributes),
-              )
+              cmd.updateSettings(handle, "history.showAttributes", (d) => {
+                d.display.showAttributes = !s.display.showAttributes;
+              })
             }
           >
             {t("display.attributes")}
@@ -48,7 +46,11 @@ export function DisplayMenu() {
           <MenuCheck
             disabled={readOnly}
             checked={s.grid.enabled}
-            onSelect={() => cmd.updateSettings(handle, "history.grid", (d) => void (d.grid.enabled = !s.grid.enabled))}
+            onSelect={() =>
+              cmd.updateSettings(handle, "history.grid", (d) => {
+                d.grid.enabled = !s.grid.enabled;
+              })
+            }
           >
             {t("inspector.grid")}
           </MenuCheck>
@@ -59,7 +61,11 @@ export function DisplayMenu() {
               key={size}
               disabled={readOnly}
               checked={s.grid.size === size}
-              onSelect={() => cmd.updateSettings(handle, "history.gridSize", (d) => void (d.grid.size = size))}
+              onSelect={() =>
+                cmd.updateSettings(handle, "history.gridSize", (d) => {
+                  d.grid.size = size;
+                })
+              }
             >
               {size} px
             </MenuCheck>
@@ -70,11 +76,9 @@ export function DisplayMenu() {
             disabled={readOnly}
             checked={s.display.relationArrows}
             onSelect={() =>
-              cmd.updateSettings(
-                handle,
-                "history.relationArrows",
-                (d) => void (d.display.relationArrows = !s.display.relationArrows),
-              )
+              cmd.updateSettings(handle, "history.relationArrows", (d) => {
+                d.display.relationArrows = !s.display.relationArrows;
+              })
             }
           >
             {t("inspector.relationArrows")}
@@ -87,7 +91,9 @@ export function DisplayMenu() {
               disabled={readOnly}
               checked={s.display.relationLabels === mode}
               onSelect={() =>
-                cmd.updateSettings(handle, "history.relationLabels", (d) => void (d.display.relationLabels = mode))
+                cmd.updateSettings(handle, "history.relationLabels", (d) => {
+                  d.display.relationLabels = mode;
+                })
               }
             >
               {t(`inspector.relationLabels.${mode}`)}

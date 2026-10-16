@@ -193,7 +193,9 @@ describe("session collaborative", () => {
     net.flush();
     const store = h.alice.store.getState();
     store.begin();
-    h.alice.store.getState().preview((d) => void (d.layout.positions[id] = { x: 100, y: 100 }));
+    h.alice.store.getState().preview((d) => {
+      d.layout.positions[id] = { x: 100, y: 100 };
+    });
     cmd.renameNode(h.bob, id, "RENOMME_PAR_BOB");
     net.flush(); // reçu pendant le glisser
     h.alice.store.getState().commit("history.move");
@@ -235,7 +237,10 @@ describe("session collaborative", () => {
   it("200 actions mêlées, livraisons irrégulières : tous convergent (graine fixe)", () => {
     for (const seed of [1, 7, 42]) {
       let state = seed;
-      const random = () => (state = (state * 1103515245 + 12345) % 2 ** 31) / 2 ** 31;
+      const random = () => {
+        state = (state * 1103515245 + 12345) % 2 ** 31;
+        return state / 2 ** 31;
+      };
       const pick = <T>(list: T[]): T | undefined => list[Math.floor(random() * list.length)];
       const { h, net, converged } = session();
       const actors = [h.alice, h.bob, h.claire];

@@ -631,7 +631,10 @@ const schemaName = (schema?: string) =>
 function unwrap(text: string): string {
   while (text.startsWith("(") && text.endsWith(")")) {
     let depth = 0;
-    const inner = [...text.slice(1, -1)].every((ch) => (depth += ch === "(" ? 1 : ch === ")" ? -1 : 0) >= 0);
+    const inner = [...text.slice(1, -1)].every((ch) => {
+      depth += ch === "(" ? 1 : ch === ")" ? -1 : 0;
+      return depth >= 0;
+    });
     if (!inner || depth !== 0) break;
     text = text.slice(1, -1);
   }

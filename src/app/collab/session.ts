@@ -435,7 +435,10 @@ function flushPresence() {
  */
 export function reportPresence(value: Presence) {
   if (!host && !guest) return;
-  if (presenceSent && samePresence(presenceSent, value)) return void (presenceNext = null);
+  if (presenceSent && samePresence(presenceSent, value)) {
+    presenceNext = null;
+    return;
+  }
   presenceNext = value;
   if (presenceTimer !== undefined) return;
   const wait = PRESENCE_EVERY - (Date.now() - presenceAt);

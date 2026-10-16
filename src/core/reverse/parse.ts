@@ -787,7 +787,7 @@ function columnDefinition(tokens: Token[], table: ParsedTable): ParsedColumn | n
       const seed = c.group();
       if (seed?.[0]?.type === "number") column.identityStart = Number(seed[0].value);
       if (seed?.[2]?.type === "number" && Number(seed[2].value) !== 1) column.identityIncrement = Number(seed[2].value);
-      if (c.accept("not", "for", "replication")) (column.sqlServerOptions ??= []).push("NOT FOR REPLICATION");
+      if (c.accept("not", "for", "replication")) addSqlServerOption(column, "NOT FOR REPLICATION");
     } else if (c.accept("generated")) {
       const mode = c.accept("always")
         ? "always"
@@ -817,9 +817,9 @@ function columnDefinition(tokens: Token[], table: ParsedTable): ParsedColumn | n
       c.next();
       c.skipGroup();
     } else if (c.accept("rowguidcol")) {
-      (column.sqlServerOptions ??= []).push("ROWGUIDCOL");
+      addSqlServerOption(column, "ROWGUIDCOL");
     } else if (c.accept("not", "for", "replication")) {
-      (column.sqlServerOptions ??= []).push("NOT FOR REPLICATION");
+      addSqlServerOption(column, "NOT FOR REPLICATION");
     } else if (c.accept("character", "set") || c.accept("charset")) {
       c.next();
     } else {
@@ -828,6 +828,12 @@ function columnDefinition(tokens: Token[], table: ParsedTable): ParsedColumn | n
     name = undefined;
   }
   return column;
+}
+
+/** Option de colonne SQL Server (ROWGUIDCOL, NOT FOR REPLICATION), réémise vers SQL Server (O-42). */
+function addSqlServerOption(column: ParsedColumn, option: string) {
+  column.sqlServerOptions ??= [];
+  column.sqlServerOptions.push(option);
 }
 
 /** Expression d'une colonne calculée, puis STORED / VIRTUAL / PERSISTED. */

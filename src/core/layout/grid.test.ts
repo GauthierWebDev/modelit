@@ -146,7 +146,10 @@ describe("placement sur grille (override O-30)", { timeout: 30_000 }, () => {
 /** MCD aléatoire réaliste : entités larges en MPD, associations binaires, ternaires (10 %), réflexives (10 %). */
 function randomModel(seed: number) {
   let state = seed;
-  const r = () => (state = (state * 1103515245 + 12345) % 2147483648) / 2147483648;
+  const r = () => {
+    state = (state * 1103515245 + 12345) % 2147483648;
+    return state / 2147483648;
+  };
   const k = 5 + Math.floor(r() * 8);
   const nodes: GridNode[] = [];
   const edges: GridEdge[] = [];

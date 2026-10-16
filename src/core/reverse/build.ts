@@ -593,7 +593,10 @@ export function reverseEngineer(
         : referencedColumns(check.expression).filter((c) => table.columns.some((col) => key(col.name) === key(c)));
       const attribute = cited.length === 1 ? attributeOf.get(table)?.get(key(cited[0]!)) : undefined;
       if (attribute && !attribute.check) attribute.check = annotation;
-      else (node.checks ??= []).push(annotation);
+      else {
+        node.checks ??= [];
+        node.checks.push(annotation);
+      }
     }
   }
 

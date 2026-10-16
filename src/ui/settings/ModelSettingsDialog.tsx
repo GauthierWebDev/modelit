@@ -111,14 +111,20 @@ function NamingTab() {
             value={s.naming.typology}
             options={TYPOLOGIES.map((id) => ({ id, label: t(`typology.${id}`) }))}
             onChange={(typology) =>
-              cmd.updateSettings(handle, "history.typology", (d) => void (d.naming.typology = typology))
+              cmd.updateSettings(handle, "history.typology", (d) => {
+                d.naming.typology = typology;
+              })
             }
           />
         </Row>
         <Checkbox
           label={t("inspector.stripAccents")}
           checked={s.naming.stripAccents}
-          onChange={(v) => cmd.updateSettings(handle, "history.stripAccents", (d) => void (d.naming.stripAccents = v))}
+          onChange={(v) =>
+            cmd.updateSettings(handle, "history.stripAccents", (d) => {
+              d.naming.stripAccents = v;
+            })
+          }
         />
       </Group>
       <Group title={t("inspector.keys")}>
@@ -127,7 +133,9 @@ function NamingTab() {
             kind="discriminant"
             value={s.autoIdMask}
             onChange={(pattern) =>
-              cmd.updateSettings(handle, "history.autoIdMask", (d) => void (d.autoIdMask = pattern))
+              cmd.updateSettings(handle, "history.autoIdMask", (d) => {
+                d.autoIdMask = pattern;
+              })
             }
           />
         </Row>
@@ -136,7 +144,9 @@ function NamingTab() {
             kind="primaryKey"
             value={s.keys.primary}
             onChange={(pattern) =>
-              cmd.updateSettings(handle, "history.primaryKeyMask", (d) => void (d.keys.primary = pattern))
+              cmd.updateSettings(handle, "history.primaryKeyMask", (d) => {
+                d.keys.primary = pattern;
+              })
             }
           />
         </Row>
@@ -145,7 +155,9 @@ function NamingTab() {
             kind="foreignKey"
             value={s.keys.foreign}
             onChange={(pattern) =>
-              cmd.updateSettings(handle, "history.foreignKeyMask", (d) => void (d.keys.foreign = pattern))
+              cmd.updateSettings(handle, "history.foreignKeyMask", (d) => {
+                d.keys.foreign = pattern;
+              })
             }
           />
         </Row>
@@ -160,7 +172,9 @@ function useDdlOption() {
   const handle = useDocumentHandle();
   const ddl = useDocument((d) => d.doc.settings.ddl);
   const set = <K extends keyof DdlOptions>(key: K, value: DdlOptions[K]) =>
-    cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl[key] = value));
+    cmd.updateSettings(handle, "history.ddlOptions", (d) => {
+      d.ddl[key] = value;
+    });
   return { ddl, set };
 }
 

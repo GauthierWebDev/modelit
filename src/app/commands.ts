@@ -500,11 +500,9 @@ export function dbmsLabel(dbms: Dbms, version: string): string {
 export function customizeTarget(doc: DocumentHandle) {
   const { dbms, dbmsVersion } = current(doc).settings;
   const name = t("customDbms.defaultName", { dbms: dbmsLabel(dbms, dbmsVersion) });
-  updateSettings(
-    doc,
-    "history.customizeDbms",
-    (s) => void (s.customDbms = { id: crypto.randomUUID(), name, types: {} }),
-  );
+  updateSettings(doc, "history.customizeDbms", (s) => {
+    s.customDbms = { id: crypto.randomUUID(), name, types: {} };
+  });
 }
 
 /** Retire la personnalisation : la cible redevient le SGBD de base, tel quel. */
@@ -523,7 +521,9 @@ export function applyCustomDbms(doc: DocumentHandle, dbms: LibraryDbms) {
 
 export function renameCustomDbms(doc: DocumentHandle, name: string): Check {
   if (!name.trim()) return MSG.emptyName;
-  updateSettings(doc, "history.customizeDbms", (s) => void (s.customDbms && (s.customDbms.name = name.trim())));
+  updateSettings(doc, "history.customizeDbms", (s) => {
+    if (s.customDbms) s.customDbms.name = name.trim();
+  });
   return null;
 }
 
@@ -544,7 +544,9 @@ export function setCustomType(doc: DocumentHandle, key: TypeKey, template: strin
 }
 
 export function resetCustomTypes(doc: DocumentHandle) {
-  updateSettings(doc, "history.customType", (s) => void (s.customDbms && (s.customDbms.types = {})));
+  updateSettings(doc, "history.customType", (s) => {
+    if (s.customDbms) s.customDbms.types = {};
+  });
 }
 
 /**
@@ -567,7 +569,9 @@ export function setColumnSqlType(doc: DocumentHandle, ownerId: Id, attributeId: 
 }
 
 export function setDbmsVersion(doc: DocumentHandle, version: string) {
-  updateSettings(doc, "history.changeVersion", (s) => void (s.dbmsVersion = resolveVersion(s.dbms, version)));
+  updateSettings(doc, "history.changeVersion", (s) => {
+    s.dbmsVersion = resolveVersion(s.dbms, version);
+  });
 }
 
 export function updateSettings(doc: DocumentHandle, label: MessageKey, recipe: (s: Draft<DocumentSettings>) => void) {

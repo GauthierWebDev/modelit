@@ -68,12 +68,9 @@ describe("SGBD personnalisé d'un modèle", () => {
     expect(setColumnSqlType(doc, client().id, nom, "")).toBeNull();
     expect(client().attributes[1]!.sourceType).toBeUndefined();
     // Type d'origine d'un autre dialecte (rétroconception) : un champ vide ne l'efface pas.
-    doc.store
-      .getState()
-      .change(
-        "history.columnType",
-        (d) => void (d.entities[0]!.attributes[1]!.sourceType = { sql: "TINYTEXT", dialect: "mysql" }),
-      );
+    doc.store.getState().change("history.columnType", (d) => {
+      d.entities[0]!.attributes[1]!.sourceType = { sql: "TINYTEXT", dialect: "mysql" };
+    });
     expect(setColumnSqlType(doc, client().id, nom, "")).toBeNull();
     expect(client().attributes[1]!.sourceType).toEqual({ sql: "TINYTEXT", dialect: "mysql" });
   });

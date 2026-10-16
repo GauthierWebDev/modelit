@@ -41,7 +41,11 @@ export function PhysicalSection({
           <CommitInput
             value={node.primaryKeyName ?? ""}
             placeholder={t("inspector.constraintNamePlaceholder")}
-            onCommit={(name) => edit((n) => void (n.primaryKeyName = name.trim() || undefined))}
+            onCommit={(name) =>
+              edit((n) => {
+                n.primaryKeyName = name.trim() || undefined;
+              })
+            }
           />
         </Field>
       )}
@@ -52,12 +56,22 @@ export function PhysicalSection({
           // biome-ignore lint/suspicious/noArrayIndexKey: éléments sans identifiant dans le modèle ; CommitInput se resynchronise sur sa valeur
           key={i}
           check={check}
-          onChange={(next) => edit((n) => void (next ? (n.checks![i] = next) : n.checks!.splice(i, 1)))}
+          onChange={(next) =>
+            edit((n) => {
+              if (next) n.checks![i] = next;
+              else n.checks!.splice(i, 1);
+            })
+          }
         />
       ))}
       <AddButton
         label={t("physical.addCheck")}
-        onClick={() => edit((n) => void (n.checks ??= []).push({ expression: "1 = 1", dialect: doc.settings.dbms }))}
+        onClick={() =>
+          edit((n) => {
+            n.checks ??= [];
+            n.checks.push({ expression: "1 = 1", dialect: doc.settings.dbms });
+          })
+        }
       />
 
       <SubTitle>{t("physical.alternateKeys")}</SubTitle>
@@ -67,7 +81,11 @@ export function PhysicalSection({
           key={i}
           name={key.name}
           members={key.members.map(memberName)}
-          onRename={(name) => edit((n) => void (n.alternateKeys![i]!.name = name))}
+          onRename={(name) =>
+            edit((n) => {
+              n.alternateKeys![i]!.name = name;
+            })
+          }
           onDelete={() => edit((n) => void n.alternateKeys!.splice(i, 1))}
         />
       ))}
@@ -75,7 +93,10 @@ export function PhysicalSection({
         label={t("physical.addAlternateKey")}
         attributes={node.attributes}
         onAdd={(ids) =>
-          edit((n) => void (n.alternateKeys ??= []).push({ members: ids.map((attributeId) => ({ attributeId })) }))
+          edit((n) => {
+            n.alternateKeys ??= [];
+            n.alternateKeys.push({ members: ids.map((attributeId) => ({ attributeId })) });
+          })
         }
       />
 
@@ -86,7 +107,11 @@ export function PhysicalSection({
           key={i}
           name={index.name}
           members={index.members.map(memberName)}
-          onRename={(name) => edit((n) => void (n.indexes![i]!.name = name))}
+          onRename={(name) =>
+            edit((n) => {
+              n.indexes![i]!.name = name;
+            })
+          }
           onDelete={() => edit((n) => void n.indexes!.splice(i, 1))}
         />
       ))}
@@ -94,7 +119,10 @@ export function PhysicalSection({
         label={t("physical.addIndex")}
         attributes={node.attributes}
         onAdd={(ids) =>
-          edit((n) => void (n.indexes ??= []).push({ members: ids.map((attributeId) => ({ attributeId })) }))
+          edit((n) => {
+            n.indexes ??= [];
+            n.indexes.push({ members: ids.map((attributeId) => ({ attributeId })) });
+          })
         }
       />
     </Section>

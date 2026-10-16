@@ -187,7 +187,9 @@ function AttributesPanel({
           <div key={a.id}>
             {drag.target === i && <DropLine />}
             <div
-              ref={(el) => void (rows.current[i] = el)}
+              ref={(el) => {
+                rows.current[i] = el;
+              }}
               role="option"
               aria-selected={a.id === selected}
               tabIndex={0}

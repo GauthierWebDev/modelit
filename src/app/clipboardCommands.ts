@@ -42,7 +42,9 @@ export function pasteText(doc: DocumentHandle, text: string | null = lastCopied,
   const fragment = parseFragment(text);
   if (!fragment) return false;
   let pasted: Id[] = [];
-  doc.store.getState().change("history.paste", (d) => void (pasted = pasteFragment(d, fragment, at)));
+  doc.store.getState().change("history.paste", (d) => {
+    pasted = pasteFragment(d, fragment, at);
+  });
   doc.view.getState().select(pasted);
   return true;
 }
@@ -53,7 +55,9 @@ export function duplicateSelection(doc: DocumentHandle): boolean {
   const fragment = extractFragment(doc.store.getState().doc, selection(doc));
   if (!fragment) return false;
   let pasted: Id[] = [];
-  doc.store.getState().change("history.duplicate", (d) => void (pasted = pasteFragment(d, fragment)));
+  doc.store.getState().change("history.duplicate", (d) => {
+    pasted = pasteFragment(d, fragment);
+  });
   doc.view.getState().select(pasted);
   return true;
 }

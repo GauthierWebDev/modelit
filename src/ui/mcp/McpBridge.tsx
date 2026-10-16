@@ -61,11 +61,15 @@ export function McpBridge() {
             }),
           );
         });
-    }).then((f) => (disposed ? f() : (off = f)));
+    }).then((f) => {
+      if (disposed) f();
+      else off = f;
+    });
     let offReleased: (() => void) | undefined;
-    void onMcpReleased(() => useMcpStore.setState({ status: "released", error: null })).then((f) =>
-      disposed ? f() : (offReleased = f),
-    );
+    void onMcpReleased(() => useMcpStore.setState({ status: "released", error: null })).then((f) => {
+      if (disposed) f();
+      else offReleased = f;
+    });
     return () => {
       disposed = true;
       off?.();

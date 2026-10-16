@@ -83,7 +83,10 @@ export function CollabBridge() {
     void onOpenLink((url) => {
       useUiStore.getState().setShareOpen(true);
       void joinFromLink(url);
-    }).then((f) => (disposed ? f() : (off = f)));
+    }).then((f) => {
+      if (disposed) f();
+      else off = f;
+    });
     return () => {
       disposed = true;
       off?.();

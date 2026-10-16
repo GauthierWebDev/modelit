@@ -172,7 +172,11 @@ function EntityPanel({ doc, entity, report }: { doc: ModelDocument; entity: Enti
           <Checkbox
             label={t("physical.caseSensitive")}
             checked={Boolean(entity.caseSensitive)}
-            onChange={(on) => cmd.updatePhysical(handle, entity.id, (n) => void (n.caseSensitive = on || undefined))}
+            onChange={(on) =>
+              cmd.updatePhysical(handle, entity.id, (n) => {
+                n.caseSensitive = on || undefined;
+              })
+            }
           />
         </PhysicalSection>
       )}

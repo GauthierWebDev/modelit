@@ -233,7 +233,8 @@ class Problem {
     edges: GridEdge[],
     readonly options: GridOptions,
   ) {
-    const n = (this.n = nodes.length);
+    const n = nodes.length;
+    this.n = n;
     // Géométrie de recherche : cellules de taille moyenne, plus proches de l'affichage final
     // (colonnes ajustées à leur contenu) que des cellules à la taille du plus grand objet.
     const mean = (f: (x: GridNode) => number) => nodes.reduce((sum, x) => sum + f(x), 0) / n;

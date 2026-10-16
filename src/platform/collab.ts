@@ -18,7 +18,10 @@ function on(event: string, handler: (payload: Payload) => void): () => void {
   let off: (() => void) | undefined;
   let disposed = false;
   void import("@tauri-apps/api/event").then(({ listen }) =>
-    listen<Payload>(event, (e) => handler(e.payload)).then((f) => (disposed ? f() : (off = f))),
+    listen<Payload>(event, (e) => handler(e.payload)).then((f) => {
+      if (disposed) f();
+      else off = f;
+    }),
   );
   return () => {
     disposed = true;

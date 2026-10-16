@@ -95,7 +95,10 @@ describe("synchronisation entre fenêtres", () => {
     const store = activeDocument().store;
     const before = channels.sent.length;
     store.getState().begin();
-    for (let x = 1; x <= 10; x++) store.getState().preview((d) => void (d.layout.positions[id] = { x, y: 0 }));
+    for (let x = 1; x <= 10; x++)
+      store.getState().preview((d) => {
+        d.layout.positions[id] = { x, y: 0 };
+      });
     expect(channels.sent.length).toBe(before);
     store.getState().commit("history.move");
     expect(channels.sent.length).toBe(before + 1);
