@@ -608,7 +608,7 @@ function checkInheritances(ctx: Context) {
     const parentId = inheritance.parentId && entityIds.includes(inheritance.parentId) ? inheritance.parentId : undefined;
     const children = entityIds.filter((id) => id !== parentId);
     if (!parentId) ctx.issues.push({ severity: "error", message: MSG.inheritanceNeedsParent, target });
-    if (children.length < 1) ctx.issues.push({ severity: "error", message: MSG.inheritanceNeedsTwoChildren, target });
+    if (children.length < 1) ctx.issues.push({ severity: "error", message: MSG.inheritanceNeedsChild, target });
     if (!parentId) continue;
     for (const child of children) {
       if (ctx.parents.has(child)) {
