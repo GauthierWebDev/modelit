@@ -152,7 +152,7 @@ async function pgProblems(sql: string): Promise<string[]> {
     }
     created.push(create[2]!.toLowerCase());
   }
-  const announced = sql.match(/^--   • .*$/gm) ?? [];
+  const announced = sql.match(/^-- {3}• .*$/gm) ?? [];
   for (const d of diffCatalogs(catalogOf(SOURCE, "sqlite"), catalogOf(sql, "postgresql"), true)) {
     const where = [d.table, d.column].filter(Boolean).join(".");
     if (!announced.some((line) => line.toLowerCase().includes(where.toLowerCase())))
@@ -476,7 +476,7 @@ describe("P1.4 — actions référentielles et capacités par dialecte", () => {
       ["Laboratoire", "id_directeur"],
       ["Laboratoire", "id_directeur"],
     ]);
-    expect(sql).toMatch(/^-- .*\n(--   • .*\n)*--   • Laboratoire\.id_directeur — ON DELETE RESTRICT/);
+    expect(sql).toMatch(/^-- .*\n(-- {3}• .*\n)*-- {3}• Laboratoire\.id_directeur — ON DELETE RESTRICT/);
   });
 
   it("SQL Server : RESTRICT → NO ACTION ; chemins de cascade multiples ou cycliques refusés", () => {

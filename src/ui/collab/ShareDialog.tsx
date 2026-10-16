@@ -1,5 +1,5 @@
 import { Check, Copy, LogOut, Square, Users } from "lucide-react";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { MIN_PASSWORD_LENGTH } from "@/app/collab/password";
 import {
   joinFromLink,
@@ -78,8 +78,8 @@ export function ShareDialog() {
     </button>
   );
 
-  let body;
-  let footer;
+  let body: ReactNode;
+  let footer: ReactNode;
   if (mode === "host" && links) {
     body = (
       <div className="flex flex-col gap-3">

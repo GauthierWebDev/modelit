@@ -445,7 +445,7 @@ export function renderCondition(c: Condition, target: Target, columnCase?: (name
           return text && (item.kind === "and" || item.kind === "or") ? `(${text})` : text;
         }),
       );
-      return parts && parts.join(` ${c.kind.toUpperCase()} `);
+      return parts?.join(` ${c.kind.toUpperCase()} `) ?? null;
     }
     case "not": {
       const inner = renderCondition(c.item, target, columnCase);
@@ -696,7 +696,7 @@ export function asciiDomain(c: Condition, column: string): boolean {
     !c.negated &&
     c.operand.kind === "column" &&
     c.operand.name.toLowerCase() === column.toLowerCase() &&
-    c.values.every((v) => v.kind === "string" && /^[\x00-\x7f]*$/.test(v.value))
+    c.values.every((v) => v.kind === "string" && /^\p{ASCII}*$/u.test(v.value))
   );
 }
 

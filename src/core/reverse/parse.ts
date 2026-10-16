@@ -563,7 +563,7 @@ export function sequenceOfDefault(text: string): string | undefined {
   if (pg) return last(pg[1]!);
   const oracle = /^((?:"[^"]+"|[\w$#]+)(?:\s*\.\s*(?:"[^"]+"|[\w$#]+))?)\s*\.\s*nextval$/i.exec(text.trim());
   if (oracle) return last(oracle[1]!.replace(/\s+/g, ""));
-  const standard = /^next\s+value\s+for\s+((?:"[^"]+"|[\w$#\[\]]+)(?:\.(?:"[^"]+"|[\w$#\[\]]+))?)$/i.exec(text.trim());
+  const standard = /^next\s+value\s+for\s+((?:"[^"]+"|[\w$#[\]]+)(?:\.(?:"[^"]+"|[\w$#[\]]+))?)$/i.exec(text.trim());
   if (standard) return last(standard[1]!).replace(/^\[|\]$/g, "");
   return undefined;
 }

@@ -392,7 +392,7 @@ export function inheritanceGeometries(
 export function pathOf(points: Point[], smooth: boolean): string {
   const [first, ...rest] = points;
   if (!first) return "";
-  if (!smooth || points.length < 3) return `M${first.x},${first.y}` + rest.map((p) => ` L${p.x},${p.y}`).join("");
+  if (!smooth || points.length < 3) return `M${first.x},${first.y}${rest.map((p) => ` L${p.x},${p.y}`).join("")}`;
   const mid = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
   let d = `M${first.x},${first.y}`;
   const m0 = mid(points[0]!, points[1]!);

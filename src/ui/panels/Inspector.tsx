@@ -47,7 +47,7 @@ export function PropertiesSection() {
     return message;
   };
 
-  let content;
+  let content: ReactNode;
   if (selection.length === 0) {
     content = (
       <div className="p-3 text-sm text-neutral-500">

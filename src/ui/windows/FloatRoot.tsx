@@ -7,7 +7,7 @@ import type { ToMain, ToReplica } from "@/app/windows/protocol";
 import { type Replica, startReplica, useMirrorStore } from "@/app/windows/replica";
 import {
   currentInnerRect,
-  floatKind,
+  type floatKind,
   focusMain,
   moveOwnWindow,
   onGeometryChange,
@@ -175,7 +175,7 @@ function FloatToolbar() {
   // temps qu'un menu déroulant est ouvert. Redimensionnée seulement si la taille change.
   useEffect(() => {
     let last = "";
-    const fit = () => {
+    const fitWindow = () => {
       const bar = ref.current?.getBoundingClientRect();
       if (!bar) return;
       // Menus déroulants et infobulles débordent de la barre : la fenêtre les englobe.
@@ -189,10 +189,10 @@ function FloatToolbar() {
       last = size;
       void setOwnSize(width, height);
     };
-    fit();
-    const resize = new ResizeObserver(fit);
+    fitWindow();
+    const resize = new ResizeObserver(fitWindow);
     if (ref.current) resize.observe(ref.current);
-    const mutations = new MutationObserver(fit);
+    const mutations = new MutationObserver(fitWindow);
     // Ajout d'un menu ou d'une infobulle, et leur placement (style) une fois mesurés.
     mutations.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
     return () => {
