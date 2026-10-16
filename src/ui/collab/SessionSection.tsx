@@ -27,6 +27,7 @@ export function SessionTitle() {
       {t("dock.section.session")}
       {unread > 0 && (
         <span
+          role="img"
           className="min-w-4 rounded-full bg-blue-600 px-1 text-center text-[10px] leading-4 font-semibold text-white"
           aria-label={t("collab.unread", { n: unread })}
         >

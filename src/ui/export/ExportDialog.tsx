@@ -76,6 +76,7 @@ export function ExportDialog() {
 
   const label = "text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:text-neutral-400";
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: fond de la boîte, un clic à l'extérieur la ferme
     <div
       data-ui-only
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"

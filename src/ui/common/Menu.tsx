@@ -102,6 +102,4 @@ export function MenuCheck({
   );
 }
 
-export const MenuSeparator = () => (
-  <div role="separator" className="my-1 border-t border-neutral-200 dark:border-neutral-700" />
-);
+export const MenuSeparator = () => <hr className="my-1 border-t border-neutral-200 dark:border-neutral-700" />;

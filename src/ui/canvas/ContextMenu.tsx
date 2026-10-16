@@ -90,8 +90,9 @@ export function ContextMenuLayer() {
       {menu.actions.map((action, i) =>
         action.kind === "separator" ? (
           // biome-ignore lint/suspicious/noArrayIndexKey: séparateur sans identité propre
-          <div key={`sep-${i}`} role="separator" className="my-1 border-t border-neutral-200 dark:border-neutral-700" />
+          <hr key={`sep-${i}`} className="my-1 border-t border-neutral-200 dark:border-neutral-700" />
         ) : action.kind === "row" ? (
+          // biome-ignore lint/a11y/useSemanticElements: groupe de boutons d'un menu (motif ARIA menu), pas un formulaire
           <div key={action.id} role="group" className="flex gap-0.5 px-2 py-0.5">
             {action.items.map((item) => (
               <span key={item.id} className="inline-flex" {...tip(item.label)}>
@@ -112,6 +113,7 @@ export function ContextMenuLayer() {
             ))}
           </div>
         ) : (
+          // biome-ignore lint/a11y/useAriaPropsSupportedByRole: rôle menuitemcheckbox quand l'action est cochable
           <button
             key={action.id}
             type="button"

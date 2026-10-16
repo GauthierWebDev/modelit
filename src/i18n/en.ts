@@ -500,6 +500,7 @@ export const en: Record<MessageKey, string> = {
   "canvas.bendHandle": "Drag to move · click then press Delete (or right-click) to remove",
   "canvas.deleteBend": "Remove this bend (Delete)",
   "canvas.compositeKey": "Composite primary key",
+  "canvas.label": "Modeling canvas",
 
   "export.title": "Export image",
   "export.format": "Format",

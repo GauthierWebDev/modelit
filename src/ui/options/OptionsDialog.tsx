@@ -218,6 +218,7 @@ function Segmented<T extends string>({
   return (
     <div role="radiogroup" className="flex overflow-hidden rounded border border-neutral-300 dark:border-neutral-600">
       {options.map((o) => (
+        // biome-ignore lint/a11y/useSemanticElements: bouton radio stylé (motif ARIA radiogroup)
         <button
           key={o.id}
           type="button"

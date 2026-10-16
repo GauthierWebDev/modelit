@@ -64,6 +64,7 @@ export function ForeignKeysSection({ tableOf, linkIds }: { tableOf?: Id; linkIds
                 }
               />
               <span
+                role="img"
                 className="inline-flex cursor-help text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
                 aria-label={details}
                 {...tip(details)}

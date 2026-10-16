@@ -89,6 +89,7 @@ function Group({ title, children, aside }: { title?: string; children: ReactNode
 /** Ligne libellé / valeur, plus large que dans une section : les listes ne sont pas tronquées. */
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: le champ est passé en children
     <label className="grid grid-cols-[14rem_1fr] items-start gap-3 text-sm">
       <span className="pt-0.5 text-neutral-500 dark:text-neutral-400">{label}</span>
       {children}
@@ -282,6 +283,7 @@ function SourceGroup({ id, present, children }: { id: "all" | SqlDialect; presen
   return (
     <section className="border-b border-neutral-200 py-2 last:border-b-0 dark:border-neutral-700">
       {/* Pas un <button> : il reste utilisable en lecture seule, où l'on consulte sans modifier. */}
+      {/* biome-ignore lint/a11y/useSemanticElements: voir ci-dessus, utilisable en lecture seule */}
       <span
         role="button"
         tabIndex={0}

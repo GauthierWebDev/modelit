@@ -2,6 +2,7 @@ import type { Point } from "@core/index";
 import { type MouseEvent, type PointerEvent, type ReactNode, useEffect, useRef } from "react";
 import { useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import type { Viewport } from "@/app/document/documentView";
+import { t } from "@/i18n";
 import { RemoteCursors, reportCursor, useIsSessionTab, usePresenceReporting } from "@/ui/collab/RemoteCursors";
 import { setCanvasElement, setCanvasSize, zoomBy } from "./viewport";
 
@@ -76,6 +77,8 @@ export function CanvasSurface({
   return (
     <svg
       ref={svgRef}
+      role="application"
+      aria-label={t("canvas.label")}
       data-canvas=""
       tabIndex={-1}
       className={`h-full w-full touch-none select-none bg-(--mcd-canvas) outline-none ${className}`}

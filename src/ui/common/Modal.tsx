@@ -75,11 +75,14 @@ export function Modal({
   }, [id]);
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: fond de la boîte, un clic à l'extérieur la ferme (Échap au clavier)
     <div
       data-ui-only
       className={`fixed inset-0 ${layer} flex items-center justify-center bg-black/30`}
       onMouseDown={() => close.current()}
     >
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: rôle passé en prop (dialog ou alertdialog) */}
+      {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: rôle passé en prop (dialog ou alertdialog) */}
       <div
         ref={box}
         role={role}

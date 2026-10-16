@@ -40,6 +40,7 @@ export function AttributesSection() {
   const owner = entity ?? doc.associations.find((a) => a.id === id);
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: intercepte Suppr pour le canevas, la zone n'est pas interactive
     <div
       className="flex h-full flex-col overflow-y-auto"
       // Suppr ne vise jamais le canevas tant que le focus est dans la section (O-50).
@@ -200,6 +201,7 @@ function AttributesPanel({
               } ${drag.from === i ? "opacity-50" : ""}`}
             >
               <span
+                role="img"
                 aria-label={t("attributes.drag")}
                 {...tip(t("attributes.drag"))}
                 onPointerDown={(e) => drag.start(e, i)}
@@ -347,6 +349,7 @@ function Badge({ attribute, duplicate }: { attribute: Attribute; duplicate: bool
   const message = duplicate ? t("attributes.duplicate") : t("attributes.untyped");
   return (
     <span
+      role="img"
       aria-label={message}
       {...tip(message)}
       className={`size-2 flex-none rounded-full ${duplicate ? "bg-red-500" : "bg-amber-500"}`}

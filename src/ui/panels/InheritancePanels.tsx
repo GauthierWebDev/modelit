@@ -39,6 +39,7 @@ export function InheritancePanel({ doc, inheritance }: { doc: ModelDocument; inh
           className="grid grid-cols-4 overflow-hidden rounded border border-neutral-300 dark:border-neutral-600"
         >
           {CONSTRAINTS.map((c) => (
+            // biome-ignore lint/a11y/useSemanticElements: bouton radio stylé (motif ARIA radiogroup)
             <button
               key={c.id}
               type="button"

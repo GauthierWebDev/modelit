@@ -94,6 +94,7 @@ export function Toolbar({
           : "flex items-center gap-1 border-b border-neutral-200 bg-neutral-50 py-1 pr-2 pl-1 dark:border-neutral-700 dark:bg-neutral-900"
       }
     >
+      {/* biome-ignore lint/a11y/useSemanticElements: poignée de déplacement au pointeur, hors de l'ordre de tabulation */}
       <span
         role="button"
         tabIndex={-1}

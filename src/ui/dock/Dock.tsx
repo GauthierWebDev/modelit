@@ -94,6 +94,7 @@ export function GroupView({
       aria-label={sectionLabel(group.active)}
       className="flex h-full min-h-0 flex-col bg-white dark:bg-neutral-900"
     >
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: repli au double-clic, sans équivalent clavier pour l'instant */}
       <header
         data-drop-group={group.id}
         onDoubleClick={(e) =>
@@ -114,6 +115,7 @@ export function GroupView({
             <X size={12} />
           </button>
         )}
+        {/* biome-ignore lint/a11y/useSemanticElements: poignée de déplacement au pointeur, hors de l'ordre de tabulation */}
         <span
           role="button"
           tabIndex={-1}
@@ -282,6 +284,7 @@ const MIN_GROUP_SPAN = 80;
 function GroupResizer({ zone, index, layout }: { zone: Zone; index: number; layout: DockLayout }) {
   const vertical = zone === "right";
   return (
+    // biome-ignore lint/a11y/useSemanticElements: séparateur redimensionnable (motif ARIA window splitter), pas une ligne
     <div
       role="separator"
       aria-orientation={vertical ? "horizontal" : "vertical"}
@@ -341,6 +344,7 @@ export function DockZone({ zone }: { zone: Zone }) {
       className={`flex flex-none ${vertical ? "flex-row" : "flex-col"}`}
       style={vertical ? { width: groups.length ? size : 28 } : { height: groups.length ? size : 28 }}
     >
+      {/* biome-ignore lint/a11y/useSemanticElements: séparateur redimensionnable (motif ARIA window splitter), pas une ligne */}
       <div
         role="separator"
         {...tip(t("dock.resize"))}

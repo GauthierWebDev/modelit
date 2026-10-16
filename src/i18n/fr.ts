@@ -513,6 +513,7 @@ export const fr = {
   "canvas.bendHandle": "Glisser pour déplacer · cliquer puis Suppr (ou clic droit) pour supprimer",
   "canvas.deleteBend": "Supprimer ce point de cassure (Suppr)",
   "canvas.compositeKey": "Clé primaire composée",
+  "canvas.label": "Zone de modélisation",
 
   // export
   "export.title": "Exporter l'image",
