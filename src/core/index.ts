@@ -30,3 +30,4 @@ export * from "./reverse/build";
 export * from "./reverse/types";
 export { parseSql } from "./reverse/parse";
 export * from "./layout/grid";
+export * from "./layout/arrange";

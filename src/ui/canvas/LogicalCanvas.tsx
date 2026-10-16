@@ -1,4 +1,4 @@
-import type { Id, Issue, Point, RelationLabelMode } from "@core/index";
+import { bendsOf, diagramLinks, linkSourceId, positionOf, setBends, type Id, type Issue, type Point, type RelationLabelMode } from "@core/index";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addEntity, connectNodes } from "@/app/commands";
 import { useUiStore } from "@/app/uiStore";
@@ -51,7 +51,9 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
   const references = useMemo(() => referenceGeometries(layouts), [layouts]);
   const selected = new Set(selection);
   const grid = doc.settings.grid.enabled ? doc.settings.grid.size : null;
-  const drag = useRef<{ id: Id; start: Point; origin: Point } | null>(null);
+  /** Déplacement des tables sélectionnées : positions et cassures (traits entre deux d'entre elles) d'origine. */
+  const drag = useRef<{ start: Point; origins: Map<Id, Point>; bends: Map<Id, Point[]> } | null>(null);
+  const toggleSelected = useDocumentView((s) => s.toggleSelected);
   const tool = useUiStore((s) => s.tool);
   const setTool = useUiStore((s) => s.setTool);
   const notify = useUiStore((s) => s.notify);
@@ -119,24 +121,37 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
           } else if (table) setLink({ fromId: table, start: point, current: point, pending: false });
           return true;
         }
-        select(hit ? [hit] : []);
+        // Maj + clic : ajoute ou retire de la sélection (O-57, comme dans le MCD).
+        if (hit && e.shiftKey) {
+          toggleSelected(hit);
+          return true;
+        }
+        const ids = hit && selected.has(hit) ? selection : hit ? [hit] : [];
+        if (!(hit && selected.has(hit))) select(ids);
         if (hit && (e.target as Element).closest("[data-badge]")) {
           revealSection("issues");
           return true;
         }
         if (!hit) return false;
-        const layout = layouts.find((l) => l.sourceId === hit);
-        if (!layout) return true; // trait entre tables : sélection seule
+        if (!tableOf(hit)) return true; // trait entre tables : sélection seule
+        const moved = new Set(ids.filter((id) => tableOf(id)));
+        const origins = new Map([...moved].map((id) => [id, positionOf(doc.layout, id)]));
+        const bends = new Map<Id, Point[]>();
+        for (const l of diagramLinks(doc)) if (moved.has(linkSourceId(l)) && moved.has(l.entityId)) bends.set(l.id, bendsOf(doc.layout, l.id));
         docHandle.store.getState().begin();
-        drag.current = { id: hit, start: point, origin: { x: layout.x, y: layout.y } };
+        drag.current = { start: point, origins, bends };
         return true;
       }}
       onPointerMove={(_, point) => {
         if (link) setLink({ ...link, current: point });
         const d = drag.current;
         if (!d) return;
-        const position = { x: snap(d.origin.x + point.x - d.start.x, grid), y: snap(d.origin.y + point.y - d.start.y, grid) };
-        docHandle.store.getState().preview((draft) => void (draft.layout.positions[d.id] = position));
+        const dx = point.x - d.start.x;
+        const dy = point.y - d.start.y;
+        docHandle.store.getState().preview((draft) => {
+          for (const [id, o] of d.origins) draft.layout.positions[id] = { x: snap(o.x + dx, grid), y: snap(o.y + dy, grid) };
+          for (const [id, points] of d.bends) setBends(draft.layout, id, points.map((b) => ({ x: snap(b.x + dx, grid), y: snap(b.y + dy, grid) })));
+        });
       }}
       onPointerUp={(e, point) => {
         if (link && !link.pending) {
@@ -145,7 +160,7 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
           if (dragged) connect(link.fromId, tableOf(hitIdAt(e))?.sourceId ?? null);
           else setLink({ ...link, pending: true });
         }
-        if (drag.current) docHandle.store.getState().commit("history.moveTable");
+        if (drag.current) docHandle.store.getState().commit(drag.current.origins.size > 1 ? "history.moveSelection" : "history.moveTable");
         drag.current = null;
       }}
       onContextMenu={(e) => {

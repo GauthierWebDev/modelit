@@ -14,8 +14,9 @@ import { revealSection } from "@/app/dock/actions";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
-import { Checkbox, CommitInput, ErrorBanner, Field, NumberInput, Section, Select } from "@/ui/common/controls";
+import { Checkbox, CommitInput, ErrorBanner, Field, IconButton, NumberInput, Section, Select } from "@/ui/common/controls";
 import { useSessionReadOnly } from "@/ui/collab/readOnly";
+import { arrangeActions } from "@/ui/canvas/objectActions";
 import { ForeignKeysSection } from "./ForeignKeysSection";
 import { InheritanceLinkPanel, InheritancePanel } from "./InheritancePanels";
 import { PhysicalSection } from "./PhysicalSection";
@@ -47,7 +48,12 @@ export function PropertiesSection() {
       </div>
     );
   } else if (selection.length > 1) {
-    content = <p className="p-3 text-sm text-neutral-500">{t("inspector.selectedCount", { n: selection.length })}</p>;
+    content = (
+      <>
+        <p className="p-3 text-sm text-neutral-500">{t("inspector.selectedCount", { n: selection.length })}</p>
+        <ArrangeSection />
+      </>
+    );
   } else {
     const id = selection[0]!;
     const entity = doc.entities.find((e) => e.id === id);
@@ -81,6 +87,24 @@ export function ReadOnly({ children }: { children: ReactNode }) {
         {children}
       </fieldset>
     </>
+  );
+}
+
+/** Aligner et répartir les objets sélectionnés (override O-57) ; absent en lecture seule. */
+function ArrangeSection() {
+  const handle = useDocumentHandle();
+  useDocumentView((s) => s.view);
+  if (useSessionReadOnly(handle)) return null;
+  return (
+    <Section title={t("arrange.title")}>
+      <div className="flex flex-wrap gap-0.5">
+        {arrangeActions(handle).map((a) => (
+          <IconButton key={a.id} tooltip={a.label} disabled={a.disabled} onClick={a.run}>
+            {a.icon}
+          </IconButton>
+        ))}
+      </div>
+    </Section>
   );
 }
 

@@ -235,6 +235,25 @@ export function removeBend(doc: DocumentHandle, linkId: Id, index: number) {
 }
 
 /**
+ * Décale des objets (aligner, répartir, override O-57). Les cassures d'un trait dont les deux
+ * extrémités bougent suivent leur décalage moyen ; les autres restent en place.
+ */
+export function offsetNodes(doc: DocumentHandle, offsets: Map<Id, Point>, label: MessageKey) {
+  if (!offsets.size) return;
+  const model = current(doc);
+  const positions = new Map<Id, Point>();
+  for (const [id, o] of offsets) {
+    const p = positionOf(model.layout, id);
+    positions.set(id, { x: p.x + o.x, y: p.y + o.y });
+  }
+  const kept = new Map<Id, Point[]>();
+  for (const link of diagramLinks(model)) {
+    if (!offsets.has(linkSourceId(link)) || !offsets.has(link.entityId)) kept.set(link.id, bendsOf(model.layout, link.id));
+  }
+  moveNodes(doc, positions, kept, label);
+}
+
+/**
  * Déplace des entités et associations (placement automatique, override O-09). La disposition
  * est commune aux vues MCD, MLD et MPD (override O-01). `bends` remplace les cassures des
  * liens indiqués ; les autres suivent le déplacement moyen de leurs deux extrémités.

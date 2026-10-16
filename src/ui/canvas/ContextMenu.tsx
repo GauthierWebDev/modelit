@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { create } from "zustand";
+import { tip } from "@/ui/common/Tooltip";
 import type { Action } from "./objectActions";
 
 /**
@@ -83,6 +84,26 @@ export function ContextMenuLayer() {
       {menu.actions.map((action, i) =>
         action.kind === "separator" ? (
           <div key={`sep-${i}`} role="separator" className="my-1 border-t border-neutral-200 dark:border-neutral-700" />
+        ) : action.kind === "row" ? (
+          <div key={action.id} role="group" className="flex gap-0.5 px-2 py-0.5">
+            {action.items.map((item) => (
+              <span key={item.id} className="inline-flex" {...tip(item.label)}>
+                <button
+                  type="button"
+                  role="menuitem"
+                  aria-label={item.label}
+                  disabled={item.disabled}
+                  onClick={() => {
+                    close();
+                    item.run();
+                  }}
+                  className="flex size-7 items-center justify-center rounded text-neutral-600 hover:bg-neutral-100 disabled:opacity-35 disabled:hover:bg-transparent dark:text-neutral-300 dark:hover:bg-neutral-700"
+                >
+                  {item.icon}
+                </button>
+              </span>
+            ))}
+          </div>
         ) : (
           <button
             key={action.id}
