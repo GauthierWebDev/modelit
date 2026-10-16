@@ -1,4 +1,4 @@
-import { latestVersion, migrateLegacyPattern, type Dbms, type KeyPattern } from "@core/index";
+import { latestVersion, migrateLegacyPattern, type CustomDbms, type Dbms, type KeyPattern } from "@core/index";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { systemLocale, type Locale } from "@/i18n";
@@ -52,13 +52,21 @@ export interface Preferences {
   disclosures: Record<string, boolean>;
   /** Dernier onglet de la boîte « Paramètres du modèle » (O-55). */
   modelSettingsTab: ModelSettingsTab;
+  /** « Mes SGBD » : SGBD personnalisés réutilisables (O-59). */
+  customDbms: LibraryDbms[];
   /** Assistants IA par MCP (override O-47) : désactivé par défaut. */
   mcp: McpPreferences;
   /** Identité en session collaborative (O-05 §3). */
   identity: IdentityPreferences;
 }
 
-export type ModelSettingsTab = "naming" | "script" | "conversions";
+export type ModelSettingsTab = "naming" | "script" | "conversions" | "types";
+
+/** SGBD personnalisé de la bibliothèque du poste (override O-59) : définition et base. */
+export interface LibraryDbms extends CustomDbms {
+  base: Dbms;
+  version: string;
+}
 
 export interface McpPreferences {
   enabled: boolean;
@@ -79,6 +87,11 @@ interface PreferencesState extends Preferences {
   setLastSeenVersion: (version: string) => void;
   setDisclosure: (id: string, open: boolean) => void;
   setModelSettingsTab: (tab: ModelSettingsTab) => void;
+  /** Ajoute un SGBD personnalisé à la bibliothèque, ou y remplace celui de même identifiant. */
+  saveCustomDbms: (dbms: LibraryDbms) => void;
+  renameCustomDbms: (id: string, name: string) => void;
+  duplicateCustomDbms: (id: string, name: string) => void;
+  deleteCustomDbms: (id: string) => void;
   /** Applique une opération de `dock/layout.ts` à la disposition. */
   updateDock: (change: (layout: DockLayout) => DockLayout) => void;
   setMcp: (patch: Partial<McpPreferences>) => void;
@@ -104,6 +117,7 @@ const initial: Preferences = {
   dock: defaultLayout(),
   disclosures: {},
   modelSettingsTab: "naming",
+  customDbms: [],
   mcp: { enabled: false, port: 47321, token: "" },
   identity: newIdentity(),
 };
@@ -123,6 +137,15 @@ export const usePreferencesStore = create<PreferencesState>()(
       setLastSeenVersion: (lastSeenVersion) => set({ lastSeenVersion }),
       setDisclosure: (id, open) => set((s) => ({ disclosures: { ...s.disclosures, [id]: open } })),
       setModelSettingsTab: (modelSettingsTab) => set({ modelSettingsTab }),
+      saveCustomDbms: (dbms) =>
+        set((s) => ({ customDbms: s.customDbms.some((d) => d.id === dbms.id) ? s.customDbms.map((d) => (d.id === dbms.id ? dbms : d)) : [...s.customDbms, dbms] })),
+      renameCustomDbms: (id, name) => set((s) => ({ customDbms: s.customDbms.map((d) => (d.id === id ? { ...d, name } : d)) })),
+      duplicateCustomDbms: (id, name) =>
+        set((s) => {
+          const source = s.customDbms.find((d) => d.id === id);
+          return source ? { customDbms: [...s.customDbms, { ...source, types: { ...source.types }, id: crypto.randomUUID(), name }] } : {};
+        }),
+      deleteCustomDbms: (id) => set((s) => ({ customDbms: s.customDbms.filter((d) => d.id !== id) })),
       updateDock: (change) => set((s) => ({ dock: change(s.dock) })),
       setMcp: (patch) => set((s) => ({ mcp: { ...s.mcp, ...patch } })),
       setIdentity: (patch) => set((s) => ({ identity: { ...s.identity, ...patch, name: (patch.name ?? s.identity.name).slice(0, 40) } })),
@@ -148,6 +171,7 @@ export const usePreferencesStore = create<PreferencesState>()(
           export: { ...current.export, ...saved.export },
           dock: saved.dock ? sanitizeLayout(saved.dock) : current.dock,
           mcp: { ...current.mcp, ...saved.mcp },
+          customDbms: Array.isArray(saved.customDbms) ? saved.customDbms.filter((d) => d && typeof d.id === "string" && typeof d.name === "string" && d.types) : [],
           identity: {
             ...current.identity,
             ...saved.identity,

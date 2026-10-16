@@ -60,6 +60,23 @@ const TABLE = {
 type RowKey = keyof typeof TABLE;
 
 /**
+ * Clé étrangère vers un compteur (CDC §5.13.6) : par défaut l'entier de même taille ; un SGBD
+ * personnalisé peut la redéfinir (ex. BIGINT quand le compteur devient BIGSERIAL).
+ */
+const COUNTER_KEYS = { counterForeignKey: "int32", counter64ForeignKey: "int64" } as const satisfies Record<string, RowKey>;
+
+/** Type conceptuel, clé des types redéfinis d'un SGBD personnalisé (O-59). */
+export type TypeKey = RowKey | keyof typeof COUNTER_KEYS;
+
+/** Types conceptuels, dans l'ordre de présentation (clés étrangères compteur après les compteurs). */
+export const TYPE_KEYS: TypeKey[] = (Object.keys(TABLE) as RowKey[]).flatMap((k): TypeKey[] =>
+  k === "counter64" ? [k, "counterForeignKey", "counter64ForeignKey"] : [k],
+);
+
+/** Types redéfinis par un SGBD personnalisé (override O-59) : gabarit par type conceptuel. */
+export type TypeTemplates = Partial<Record<TypeKey, string>>;
+
+/**
  * Surcharges selon la version du SGBD (override O-04) : mots-clés plus adaptés,
  * disponibles à partir de la version `since`. Sans version (ou version générique),
  * la table ci-dessus s'applique telle quelle.
@@ -75,18 +92,39 @@ const VERSION_OVERRIDES: { dbms: Dbms; since: string; row: RowKey; sql: string }
   { dbms: "oracle", since: "23ai", row: "boolean", sql: "BOOLEAN" },
 ];
 
-function templateFor(row: RowKey, dbms: Dbms, version: string | undefined): string | null {
+/** Gabarit du SGBD (et de sa version) pour un type conceptuel, sans personnalisation. */
+export function defaultTemplate(key: TypeKey, dbms: Dbms, version: string | undefined): string | null {
+  const row: RowKey = key in COUNTER_KEYS ? COUNTER_KEYS[key as keyof typeof COUNTER_KEYS] : (key as RowKey);
   const override = VERSION_OVERRIDES.filter((o) => o.dbms === dbms && o.row === row && isAtLeast(dbms, version, o.since)).at(-1);
   return override ? override.sql : TABLE[row][dbms];
 }
 
-function rowKey(type: Exclude<DataType, { kind: "free" }>): RowKey {
+function templateFor(row: TypeKey, dbms: Dbms, version: string | undefined, custom?: TypeTemplates): string | null {
+  const redefined = custom?.[row]?.trim();
+  return redefined || defaultTemplate(row, dbms, version);
+}
+
+/** Variables qu'un gabarit peut contenir, selon le type conceptuel. */
+export function templateVariables(row: TypeKey): string[] {
+  if (/^(ascii|unicode|binary)/.test(row)) return ["n"];
+  return row === "decimal" ? ["p", "s"] : [];
+}
+
+/** Variable sans objet pour ce type, ou inconnue, dans un gabarit saisi (O-59) ; `null` si valide. */
+export function invalidTemplateVariable(row: TypeKey, template: string): string | null {
+  const allowed = templateVariables(row);
+  for (const [, name] of template.matchAll(/\{(\w*)\}/g)) if (!allowed.includes(name!)) return `{${name}}`;
+  return null;
+}
+
+function rowKey(type: Exclude<DataType, { kind: "free" }>): TypeKey {
   switch (type.kind) {
     case "text": {
       const length = { variable: "Variable", fixed: "Fixed", large: "Large" }[type.length];
       return `${type.encoding}${length}` as RowKey;
     }
     case "integer":
+      if (type.counterKey) return type.bits === 64 ? "counter64ForeignKey" : "counterForeignKey";
       return `int${type.bits}`;
     case "real":
       return type.precision === "single" ? "realSingle" : "realDouble";
@@ -111,9 +149,9 @@ function fill(template: string, values: Record<string, number | undefined>): str
 const FRACTIONAL_SECONDS: Dbms[] = ["postgresql", "oracle", "mysql", "mariadb", "sqlserver", "db2"];
 
 /** Type SQL d'une colonne, ou `null` si non défini pour ce SGBD. */
-export function sqlType(type: DataType, dbms: Dbms, version?: string): string | null {
+export function sqlType(type: DataType, dbms: Dbms, version?: string, custom?: TypeTemplates): string | null {
   if (type.kind === "free") return type.sql.trim() || null;
-  const template = templateFor(rowKey(type), dbms, version);
+  const template = templateFor(rowKey(type), dbms, version, custom);
   if (template === null) return null;
   const values =
     type.kind === "text"
@@ -134,5 +172,5 @@ export function sqlType(type: DataType, dbms: Dbms, version?: string): string | 
  * le type entier correspondant.
  */
 export function foreignKeyDataType(referenced: DataType | undefined): DataType | undefined {
-  return referenced?.kind === "counter" ? { kind: "integer", bits: referenced.bits ?? 32 } : referenced;
+  return referenced?.kind === "counter" ? { kind: "integer", bits: referenced.bits ?? 32, counterKey: true } : referenced;
 }

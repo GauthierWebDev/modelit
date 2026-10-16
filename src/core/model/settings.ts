@@ -1,4 +1,5 @@
 import type { Dbms } from "../dbms/dbms";
+import type { TypeTemplates } from "../dbms/typeMapping";
 import { latestVersion } from "../dbms/versions";
 import type { Typology } from "../naming/typology";
 
@@ -85,10 +86,22 @@ export type RelationLabelMode = "none" | "foreignKey" | "text";
  * Seul un sous-ensemble est implémenté ; les autres s'ajoutent ici,
  * avec une migration dans `core/io` si leur absence change le comportement.
  */
+/**
+ * SGBD personnalisé (override O-59) : basé sur le SGBD et la version de la cible (`dbms`,
+ * `dbmsVersion`), avec des types redéfinis. `id` relie la copie du modèle à la bibliothèque du poste.
+ */
+export interface CustomDbms {
+  id: string;
+  name: string;
+  types: TypeTemplates;
+}
+
 export interface DocumentSettings {
   dbms: Dbms;
   /** Version du SGBD cible (cf. `core/dbms/versions.ts`). */
   dbmsVersion: string;
+  /** Cible personnalisée, basée sur `dbms` / `dbmsVersion` ; absente : le SGBD tel quel. */
+  customDbms?: CustomDbms;
   naming: {
     typology: Typology;
     stripAccents: boolean;

@@ -1,6 +1,6 @@
-import type { Id, LogicalColumn } from "@core/index";
+import { displayedSqlType, sameDialect, targetOf, type Id, type LogicalColumn } from "@core/index";
 import { useEffect, useRef, type KeyboardEvent } from "react";
-import { renameLogical } from "@/app/commands";
+import { renameLogical, setColumnSqlType } from "@/app/commands";
 import { useLogicalModel } from "@/app/derived";
 import { useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { useUiStore } from "@/app/uiStore";
@@ -15,6 +15,8 @@ import type { LogicalViewMode, TableLayout } from "./logicalGeometry";
 export interface RenameTarget {
   sourceId: Id;
   column: { attributeId: Id } | { linkId: Id; originId: Id } | null;
+  /** MPD : type SQL de la colonne plutôt que son nom (O-59). */
+  part?: "type";
 }
 
 /** Cible d'une colonne, si elle se renomme (rubrique, ou clé étrangère issue d'une patte). */
@@ -127,6 +129,25 @@ export function InlineRename({ target, layouts, mode, onClose }: { target: Renam
     if (missing) onClose();
   }, [missing, onClose]);
   if (missing) return null;
+
+  if (target.part === "type" && row?.column.attributeId) {
+    const attributeId = row.column.attributeId;
+    const settings = doc.store.getState().doc.settings;
+    return (
+      <InlineEditor
+        box={{ x: layout.x + layout.typeX - 3, y: layout.y + row.y, width: layout.constraintsX - layout.typeX - 2, height: ROW_HEIGHT }}
+        value={row.column.sourceType && sameDialect(row.column.sourceType.dialect, settings.dbms) ? row.column.sourceType.sql : ""}
+        placeholder={displayedSqlType({ type: row.column.type }, targetOf(settings)) ?? undefined}
+        title={false}
+        onClose={onClose}
+        commit={(value) => {
+          const error = setColumnSqlType(doc, layout.sourceId, attributeId, value);
+          if (!error) useUiStore.getState().showAttribute(attributeId);
+          return error;
+        }}
+      />
+    );
+  }
 
   // Ligne : du début du nom jusqu'au type (MPD) ou au bord de la table ; titre : toute la largeur.
   const left = row ? PAD_X + row.indent - 3 : 2;
