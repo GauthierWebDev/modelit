@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { emptyDocument } from "../model/factory";
 import { diagramLinks, diagramNodes, linkSourceId } from "../model/document";
+import { emptyDocument } from "../model/factory";
 import { reverseEngineer } from "../reverse/build";
-import { bestChunk, gridLayout, gridLayoutChunk, LAYOUT_CHUNKS, type GridEdge, type GridNode } from "./grid";
+import { bestChunk, type GridEdge, type GridNode, gridLayout, gridLayoutChunk, LAYOUT_CHUNKS } from "./grid";
 
 /**
  * Placement par lots, comme dans l'interface ; `wall` = durée du lot le plus long, c'est-à-dire
@@ -41,7 +41,13 @@ function laboGraph() {
   // Dimensions relevées dans l'interface : MCD ≈ 120 px de large, MPD 330 à 570 px (types, contraintes).
   const nodes: GridNode[] = diagramNodes(doc).map((n) =>
     n.kind === "entity"
-      ? { id: n.id, width: n.name === "chercheur" ? 567 : 350, height: 200, mcdWidth: 120, mcdHeight: 36 + 18 * n.attributes.length }
+      ? {
+          id: n.id,
+          width: n.name === "chercheur" ? 567 : 350,
+          height: 200,
+          mcdWidth: 120,
+          mcdHeight: 36 + 18 * n.attributes.length,
+        }
       : { id: n.id, width: 20 + 7.5 * ("name" in n ? n.name.length : 4), height: 36 },
   );
   const edges: GridEdge[] = diagramLinks(doc).map((l) => ({ a: linkSourceId(l), b: l.entityId }));
@@ -50,7 +56,9 @@ function laboGraph() {
 
 const overlaps = (nodes: GridNode[], positions: Map<string, { x: number; y: number }>) => {
   const boxes = nodes.map((n) => ({ ...positions.get(n.id)!, w: n.width, h: n.height }));
-  return boxes.some((a, i) => boxes.some((b, j) => j > i && a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y));
+  return boxes.some((a, i) =>
+    boxes.some((b, j) => j > i && a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y),
+  );
 };
 
 describe("placement sur grille (override O-30)", { timeout: 30_000 }, () => {
@@ -84,7 +92,10 @@ describe("placement sur grille (override O-30)", { timeout: 30_000 }, () => {
 
   it("cas signalé (dimensions réelles relevées dans l'interface) : aucun croisement, aucune traversée", () => {
     // fixtures/labo_layout_input.json : données envoyées au Web Worker pour le MCD du laboratoire.
-    const { nodes, edges } = JSON.parse(readFileSync("fixtures/labo_layout_input.json", "utf8")) as { nodes: GridNode[]; edges: GridEdge[] };
+    const { nodes, edges } = JSON.parse(readFileSync("fixtures/labo_layout_input.json", "utf8")) as {
+      nodes: GridNode[];
+      edges: GridEdge[];
+    };
     const { positions, quality } = gridLayout(nodes, edges);
     expect(quality).toMatchObject({ through: 0, crossings: 0 });
     expect(overlaps(nodes, positions)).toBe(false);
@@ -100,7 +111,11 @@ describe("placement sur grille (override O-30)", { timeout: 30_000 }, () => {
   });
 
   it("grand modèle (80 objets) : sans chevauchement ni traversée, au plus 2 croisements, en moins de 0,8 s (parallèle)", () => {
-    const nodes: GridNode[] = Array.from({ length: 80 }, (_, i) => ({ id: `n${i}`, width: 150 + (i % 3) * 30, height: 60 + (i % 4) * 20 }));
+    const nodes: GridNode[] = Array.from({ length: 80 }, (_, i) => ({
+      id: `n${i}`,
+      width: 150 + (i % 3) * 30,
+      height: 60 + (i % 4) * 20,
+    }));
     const edges: GridEdge[] = nodes.slice(1).map((n, i) => ({ a: n.id, b: `n${Math.floor(i / 2)}` }));
     const { positions, quality, wall } = layout(nodes, edges);
     expect(overlaps(nodes, positions)).toBe(false);
@@ -135,7 +150,14 @@ function randomModel(seed: number) {
   const k = 5 + Math.floor(r() * 8);
   const nodes: GridNode[] = [];
   const edges: GridEdge[] = [];
-  for (let i = 0; i < k; i++) nodes.push({ id: `e${i}`, width: 330 + r() * 240, height: 120 + r() * 100, mcdWidth: 110 + r() * 30, mcdHeight: 60 + r() * 90 });
+  for (let i = 0; i < k; i++)
+    nodes.push({
+      id: `e${i}`,
+      width: 330 + r() * 240,
+      height: 120 + r() * 100,
+      mcdWidth: 110 + r() * 30,
+      mcdHeight: 60 + r() * 90,
+    });
   const associations = Math.round(k * (1 + r() * 0.8));
   for (let j = 0; j < associations; j++) {
     const id = `a${j}`;

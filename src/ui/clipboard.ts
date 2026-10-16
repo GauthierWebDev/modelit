@@ -13,7 +13,8 @@ import { revealObjects } from "@/ui/canvas/viewport";
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
 const isEditable = (target: EventTarget | null) =>
-  target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+  target instanceof HTMLElement &&
+  (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
 /** Champ de saisie, ou texte sélectionné (MLD textuel, script) : le presse-papiers garde son sens habituel. */
 const textContext = (target: EventTarget | null) => isEditable(target) || Boolean(window.getSelection()?.toString());

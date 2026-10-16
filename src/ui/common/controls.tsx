@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { usePreferencesStore } from "@/app/preferencesStore";
 import { t } from "@/i18n";
 import { tip } from "./Tooltip";
@@ -113,7 +113,12 @@ export function Checkbox({
 }) {
   return (
     <label className="inline-flex items-center gap-1.5 text-sm select-none" {...tip(tooltip)}>
-      <input type="checkbox" className="accent-blue-600" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <input
+        type="checkbox"
+        className="accent-blue-600"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
       {label}
     </label>
   );
@@ -175,7 +180,11 @@ export function Section({
   return (
     <section className="border-b border-neutral-200 px-3 py-3 dark:border-neutral-700">
       <div className={`flex items-center justify-between ${open ? "mb-2" : ""}`}>
-        {collapsible ? <DisclosureToggle id={collapsible} open={open} title={title} summary={summary} /> : <h3 className={sectionTitle}>{title}</h3>}
+        {collapsible ? (
+          <DisclosureToggle id={collapsible} open={open} title={title} summary={summary} />
+        ) : (
+          <h3 className={sectionTitle}>{title}</h3>
+        )}
         {open && actions}
       </div>
       {open && <div className="flex flex-col gap-2">{children}</div>}
@@ -198,7 +207,17 @@ export function Disclosure({ id, title, children }: { id: string; title: string;
  * En-tête cliquable d'un bloc repliable. Pas un <button> : il reste utilisable dans un
  * formulaire désactivé (session en lecture seule), où l'on consulte sans modifier.
  */
-function DisclosureToggle({ id, open, title, summary }: { id: string; open: boolean; title: string; summary?: ReactNode }) {
+function DisclosureToggle({
+  id,
+  open,
+  title,
+  summary,
+}: {
+  id: string;
+  open: boolean;
+  title: string;
+  summary?: ReactNode;
+}) {
   const toggle = () => usePreferencesStore.getState().setDisclosure(id, !open);
   return (
     <span

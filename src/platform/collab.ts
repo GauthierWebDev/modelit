@@ -26,7 +26,7 @@ function on(event: string, handler: (payload: Payload) => void): () => void {
   };
 }
 
-const parse = <T,>(data: string | null): T | null => {
+const parse = <T>(data: string | null): T | null => {
   try {
     return data ? (JSON.parse(data) as T) : null;
   } catch {

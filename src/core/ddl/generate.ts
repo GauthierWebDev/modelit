@@ -1,11 +1,17 @@
 import { DBMS_LIST } from "../dbms/dbms";
 import { sqlType } from "../dbms/typeMapping";
 import { GENERIC_VERSION } from "../dbms/versions";
-import { hasErrors, type LogicalColumn, type LogicalForeignKey, type LogicalModel, type LogicalTable } from "../mld/logical";
+import {
+  hasErrors,
+  type LogicalColumn,
+  type LogicalForeignKey,
+  type LogicalModel,
+  type LogicalTable,
+} from "../mld/logical";
 import type { DdlOptions } from "../model/settings";
 import { MSG } from "../validation/messages";
 import { CascadeGraph, foreignKey, foreignKeyLabel, notValidatedSuffix, placement } from "./constraints";
-import { createContext, DEFAULT_OPTIONS, type Context } from "./context";
+import { type Context, createContext, DEFAULT_OPTIONS } from "./context";
 import { sameDialect, supportsAlterForeignKey, type Target } from "./dialects";
 import { keyIndex } from "./indexes";
 import { formatLossGroup, groupLosses, type Loss } from "./losses";
@@ -44,7 +50,8 @@ export interface SqlTarget extends Target {}
  * Les conversions fines du script (domaines, non-signés…) n'y figurent pas.
  */
 export function displayedSqlType(column: Pick<LogicalColumn, "type" | "sourceType">, target: Target): string | null {
-  if (column.sourceType && sameDialect(column.sourceType.dialect, target.dbms) && column.type?.kind !== "counter") return column.sourceType.sql;
+  if (column.sourceType && sameDialect(column.sourceType.dialect, target.dbms) && column.type?.kind !== "counter")
+    return column.sourceType.sql;
   return column.type ? sqlType(column.type, target.dbms, target.version, target.custom?.types) : null;
 }
 
@@ -54,7 +61,10 @@ export function displayedSqlType(column: Pick<LogicalColumn, "type" | "sourceTyp
  * première table restante est créée quand même et ses références en avant sont différées
  * (ALTER TABLE en fin de script) — c'est ce qu'un script écrit à la main fait d'ordinaire.
  */
-export function planOrder(tables: LogicalTable[], allInAlter: boolean): { order: LogicalTable[]; deferred: Set<LogicalForeignKey> } {
+export function planOrder(
+  tables: LogicalTable[],
+  allInAlter: boolean,
+): { order: LogicalTable[]; deferred: Set<LogicalForeignKey> } {
   const byName = new Map(tables.map((t) => [t.name.toLowerCase(), t]));
   const order: LogicalTable[] = [];
   const created = new Set<LogicalTable>();
@@ -101,8 +111,12 @@ function script(ctx: Context, model: LogicalModel): string {
   }
   // Clauses de stockage : une ligne du rapport pour toutes les tables concernées (O-39).
   const storage = [...new Set(order.flatMap((t) => t.storage ?? []))];
-  if (storage.length) for (const table of order) if (table.storage?.length) ctx.report.add("physical", table.name, MSG.lossStorage(storage.join(", ")));
-  const indexes = ctx.options.indexes ? order.flatMap((table) => table.indexes.flatMap((index) => keyIndex(ctx, table, index, false))) : [];
+  if (storage.length)
+    for (const table of order)
+      if (table.storage?.length) ctx.report.add("physical", table.name, MSG.lossStorage(storage.join(", ")));
+  const indexes = ctx.options.indexes
+    ? order.flatMap((table) => table.indexes.flatMap((index) => keyIndex(ctx, table, index, false)))
+    : [];
   // Extensions et collations d'abord, puis schémas, séquences et tables (O-42).
   const { preamble, schemas, notValidated, epilogue } = ctx.script;
   const head = preamble.filter((p) => /^CREATE (EXTENSION|COLLATION)/.test(p));

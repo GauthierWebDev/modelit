@@ -1,11 +1,11 @@
 import { DBMS_LIST, detectDialect, issueMessage, mldPlainText, reverseEngineer, type SqlDialect } from "@core/index";
 import { APP_INFO } from "../appInfo";
-import { useDialogStore } from "../dialogStore";
+import { aiWriteRefusal } from "../collab/session";
 import { ddlOf, logicalModelOf } from "../derived";
+import { useDialogStore } from "../dialogStore";
 import { documentName } from "../fileCommands";
 import { newModelDocument } from "../modelDefaults";
 import { useUiStore } from "../uiStore";
-import { aiWriteRefusal } from "../collab/session";
 import { activeDocument, openInTab, useWorkspaceStore } from "../workspace";
 import { applyChanges, type Operation } from "./apply";
 import { describeModel } from "./describe";
@@ -25,7 +25,12 @@ interface Request {
   params?: Record<string, unknown>;
 }
 
-type Response = { jsonrpc: "2.0"; id: string | number | null; result?: unknown; error?: { code: number; message: string } };
+type Response = {
+  jsonrpc: "2.0";
+  id: string | number | null;
+  result?: unknown;
+  error?: { code: number; message: string };
+};
 
 /** Ce que l'application doit faire autour d'un appel : rendre compte de l'activité de l'IA. */
 export interface McpHooks {
@@ -55,7 +60,8 @@ const ATTRIBUTE_SCHEMA = {
 export const TOOLS = [
   {
     name: "list_documents",
-    description: "List the documents open in ModelIt (one per tab) and tell which one is active. Tools act on the active tab.",
+    description:
+      "List the documents open in ModelIt (one per tab) and tell which one is active. Tools act on the active tab.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -66,12 +72,14 @@ export const TOOLS = [
   },
   {
     name: "get_mld",
-    description: "Get the logical data model (MLD, relational schema) derived from the active tab, as text: table = (columns); underlined primary keys are noted _x_, foreign keys #x.",
+    description:
+      "Get the logical data model (MLD, relational schema) derived from the active tab, as text: table = (columns); underlined primary keys are noted _x_, foreign keys #x.",
     inputSchema: { type: "object", properties: {} },
   },
   {
     name: "get_sql",
-    description: "Get the SQL DDL script generated for the target DBMS of the active tab, with the list of constructs the DBMS cannot express (losses).",
+    description:
+      "Get the SQL DDL script generated for the target DBMS of the active tab, with the list of constructs the DBMS cannot express (losses).",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -90,7 +98,15 @@ export const TOOLS = [
           type: "array",
           items: {
             oneOf: [
-              { type: "object", properties: { op: { const: "create_entity" }, name: { type: "string" }, attributes: { type: "array", items: ATTRIBUTE_SCHEMA } }, required: ["op", "name"] },
+              {
+                type: "object",
+                properties: {
+                  op: { const: "create_entity" },
+                  name: { type: "string" },
+                  attributes: { type: "array", items: ATTRIBUTE_SCHEMA },
+                },
+                required: ["op", "name"],
+              },
               {
                 type: "object",
                 properties: {
@@ -101,7 +117,11 @@ export const TOOLS = [
                     minItems: 2,
                     items: {
                       type: "object",
-                      properties: { entity: { type: "string" }, cardinality: { type: "string" }, relativeIdentifier: { type: "boolean" } },
+                      properties: {
+                        entity: { type: "string" },
+                        cardinality: { type: "string" },
+                        relativeIdentifier: { type: "boolean" },
+                      },
                       required: ["entity", "cardinality"],
                     },
                   },
@@ -119,16 +139,50 @@ export const TOOLS = [
                 },
                 required: ["op", "parent", "children"],
               },
-              { type: "object", properties: { op: { const: "rename" }, target: { type: "string" }, name: { type: "string" } }, required: ["op", "target", "name"] },
-              { type: "object", properties: { op: { const: "set_attributes" }, target: { type: "string" }, attributes: { type: "array", items: ATTRIBUTE_SCHEMA } }, required: ["op", "target", "attributes"] },
-              { type: "object", properties: { op: { const: "add_attributes" }, target: { type: "string" }, attributes: { type: "array", items: ATTRIBUTE_SCHEMA } }, required: ["op", "target", "attributes"] },
               {
                 type: "object",
-                properties: { op: { const: "set_link" }, association: { type: "string" }, entity: { type: "string" }, cardinality: { type: "string" }, relativeIdentifier: { type: "boolean" } },
+                properties: { op: { const: "rename" }, target: { type: "string" }, name: { type: "string" } },
+                required: ["op", "target", "name"],
+              },
+              {
+                type: "object",
+                properties: {
+                  op: { const: "set_attributes" },
+                  target: { type: "string" },
+                  attributes: { type: "array", items: ATTRIBUTE_SCHEMA },
+                },
+                required: ["op", "target", "attributes"],
+              },
+              {
+                type: "object",
+                properties: {
+                  op: { const: "add_attributes" },
+                  target: { type: "string" },
+                  attributes: { type: "array", items: ATTRIBUTE_SCHEMA },
+                },
+                required: ["op", "target", "attributes"],
+              },
+              {
+                type: "object",
+                properties: {
+                  op: { const: "set_link" },
+                  association: { type: "string" },
+                  entity: { type: "string" },
+                  cardinality: { type: "string" },
+                  relativeIdentifier: { type: "boolean" },
+                },
                 required: ["op", "association", "entity"],
               },
-              { type: "object", properties: { op: { const: "delete" }, targets: { type: "array", items: { type: "string" } } }, required: ["op", "targets"] },
-              { type: "object", properties: { op: { const: "set_dbms" }, dbms: { enum: DBMS_IDS }, version: { type: "string" } }, required: ["op", "dbms"] },
+              {
+                type: "object",
+                properties: { op: { const: "delete" }, targets: { type: "array", items: { type: "string" } } },
+                required: ["op", "targets"],
+              },
+              {
+                type: "object",
+                properties: { op: { const: "set_dbms" }, dbms: { enum: DBMS_IDS }, version: { type: "string" } },
+                required: ["op", "dbms"],
+              },
             ],
           },
         },
@@ -138,7 +192,8 @@ export const TOOLS = [
   },
   {
     name: "reverse_engineer",
-    description: "Rebuild a conceptual model from a SQL DDL script (any DBMS, dialect detected automatically). The result opens in a new tab, which becomes active.",
+    description:
+      "Rebuild a conceptual model from a SQL DDL script (any DBMS, dialect detected automatically). The result opens in a new tab, which becomes active.",
     inputSchema: { type: "object", properties: { sql: { type: "string" } }, required: ["sql"] },
   },
   {
@@ -148,7 +203,9 @@ export const TOOLS = [
   },
 ];
 
-const text = (value: unknown) => ({ content: [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }] });
+const text = (value: unknown) => ({
+  content: [{ type: "text", text: typeof value === "string" ? value : JSON.stringify(value, null, 2) }],
+});
 const failure = (message: string) => ({ ...text(message), isError: true });
 
 /** ModelIt occupé : boîte de dialogue ouverte, ou glisser-déposer en cours (O-47). */
@@ -171,7 +228,8 @@ const WRITE_TOOLS = new Set(["apply_changes", "reverse_engineer", "auto_layout"]
 async function callTool(name: string, args: Record<string, unknown>, hooks: McpHooks) {
   const doc = activeDocument();
   const model = doc.store.getState().doc;
-  if (WRITE_TOOLS.has(name) && busy()) return failure("ModelIt is busy (a dialog is open or a drag is in progress): try again in a moment.");
+  if (WRITE_TOOLS.has(name) && busy())
+    return failure("ModelIt is busy (a dialog is open or a drag is in progress): try again in a moment.");
   // Session collaborative rejointe : lecteur, IA interdite par l'hôte (O-05 §8). Un nouvel onglet
   // (rétroconception) n'est pas concerné.
   const refusal = name === "reverse_engineer" ? null : WRITE_TOOLS.has(name) ? aiWriteRefusal(doc.id) : null;
@@ -187,15 +245,33 @@ async function callTool(name: string, args: Record<string, unknown>, hooks: McpH
       return text(mldPlainText(logicalModelOf(model)) || "(empty model)");
     case "get_sql": {
       const ddl = ddlOf(model);
-      return ddl.ok ? text({ dbms: model.settings.dbms, version: model.settings.dbmsVersion, sql: ddl.sql, losses: ddl.losses.map((l) => l.message) }) : failure(ddl.error);
+      return ddl.ok
+        ? text({
+            dbms: model.settings.dbms,
+            version: model.settings.dbmsVersion,
+            sql: ddl.sql,
+            losses: ddl.losses.map((l) => l.message),
+          })
+        : failure(ddl.error);
     }
     case "list_issues":
-      return text(logicalModelOf(model).issues.map((i) => ({ severity: i.severity, message: issueMessage(i, "conceptual"), ...(i.target ? { target: i.target.id } : {}) })));
+      return text(
+        logicalModelOf(model).issues.map((i) => ({
+          severity: i.severity,
+          message: issueMessage(i, "conceptual"),
+          ...(i.target ? { target: i.target.id } : {}),
+        })),
+      );
     case "apply_changes": {
       const result = applyChanges(doc, (args.operations ?? []) as Operation[]);
       if (!result.ok) return failure(`Nothing was applied. ${result.error}`);
       hooks.onApplied?.(result.summary.join(" ; "));
-      return text({ document: documentName(doc), applied: result.summary, created: result.created, issues: logicalModelOf(doc.store.getState().doc).issues.length });
+      return text({
+        document: documentName(doc),
+        applied: result.summary,
+        created: result.created,
+        issues: logicalModelOf(doc.store.getState().doc).issues.length,
+      });
     }
     case "reverse_engineer": {
       const sql = String(args.sql ?? "");
@@ -218,13 +294,24 @@ async function callTool(name: string, args: Record<string, unknown>, hooks: McpH
  * Traite un message JSON-RPC ; `null` pour une notification (pas de réponse).
  * `methodHeader` : en-tête `Mcp-Method` (révision 2026-07-28), qui doit correspondre au corps.
  */
-export async function handleMcpMessage(raw: unknown, hooks: McpHooks = {}, methodHeader?: string): Promise<Response | null> {
+export async function handleMcpMessage(
+  raw: unknown,
+  hooks: McpHooks = {},
+  methodHeader?: string,
+): Promise<Response | null> {
   const message = raw as Partial<Request> | null;
-  if (!message || typeof message !== "object" || Array.isArray(message) || message.jsonrpc !== "2.0" || typeof message.method !== "string") {
+  if (
+    !message ||
+    typeof message !== "object" ||
+    Array.isArray(message) ||
+    message.jsonrpc !== "2.0" ||
+    typeof message.method !== "string"
+  ) {
     return { jsonrpc: "2.0", id: null, error: { code: -32600, message: "Invalid request" } };
   }
   const id = message.id ?? null;
-  if (methodHeader && methodHeader !== message.method) return { jsonrpc: "2.0", id, error: { code: -32600, message: "Mcp-Method header does not match the body" } };
+  if (methodHeader && methodHeader !== message.method)
+    return { jsonrpc: "2.0", id, error: { code: -32600, message: "Mcp-Method header does not match the body" } };
   hooks.onActivity?.();
   if (message.id === undefined) return null; // notification (ex. notifications/initialized)
   const ok = (result: unknown): Response => ({ jsonrpc: "2.0", id, result });

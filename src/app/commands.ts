@@ -1,50 +1,50 @@
 import {
-  MSG,
-  resolveVersion,
+  type Association,
+  type Attribute,
+  bendsOf,
+  type Cardinality,
+  type Check,
   checkAssociation,
   checkAssociationName,
   checkAttributes,
   checkEntityName,
   checkLinkCardinality,
-  DBMS_LIST,
-  GENERIC_VERSION,
-  invalidTemplateVariable,
-  sameDialect,
-  versionOptions,
-  type TypeKey,
   checkLogicalRename,
   createAssociation,
-  createInheritance,
-  createInheritanceLink,
-  bendsOf,
-  diagramLinks,
-  diagramNodes,
-  linkSourceId,
-  positionOf,
-  setBends,
   createAttribute,
   createAutoIdentifier,
   createEntity,
+  createInheritance,
+  createInheritanceLink,
   createLink,
-  nextFreeName,
-  type Association,
-  type Attribute,
-  type Cardinality,
-  type Check,
+  DBMS_LIST,
   type Dbms,
   type DocumentSettings,
+  diagramLinks,
+  diagramNodes,
   type Entity,
+  GENERIC_VERSION,
   type Id,
   type InheritanceConstraint,
+  invalidTemplateVariable,
   type Link,
   type LogicalColumn,
   type LogicalModel,
   type LogicalTable,
+  linkSourceId,
   type ModelDocument,
+  MSG,
+  nextFreeName,
   type Point,
+  positionOf,
+  resolveVersion,
+  sameDialect,
+  setBends,
+  type TypeKey,
+  versionOptions,
 } from "@core/index";
 import type { Draft } from "immer";
-import { t, type MessageKey } from "@/i18n";
+import { type MessageKey, t } from "@/i18n";
 import type { DocumentHandle } from "./document/handle";
 import { applyModelDefaults } from "./modelDefaults";
 import type { LibraryDbms } from "./preferencesStore";
@@ -64,7 +64,12 @@ const findNode = (d: Draft<ModelDocument>, id: Id) =>
   d.entities.find((e) => e.id === id) ?? d.associations.find((a) => a.id === id);
 
 export function addEntity(doc: DocumentHandle, position: Point): Id {
-  const entity = createEntity(nextFreeName(t("default.entity"), current(doc).entities.map((e) => e.name)));
+  const entity = createEntity(
+    nextFreeName(
+      t("default.entity"),
+      current(doc).entities.map((e) => e.name),
+    ),
+  );
   change(doc, "history.createEntity", (d) => {
     d.entities.push(entity);
     d.layout.positions[entity.id] = position;
@@ -121,7 +126,12 @@ export function updateInheritance(doc: DocumentHandle, inheritanceId: Id, patch:
 }
 
 export function addAssociation(doc: DocumentHandle, position: Point): Id {
-  const association = createAssociation(nextFreeName(t("default.association"), current(doc).associations.map((a) => a.name)));
+  const association = createAssociation(
+    nextFreeName(
+      t("default.association"),
+      current(doc).associations.map((a) => a.name),
+    ),
+  );
   change(doc, "history.createAssociation", (d) => {
     d.associations.push(association);
     d.layout.positions[association.id] = position;
@@ -141,10 +151,16 @@ export function addLink(doc: DocumentHandle, fromId: Id, toId: Id): ConnectResul
   const { entities, associations, links } = current(doc);
   const isEntity = (id: Id) => entities.some((e) => e.id === id);
   const isAssociation = (id: Id) => associations.some((a) => a.id === id);
-  const pair = isAssociation(fromId) && isEntity(toId) ? [fromId, toId] : isEntity(fromId) && isAssociation(toId) ? [toId, fromId] : null;
+  const pair =
+    isAssociation(fromId) && isEntity(toId)
+      ? [fromId, toId]
+      : isEntity(fromId) && isAssociation(toId)
+        ? [toId, fromId]
+        : null;
   if (!pair) return null;
   const [associationId, entityId] = pair as [Id, Id];
-  if (links.some((l) => l.associationId === associationId && l.entityId === entityId)) return { error: MSG.alreadyLinked };
+  if (links.some((l) => l.associationId === associationId && l.entityId === entityId))
+    return { error: MSG.alreadyLinked };
   const link = createLink(associationId, entityId);
   change(doc, "history.createLink", (d) => void d.links.push(link));
   return { created: link.id };
@@ -171,7 +187,12 @@ export function connectNodes(
   if (isInheritance(fromId) && isEntity(toId)) return addInheritanceLink(doc, fromId, toId);
   if (isEntity(fromId) && isInheritance(toId)) return addInheritanceLink(doc, toId, fromId);
   if (!isEntity(fromId) || !isEntity(toId)) return addLink(doc, fromId, toId);
-  const association = createAssociation(nextFreeName(t("default.association"), current(doc).associations.map((a) => a.name)));
+  const association = createAssociation(
+    nextFreeName(
+      t("default.association"),
+      current(doc).associations.map((a) => a.name),
+    ),
+  );
   const first = createLink(association.id, fromId);
   const second = createLink(association.id, toId);
   change(doc, fromId === toId ? "history.createReflexive" : "history.createAssociation", (d) => {
@@ -206,7 +227,13 @@ export function renameForeignKey(doc: DocumentHandle, linkId: Id, attributeId: I
  * MCD : nom logique de l'entité ou de l'association, nom logique de la rubrique, ou nom de la clé
  * étrangère (O-07). Un nom vide rend le nom par défaut ; un nom inchangé ne fait rien.
  */
-export function renameLogical(doc: DocumentHandle, logical: LogicalModel, table: LogicalTable, column: LogicalColumn | null, name: string): Check {
+export function renameLogical(
+  doc: DocumentHandle,
+  logical: LogicalModel,
+  table: LogicalTable,
+  column: LogicalColumn | null,
+  name: string,
+): Check {
   const trimmed = name.trim();
   if (trimmed === (column ?? table).name) return null;
   const error = checkLogicalRename(logical, table.name, column?.name ?? null, trimmed);
@@ -238,7 +265,13 @@ export function straightenLink(doc: DocumentHandle, linkId: Id) {
 
 export function removeBend(doc: DocumentHandle, linkId: Id, index: number) {
   doc.view.getState().setActiveBend(null);
-  change(doc, "history.removeBend", (d) => setBends(d.layout, linkId, bendsOf(d.layout, linkId).filter((_, i) => i !== index)));
+  change(doc, "history.removeBend", (d) =>
+    setBends(
+      d.layout,
+      linkId,
+      bendsOf(d.layout, linkId).filter((_, i) => i !== index),
+    ),
+  );
 }
 
 /**
@@ -255,7 +288,8 @@ export function offsetNodes(doc: DocumentHandle, offsets: Map<Id, Point>, label:
   }
   const kept = new Map<Id, Point[]>();
   for (const link of diagramLinks(model)) {
-    if (!offsets.has(linkSourceId(link)) || !offsets.has(link.entityId)) kept.set(link.id, bendsOf(model.layout, link.id));
+    if (!offsets.has(linkSourceId(link)) || !offsets.has(link.entityId))
+      kept.set(link.id, bendsOf(model.layout, link.id));
   }
   moveNodes(doc, positions, kept, label);
 }
@@ -265,7 +299,12 @@ export function offsetNodes(doc: DocumentHandle, offsets: Map<Id, Point>, label:
  * est commune aux vues MCD, MLD et MPD (override O-01). `bends` remplace les cassures des
  * liens indiqués ; les autres suivent le déplacement moyen de leurs deux extrémités.
  */
-export function moveNodes(doc: DocumentHandle, positions: Map<Id, Point>, bends = new Map<Id, Point[]>(), label: MessageKey = "history.autoLayout") {
+export function moveNodes(
+  doc: DocumentHandle,
+  positions: Map<Id, Point>,
+  bends = new Map<Id, Point[]>(),
+  label: MessageKey = "history.autoLayout",
+) {
   change(doc, label, (d) => {
     const delta = new Map<Id, Point>();
     for (const node of diagramNodes(d)) {
@@ -285,7 +324,12 @@ export function moveNodes(doc: DocumentHandle, positions: Map<Id, Point>, bends 
       const e = delta.get(link.entityId) ?? { x: 0, y: 0 };
       const dx = (a.x + e.x) / 2;
       const dy = (a.y + e.y) / 2;
-      if (dx || dy) setBends(d.layout, link.id, bendsOf(d.layout, link.id).map((b) => ({ x: b.x + dx, y: b.y + dy })));
+      if (dx || dy)
+        setBends(
+          d.layout,
+          link.id,
+          bendsOf(d.layout, link.id).map((b) => ({ x: b.x + dx, y: b.y + dy })),
+        );
     }
   });
 }
@@ -298,10 +342,13 @@ export function deleteObjects(doc: DocumentHandle, ids: Id[], label: MessageKey 
     d.associations = d.associations.filter((a) => !gone.has(a.id));
     d.links = d.links.filter((l) => !gone.has(l.id) && !gone.has(l.entityId) && !gone.has(l.associationId));
     d.inheritances = d.inheritances.filter((h) => !gone.has(h.id));
-    d.inheritanceLinks = d.inheritanceLinks.filter((l) => !gone.has(l.id) && !gone.has(l.entityId) && !gone.has(l.inheritanceId));
+    d.inheritanceLinks = d.inheritanceLinks.filter(
+      (l) => !gone.has(l.id) && !gone.has(l.entityId) && !gone.has(l.inheritanceId),
+    );
     // Entité cible dont le lien a disparu : l'héritage n'a plus de cible.
     for (const h of d.inheritances) {
-      if (h.parentId && !d.inheritanceLinks.some((l) => l.inheritanceId === h.id && l.entityId === h.parentId)) h.parentId = undefined;
+      if (h.parentId && !d.inheritanceLinks.some((l) => l.inheritanceId === h.id && l.entityId === h.parentId))
+        h.parentId = undefined;
     }
     // Géométrie des objets et des traits disparus.
     const kept = new Set([...diagramNodes(d), ...diagramLinks(d)].map((o) => o.id));
@@ -324,7 +371,11 @@ export function renameNode(doc: DocumentHandle, id: Id, name: string): Check {
   return null;
 }
 
-export function updateEntity(doc: DocumentHandle, id: Id, patch: Partial<Pick<Entity, "logicalName" | "fictive" | "comment">>) {
+export function updateEntity(
+  doc: DocumentHandle,
+  id: Id,
+  patch: Partial<Pick<Entity, "logicalName" | "fictive" | "comment">>,
+) {
   change(doc, "history.editEntity", (d) => {
     const entity = d.entities.find((e) => e.id === id);
     if (entity) Object.assign(entity, patch);
@@ -348,7 +399,12 @@ export function updateAssociation(
 }
 
 /** Remplace la liste des rubriques d'une entité ou d'une association. */
-export function setAttributes(doc: DocumentHandle, ownerId: Id, attributes: Attribute[], label: MessageKey = "history.editAttributes"): Check {
+export function setAttributes(
+  doc: DocumentHandle,
+  ownerId: Id,
+  attributes: Attribute[],
+  label: MessageKey = "history.editAttributes",
+): Check {
   const error = checkAttributes(attributes);
   if (error) return error;
   const association = current(doc).associations.find((a) => a.id === ownerId);
@@ -444,7 +500,11 @@ export function dbmsLabel(dbms: Dbms, version: string): string {
 export function customizeTarget(doc: DocumentHandle) {
   const { dbms, dbmsVersion } = current(doc).settings;
   const name = t("customDbms.defaultName", { dbms: dbmsLabel(dbms, dbmsVersion) });
-  updateSettings(doc, "history.customizeDbms", (s) => void (s.customDbms = { id: crypto.randomUUID(), name, types: {} }));
+  updateSettings(
+    doc,
+    "history.customizeDbms",
+    (s) => void (s.customDbms = { id: crypto.randomUUID(), name, types: {} }),
+  );
 }
 
 /** Retire la personnalisation : la cible redevient le SGBD de base, tel quel. */
@@ -500,7 +560,9 @@ export function setColumnSqlType(doc: DocumentHandle, ownerId: Id, attributeId: 
   const mine = attribute?.sourceType && sameDialect(attribute.sourceType.dialect, dialect);
   // Vide : seul le type de ce dialecte est retiré ; celui d'un autre (rétroconception) reste.
   if (!attribute || (!value && !mine) || (mine && attribute.sourceType!.sql === value)) return null;
-  const attributes = owner.attributes.map((a) => (a.id === attributeId ? { ...a, sourceType: value ? { sql: value, dialect } : undefined } : a));
+  const attributes = owner.attributes.map((a) =>
+    a.id === attributeId ? { ...a, sourceType: value ? { sql: value, dialect } : undefined } : a,
+  );
   return setAttributes(doc, ownerId, attributes, "history.columnType");
 }
 

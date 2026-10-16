@@ -1,8 +1,8 @@
 import type { Dbms } from "../dbms/dbms";
 import type { TypeTemplates } from "../dbms/typeMapping";
-import type { DocumentSettings } from "../model/settings";
 import { isAtLeast } from "../dbms/versions";
 import type { ReferentialAction, SqlDialect } from "../model/physical";
+import type { DocumentSettings } from "../model/settings";
 
 /**
  * Capacités des SGBD cibles pour la génération du script (override O-29).
@@ -126,7 +126,10 @@ timestamp top transform value varbinary varchar year yesno`,
 SPECIFIC.mariadb = SPECIFIC.mysql;
 
 const RESERVED: Record<Dbms, Set<string>> = Object.fromEntries(
-  (Object.keys(SPECIFIC) as Dbms[]).map((dbms) => [dbms, new Set(`${COMMON} ${SPECIFIC[dbms]}`.split(/\s+/).filter(Boolean))]),
+  (Object.keys(SPECIFIC) as Dbms[]).map((dbms) => [
+    dbms,
+    new Set(`${COMMON} ${SPECIFIC[dbms]}`.split(/\s+/).filter(Boolean)),
+  ]),
 ) as Record<Dbms, Set<string>>;
 
 export const isReserved = (dbms: Dbms, name: string) => RESERVED[dbms].has(name.toLowerCase());
@@ -194,10 +197,19 @@ const ACTIONS: Record<Dbms, Record<Event, ReferentialAction[]>> = {
   postgresql: { delete: ALL, update: ALL },
   sqlite: { delete: ALL, update: ALL },
   // InnoDB rejette SET DEFAULT.
-  mysql: { delete: ["cascade", "set null", "restrict", "no action"], update: ["cascade", "set null", "restrict", "no action"] },
-  mariadb: { delete: ["cascade", "set null", "restrict", "no action"], update: ["cascade", "set null", "restrict", "no action"] },
+  mysql: {
+    delete: ["cascade", "set null", "restrict", "no action"],
+    update: ["cascade", "set null", "restrict", "no action"],
+  },
+  mariadb: {
+    delete: ["cascade", "set null", "restrict", "no action"],
+    update: ["cascade", "set null", "restrict", "no action"],
+  },
   // Pas de RESTRICT (NO ACTION équivalent, mais vérifié immédiatement dans les deux cas).
-  sqlserver: { delete: ["no action", "cascade", "set null", "set default"], update: ["no action", "cascade", "set null", "set default"] },
+  sqlserver: {
+    delete: ["no action", "cascade", "set null", "set default"],
+    update: ["no action", "cascade", "set null", "set default"],
+  },
   // Oracle : ON DELETE CASCADE / SET NULL uniquement ; aucun ON UPDATE.
   oracle: { delete: ["cascade", "set null"], update: [] },
   db2: { delete: ["cascade", "set null", "restrict", "no action"], update: ["restrict", "no action"] },
@@ -259,7 +271,13 @@ export function hasBooleanLiterals(target: Target): boolean {
 }
 
 /** `localtimestamp` : date et heure locales à la seconde, sans fuseau (Oracle SYSDATE) (O-39). */
-export type DateFunction = "current_date" | "current_time" | "current_timestamp" | "localtimestamp" | "localtimestamp_seconds" | "utc_timestamp";
+export type DateFunction =
+  | "current_date"
+  | "current_time"
+  | "current_timestamp"
+  | "localtimestamp"
+  | "localtimestamp_seconds"
+  | "utc_timestamp";
 
 /** Fonctions de date / heure courantes, écrites dans le dialecte cible (`null` : non disponible). */
 export function dateFunction(target: Target, fn: DateFunction): string | null {
@@ -324,8 +342,22 @@ export function dateFunction(target: Target, fn: DateFunction): string | null {
       localtimestamp_seconds: "CURRENT TIMESTAMP",
       utc_timestamp: null,
     },
-    sybase: { current_date: "current_date()", current_time: "current_time()", current_timestamp: "getdate()", localtimestamp: "getdate()", localtimestamp_seconds: "getdate()", utc_timestamp: "getutcdate()" },
-    access: { current_date: "Date()", current_time: "Time()", current_timestamp: "Now()", localtimestamp: "Now()", localtimestamp_seconds: "Now()", utc_timestamp: null },
+    sybase: {
+      current_date: "current_date()",
+      current_time: "current_time()",
+      current_timestamp: "getdate()",
+      localtimestamp: "getdate()",
+      localtimestamp_seconds: "getdate()",
+      utc_timestamp: "getutcdate()",
+    },
+    access: {
+      current_date: "Date()",
+      current_time: "Time()",
+      current_timestamp: "Now()",
+      localtimestamp: "Now()",
+      localtimestamp_seconds: "Now()",
+      utc_timestamp: null,
+    },
   };
   return table[target.dbms][fn];
 }
@@ -338,10 +370,17 @@ export function specialFunction(target: Target, fn: SpecialFunction): string | n
   // uuid_sequential : UUID croissant (NEWSEQUENTIALID) — uuidv7() à partir de PostgreSQL 18 (O-42).
   const pg = isAtLeast("postgresql", target.version, "13") ? "gen_random_uuid()" : null;
   const table: Record<Dbms, Record<SpecialFunction, string | null>> = {
-    postgresql: { current_user: "CURRENT_USER", uuid: pg, uuid_sequential: isAtLeast("postgresql", target.version, "18") ? "uuidv7()" : pg },
+    postgresql: {
+      current_user: "CURRENT_USER",
+      uuid: pg,
+      uuid_sequential: isAtLeast("postgresql", target.version, "18") ? "uuidv7()" : pg,
+    },
     oracle: { current_user: "USER", uuid: "SYS_GUID()", uuid_sequential: "SYS_GUID()" },
     sqlserver: { current_user: "CURRENT_USER", uuid: "NEWID()", uuid_sequential: "NEWSEQUENTIALID()" },
-    mysql: target.version === "5.7" ? { current_user: null, uuid: null, uuid_sequential: null } : { current_user: "(CURRENT_USER())", uuid: "(UUID())", uuid_sequential: "(UUID())" },
+    mysql:
+      target.version === "5.7"
+        ? { current_user: null, uuid: null, uuid_sequential: null }
+        : { current_user: "(CURRENT_USER())", uuid: "(UUID())", uuid_sequential: "(UUID())" },
     mariadb: { current_user: "CURRENT_USER()", uuid: "UUID()", uuid_sequential: "UUID()" },
     db2: { current_user: "USER", uuid: null, uuid_sequential: null },
     sqlite: { current_user: null, uuid: null, uuid_sequential: null },

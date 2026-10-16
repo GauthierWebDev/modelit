@@ -1,4 +1,4 @@
-import { bendsOf, diagramLinks, diagramNodes, type Cardinality, type Id, type Point } from "@core/index";
+import { bendsOf, type Cardinality, diagramLinks, diagramNodes, type Id, type Point } from "@core/index";
 import {
   AlignCenterHorizontal,
   AlignCenterVertical,
@@ -26,8 +26,8 @@ import { t } from "@/i18n";
 import { MOD, MODEL_SETTINGS_SHORTCUT } from "@/ui/shortcuts";
 import { mainCommand } from "@/ui/windows/mainCommands";
 import { alignSelection, distributeSelection, selectedBoxes } from "./arrange";
-import { snap, INHERITANCE_SIZE } from "./geometry";
 import { useContextMenu } from "./ContextMenu";
+import { INHERITANCE_SIZE, snap } from "./geometry";
 import { clientToModel, fitToWindow, revealObjects } from "./viewport";
 
 /**
@@ -35,7 +35,16 @@ import { clientToModel, fitToWindow, revealObjects } from "./viewport";
  * Elles passent par les mêmes commandes que les raccourcis (O-52, app/commands).
  */
 
-export type ActionItem = { kind: "item"; id: string; label: string; icon?: ReactNode; shortcut?: string; disabled?: boolean; checked?: boolean; run: () => void };
+export type ActionItem = {
+  kind: "item";
+  id: string;
+  label: string;
+  icon?: ReactNode;
+  shortcut?: string;
+  disabled?: boolean;
+  checked?: boolean;
+  run: () => void;
+};
 
 /** `row` : rangée d'icônes (ex. disposition, O-57). */
 export type Action = ActionItem | { kind: "separator" } | { kind: "row"; id: string; items: ActionItem[] };
@@ -44,7 +53,8 @@ const SEPARATOR: Action = { kind: "separator" };
 /** Actions encore permises dans une session en lecture seule. */
 const READ_ONLY_ALLOWED = new Set(["copy", "selectAll", "fit", "modelSettings"]);
 
-const notifyError = (message: string | null) => message && useUiStore.getState().notify({ kind: "error", text: message });
+const notifyError = (message: string | null) =>
+  message && useUiStore.getState().notify({ kind: "error", text: message });
 
 /** Copie aussi dans le presse-papiers du système quand c'est possible (autre instance de ModelIt). */
 const toSystemClipboard = (text: string | null) => void (text && navigator.clipboard?.writeText(text).catch(() => {}));
@@ -52,8 +62,22 @@ const toSystemClipboard = (text: string | null) => void (text && navigator.clipb
 function editingActions(doc: DocumentHandle, count: number): Action[] {
   const selection = () => doc.view.getState().selection;
   return [
-    { kind: "item", id: "copy", label: t("actions.copy"), icon: <Copy size={14} />, shortcut: `${MOD}C`, run: () => toSystemClipboard(copySelection(doc)) },
-    { kind: "item", id: "cut", label: t("actions.cut"), icon: <Scissors size={14} />, shortcut: `${MOD}X`, run: () => toSystemClipboard(cutSelection(doc)) },
+    {
+      kind: "item",
+      id: "copy",
+      label: t("actions.copy"),
+      icon: <Copy size={14} />,
+      shortcut: `${MOD}C`,
+      run: () => toSystemClipboard(copySelection(doc)),
+    },
+    {
+      kind: "item",
+      id: "cut",
+      label: t("actions.cut"),
+      icon: <Scissors size={14} />,
+      shortcut: `${MOD}X`,
+      run: () => toSystemClipboard(cutSelection(doc)),
+    },
     {
       kind: "item",
       id: "duplicate",
@@ -105,7 +129,14 @@ export function arrangeActions(doc: DocumentHandle): ActionItem[] {
   const count = selectedBoxes(doc).length;
   return [
     ...(Object.keys(ALIGN_ICONS) as (keyof typeof ALIGN_ICONS)[]).map(
-      (id): ActionItem => ({ kind: "item", id: `align-${id}`, label: t(`arrange.align.${id}`), icon: ALIGN_ICONS[id], disabled: count < 2, run: () => alignSelection(doc, id) }),
+      (id): ActionItem => ({
+        kind: "item",
+        id: `align-${id}`,
+        label: t(`arrange.align.${id}`),
+        icon: ALIGN_ICONS[id],
+        disabled: count < 2,
+        run: () => alignSelection(doc, id),
+      }),
     ),
     {
       kind: "item",
@@ -143,7 +174,11 @@ const CARDINALITIES: Cardinality[] = [
  * Clic droit sur le canevas avec l'outil Sélection : `id` est l'objet sous le pointeur (null : le
  * vide). Un objet non sélectionné est sélectionné d'abord ; déjà sélectionné, la sélection reste.
  */
-export function openCanvasMenu(doc: DocumentHandle, e: { clientX: number; clientY: number; preventDefault: () => void }, id: Id | null) {
+export function openCanvasMenu(
+  doc: DocumentHandle,
+  e: { clientX: number; clientY: number; preventDefault: () => void },
+  id: Id | null,
+) {
   e.preventDefault();
   const { selection, select } = doc.view.getState();
   if (id && !selection.includes(id)) select([id]);
@@ -160,7 +195,9 @@ export function contextActions(doc: DocumentHandle, id: Id | null, point: Point)
   if (!readOnly) return actions;
   const allowed = actions.filter((a) => a.kind === "separator" || (a.kind === "item" && READ_ONLY_ALLOWED.has(a.id)));
   // Pas de séparateur en tête, en fin, ni doublé.
-  return allowed.filter((a, i) => a.kind !== "separator" || (i > 0 && i < allowed.length - 1 && allowed[i - 1]!.kind !== "separator"));
+  return allowed.filter(
+    (a, i) => a.kind !== "separator" || (i > 0 && i < allowed.length - 1 && allowed[i - 1]!.kind !== "separator"),
+  );
 }
 
 function buildContextActions(
@@ -187,17 +224,35 @@ function buildContextActions(
         run: () => pasteText(doc, undefined, at) && revealObjects(doc, doc.view.getState().selection),
       },
       SEPARATOR,
-      { kind: "item", id: "newEntity", label: t("actions.newEntity"), shortcut: "E", run: () => select([cmd.addEntity(doc, at)]) },
+      {
+        kind: "item",
+        id: "newEntity",
+        label: t("actions.newEntity"),
+        shortcut: "E",
+        run: () => select([cmd.addEntity(doc, at)]),
+      },
       ...(mcd
         ? ([
-            { kind: "item", id: "newAssociation", label: t("actions.newAssociation"), shortcut: "A", run: () => select([cmd.addAssociation(doc, at)]) },
+            {
+              kind: "item",
+              id: "newAssociation",
+              label: t("actions.newAssociation"),
+              shortcut: "A",
+              run: () => select([cmd.addAssociation(doc, at)]),
+            },
             {
               kind: "item",
               id: "newInheritance",
               label: t("actions.newInheritance"),
               shortcut: "H",
               // Le triangle est centré sur le point, comme à la création au clic.
-              run: () => select([cmd.addInheritance(doc, { x: snap(point.x - INHERITANCE_SIZE.width / 2, grid), y: snap(point.y - INHERITANCE_SIZE.height / 2, grid) })]),
+              run: () =>
+                select([
+                  cmd.addInheritance(doc, {
+                    x: snap(point.x - INHERITANCE_SIZE.width / 2, grid),
+                    y: snap(point.y - INHERITANCE_SIZE.height / 2, grid),
+                  }),
+                ]),
             },
           ] satisfies Action[])
         : []),
@@ -209,7 +264,12 @@ function buildContextActions(
         shortcut: `${MOD}A`,
         run: () => select([...diagramNodes(model), ...diagramLinks(model)].map((o) => o.id)),
       },
-      { kind: "item", id: "autoLayout", label: t("actions.autoLayout"), run: () => mainCommand({ name: "autoLayout" }) },
+      {
+        kind: "item",
+        id: "autoLayout",
+        label: t("actions.autoLayout"),
+        run: () => mainCommand({ name: "autoLayout" }),
+      },
       { kind: "item", id: "fit", label: t("actions.fit"), shortcut: "⇧F", run: () => fitToWindow(doc) },
       SEPARATOR,
       {
@@ -224,7 +284,11 @@ function buildContextActions(
 
   // Plusieurs objets sélectionnés, dont celui-ci : actions sur toute la sélection.
   if (selection.length > 1 && selection.includes(id)) {
-    return [{ kind: "row", id: "arrange", items: arrangeActions(doc) }, SEPARATOR, ...editingActions(doc, selection.length)];
+    return [
+      { kind: "row", id: "arrange", items: arrangeActions(doc) },
+      SEPARATOR,
+      ...editingActions(doc, selection.length),
+    ];
   }
 
   const entity = model.entities.find((e) => e.id === id);
@@ -233,11 +297,23 @@ function buildContextActions(
       ...editingActions(doc, 1),
       SEPARATOR,
       addAttributeAction(doc, id),
-      { kind: "item", id: "autoDiscriminant", label: t("inspector.autoDiscriminant"), run: () => notifyError(cmd.addAutoIdentifier(doc, id)) },
-      { kind: "item", id: "fictive", label: t("actions.fictive"), checked: entity.fictive, run: () => cmd.updateEntity(doc, id, { fictive: !entity.fictive }) },
+      {
+        kind: "item",
+        id: "autoDiscriminant",
+        label: t("inspector.autoDiscriminant"),
+        run: () => notifyError(cmd.addAutoIdentifier(doc, id)),
+      },
+      {
+        kind: "item",
+        id: "fictive",
+        label: t("actions.fictive"),
+        checked: entity.fictive,
+        run: () => cmd.updateEntity(doc, id, { fictive: !entity.fictive }),
+      },
     ];
   }
-  if (model.associations.some((a) => a.id === id)) return [...editingActions(doc, 1), SEPARATOR, addAttributeAction(doc, id)];
+  if (model.associations.some((a) => a.id === id))
+    return [...editingActions(doc, 1), SEPARATOR, addAttributeAction(doc, id)];
   if (model.inheritances.some((h) => h.id === id)) return editingActions(doc, 1);
 
   const link = model.links.find((l) => l.id === id);
@@ -254,14 +330,43 @@ function buildContextActions(
         }),
       ),
       SEPARATOR,
-      { kind: "item", id: "relativeId", label: t("inspector.relativeId"), checked: link.relativeId, run: () => cmd.updateLink(doc, id, { relativeId: !link.relativeId }) },
-      ...(bends > 0 ? ([{ kind: "item", id: "straighten", label: t("inspector.straighten", { n: bends }), run: () => cmd.straightenLink(doc, id) }] satisfies Action[]) : []),
+      {
+        kind: "item",
+        id: "relativeId",
+        label: t("inspector.relativeId"),
+        checked: link.relativeId,
+        run: () => cmd.updateLink(doc, id, { relativeId: !link.relativeId }),
+      },
+      ...(bends > 0
+        ? ([
+            {
+              kind: "item",
+              id: "straighten",
+              label: t("inspector.straighten", { n: bends }),
+              run: () => cmd.straightenLink(doc, id),
+            },
+          ] satisfies Action[])
+        : []),
       SEPARATOR,
-      { kind: "item", id: "delete", label: t("actions.deleteLeg"), shortcut: "⌫", run: () => cmd.deleteObjects(doc, [id]) },
+      {
+        kind: "item",
+        id: "delete",
+        label: t("actions.deleteLeg"),
+        shortcut: "⌫",
+        run: () => cmd.deleteObjects(doc, [id]),
+      },
     ];
   }
   if (model.inheritanceLinks.some((l) => l.id === id)) {
-    return [{ kind: "item", id: "delete", label: t("actions.deleteLink"), shortcut: "⌫", run: () => cmd.deleteObjects(doc, [id]) }];
+    return [
+      {
+        kind: "item",
+        id: "delete",
+        label: t("actions.deleteLink"),
+        shortcut: "⌫",
+        run: () => cmd.deleteObjects(doc, [id]),
+      },
+    ];
   }
   return [];
 }

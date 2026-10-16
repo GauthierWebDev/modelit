@@ -1,7 +1,7 @@
-import { extractFragment, parseFragment, pasteFragment, type Id, type Point } from "@core/index";
+import { extractFragment, type Id, type Point, parseFragment, pasteFragment } from "@core/index";
 import { selectReadOnlyTab, useCollabStore } from "./collab/session";
-import type { DocumentHandle } from "./document/handle";
 import { deleteObjects } from "./commands";
+import type { DocumentHandle } from "./document/handle";
 
 /**
  * Copier, couper, coller, dupliquer (override O-52). Le texte copié est un fragment JSON

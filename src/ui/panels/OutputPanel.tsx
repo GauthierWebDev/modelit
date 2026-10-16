@@ -1,6 +1,6 @@
-import { DBMS_LIST, groupLosses, issueMessage, mldLines, mldPlainText, type Loss } from "@core/index";
-import { useState, type ReactNode } from "react";
+import { DBMS_LIST, groupLosses, issueMessage, type Loss, mldLines, mldPlainText } from "@core/index";
 import { Copy } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { useDdl, useLogicalModel } from "@/app/derived";
 import { useDocument, useDocumentView } from "@/app/document/DocumentContext";
 import { t } from "@/i18n";
@@ -39,7 +39,11 @@ export function SqlSection() {
   const ddl = useDdl();
   return (
     <OutputBody copyText={ddl.ok ? ddl.sql : null}>
-      {ddl.ok ? <SqlView sql={ddl.sql} losses={ddl.losses} /> : <p className="text-red-600 dark:text-red-400">{ddl.error}</p>}
+      {ddl.ok ? (
+        <SqlView sql={ddl.sql} losses={ddl.losses} />
+      ) : (
+        <p className="text-red-600 dark:text-red-400">{ddl.error}</p>
+      )}
     </OutputBody>
   );
 }
@@ -80,8 +84,15 @@ function SqlView({ sql, losses }: { sql: string; losses: Loss[] }) {
   return (
     <>
       {losses.length > 0 && (
-        <div role="status" className="mb-3 rounded border border-amber-300 bg-amber-50 p-2 font-sans text-sm dark:border-amber-700 dark:bg-amber-950/40">
-          <button type="button" className="font-medium text-amber-800 dark:text-amber-300" onClick={() => setOpen(!open)}>
+        <div
+          role="status"
+          className="mb-3 rounded border border-amber-300 bg-amber-50 p-2 font-sans text-sm dark:border-amber-700 dark:bg-amber-950/40"
+        >
+          <button
+            type="button"
+            className="font-medium text-amber-800 dark:text-amber-300"
+            onClick={() => setOpen(!open)}
+          >
             {open ? "▾" : "▸"} {t("output.losses", { n: losses.length })}
           </button>
           {open && (
@@ -119,13 +130,15 @@ function MldView() {
             <span key={`${c.name}-${i}`}>
               {i > 0 && ", "}
               <span
-                className={[
-                  c.primaryKey && "underline",
-                  (c.primaryKey || c.unique) && "font-bold",
-                  c.foreign && "italic text-[var(--mcd-foreign)]",
-                ]
-                  .filter(Boolean)
-                  .join(" ") || undefined}
+                className={
+                  [
+                    c.primaryKey && "underline",
+                    (c.primaryKey || c.unique) && "font-bold",
+                    c.foreign && "italic text-[var(--mcd-foreign)]",
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || undefined
+                }
               >
                 {c.foreign && "#"}
                 {c.name}

@@ -1,12 +1,13 @@
 import { mldPlainText } from "@core/index";
 import { beforeEach, describe, expect, it } from "vitest";
-import { selectUndoLabel } from "../document/documentStore";
 import { logicalModelOf } from "../derived";
+import { selectUndoLabel } from "../document/documentStore";
 import { activeDocument, resetWorkspace, useWorkspaceStore } from "../workspace";
 import { handleMcpMessage, TOOLS } from "./server";
 
 let nextId = 1;
-const call = (method: string, params?: Record<string, unknown>) => handleMcpMessage({ jsonrpc: "2.0", id: nextId++, method, ...(params ? { params } : {}) });
+const call = (method: string, params?: Record<string, unknown>) =>
+  handleMcpMessage({ jsonrpc: "2.0", id: nextId++, method, ...(params ? { params } : {}) });
 const tool = async (name: string, args: Record<string, unknown> = {}) => {
   const response = await call("tools/call", { name, arguments: args });
   return response!.result as { content: { text: string }[]; isError?: boolean };
@@ -14,9 +15,30 @@ const tool = async (name: string, args: Record<string, unknown> = {}) => {
 const json = (r: { content: { text: string }[] }) => JSON.parse(r.content[0]!.text);
 
 const ORDERS = [
-  { op: "create_entity", name: "CLIENT", attributes: [{ name: "id_client", type: "INT", identifier: true }, { name: "nom", type: "VARCHAR(50)" }] },
-  { op: "create_entity", name: "COMMANDE", attributes: [{ name: "num", type: "INT", identifier: true }, { name: "date_cmd", type: "DATE" }] },
-  { op: "create_association", name: "PASSER", links: [{ entity: "CLIENT", cardinality: "0,n" }, { entity: "COMMANDE", cardinality: "1,1" }] },
+  {
+    op: "create_entity",
+    name: "CLIENT",
+    attributes: [
+      { name: "id_client", type: "INT", identifier: true },
+      { name: "nom", type: "VARCHAR(50)" },
+    ],
+  },
+  {
+    op: "create_entity",
+    name: "COMMANDE",
+    attributes: [
+      { name: "num", type: "INT", identifier: true },
+      { name: "date_cmd", type: "DATE" },
+    ],
+  },
+  {
+    op: "create_association",
+    name: "PASSER",
+    links: [
+      { entity: "CLIENT", cardinality: "0,n" },
+      { entity: "COMMANDE", cardinality: "1,1" },
+    ],
+  },
 ];
 
 /** Assistants IA par MCP (override O-47). */
@@ -24,8 +46,16 @@ describe("serveur MCP", () => {
   beforeEach(resetWorkspace);
 
   it("initialize : version négociée, outils annoncés", async () => {
-    const init = await call("initialize", { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "test", version: "1" } });
-    expect(init!.result).toMatchObject({ protocolVersion: "2025-11-25", serverInfo: { name: "ModelIt" }, capabilities: { tools: {} } });
+    const init = await call("initialize", {
+      protocolVersion: "2025-11-25",
+      capabilities: {},
+      clientInfo: { name: "test", version: "1" },
+    });
+    expect(init!.result).toMatchObject({
+      protocolVersion: "2025-11-25",
+      serverInfo: { name: "ModelIt" },
+      capabilities: { tools: {} },
+    });
     const unknown = await call("initialize", { protocolVersion: "1999-01-01" });
     expect((unknown!.result as { protocolVersion: string }).protocolVersion).toBe("2025-11-25");
   });
@@ -45,7 +75,12 @@ describe("serveur MCP", () => {
   it("apply_changes : crée le modèle en une seule entrée d'annulation", async () => {
     const applied: string[] = [];
     const response = await handleMcpMessage(
-      { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "apply_changes", arguments: { operations: ORDERS } } },
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "apply_changes", arguments: { operations: ORDERS } },
+      },
       { onApplied: (s) => applied.push(s) },
     );
     const result = response!.result as { content: { text: string }[]; isError?: boolean };
@@ -102,7 +137,13 @@ describe("serveur MCP", () => {
     expect(result.isError).toBeUndefined();
     const model = json(await tool("get_model"));
     expect(model.dbms).toBe("mysql");
-    expect(model.associations[0]).toMatchObject({ name: "COMMANDER", links: [{ entity: "CLIENT", cardinality: "1,n" }, { entity: "COMMANDE", cardinality: "1,1" }] });
+    expect(model.associations[0]).toMatchObject({
+      name: "COMMANDER",
+      links: [
+        { entity: "CLIENT", cardinality: "1,n" },
+        { entity: "COMMANDE", cardinality: "1,1" },
+      ],
+    });
     expect(model.entities[0].attributes.map((a: { name: string }) => a.name)).toEqual(["id_client", "nom", "email"]);
     // Comme dans l'interface : supprimer une entité retire ses pattes, pas l'association.
     await tool("apply_changes", { operations: [{ op: "delete", targets: ["COMMANDE"] }] });
@@ -120,10 +161,16 @@ describe("serveur MCP", () => {
 
   it("reverse_engineer : nouvel onglet actif", async () => {
     await tool("apply_changes", { operations: [{ op: "create_entity", name: "X" }] });
-    const result = await tool("reverse_engineer", { sql: "CREATE TABLE produit (id INT PRIMARY KEY, nom VARCHAR(40));" });
+    const result = await tool("reverse_engineer", {
+      sql: "CREATE TABLE produit (id INT PRIMARY KEY, nom VARCHAR(40));",
+    });
     expect(result.isError).toBeUndefined();
     expect(useWorkspaceStore.getState().documents).toHaveLength(2);
-    expect(activeDocument().store.getState().doc.entities.map((e) => e.name)).toEqual(["produit"]);
+    expect(
+      activeDocument()
+        .store.getState()
+        .doc.entities.map((e) => e.name),
+    ).toEqual(["produit"]);
   });
 
   it("exception dans un outil : résultat en erreur, même identifiant, vrai message", async () => {

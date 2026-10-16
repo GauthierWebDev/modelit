@@ -1,6 +1,6 @@
-import type { DocumentHandle } from "./document/handle";
 import type { ViewMode } from "./document/documentView";
-import { useUiStore, type Tool } from "./uiStore";
+import type { DocumentHandle } from "./document/handle";
+import { type Tool, useUiStore } from "./uiStore";
 
 /**
  * Changement de vue et d'outil. La vue appartient au document, l'outil à la fenêtre, d'où ces
@@ -11,7 +11,8 @@ import { useUiStore, type Tool } from "./uiStore";
  * Outil utilisable dans une vue (override O-54) : Entité et Lien partout ; Association et
  * Héritage, conceptuels (leur objet n'est dessiné que dans le MCD), seulement dans le MCD.
  */
-export const toolAvailable = (tool: Tool, view: ViewMode) => view === "mcd" || (tool !== "association" && tool !== "inheritance");
+export const toolAvailable = (tool: Tool, view: ViewMode) =>
+  view === "mcd" || (tool !== "association" && tool !== "inheritance");
 
 export function showView(doc: DocumentHandle, view: ViewMode) {
   doc.view.getState().setView(view);

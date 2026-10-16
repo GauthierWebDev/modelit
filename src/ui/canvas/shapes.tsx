@@ -1,11 +1,11 @@
 import {
-  formatCardinality,
-  issueMessage,
   type Association,
   type Entity,
+  formatCardinality,
   type Id,
   type Inheritance,
   type Issue,
+  issueMessage,
   type ModelLayer,
   type Point,
 } from "@core/index";
@@ -19,18 +19,18 @@ import {
   attributeStyle,
   FONT_FAMILY,
   FONT_SIZE,
+  type InheritanceLinkGeometry,
+  type LinkGeometry,
+  type NodeLayout,
   PAD_X,
+  pathOf,
   ROW_HEIGHT,
   segmentMidpoints,
   TAG_FONT_SIZE,
-  textWidth,
   TITLE_HEIGHT,
   TITLE_WEIGHT,
-  type InheritanceLinkGeometry,
-  type LinkGeometry,
-  pathOf,
-  type NodeLayout,
   type Triangle,
+  textWidth,
 } from "./geometry";
 
 /**
@@ -64,7 +64,14 @@ export function ErrorBadge({
     .join("\n");
   return (
     <g data-badge="" data-tooltip={text} className="cursor-help">
-      <circle cx={x} cy={y} r={7} fill={error ? "var(--mcd-error)" : "var(--mcd-warning)"} stroke="var(--mcd-canvas)" strokeWidth={1.5} />
+      <circle
+        cx={x}
+        cy={y}
+        r={7}
+        fill={error ? "var(--mcd-error)" : "var(--mcd-warning)"}
+        stroke="var(--mcd-canvas)"
+        strokeWidth={1.5}
+      />
       <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight={700} fill="#fff">
         !
       </text>
@@ -85,7 +92,15 @@ interface NodeShapeProps {
   linkNames?: Map<string, string>;
 }
 
-export const NodeShape = memo(function NodeShape({ node, layout, selected, issues, functional, referencedKey, linkNames }: NodeShapeProps) {
+export const NodeShape = memo(function NodeShape({
+  node,
+  layout,
+  selected,
+  issues,
+  functional,
+  referencedKey,
+  linkNames,
+}: NodeShapeProps) {
   const marks = attributeMarks(node, linkNames);
   const { x, y, width, height, rows } = layout;
   const isEntity = node.kind === "entity";
@@ -101,9 +116,22 @@ export const NodeShape = memo(function NodeShape({ node, layout, selected, issue
         </clipPath>
       </defs>
       <rect x={x} y={y} width={width} height={height} rx={radius} fill={`var(--mcd-${variant}-body)`} />
-      <rect x={x} y={y} width={width} height={TITLE_HEIGHT} fill={`var(--mcd-${variant}-title)`} clipPath={`url(#${clipId})`} />
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={TITLE_HEIGHT}
+        fill={`var(--mcd-${variant}-title)`}
+        clipPath={`url(#${clipId})`}
+      />
       {rows.length > 0 && (
-        <line x1={x} x2={x + width} y1={y + TITLE_HEIGHT} y2={y + TITLE_HEIGHT} stroke={`var(--mcd-${variant}-stroke)`} />
+        <line
+          x1={x}
+          x2={x + width}
+          y1={y + TITLE_HEIGHT}
+          y2={y + TITLE_HEIGHT}
+          stroke={`var(--mcd-${variant}-stroke)`}
+        />
       )}
       <rect
         x={x}
@@ -192,7 +220,9 @@ export const NodeShape = memo(function NodeShape({ node, layout, selected, issue
           fontSize={TAG_FONT_SIZE}
           fill="var(--mcd-muted)"
           className="cursor-help"
-          {...tip(t("mcd.referencedKey", { entity: referencedKey.entity, attributes: referencedKey.attributes.join(", ") }))}
+          {...tip(
+            t("mcd.referencedKey", { entity: referencedKey.entity, attributes: referencedKey.attributes.join(", ") }),
+          )}
         >
           → {referencedKey.attributes.join(", ")}
         </text>
@@ -213,7 +243,10 @@ export const LinkShape = memo(function LinkShape({ geometry, selected }: LinkSha
   const text = formatCardinality(link.cardinality) + (link.relativeId ? "(R)" : "");
   const role = "role" in link ? link.role?.trim() : undefined;
   const rolePoint = geometry.role ?? { x: label.x, y: label.y + 13 };
-  const d = pathOf(points, usePreferencesStore((s) => s.smoothBends));
+  const d = pathOf(
+    points,
+    usePreferencesStore((s) => s.smoothBends),
+  );
   return (
     <g data-id={link.id} className="cursor-pointer" fontFamily={FONT_FAMILY} fontSize={FONT_SIZE}>
       {/* Zone de clic élargie */}
@@ -362,7 +395,10 @@ export const InheritanceLinkShape = memo(function InheritanceLinkShape({
   geometry: InheritanceLinkGeometry;
   selected: boolean;
 }) {
-  const d = pathOf(geometry.points, usePreferencesStore((s) => s.smoothBends));
+  const d = pathOf(
+    geometry.points,
+    usePreferencesStore((s) => s.smoothBends),
+  );
   return (
     <g data-id={geometry.link.id} className="cursor-pointer">
       <path d={d} fill="none" stroke="transparent" strokeWidth={12} />

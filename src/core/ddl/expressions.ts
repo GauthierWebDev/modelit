@@ -1,6 +1,14 @@
 import { isAtLeast } from "../dbms/versions";
-import { tokenize, type Token } from "../reverse/tokenize";
-import { dateFunction, hasBooleanLiterals, quoteIdentifier, specialFunction, type DateFunction, type SpecialFunction, type Target } from "./dialects";
+import { type Token, tokenize } from "../reverse/tokenize";
+import {
+  type DateFunction,
+  dateFunction,
+  hasBooleanLiterals,
+  quoteIdentifier,
+  type SpecialFunction,
+  specialFunction,
+  type Target,
+} from "./dialects";
 
 /**
  * Expressions SQL simples des CHECK et des DEFAULT (override O-29) : lues sous forme structurée
@@ -116,7 +124,8 @@ function operand(r: Reader): Operand {
   if (t.type === "number") return { kind: "number", value: t.value };
   if (t.type === "string") return { kind: "string", value: t.value };
   if (t.type === "quoted") return { kind: "column", name: t.value, quoted: true };
-  if (t.type === "punct" && t.value === "-" && r.peek()?.type === "number") return { kind: "number", value: `-${r.next()!.value}` };
+  if (t.type === "punct" && t.value === "-" && r.peek()?.type === "number")
+    return { kind: "number", value: `-${r.next()!.value}` };
   if (t.type === "word") {
     const lower = t.value.toLowerCase();
     if (lower === "null") return { kind: "null" };
@@ -131,16 +140,27 @@ function operand(r: Reader): Operand {
       if (!r.punct(")")) throw new Error("CAST");
       r.next();
       if (inner.kind === "date" && (type === "date" || type === "time")) return { kind: "date", fn: `current_${type}` };
-      if (inner.kind === "date" && (type === "datetime2" || type === "datetime")) return { kind: "date", fn: "localtimestamp" };
+      if (inner.kind === "date" && (type === "datetime2" || type === "datetime"))
+        return { kind: "date", fn: "localtimestamp" };
       throw new Error("CAST non reconnu");
     }
     if (lower === "true" || lower === "false") return { kind: "boolean", value: lower === "true" };
     // CURRENT DATE / CURRENT TIMESTAMP (DB2)
-    if (lower === "current" && r.word("date", "time", "timestamp")) return { kind: "date", fn: `current_${r.next()!.value.toLowerCase()}` as DateFunction };
+    if (lower === "current" && r.word("date", "time", "timestamp"))
+      return { kind: "date", fn: `current_${r.next()!.value.toLowerCase()}` as DateFunction };
     // datetime('now'), date('now') (SQLite)
-    if ((lower === "datetime" || lower === "date") && r.punct("(") && r.peek(1)?.type === "string" && r.peek(1)!.value.toLowerCase() === "now") {
+    if (
+      (lower === "datetime" || lower === "date") &&
+      r.punct("(") &&
+      r.peek(1)?.type === "string" &&
+      r.peek(1)!.value.toLowerCase() === "now"
+    ) {
       // datetime('now', 'localtime') : heure locale (O-39).
-      const local = r.peek(2)?.value === "," && r.peek(3)?.type === "string" && r.peek(3)!.value.toLowerCase() === "localtime" && r.peek(4)?.value === ")";
+      const local =
+        r.peek(2)?.value === "," &&
+        r.peek(3)?.type === "string" &&
+        r.peek(3)!.value.toLowerCase() === "localtime" &&
+        r.peek(4)?.value === ")";
       r.i += local ? 5 : 3;
       return { kind: "date", fn: lower === "date" ? "current_date" : local ? "localtimestamp" : "current_timestamp" };
     }
@@ -169,7 +189,8 @@ function operand(r: Reader): Operand {
       const fn = DATE_FUNCTIONS[lower]!;
       if (r.punct("(") && r.peek(1)?.type === "punct" && r.peek(1)!.value === ")") r.i += 2;
       // Précision des fractions de seconde : LOCALTIMESTAMP(0), CURRENT_TIMESTAMP(3), SYSTIMESTAMP(6).
-      else if (r.punct("(") && r.peek(1)?.type === "number" && r.peek(2)?.value === ")" && /timestamp/.test(lower)) r.i += 3;
+      else if (r.punct("(") && r.peek(1)?.type === "number" && r.peek(2)?.value === ")" && /timestamp/.test(lower))
+        r.i += 3;
       else if (r.punct("(")) throw new Error("fonction avec arguments");
       else if (["date", "time", "now", "getdate", "curdate", "curtime", "sysdatetime"].includes(lower)) {
         // sans parenthèses, ces mots sont des noms de colonnes
@@ -205,7 +226,11 @@ function predicate(r: Reader): Condition {
   }
   const left = withCollate(r, operand(r));
   // x IS [NOT] JSON (PostgreSQL 16+, Oracle).
-  if (r.word("is") && (r.peek(1)?.value.toLowerCase() === "json" || (r.peek(1)?.value.toLowerCase() === "not" && r.peek(2)?.value.toLowerCase() === "json"))) {
+  if (
+    r.word("is") &&
+    (r.peek(1)?.value.toLowerCase() === "json" ||
+      (r.peek(1)?.value.toLowerCase() === "not" && r.peek(2)?.value.toLowerCase() === "json"))
+  ) {
     r.next();
     const not = r.word("not");
     if (not) r.next();
@@ -223,7 +248,11 @@ function predicate(r: Reader): Condition {
     if (pattern?.type !== "string") throw new Error("motif");
     return { kind: "regex", operand: left, pattern: pattern.value, negated: negatedRegex, insensitive };
   }
-  const negated = r.word("not") && (r.peek(1)?.value.toLowerCase() === "in" || r.peek(1)?.value.toLowerCase() === "between" || r.peek(1)?.value.toLowerCase() === "like");
+  const negated =
+    r.word("not") &&
+    (r.peek(1)?.value.toLowerCase() === "in" ||
+      r.peek(1)?.value.toLowerCase() === "between" ||
+      r.peek(1)?.value.toLowerCase() === "like");
   if (negated) r.next();
   if (r.word("in")) {
     r.next();
@@ -333,7 +362,8 @@ export function parseCondition(expression: string): Condition | null {
 /** Forme structurée d'une valeur par défaut (littéral ou fonction de date), ou `null`. */
 export function parseDefault(expression: string): Operand | null {
   // (now() AT TIME ZONE 'UTC') / CURRENT_TIMESTAMP AT TIME ZONE 'UTC' : heure UTC (O-42).
-  if (/^\(*\s*(now\s*\(\s*\)|current_timestamp)\s+at\s+time\s+zone\s+'utc'\s*\)*$/i.test(expression.trim())) return { kind: "date", fn: "utc_timestamp" };
+  if (/^\(*\s*(now\s*\(\s*\)|current_timestamp)\s+at\s+time\s+zone\s+'utc'\s*\)*$/i.test(expression.trim()))
+    return { kind: "date", fn: "utc_timestamp" };
   try {
     let tokens = tokenize(expression).filter((t) => t.type !== "end");
     // (CURRENT_DATE) : parenthèses englobantes (MySQL)
@@ -352,7 +382,8 @@ export function referencedColumns(expression: string): string[] {
   const names = new Set<string>();
   tokens.forEach((t, i) => {
     if (t.type === "quoted") names.add(t.value);
-    else if (t.type === "word" && !KEYWORDS.has(t.value.toLowerCase()) && tokens[i + 1]?.value !== "(") names.add(t.value);
+    else if (t.type === "word" && !KEYWORDS.has(t.value.toLowerCase()) && tokens[i + 1]?.value !== "(")
+      names.add(t.value);
   });
   return [...names];
 }
@@ -363,7 +394,11 @@ export function referencedColumns(expression: string): string[] {
 const sqlString = (value: string) => `'${value.replaceAll("'", "''")}'`;
 
 /** Opérande écrit pour la cible ; `null` si la cible n'a pas d'équivalent. */
-export function renderOperand(o: Operand, target: Target, columnCase: (name: string) => boolean = () => false): string | null {
+export function renderOperand(
+  o: Operand,
+  target: Target,
+  columnCase: (name: string) => boolean = () => false,
+): string | null {
   switch (o.kind) {
     case "column":
       return quoteIdentifier(target, o.name, o.quoted || columnCase(o.name));
@@ -381,7 +416,17 @@ export function renderOperand(o: Operand, target: Target, columnCase: (name: str
       return specialFunction(target, o.fn);
     case "length": {
       const arg = renderOperand(o.arg, target, columnCase);
-      const fn = { postgresql: "char_length", sqlserver: "LEN", sybase: "LEN", mysql: "CHAR_LENGTH", mariadb: "CHAR_LENGTH", oracle: "LENGTH", db2: "LENGTH", sqlite: "length", access: "Len" }[target.dbms];
+      const fn = {
+        postgresql: "char_length",
+        sqlserver: "LEN",
+        sybase: "LEN",
+        mysql: "CHAR_LENGTH",
+        mariadb: "CHAR_LENGTH",
+        oracle: "LENGTH",
+        db2: "LENGTH",
+        sqlite: "length",
+        access: "Len",
+      }[target.dbms];
       return arg && `${fn}(${arg})`;
     }
   }
@@ -394,10 +439,12 @@ export function renderCondition(c: Condition, target: Target, columnCase?: (name
   switch (c.kind) {
     case "and":
     case "or": {
-      const parts = all(c.items.map((item) => {
-        const text = renderCondition(item, target, columnCase);
-        return text && (item.kind === "and" || item.kind === "or") ? `(${text})` : text;
-      }));
+      const parts = all(
+        c.items.map((item) => {
+          const text = renderCondition(item, target, columnCase);
+          return text && (item.kind === "and" || item.kind === "or") ? `(${text})` : text;
+        }),
+      );
       return parts && parts.join(` ${c.kind.toUpperCase()} `);
     }
     case "not": {
@@ -427,7 +474,10 @@ export function renderCondition(c: Condition, target: Target, columnCase?: (name
     case "regex": {
       if (target.dbms !== "postgresql") return null;
       const operandText = op(c.operand);
-      return operandText && `${operandText}${c.collateC ? ' COLLATE "C"' : ""} ${c.negated ? "!" : ""}~${c.insensitive ? "*" : ""} ${sqlString(c.pattern)}`;
+      return (
+        operandText &&
+        `${operandText}${c.collateC ? ' COLLATE "C"' : ""} ${c.negated ? "!" : ""}~${c.insensitive ? "*" : ""} ${sqlString(c.pattern)}`
+      );
     }
     case "isJson": {
       const operandText = op(c.operand);
@@ -457,7 +507,10 @@ export function renderCondition(c: Condition, target: Target, columnCase?: (name
 /** Famille de type d'une colonne, pour vérifier qu'un CHECK reste valide après conversion. */
 export type TypeFamily = "number" | "text" | "temporal" | "boolean";
 
-const operandFamily = (o: Operand, family: (column: string) => TypeFamily | undefined): TypeFamily | "any" | undefined => {
+const operandFamily = (
+  o: Operand,
+  family: (column: string) => TypeFamily | undefined,
+): TypeFamily | "any" | undefined => {
   switch (o.kind) {
     case "column":
       return family(o.name);
@@ -487,7 +540,9 @@ export function typeConflict(c: Condition, family: (column: string) => TypeFamil
   const clash = (a: Operand, b: Operand) => {
     const x = fam(a);
     const y = fam(b);
-    return x && y && x !== "any" && y !== "any" && x !== y ? `${describeOperand(a)} (${x}) / ${describeOperand(b)} (${y})` : null;
+    return x && y && x !== "any" && y !== "any" && x !== y
+      ? `${describeOperand(a)} (${x}) / ${describeOperand(b)} (${y})`
+      : null;
   };
   switch (c.kind) {
     case "and":
@@ -547,7 +602,12 @@ export function impliesNonNegative(c: Condition, column: string): boolean {
     case "and":
       return c.items.some((item) => impliesNonNegative(item, column));
     case "compare":
-      if (isColumn(c.left)) return (c.op === ">=" && number(c.right) >= 0) || (c.op === ">" && number(c.right) >= -1) || (c.op === "=" && number(c.right) >= 0);
+      if (isColumn(c.left))
+        return (
+          (c.op === ">=" && number(c.right) >= 0) ||
+          (c.op === ">" && number(c.right) >= -1) ||
+          (c.op === "=" && number(c.right) >= 0)
+        );
       if (isColumn(c.right)) return (c.op === "<=" && number(c.left) >= 0) || (c.op === "<" && number(c.left) >= -1);
       return false;
     case "between":
@@ -583,10 +643,16 @@ export function valueBounds(c: Condition, column: string): ValueBounds {
       return { lo, hi };
     }
     case "or": {
-      const parts = c.items.map((item) => valueBounds(item, column)).filter((b): b is Exclude<ValueBounds, "none"> => b !== "none");
+      const parts = c.items
+        .map((item) => valueBounds(item, column))
+        .filter((b): b is Exclude<ValueBounds, "none"> => b !== "none");
       if (!parts.length) return "none";
-      const lo = parts.some((b) => b.lo === null) ? null : parts.reduce((m, b) => (b.lo! < m ? b.lo! : m), parts[0]!.lo!);
-      const hi = parts.some((b) => b.hi === null) ? null : parts.reduce((m, b) => (b.hi! > m ? b.hi! : m), parts[0]!.hi!);
+      const lo = parts.some((b) => b.lo === null)
+        ? null
+        : parts.reduce((m, b) => (b.lo! < m ? b.lo! : m), parts[0]!.lo!);
+      const hi = parts.some((b) => b.hi === null)
+        ? null
+        : parts.reduce((m, b) => (b.hi! > m ? b.hi! : m), parts[0]!.hi!);
       return { lo, hi };
     }
     case "isNull":
@@ -604,7 +670,11 @@ export function valueBounds(c: Condition, column: string): ValueBounds {
     }
     case "compare": {
       const flip: Record<string, string> = { "<": ">", "<=": ">=", ">": "<", ">=": "<=", "=": "=" };
-      const [op, n] = isColumn(c.left) ? [c.op, integer(c.right)] : isColumn(c.right) ? [flip[c.op], integer(c.left)] : [undefined, null];
+      const [op, n] = isColumn(c.left)
+        ? [c.op, integer(c.right)]
+        : isColumn(c.right)
+          ? [flip[c.op], integer(c.left)]
+          : [undefined, null];
       if (n === null || !op) return free;
       if (op === ">=") return { lo: n, hi: null };
       if (op === ">") return { lo: n + 1n, hi: null };
@@ -640,7 +710,10 @@ export function excludesEmptyString(c: Condition, column: string): boolean {
     case "and":
       return c.items.some((item) => excludesEmptyString(item, column));
     case "compare":
-      return (isColumn(c.left) && c.op === "<>" && c.right.kind === "string" && c.right.value === "") || (isColumn(c.right) && c.op === "<>" && c.left.kind === "string" && c.left.value === "");
+      return (
+        (isColumn(c.left) && c.op === "<>" && c.right.kind === "string" && c.right.value === "") ||
+        (isColumn(c.right) && c.op === "<>" && c.left.kind === "string" && c.left.value === "")
+      );
     case "in":
       return !c.negated && isColumn(c.operand) && c.values.every((v) => v.kind === "string" && v.value !== "");
     default:

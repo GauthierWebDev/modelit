@@ -1,13 +1,21 @@
-import { createAttribute, type Association, type Attribute, type DataType, type Entity, type Id, type ModelDocument } from "@core/index";
+import {
+  type Association,
+  type Attribute,
+  createAttribute,
+  type DataType,
+  type Entity,
+  type Id,
+  type ModelDocument,
+} from "@core/index";
 import { GripVertical, KeyRound, Plus, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { type KeyboardEvent, type PointerEvent, useEffect, useRef, useState } from "react";
 import * as cmd from "@/app/commands";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
+import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { Checkbox, CommitInput, Disclosure, ErrorBanner, Field, IconButton } from "@/ui/common/controls";
 import { tip } from "@/ui/common/Tooltip";
-import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { AdvancedFields } from "./AttributesEditor";
 import { ReadOnly } from "./Inspector";
 import { TypePicker } from "./TypePicker";
@@ -50,7 +58,17 @@ export function AttributesSection() {
 
 type Report = (message: string | null) => string | null;
 
-function AttributesPanel({ doc, owner, isEntity, report }: { doc: ModelDocument; owner: Entity | Association; isEntity: boolean; report: Report }) {
+function AttributesPanel({
+  doc,
+  owner,
+  isEntity,
+  report,
+}: {
+  doc: ModelDocument;
+  owner: Entity | Association;
+  isEntity: boolean;
+  report: Report;
+}) {
   const handle = useDocumentHandle();
   const readOnly = useSessionReadOnly(handle);
   const attributes = owner.attributes;
@@ -86,7 +104,8 @@ function AttributesPanel({ doc, owner, isEntity, report }: { doc: ModelDocument;
     return [...d.entities, ...d.associations].find((n) => n.id === owner.id)?.attributes ?? attributes;
   };
   const apply = (next: Attribute[]) => report(cmd.setAttributes(handle, owner.id, next));
-  const update = (attributeId: Id, patch: Partial<Attribute>) => apply(latest().map((a) => (a.id === attributeId ? { ...a, ...patch } : a)));
+  const update = (attributeId: Id, patch: Partial<Attribute>) =>
+    apply(latest().map((a) => (a.id === attributeId ? { ...a, ...patch } : a)));
   const move = (from: number, to: number) => {
     if (from === to || to < 0 || to >= attributes.length) return;
     const next = [...latest()];
@@ -185,13 +204,29 @@ function AttributesPanel({ doc, owner, isEntity, report }: { doc: ModelDocument;
               >
                 <GripVertical size={12} />
               </span>
-              <span className={`mr-1 min-w-0 flex-1 truncate ${a.identifier ? "font-semibold underline" : ""}`}>{a.name}</span>
+              <span className={`mr-1 min-w-0 flex-1 truncate ${a.identifier ? "font-semibold underline" : ""}`}>
+                {a.name}
+              </span>
               <Badge attribute={a} duplicate={duplicates.has(a.name)} />
-              <span className={`max-w-32 flex-none truncate text-xs ${a.type ? "text-neutral-500 dark:text-neutral-400" : "text-amber-600 italic"}`}>
+              <span
+                className={`max-w-32 flex-none truncate text-xs ${a.type ? "text-neutral-500 dark:text-neutral-400" : "text-amber-600 italic"}`}
+              >
                 {typeSummary(a.type)}
               </span>
-              {isEntity && <Pill label="ID" tooltip={t("attribute.identifier")} on={a.identifier} onToggle={() => update(a.id, { identifier: !a.identifier })} />}
-              <Pill label="NN" tooltip="NOT NULL" on={a.notNull} onToggle={() => update(a.id, { notNull: !a.notNull })} />
+              {isEntity && (
+                <Pill
+                  label="ID"
+                  tooltip={t("attribute.identifier")}
+                  on={a.identifier}
+                  onToggle={() => update(a.id, { identifier: !a.identifier })}
+                />
+              )}
+              <Pill
+                label="NN"
+                tooltip="NOT NULL"
+                on={a.notNull}
+                onToggle={() => update(a.id, { notNull: !a.notNull })}
+              />
               <Pill label="UQ" tooltip="UNIQUE" on={a.unique} onToggle={() => update(a.id, { unique: !a.unique })} />
               <IconButton tooltip={t("attribute.delete")} onClick={() => remove(i)}>
                 <Trash2 size={12} />
@@ -222,7 +257,11 @@ function AttributesPanel({ doc, owner, isEntity, report }: { doc: ModelDocument;
           onEnter={index === attributes.length - 1 ? add : undefined}
         />
       ) : (
-        attributes.length > 0 && <p className="border-t border-neutral-200 px-3 py-2 text-xs text-neutral-500 dark:border-neutral-700">{t("attributes.pick")}</p>
+        attributes.length > 0 && (
+          <p className="border-t border-neutral-200 px-3 py-2 text-xs text-neutral-500 dark:border-neutral-700">
+            {t("attributes.pick")}
+          </p>
+        )
       )}
     </>
   );
@@ -246,14 +285,26 @@ function AttributeDetail({
   return (
     <section className="flex flex-col gap-2 border-t border-neutral-200 px-3 py-3 dark:border-neutral-700">
       <Field label={t("inspector.name")}>
-        <CommitInput value={a.name} autoFocus={focusName} autoSelect={focusName} onEnter={onEnter} onCommit={(name) => update({ name: name.trim() })} />
+        <CommitInput
+          value={a.name}
+          autoFocus={focusName}
+          autoSelect={focusName}
+          onEnter={onEnter}
+          onCommit={(name) => update({ name: name.trim() })}
+        />
       </Field>
       <Field label={t("attributes.type")}>
         {/* Nouveau type choisi : le type d'origine (rétroconception) ne vaut plus. */}
         <TypePicker value={a.type} onChange={(type) => update({ type, sourceType: undefined })} />
       </Field>
       <div className="flex flex-wrap gap-x-3">
-        {isEntity && <Checkbox label={t("attribute.identifier")} checked={a.identifier} onChange={(identifier) => update({ identifier })} />}
+        {isEntity && (
+          <Checkbox
+            label={t("attribute.identifier")}
+            checked={a.identifier}
+            onChange={(identifier) => update({ identifier })}
+          />
+        )}
         <Checkbox label="NOT NULL" checked={a.notNull} onChange={(notNull) => update({ notNull })} />
         <Checkbox label="UNIQUE" checked={a.unique} onChange={(unique) => update({ unique })} />
       </div>
@@ -277,7 +328,9 @@ function Pill({ label, tooltip, on, onToggle }: { label: string; tooltip: string
         onToggle();
       }}
       className={`flex-none rounded px-1 font-mono text-[10px] leading-4 ${
-        on ? "bg-blue-600 text-white" : "text-neutral-400 hover:bg-neutral-200 dark:text-neutral-500 dark:hover:bg-neutral-700"
+        on
+          ? "bg-blue-600 text-white"
+          : "text-neutral-400 hover:bg-neutral-200 dark:text-neutral-500 dark:hover:bg-neutral-700"
       }`}
     >
       {label}
@@ -289,7 +342,13 @@ function Pill({ label, tooltip, on, onToggle }: { label: string; tooltip: string
 function Badge({ attribute, duplicate }: { attribute: Attribute; duplicate: boolean }) {
   if (!duplicate && attribute.type) return null;
   const message = duplicate ? t("attributes.duplicate") : t("attributes.untyped");
-  return <span aria-label={message} {...tip(message)} className={`size-2 flex-none rounded-full ${duplicate ? "bg-red-500" : "bg-amber-500"}`} />;
+  return (
+    <span
+      aria-label={message}
+      {...tip(message)}
+      className={`size-2 flex-none rounded-full ${duplicate ? "bg-red-500" : "bg-amber-500"}`}
+    />
+  );
 }
 
 const DropLine = () => <div className="mx-2 h-0.5 rounded bg-blue-500" />;
@@ -311,7 +370,9 @@ function useRowDrag(rows: { current: (HTMLDivElement | null)[] }, move: (from: n
     let target = from;
     setState({ from, target });
     const onMove = (ev: globalThis.PointerEvent) => {
-      const centers = rows.current.map((row) => (row ? row.getBoundingClientRect() : null)).map((r) => (r ? r.top + r.height / 2 : Infinity));
+      const centers = rows.current
+        .map((row) => (row ? row.getBoundingClientRect() : null))
+        .map((r) => (r ? r.top + r.height / 2 : Infinity));
       target = centers.filter((c) => c < ev.clientY).length;
       setState({ from, target });
     };

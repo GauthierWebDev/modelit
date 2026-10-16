@@ -1,4 +1,4 @@
-import { formatCardinality, linksOf, type Id, type LogicalColumn, type ModelDocument } from "@core/index";
+import { formatCardinality, type Id, type LogicalColumn, linksOf, type ModelDocument } from "@core/index";
 import { Info } from "lucide-react";
 import { renameForeignKey } from "@/app/commands";
 import { useLogicalModel } from "@/app/derived";
@@ -47,13 +47,20 @@ export function ForeignKeysSection({ tableOf, linkIds }: { tableOf?: Id; linkIds
         return (
           <div key={`${table}-${origin.linkId}-${origin.attributeId}`} className="flex flex-col gap-0.5">
             <div className="flex items-center gap-1">
-              <span className="w-3 font-mono text-sm text-pink-700 dark:text-pink-400">{column.foreign ? "#" : ""}</span>
+              <span className="w-3 font-mono text-sm text-pink-700 dark:text-pink-400">
+                {column.foreign ? "#" : ""}
+              </span>
               <CommitInput
                 className="flex-1"
                 value={column.name}
                 placeholder={origin.defaultName}
                 onCommit={(name) =>
-                  renameForeignKey(handle, origin.linkId, origin.attributeId, name.trim() === origin.defaultName ? "" : name)
+                  renameForeignKey(
+                    handle,
+                    origin.linkId,
+                    origin.attributeId,
+                    name.trim() === origin.defaultName ? "" : name,
+                  )
                 }
               />
               <span

@@ -1,6 +1,6 @@
 import { AlertTriangle, CircleX, Info } from "lucide-react";
 import { useId } from "react";
-import { settleDialog, useDialogStore, type DialogTone } from "@/app/dialogStore";
+import { type DialogTone, settleDialog, useDialogStore } from "@/app/dialogStore";
 import { Modal } from "./Modal";
 
 const ICONS: Record<DialogTone, { icon: typeof Info; className: string }> = {
@@ -10,10 +10,13 @@ const ICONS: Record<DialogTone, { icon: typeof Info; className: string }> = {
   error: { icon: CircleX, className: "text-red-600 dark:text-red-400" },
 };
 
-const secondary = "rounded px-3 py-1 text-sm hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-blue-500 dark:hover:bg-neutral-800";
+const secondary =
+  "rounded px-3 py-1 text-sm hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-blue-500 dark:hover:bg-neutral-800";
 const primary = {
-  default: "rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500",
-  danger: "rounded bg-red-600 px-3 py-1 text-sm font-medium text-white hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500",
+  default:
+    "rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500",
+  danger:
+    "rounded bg-red-600 px-3 py-1 text-sm font-medium text-white hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500",
 };
 
 /**
@@ -43,7 +46,12 @@ export function DialogHost() {
         <>
           <div className="flex-1" />
           {request.kind === "confirm" && (
-            <button type="button" className={secondary} onClick={cancel} {...(safeFirst ? { "data-autofocus": "" } : {})}>
+            <button
+              type="button"
+              className={secondary}
+              onClick={cancel}
+              {...(safeFirst ? { "data-autofocus": "" } : {})}
+            >
               {request.cancelLabel}
             </button>
           )}
@@ -60,7 +68,9 @@ export function DialogHost() {
     >
       <div id={descriptionId}>
         <p className="whitespace-pre-line text-sm">{request.message}</p>
-        {request.detail && <p className="mt-2 whitespace-pre-line text-sm text-neutral-600 dark:text-neutral-300">{request.detail}</p>}
+        {request.detail && (
+          <p className="mt-2 whitespace-pre-line text-sm text-neutral-600 dark:text-neutral-300">{request.detail}</p>
+        )}
       </div>
     </Modal>
   );

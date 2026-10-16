@@ -1,10 +1,10 @@
 import { foreignKeyDataType } from "../dbms/typeMapping";
 import type { Association, Entity, Id, Link, ModelDocument } from "../model/document";
+import type { ConstraintState, KeyMember, ReferentialAction, SourceType } from "../model/physical";
 import { attributeLogicalName, foreignKeyDefaultName, uniqueName } from "../naming/keys";
 import { logicalName } from "../naming/typology";
 import { MSG } from "../validation/messages";
 import { generatesTable, linksOf } from "../validation/rules";
-import type { ConstraintState, KeyMember, ReferentialAction, SourceType } from "../model/physical";
 import type { Issue, LogicalColumn, LogicalForeignKey, LogicalKey, LogicalModel, LogicalTable } from "./logical";
 
 /**
@@ -88,8 +88,12 @@ const byKeyOrder = <T extends { keyOrder?: number }>(items: T[]) =>
 
 const tableName = (ctx: Context, node: Entity | Association) => logicalName(node, ctx.doc.settings.naming);
 
-const columnName = (ctx: Context, attribute: Entity["attributes"][number], table: string, owner: Entity | Association) =>
-  attributeLogicalName(attribute, table, ctx.doc.settings.naming, ctx.doc.settings.keys.primary, owner.name);
+const columnName = (
+  ctx: Context,
+  attribute: Entity["attributes"][number],
+  table: string,
+  owner: Entity | Association,
+) => attributeLogicalName(attribute, table, ctx.doc.settings.naming, ctx.doc.settings.keys.primary, owner.name);
 
 /**
  * Colonnes migrées depuis la clé `key` de `referencedTable`, par la patte `reference` :
@@ -228,7 +232,9 @@ function attributeColumns(ctx: Context, owner: Entity | Association, table: stri
       ctx.issues.push({
         severity: "warning",
         message: a.generated ? MSG.untypedComputed(owner.name, a.name) : MSG.untypedConceptual(owner.name, a.name),
-        logicalMessage: a.generated ? MSG.untypedComputed(table, columnName(ctx, a, table, owner)) : MSG.untypedLogical(table, columnName(ctx, a, table, owner)),
+        logicalMessage: a.generated
+          ? MSG.untypedComputed(table, columnName(ctx, a, table, owner))
+          : MSG.untypedLogical(table, columnName(ctx, a, table, owner)),
         target: { kind: owner.kind, id: owner.id },
       });
     }
@@ -260,7 +266,15 @@ function attributeColumns(ctx: Context, owner: Entity | Association, table: stri
 function foreignSourceType(k: KeyColumn): SourceType | undefined {
   if (!k.sourceType) return undefined;
   if (k.type?.kind !== "counter") return k.sourceType;
-  const plain: Record<string, string> = { serial: "integer", serial4: "integer", bigserial: "bigint", serial8: "bigint", smallserial: "smallint", counter: "long", autoincrement: "long" };
+  const plain: Record<string, string> = {
+    serial: "integer",
+    serial4: "integer",
+    bigserial: "bigint",
+    serial8: "bigint",
+    smallserial: "smallint",
+    counter: "long",
+    autoincrement: "long",
+  };
   const original = k.sourceType.sql.trim();
   const mapped = plain[original.toLowerCase()];
   const sql = mapped === undefined ? original : original === original.toUpperCase() ? mapped.toUpperCase() : mapped;
@@ -278,7 +292,9 @@ const migratedColumn = (k: KeyColumn & { via: Migration }, notNull: boolean): Lo
   // L'identifiant d'une entité fictive est une simple colonne, sans contrainte FK.
   foreign: !k.via.fictive,
   // Seules les colonnes migrées par une patte sont renommables (O-07).
-  origin: k.via.reference ? { linkId: k.via.reference.id, attributeId: k.originId, defaultName: k.via.defaultName } : undefined,
+  origin: k.via.reference
+    ? { linkId: k.via.reference.id, attributeId: k.originId, defaultName: k.via.defaultName }
+    : undefined,
 });
 
 /** Regroupe en contraintes FOREIGN KEY les colonnes migrées par une même patte. */
@@ -316,7 +332,15 @@ function addReference(
 ) {
   const target = ctx.entities.get(reference.entityId)!;
   const used = new Set(table.columns.map((c) => c.name));
-  const columns = migrate(ctx, referencedKey(ctx, target, reference), reference, cascadeFrom, tableName(ctx, target), target.fictive, used);
+  const columns = migrate(
+    ctx,
+    referencedKey(ctx, target, reference),
+    reference,
+    cascadeFrom,
+    tableName(ctx, target),
+    target.fictive,
+    used,
+  );
   const added = columns.filter((k) => !k.via.reused);
   table.columns.push(...added.map((k) => migratedColumn(k, options.notNull && !options.inPrimaryKey)));
   if (options.inPrimaryKey) table.primaryKey.push(...added.map((k) => k.name));
@@ -341,7 +365,13 @@ function referencedKey(ctx: Context, target: Entity, reference: Link): KeyColumn
   const attributes = ids?.map((id) => target.attributes.find((a) => a.id === id));
   if (!attributes?.length || !attributes.every((a) => a !== undefined)) return entityKey(ctx, target.id);
   const table = tableName(ctx, target);
-  return attributes.map((a) => ({ name: columnName(ctx, a!, table, target), type: a!.type, sourceType: a!.sourceType, unsigned: a!.unsigned, originId: a!.id }));
+  return attributes.map((a) => ({
+    name: columnName(ctx, a!, table, target),
+    type: a!.type,
+    sourceType: a!.sourceType,
+    unsigned: a!.unsigned,
+    originId: a!.id,
+  }));
 }
 
 /** Identifiants alternatifs, index, contraintes et ordre des colonnes d'origine (O-29). */
@@ -373,7 +403,13 @@ function applyPhysical(ctx: Context, table: LogicalTable, node: Entity | Associa
     };
     // Unicité sur expression ou conditionnelle : jamais confondue avec un UNIQUE sur les colonnes (O-39).
     const partial = Boolean(key.prefixes || key.expression || key.where);
-    const same = (u: LogicalKey) => !partial && !u.prefixes && !u.expression && !u.where && u.columns.length === columns.length && u.columns.every((c) => columns.includes(c));
+    const same = (u: LogicalKey) =>
+      !partial &&
+      !u.prefixes &&
+      !u.expression &&
+      !u.where &&
+      u.columns.length === columns.length &&
+      u.columns.every((c) => columns.includes(c));
     const existing = table.uniques.find(same);
     if (existing) Object.assign(existing, { name: existing.name ?? key.name, ...options });
     else table.uniques.push({ name: key.name, columns, ...options });
@@ -407,7 +443,10 @@ function applyPhysical(ctx: Context, table: LogicalTable, node: Entity | Associa
   if (ctx.doc.settings.ddl.sourceColumnOrder && node.columnOrder?.length) {
     const order = new Map(node.columnOrder.map((n, i) => [n.toLowerCase(), i]));
     const position = (c: LogicalColumn) => order.get(c.name.toLowerCase()) ?? Infinity;
-    table.columns = table.columns.map((c, i) => ({ c, i })).sort((a, b) => position(a.c) - position(b.c) || a.i - b.i).map(({ c }) => c);
+    table.columns = table.columns
+      .map((c, i) => ({ c, i }))
+      .sort((a, b) => position(a.c) - position(b.c) || a.i - b.i)
+      .map(({ c }) => c);
   }
 }
 
@@ -503,14 +542,26 @@ function checkConceptualModel(ctx: Context) {
     return items.filter((item) => counts.get(item.name.trim())! > 1);
   };
   for (const e of duplicated(ctx.doc.entities)) {
-    ctx.issues.push({ severity: "error", message: MSG.duplicateEntityName(e.name), target: { kind: "entity", id: e.id } });
+    ctx.issues.push({
+      severity: "error",
+      message: MSG.duplicateEntityName(e.name),
+      target: { kind: "entity", id: e.id },
+    });
   }
   for (const a of duplicated(ctx.doc.associations)) {
-    ctx.issues.push({ severity: "error", message: MSG.duplicateAssociationName(a.name), target: { kind: "association", id: a.id } });
+    ctx.issues.push({
+      severity: "error",
+      message: MSG.duplicateAssociationName(a.name),
+      target: { kind: "association", id: a.id },
+    });
   }
   for (const owner of [...ctx.doc.entities, ...ctx.doc.associations]) {
     if (duplicated(owner.attributes).length > 0) {
-      ctx.issues.push({ severity: "error", message: MSG.duplicateAttributesIn(owner.name), target: { kind: owner.kind, id: owner.id } });
+      ctx.issues.push({
+        severity: "error",
+        message: MSG.duplicateAttributesIn(owner.name),
+        target: { kind: owner.kind, id: owner.id },
+      });
     }
     checkAtomicity(ctx, owner);
   }
@@ -518,7 +569,12 @@ function checkConceptualModel(ctx: Context) {
   for (const link of ctx.doc.links) {
     if (!link.sourceNotEnforced) continue;
     const association = ctx.doc.associations.find((a) => a.id === link.associationId);
-    if (association) ctx.issues.push({ severity: "warning", message: MSG.referenceNotEnforced(association.name), target: { kind: "association", id: association.id } });
+    if (association)
+      ctx.issues.push({
+        severity: "warning",
+        message: MSG.referenceNotEnforced(association.name),
+        target: { kind: "association", id: association.id },
+      });
   }
 }
 
@@ -529,25 +585,46 @@ function checkConceptualModel(ctx: Context) {
 function checkAtomicity(ctx: Context, owner: Entity | Association) {
   const target = { kind: owner.kind, id: owner.id };
   for (const a of owner.attributes) {
-    if (a.domain?.kind === "set") ctx.issues.push({ severity: "warning", message: MSG.multivaluedAttribute(owner.name, a.name), target });
-    const json = (a.type?.kind === "free" && /^jsonb?$/i.test(a.type.sql.trim())) || /^jsonb?\b/i.test(a.sourceType?.sql ?? "");
+    if (a.domain?.kind === "set")
+      ctx.issues.push({ severity: "warning", message: MSG.multivaluedAttribute(owner.name, a.name), target });
+    const json =
+      (a.type?.kind === "free" && /^jsonb?$/i.test(a.type.sql.trim())) || /^jsonb?\b/i.test(a.sourceType?.sql ?? "");
     if (json) ctx.issues.push({ severity: "warning", message: MSG.nonAtomicAttribute(owner.name, a.name), target });
   }
   // Annotations physiques que le MCD n'exprime pas (O-39).
   const disabled = (name: string | undefined, state: ConstraintState | undefined, fallback: string) => {
-    if (state?.disabled) ctx.issues.push({ severity: "warning", message: MSG.constraintDisabled(owner.name, name ?? fallback, state.dialect), target });
-    if (state?.notValidated) ctx.issues.push({ severity: "warning", message: MSG.constraintNotValidated(owner.name, name ?? fallback, state.dialect), target });
+    if (state?.disabled)
+      ctx.issues.push({
+        severity: "warning",
+        message: MSG.constraintDisabled(owner.name, name ?? fallback, state.dialect),
+        target,
+      });
+    if (state?.notValidated)
+      ctx.issues.push({
+        severity: "warning",
+        message: MSG.constraintNotValidated(owner.name, name ?? fallback, state.dialect),
+        target,
+      });
   };
   for (const a of owner.attributes) if (a.check) disabled(a.check.name, a.check.state, `CHECK (${a.check.expression})`);
   for (const check of owner.checks ?? []) disabled(check.name, check.state, `CHECK (${check.expression})`);
   for (const key of owner.alternateKeys ?? []) disabled(key.name, key.state, "UNIQUE");
   for (const link of ctx.doc.links) {
-    if (link.entityId === owner.id && link.foreignKeyHolder) disabled(link.foreignKeyConstraintName, link.foreignKeyState, "FOREIGN KEY");
+    if (link.entityId === owner.id && link.foreignKeyHolder)
+      disabled(link.foreignKeyConstraintName, link.foreignKeyState, "FOREIGN KEY");
   }
   for (const key of owner.alternateKeys ?? []) {
     if (!key.where) continue;
-    const names = key.members.map((m) => ("attributeId" in m ? owner.attributes.find((a) => a.id === m.attributeId)?.name : keyMemberLabel(ctx, m)) ?? "?");
-    ctx.issues.push({ severity: "warning", message: MSG.conditionalUnique(owner.name, names.join(", "), key.where.expression), target });
+    const names = key.members.map(
+      (m) =>
+        ("attributeId" in m ? owner.attributes.find((a) => a.id === m.attributeId)?.name : keyMemberLabel(ctx, m)) ??
+        "?",
+    );
+    ctx.issues.push({
+      severity: "warning",
+      message: MSG.conditionalUnique(owner.name, names.join(", "), key.where.expression),
+      target,
+    });
   }
   if (owner.partition) ctx.issues.push({ severity: "warning", message: MSG.partitionDropped(owner.name), target });
   // O-41 : UNIQUE à un seul NULL admis (SQL Server) sur une colonne facultative ; types spatiaux ; ROWVERSION.
@@ -563,14 +640,25 @@ function checkAtomicity(ctx: Context, owner: Entity | Association) {
       return holder?.cardinality.min === 0;
     });
     if (optional.length) {
-      const names = optional.map((m) => ("attributeId" in m ? owner.attributes.find((a) => a.id === m.attributeId)!.name : keyMemberLabel(ctx, m) ?? "#"));
+      const names = optional.map((m) =>
+        "attributeId" in m
+          ? owner.attributes.find((a) => a.id === m.attributeId)!.name
+          : (keyMemberLabel(ctx, m) ?? "#"),
+      );
       ctx.issues.push({ severity: "warning", message: MSG.singleNullUnique(owner.name, names.join(", ")), target });
     }
   }
   const dbms = ctx.doc.settings.dbms;
   for (const a of owner.attributes) {
-    if ((a.type?.kind === "geography" || a.type?.kind === "geometry") && (dbms === "postgresql" || dbms === "sqlite" || dbms === "db2")) {
-      ctx.issues.push({ severity: "warning", message: MSG.spatialExtension(owner.name, a.name, a.type.kind.toUpperCase(), dbms), target });
+    if (
+      (a.type?.kind === "geography" || a.type?.kind === "geometry") &&
+      (dbms === "postgresql" || dbms === "sqlite" || dbms === "db2")
+    ) {
+      ctx.issues.push({
+        severity: "warning",
+        message: MSG.spatialExtension(owner.name, a.name, a.type.kind.toUpperCase(), dbms),
+        target,
+      });
     }
     if (a.type?.kind === "free" && a.type.sql === "ROWVERSION" && dbms !== "sqlserver") {
       ctx.issues.push({ severity: "warning", message: MSG.rowversionAttribute(owner.name, a.name), target });
@@ -604,9 +692,12 @@ function keyMemberLabel(ctx: Context, member: KeyMember): string | undefined {
 function checkInheritances(ctx: Context) {
   for (const inheritance of ctx.doc.inheritances) {
     const target = { kind: "inheritance" as const, id: inheritance.id };
-    const links = ctx.doc.inheritanceLinks.filter((l) => l.inheritanceId === inheritance.id && ctx.entities.has(l.entityId));
+    const links = ctx.doc.inheritanceLinks.filter(
+      (l) => l.inheritanceId === inheritance.id && ctx.entities.has(l.entityId),
+    );
     const entityIds = links.map((l) => l.entityId);
-    const parentId = inheritance.parentId && entityIds.includes(inheritance.parentId) ? inheritance.parentId : undefined;
+    const parentId =
+      inheritance.parentId && entityIds.includes(inheritance.parentId) ? inheritance.parentId : undefined;
     const children = entityIds.filter((id) => id !== parentId);
     if (!parentId) ctx.issues.push({ severity: "error", message: MSG.inheritanceNeedsParent, target });
     if (children.length < 1) ctx.issues.push({ severity: "error", message: MSG.inheritanceNeedsChild, target });
@@ -614,18 +705,28 @@ function checkInheritances(ctx: Context) {
     for (const child of children) {
       if (ctx.parents.has(child)) {
         const entity = ctx.entities.get(child)!;
-        ctx.issues.push({ severity: "error", message: MSG.multipleParents(entity.name), target: { kind: "entity", id: child } });
+        ctx.issues.push({
+          severity: "error",
+          message: MSG.multipleParents(entity.name),
+          target: { kind: "entity", id: child },
+        });
         continue;
       }
-      ctx.parents.set(child, { inheritanceId: inheritance.id, parentId, linkId: links.find((l) => l.entityId === child)!.id });
+      ctx.parents.set(child, {
+        inheritanceId: inheritance.id,
+        parentId,
+        linkId: links.find((l) => l.entityId === child)!.id,
+      });
     }
   }
 }
 
 function checkTables(ctx: Context, tables: LogicalTable[]) {
   const ownerName = (table: LogicalTable) =>
-    (table.source.kind === "entity" ? ctx.entities.get(table.source.id) : ctx.doc.associations.find((a) => a.id === table.source.id))
-      ?.name ?? table.name;
+    (table.source.kind === "entity"
+      ? ctx.entities.get(table.source.id)
+      : ctx.doc.associations.find((a) => a.id === table.source.id)
+    )?.name ?? table.name;
   const counts = new Map<string, number>();
   for (const table of tables) counts.set(table.name, (counts.get(table.name) ?? 0) + 1);
   for (const table of tables) {
@@ -699,7 +800,9 @@ export function toLogicalModel(doc: ModelDocument): LogicalModel {
   const result = [...tables.values()];
   for (const table of result) {
     const node =
-      table.source.kind === "entity" ? ctx.entities.get(table.source.id) : doc.associations.find((a) => a.id === table.source.id);
+      table.source.kind === "entity"
+        ? ctx.entities.get(table.source.id)
+        : doc.associations.find((a) => a.id === table.source.id);
     if (node) applyPhysical(ctx, table, node);
   }
   checkTables(ctx, result);

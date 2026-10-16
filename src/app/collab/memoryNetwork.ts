@@ -9,10 +9,11 @@ export function memoryNetwork() {
   const hostHandlers = new Set<(peer: string, m: ToHost) => void>();
   const hostClose = new Set<(peer: string) => void>();
   const guests = new Map<string, { handlers: Set<(m: ToGuest) => void>; close: Set<() => void>; open: boolean }>();
-  const clone = <T,>(m: T): T => structuredClone(m);
+  const clone = <T>(m: T): T => structuredClone(m);
 
   const hostLink: HostLink = {
-    send: (peer, m) => queue.push(() => guests.get(peer)?.open && guests.get(peer)!.handlers.forEach((h) => h(clone(m)))),
+    send: (peer, m) =>
+      queue.push(() => guests.get(peer)?.open && guests.get(peer)!.handlers.forEach((h) => h(clone(m)))),
     onMessage: (h) => (hostHandlers.add(h), () => hostHandlers.delete(h)),
     onClose: (h) => (hostClose.add(h), () => hostClose.delete(h)),
     close: (peer) => {
@@ -53,4 +54,3 @@ export function memoryNetwork() {
   };
   return { hostLink, connect, flush, settle };
 }
-

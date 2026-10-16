@@ -1,5 +1,5 @@
 import { isAtLeast } from "../../dbms/versions";
-import { standard, type Dialect } from "./dialect";
+import { type Dialect, standard } from "./dialect";
 
 function family(dbms: "mysql" | "mariadb", version: string | undefined): Dialect {
   // MySQL 5.7 : ni expression entre parenthèses en DEFAULT, ni index sur expression (8.0.13+).
@@ -24,7 +24,13 @@ function family(dbms: "mysql" | "mariadb", version: string | undefined): Dialect
       onUpdate: true,
       // Pas de défaut littéral sur TEXT / BLOB / JSON / GEOMETRY ; expression entre parenthèses depuis 8.0.13.
       defaultFor: (rendered, type) =>
-        !/^(\w*text|\w*blob|json|geometry)\b/i.test(type) ? rendered : mysql57 ? null : rendered.startsWith("(") ? rendered : `(${rendered})`,
+        !/^(\w*text|\w*blob|json|geometry)\b/i.test(type)
+          ? rendered
+          : mysql57
+            ? null
+            : rendered.startsWith("(")
+              ? rendered
+              : `(${rendered})`,
     },
     uniques: { ...standard.uniques, methods: true },
     indexes: {
@@ -46,6 +52,14 @@ export const mysql = (version: string | undefined) => family("mysql", version);
 export function mariadb(version: string | undefined): Dialect {
   const base = family("mariadb", version);
   return isAtLeast("mariadb", version, "10.3")
-    ? { ...base, sequences: { next: (name) => `NEXTVAL(${name})`, valueType: () => undefined, noCycle: "NO CYCLE", ownedBy: false } }
+    ? {
+        ...base,
+        sequences: {
+          next: (name) => `NEXTVAL(${name})`,
+          valueType: () => undefined,
+          noCycle: "NO CYCLE",
+          ownedBy: false,
+        },
+      }
     : base;
 }

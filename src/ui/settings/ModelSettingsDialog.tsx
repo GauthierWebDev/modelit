@@ -1,11 +1,11 @@
-import { sourceDialects, TYPOLOGIES, type DdlOptions, type SqlDialect } from "@core/index";
+import { type DdlOptions, type SqlDialect, sourceDialects, TYPOLOGIES } from "@core/index";
 import { ChevronRight } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import * as cmd from "@/app/commands";
 import { useDocument, useDocumentHandle } from "@/app/document/DocumentContext";
-import { usePreferencesStore, type ModelSettingsTab } from "@/app/preferencesStore";
+import { type ModelSettingsTab, usePreferencesStore } from "@/app/preferencesStore";
 import { useUiStore } from "@/app/uiStore";
-import { t, type MessageKey } from "@/i18n";
+import { type MessageKey, t } from "@/i18n";
 import { Checkbox, Select } from "@/ui/common/controls";
 import { Modal } from "@/ui/common/Modal";
 import { ReadOnly } from "@/ui/panels/Inspector";
@@ -33,7 +33,11 @@ export function ModelSettingsDialog() {
       width="w-[44rem]"
       onClose={() => setOpen(false)}
       footer={
-        <button type="button" className="ml-auto rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700" onClick={() => setOpen(false)}>
+        <button
+          type="button"
+          className="ml-auto rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700"
+          onClick={() => setOpen(false)}
+        >
           {t("common.close")}
         </button>
       }
@@ -92,7 +96,9 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const Help = ({ children }: { children: ReactNode }) => <p className="text-xs text-neutral-500 dark:text-neutral-400">{children}</p>;
+const Help = ({ children }: { children: ReactNode }) => (
+  <p className="text-xs text-neutral-500 dark:text-neutral-400">{children}</p>
+);
 
 function NamingTab() {
   const handle = useDocumentHandle();
@@ -104,7 +110,9 @@ function NamingTab() {
           <Select
             value={s.naming.typology}
             options={TYPOLOGIES.map((id) => ({ id, label: t(`typology.${id}`) }))}
-            onChange={(typology) => cmd.updateSettings(handle, "history.typology", (d) => void (d.naming.typology = typology))}
+            onChange={(typology) =>
+              cmd.updateSettings(handle, "history.typology", (d) => void (d.naming.typology = typology))
+            }
           />
         </Row>
         <Checkbox
@@ -118,21 +126,27 @@ function NamingTab() {
           <KeyPatternField
             kind="discriminant"
             value={s.autoIdMask}
-            onChange={(pattern) => cmd.updateSettings(handle, "history.autoIdMask", (d) => void (d.autoIdMask = pattern))}
+            onChange={(pattern) =>
+              cmd.updateSettings(handle, "history.autoIdMask", (d) => void (d.autoIdMask = pattern))
+            }
           />
         </Row>
         <Row label={t("inspector.primaryKey")}>
           <KeyPatternField
             kind="primaryKey"
             value={s.keys.primary}
-            onChange={(pattern) => cmd.updateSettings(handle, "history.primaryKeyMask", (d) => void (d.keys.primary = pattern))}
+            onChange={(pattern) =>
+              cmd.updateSettings(handle, "history.primaryKeyMask", (d) => void (d.keys.primary = pattern))
+            }
           />
         </Row>
         <Row label={t("inspector.foreignKey")}>
           <KeyPatternField
             kind="foreignKey"
             value={s.keys.foreign}
-            onChange={(pattern) => cmd.updateSettings(handle, "history.foreignKeyMask", (d) => void (d.keys.foreign = pattern))}
+            onChange={(pattern) =>
+              cmd.updateSettings(handle, "history.foreignKeyMask", (d) => void (d.keys.foreign = pattern))
+            }
           />
         </Row>
         <Help>{t("inspector.keysHelp")}</Help>
@@ -151,7 +165,13 @@ function useDdlOption() {
 }
 
 /** Liste d'une option à valeurs énumérées : libellés `ddl.<option>.<valeur>`. */
-function OptionSelect<K extends keyof DdlOptions>({ option, values }: { option: K; values: readonly (DdlOptions[K] & string)[] }) {
+function OptionSelect<K extends keyof DdlOptions>({
+  option,
+  values,
+}: {
+  option: K;
+  values: readonly (DdlOptions[K] & string)[];
+}) {
   const { ddl, set } = useDdlOption();
   return (
     <Row label={t(`ddl.${option}` as MessageKey)}>

@@ -1,13 +1,27 @@
 import { referencedColumns } from "../ddl/expressions";
 import type { Association, Attribute, Entity, Id, InheritanceLink, Link, ModelDocument } from "../model/document";
-import { createAssociation, createAttribute, createEntity, createInheritance, createInheritanceLink, createLink } from "../model/factory";
+import {
+  createAssociation,
+  createAttribute,
+  createEntity,
+  createInheritance,
+  createInheritanceLink,
+  createLink,
+} from "../model/factory";
 import type { CheckConstraint, KeyMember, SqlDialect, ValueDomain } from "../model/physical";
 import { foreignKeyDefaultName } from "../naming/keys";
 import { logicalName } from "../naming/typology";
 import { MSG } from "../validation/messages";
-import { detectDialect } from "./dialect";
 import { inferComputedType } from "./computedType";
-import { parseSql, type NamedExpression, type ParsedColumn, type ParsedForeignKey, type ParsedKey, type ParsedTable } from "./parse";
+import { detectDialect } from "./dialect";
+import {
+  type NamedExpression,
+  type ParsedColumn,
+  type ParsedForeignKey,
+  type ParsedKey,
+  type ParsedTable,
+  parseSql,
+} from "./parse";
 import { tokenize } from "./tokenize";
 import { sqlTypeToDataType } from "./types";
 
@@ -52,21 +66,35 @@ export interface ReverseResult {
 type ResolvedFk = ParsedForeignKey & { target: ParsedTable; referencedColumns: string[] };
 
 const key = (name: string) => name.toLowerCase();
-const sameColumns = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.some((y) => key(y) === key(x)));
+const sameColumns = (a: string[], b: string[]) =>
+  a.length === b.length && a.every((x) => b.some((y) => key(y) === key(x)));
 const within = (columns: string[], set: string[]) => columns.every((c) => set.some((s) => key(s) === key(c)));
 
 /**
  * @param base    document de départ (paramètres : SGBD cible, schémas de nommage…) ; complété, non modifié.
  * @param dialect dialecte du script ; détecté s'il n'est pas indiqué.
  */
-export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDialect = detectDialect(sql)): ReverseResult {
+export function reverseEngineer(
+  sql: string,
+  base: ModelDocument,
+  dialect: SqlDialect = detectDialect(sql),
+): ReverseResult {
   const schema = parseSql(sql, dialect);
   // État des contraintes : vocabulaire du dialecte d'origine dans le rapport (O-42).
   for (const t of schema.tables) {
-    for (const x of [...t.checks, ...t.columns.flatMap((c) => (c.check ? [c.check] : [])), ...t.foreignKeys, ...t.uniques]) if (x.state) x.state.dialect = dialect;
+    for (const x of [
+      ...t.checks,
+      ...t.columns.flatMap((c) => (c.check ? [c.check] : [])),
+      ...t.foreignKeys,
+      ...t.uniques,
+    ])
+      if (x.state) x.state.dialect = dialect;
     if (t.primaryKeyState) t.primaryKeyState.dialect = dialect;
   }
-  const warnings = [...schema.skipped.map((text) => MSG.reverseUnreadable(text)), ...schema.warnings.map((where) => MSG.reverseOrphanComment(where))];
+  const warnings = [
+    ...schema.skipped.map((text) => MSG.reverseUnreadable(text)),
+    ...schema.warnings.map((where) => MSG.reverseOrphanComment(where)),
+  ];
   const doc: ModelDocument = structuredClone(base);
   const naming = doc.settings.naming;
   const tables = new Map(schema.tables.map((t) => [key(t.name), t]));
@@ -96,7 +124,10 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
     const list = fks.get(table)!;
     if (table.primaryKey.length === 0 || list.length < 2) return false;
     if (!list.every((fk) => within(fk.columns, table.primaryKey))) return false;
-    return within(table.primaryKey, list.flatMap((fk) => fk.columns));
+    return within(
+      table.primaryKey,
+      list.flatMap((fk) => fk.columns),
+    );
   };
   const joinTables = new Set(schema.tables.filter(isJoinTable));
 
@@ -107,13 +138,15 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
   const inheritanceFk = new Map<ParsedTable, ResolvedFk>();
   for (const table of schema.tables) {
     if (joinTables.has(table)) continue;
-    const candidate = fks.get(table)!.find(
-      (fk) =>
-        fk.target !== table &&
-        !joinTables.has(fk.target) &&
-        sameColumns(fk.columns, table.primaryKey) &&
-        sameColumns(fk.referencedColumns, fk.target.primaryKey),
-    );
+    const candidate = fks
+      .get(table)!
+      .find(
+        (fk) =>
+          fk.target !== table &&
+          !joinTables.has(fk.target) &&
+          sameColumns(fk.columns, table.primaryKey) &&
+          sameColumns(fk.referencedColumns, fk.target.primaryKey),
+      );
     if (!candidate) continue;
     childrenOf.set(candidate.target, [...(childrenOf.get(candidate.target) ?? []), table]);
     inheritanceFk.set(table, candidate);
@@ -135,18 +168,32 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
       type = inferComputedType(column.generated.expression, columnType, dialect);
     }
     // NUMBER sans précision alimenté par une séquence : entier 64 bits (O-39).
-    if (column.sequence && type?.kind === "decimal" && type.precision === undefined) type = { kind: "integer", bits: 64 };
+    if (column.sequence && type?.kind === "decimal" && type.precision === undefined)
+      type = { kind: "integer", bits: 64 };
     // RAW(16) DEFAULT SYS_GUID() (Oracle) : identifiant universel → UUID (approximation signalée) (O-39).
-    if (dialect === "oracle" && /^raw\s*\(\s*16\s*\)$/i.test(column.type.trim()) && /^sys_guid\s*\(\s*\)$/i.test(column.default?.trim() ?? "")) type = { kind: "free", sql: "UUID" };
+    if (
+      dialect === "oracle" &&
+      /^raw\s*\(\s*16\s*\)$/i.test(column.type.trim()) &&
+      /^sys_guid\s*\(\s*\)$/i.test(column.default?.trim() ?? "")
+    )
+      type = { kind: "free", sql: "UUID" };
     // ENUM / SET : texte, dont les valeurs permises forment le domaine de la rubrique (O-35).
-    if (domain?.kind === "enum") type = { kind: "text", encoding: "unicode", length: "variable", size: Math.max(1, ...domain.values.map((v) => v.length)) };
+    if (domain?.kind === "enum")
+      type = {
+        kind: "text",
+        encoding: "unicode",
+        length: "variable",
+        size: Math.max(1, ...domain.values.map((v) => v.length)),
+      };
     if (domain?.kind === "set") type = { kind: "text", encoding: "unicode", length: "large" };
     // Collation effective : celle de la colonne, sinon de la table, sinon de la base (O-37).
     const collation = column.collation ?? table.collation ?? schema.defaultCollation;
     if (type?.kind === "text" && type.encoding !== "binary" && collation) type.collation = collation;
     // UNIQUE sur la seule colonne, sans préfixe : propriété de la rubrique (le nom ou la méthode
     // éventuels sont gardés par un identifiant alternatif). Un UNIQUE sur préfixe n'en est pas un.
-    const singleUnique = table.uniques.some((u) => u.columns.length === 1 && key(u.columns[0]!) === key(column.name) && plainKey(u));
+    const singleUnique = table.uniques.some(
+      (u) => u.columns.length === 1 && key(u.columns[0]!) === key(column.name) && plainKey(u),
+    );
     const attribute = createAttribute(column.name, {
       type,
       identifier: keyIndex >= 0,
@@ -157,10 +204,14 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
       comment: column.comment,
       caseSensitive: column.quoted || undefined,
       sourceType: column.type ? { sql: column.type, dialect } : undefined,
-      defaultValue: column.default !== undefined && !/^null$/i.test(column.default) ? { expression: column.default, dialect } : undefined,
+      defaultValue:
+        column.default !== undefined && !/^null$/i.test(column.default)
+          ? { expression: column.default, dialect }
+          : undefined,
     });
     // UNSIGNED (MySQL), TINYINT (SQL Server : 0 à 255) (O-41).
-    if (/\bunsigned\b/i.test(column.type) || (dialect === "sqlserver" && /^\s*tinyint\b/i.test(column.type))) attribute.unsigned = true;
+    if (/\bunsigned\b/i.test(column.type) || (dialect === "sqlserver" && /^\s*tinyint\b/i.test(column.type)))
+      attribute.unsigned = true;
     if (domain) attribute.domain = domain;
     if (column.generated) attribute.generated = { ...column.generated, dialect };
     if (column.onUpdate) attribute.onUpdate = { expression: column.onUpdate, dialect };
@@ -208,7 +259,12 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
     fk.columns.forEach((column, i) => {
       const referenced = fk.referencedColumns[i]!;
       const origin = originOf(fk.target, referenced);
-      const defaultName = foreignKeyDefaultName(doc.settings.keys.foreign, fk.target.name, referenced, fk.columns.length === 1);
+      const defaultName = foreignKeyDefaultName(
+        doc.settings.keys.foreign,
+        fk.target.name,
+        referenced,
+        fk.columns.length === 1,
+      );
       if (origin && column !== defaultName) names[origin.id] = column;
     });
     return Object.keys(names).length ? names : undefined;
@@ -230,7 +286,10 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
    * autre clé étrangère traitée avant : elles seront réutilisées, pas dupliquées (O-29).
    */
   const sharedColumns = (table: ParsedTable, fk: ResolvedFk, before: ResolvedFk[]) => {
-    const relativeColumns = fks.get(table)!.filter((other) => other !== fk && within(other.columns, table.primaryKey)).flatMap((o) => o.columns);
+    const relativeColumns = fks
+      .get(table)!
+      .filter((other) => other !== fk && within(other.columns, table.primaryKey))
+      .flatMap((o) => o.columns);
     const provided = new Set([...table.primaryKey, ...relativeColumns, ...before.flatMap((o) => o.columns)].map(key));
     const shared = fk.columns.filter((c) => provided.has(key(c)));
     if (!shared.length || within(fk.columns, table.primaryKey)) return undefined;
@@ -268,7 +327,9 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
       .replace(/^([a-z0-9]+)_+/i, (match, token: string) => {
         const t = key(token);
         // Nom de la table, l'une de ses parties, ou son abréviation (ex. « ex » pour Exemplaire).
-        return t === key(table.name) || tableTokens.includes(t) || (t.length >= 2 && key(table.name).startsWith(t)) ? "" : match;
+        return t === key(table.name) || tableTokens.includes(t) || (t.length >= 2 && key(table.name).startsWith(t))
+          ? ""
+          : match;
       });
     if (acceptable(fromConstraint)) return associationName(fromConstraint);
     // Règle b) : pas quand la colonne porte le nom de la colonne référencée (matricule, code_service) (O-39).
@@ -286,10 +347,15 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
    * 0,1 (côté référençant) reste sans rôle.
    */
   const reflexiveRole = (table: ParsedTable, fk: ResolvedFk) => {
-    const index = Math.max(0, fk.columns.findIndex((c) => !table.primaryKey.some((p) => key(p) === key(c))));
+    const index = Math.max(
+      0,
+      fk.columns.findIndex((c) => !table.primaryKey.some((p) => key(p) === key(c))),
+    );
     const column = fk.columns[index]!;
     const referenced = key(fk.referencedColumns[index]!);
-    let role = key(column).replace(/_+(id|fk)$/, "").replace(/^(id|fk)_+/, "");
+    let role = key(column)
+      .replace(/_+(id|fk)$/, "")
+      .replace(/^(id|fk)_+/, "");
     // Sans le nom de la colonne référencée (isbn_originale → originale) ni celui de la table
     // (service_parent → parent) (O-39).
     for (const part of [referenced, key(table.name)]) {
@@ -354,7 +420,9 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
       // condition ni expression) ou la PK.
       const unique =
         (fk.columns.length === 1 && columns[0]?.unique) ||
-        table.uniques.some((u) => sameColumns(u.columns, fk.columns) && !u.where && !u.expression && !u.state?.disabled) ||
+        table.uniques.some(
+          (u) => sameColumns(u.columns, fk.columns) && !u.where && !u.expression && !u.state?.disabled,
+        ) ||
         sameColumns(fk.columns, table.primaryKey);
       const association = createAssociation(dependencyName(table, fk));
       const parentLink = createLink(association.id, parent.id);
@@ -365,7 +433,8 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
       // Clé étrangère vers un identifiant alternatif (ex. oeuvre(isbn)) : rubriques référencées (O-35).
       if (!sameColumns(fk.referencedColumns, fk.target.primaryKey)) {
         const targets = fk.referencedColumns.map((c) => attributeOf.get(fk.target)?.get(key(c)));
-        if (targets.every((a): a is Attribute => Boolean(a))) parentLink.referencedAttributes = targets.map((a) => a.id);
+        if (targets.every((a): a is Attribute => Boolean(a)))
+          parentLink.referencedAttributes = targets.map((a) => a.id);
       }
       const childLink = createLink(association.id, entity.id);
       childLink.cardinality = { min: notNull ? 1 : 0, max: 1 };
@@ -447,11 +516,17 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
     const uniques: ParsedKey[] = [
       ...table.uniques,
       // UNIQUE en ligne nommé, ou sur une colonne facultative SQL Server (un seul NULL admis, O-41).
-      ...table.columns.filter((c) => c.unique && (c.uniqueName || (dialect === "sqlserver" && !c.notNull))).map((c) => ({ name: c.uniqueName, columns: [c.name] })),
+      ...table.columns
+        .filter((c) => c.unique && (c.uniqueName || (dialect === "sqlserver" && !c.notNull)))
+        .map((c) => ({ name: c.uniqueName, columns: [c.name] })),
     ];
     for (const unique of uniques) {
       // Clé composée Oracle avec une colonne facultative : les NULL y sont égaux entre eux (O-39).
-      const nullable = unique.columns.some((c) => !table.columns.find((col) => key(col.name) === key(c))?.notNull && !table.primaryKey.some((p) => key(p) === key(c)));
+      const nullable = unique.columns.some(
+        (c) =>
+          !table.columns.find((col) => key(col.name) === key(c))?.notNull &&
+          !table.primaryKey.some((p) => key(p) === key(c)),
+      );
       // SQL Server : un seul NULL admis par UNIQUE, sauf index filtré « IS NOT NULL » (NULL distincts) (O-41).
       const nulls = unique.nullsDistinct
         ? "distinct"
@@ -465,7 +540,13 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
       if (single && !unique.name && plain) continue; // déjà porté par la rubrique
       const list = members(unique.columns);
       // UNIQUE anonyme couvrant exactement une clé étrangère : exprimé par la cardinalité 0,1.
-      if (!unique.name && plainKey(unique) && !nulls && fks.get(table)!.some((fk) => sameColumns(fk.columns, unique.columns))) continue;
+      if (
+        !unique.name &&
+        plainKey(unique) &&
+        !nulls &&
+        fks.get(table)!.some((fk) => sameColumns(fk.columns, unique.columns))
+      )
+        continue;
       if (!list) continue;
       node.alternateKeys = [
         ...(node.alternateKeys ?? []),
@@ -486,7 +567,13 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
       if (list)
         node.indexes = [
           ...(node.indexes ?? []),
-          { name: index.name, members: list, ...keyOptions(index), ...(index.kind ? { kind: index.kind } : {}), ...(index.include && members(index.include) ? { include: members(index.include)! } : {}) },
+          {
+            name: index.name,
+            members: list,
+            ...keyOptions(index),
+            ...(index.kind ? { kind: index.kind } : {}),
+            ...(index.include && members(index.include) ? { include: members(index.include)! } : {}),
+          },
         ];
     }
     // CHECK : sur une seule rubrique → son domaine ; sinon contrainte de la table.
@@ -495,8 +582,15 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
       ...table.checks.map((check) => ({ check })),
     ];
     for (const { check, column } of checks) {
-      const annotation: CheckConstraint = { name: check.name, expression: check.expression, dialect, ...(check.state ? { state: check.state } : {}) };
-      const cited = column ? [column] : referencedColumns(check.expression).filter((c) => table.columns.some((col) => key(col.name) === key(c)));
+      const annotation: CheckConstraint = {
+        name: check.name,
+        expression: check.expression,
+        dialect,
+        ...(check.state ? { state: check.state } : {}),
+      };
+      const cited = column
+        ? [column]
+        : referencedColumns(check.expression).filter((c) => table.columns.some((col) => key(col.name) === key(c)));
       const attribute = cited.length === 1 ? attributeOf.get(table)?.get(key(cited[0]!)) : undefined;
       if (attribute && !attribute.check) attribute.check = annotation;
       else (node.checks ??= []).push(annotation);
@@ -504,8 +598,11 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
   }
 
   // Séquences qu'aucune colonne n'utilise : non rattachées, signalées (O-39).
-  const used = new Set(schema.tables.flatMap((t) => t.columns.map((c) => c.sequence && key(c.sequence.name)).filter(Boolean)));
-  for (const sequence of schema.sequences.values()) if (!used.has(key(sequence.name)) && !sequence.ownedBy) warnings.push(MSG.reverseUnusedSequence(sequence.name));
+  const used = new Set(
+    schema.tables.flatMap((t) => t.columns.map((c) => c.sequence && key(c.sequence.name)).filter(Boolean)),
+  );
+  for (const sequence of schema.sequences.values())
+    if (!used.has(key(sequence.name)) && !sequence.ownedBy) warnings.push(MSG.reverseUnusedSequence(sequence.name));
 
   placeBetween(doc);
   return {
@@ -523,7 +620,8 @@ export function reverseEngineer(sql: string, base: ModelDocument, dialect: SqlDi
 }
 
 /** UNIQUE simple : sur des colonnes entières, sans expression ni condition (O-35, O-39). */
-const plainKey = (k: ParsedKey) => !k.prefixes && !k.expression && !k.where && !k.state && !k.nullsNotDistinct && !k.nullsDistinct;
+const plainKey = (k: ParsedKey) =>
+  !k.prefixes && !k.expression && !k.where && !k.state && !k.nullsNotDistinct && !k.nullsDistinct;
 
 /** Préfixes et méthode d'un index ou d'une contrainte UNIQUE (s'ils sont présents). */
 function keyOptions(k: ParsedKey) {
@@ -534,7 +632,9 @@ function keyOptions(k: ParsedKey) {
 function valueDomain(type: string, enumTypes: Map<string, string[]>): ValueDomain | undefined {
   const match = /^\s*(enum|set)\s*\(/i.exec(type);
   if (match) {
-    const values = tokenize(type).filter((t) => t.type === "string").map((t) => t.value);
+    const values = tokenize(type)
+      .filter((t) => t.type === "string")
+      .map((t) => t.value);
     return { kind: match[1]!.toLowerCase() as "enum" | "set", values };
   }
   const named = enumTypes.get(type.trim().replace(/^"|"$/g, "").toLowerCase());
@@ -558,6 +658,8 @@ function placeBetween(doc: ModelDocument) {
       y: points.reduce((s, p) => s + p.y, 0) / points.length + 110,
     };
   };
-  for (const a of doc.associations) positions[a.id] = center(doc.links.filter((l) => l.associationId === a.id).map((l) => l.entityId));
-  for (const h of doc.inheritances) positions[h.id] = center(doc.inheritanceLinks.filter((l) => l.inheritanceId === h.id).map((l) => l.entityId));
+  for (const a of doc.associations)
+    positions[a.id] = center(doc.links.filter((l) => l.associationId === a.id).map((l) => l.entityId));
+  for (const h of doc.inheritances)
+    positions[h.id] = center(doc.inheritanceLinks.filter((l) => l.inheritanceId === h.id).map((l) => l.entityId));
 }

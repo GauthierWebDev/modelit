@@ -1,20 +1,27 @@
 import { create } from "zustand";
+import { t } from "@/i18n";
 import { alertDialog, confirmDialog } from "../dialogStore";
+import { updateDock } from "../dock/actions";
+import { groupOf, hideSection, setActive, showSection } from "../dock/layout";
 import { createDocumentStore } from "../document/documentStore";
 import { createDocumentViewStore, type ViewMode } from "../document/documentView";
 import { createDocumentHandle, type DocumentHandle } from "../document/handle";
-import { updateDock } from "../dock/actions";
-import { groupOf, hideSection, setActive, showSection } from "../dock/layout";
 import { documentName } from "../fileCommands";
 import { usePreferencesStore } from "../preferencesStore";
 import { activeDocument, addTab, replaceDocument, setTitle, useWorkspaceStore } from "../workspace";
-import { t } from "@/i18n";
-import { startGuest, type GuestSession } from "./guest";
-import { startHost, type HostSession } from "./host";
+import { type GuestSession, startGuest } from "./guest";
+import { type HostSession, startHost } from "./host";
 import { displayName } from "./identity";
 import { buildLink, newSecret, parseLink } from "./link";
 import { MIN_PASSWORD_LENGTH, verifier } from "./password";
-import { MAX_DOCUMENT_BYTES, type ChatMessage, type GuestLink, type HostLink, type Participant, type Presence } from "./protocol";
+import {
+  type ChatMessage,
+  type GuestLink,
+  type HostLink,
+  MAX_DOCUMENT_BYTES,
+  type Participant,
+  type Presence,
+} from "./protocol";
 
 /**
  * Session collaborative de la fenêtre (O-05 ; J-01, phase 5a) : une à la fois, comme hôte ou comme
@@ -58,7 +65,15 @@ interface CollabState {
   /** Mon identifiant dans la session. */
   you: string | null;
   /** Invité : rôle, état de la connexion, mot de passe demandé. */
-  guest: { role: "editor" | "reader" | null; status: GuestSession["state"] extends { getState: () => infer S } ? S extends { status: infer T } ? T : never : never; password: { attemptsLeft: number; wrong: boolean } | null } | null;
+  guest: {
+    role: "editor" | "reader" | null;
+    status: GuestSession["state"] extends { getState: () => infer S }
+      ? S extends { status: infer T }
+        ? T
+        : never
+      : never;
+    password: { attemptsLeft: number; wrong: boolean } | null;
+  } | null;
   error: string | null;
 }
 
@@ -112,7 +127,8 @@ function trackPresence(next: Record<string, Presence>): Record<string, RemotePre
 }
 
 let host: { session: HostSession; stop: () => Promise<void>; off: () => void } | null = null;
-let guest: { session: GuestSession; addr: string; off: () => void; retry?: ReturnType<typeof setTimeout> } | null = null;
+let guest: { session: GuestSession; addr: string; off: () => void; retry?: ReturnType<typeof setTimeout> } | null =
+  null;
 
 const me = () => {
   const identity = usePreferencesStore.getState().identity;
@@ -124,11 +140,19 @@ const fail = (error: string) => useCollabStore.setState({ error });
 // ——— Hôte ———
 
 /** Partage l'onglet actif (O-05 §4.1). */
-export async function shareActiveTab({ password, aiAllowed = false }: { password?: string; aiAllowed?: boolean } = {}): Promise<boolean> {
+export async function shareActiveTab({
+  password,
+  aiAllowed = false,
+}: {
+  password?: string;
+  aiAllowed?: boolean;
+} = {}): Promise<boolean> {
   if (!transport || useCollabStore.getState().mode !== "idle") return false;
-  if (password && password.length < MIN_PASSWORD_LENGTH) return fail(t("collab.passwordTooShort", { n: MIN_PASSWORD_LENGTH })), false;
+  if (password && password.length < MIN_PASSWORD_LENGTH)
+    return fail(t("collab.passwordTooShort", { n: MIN_PASSWORD_LENGTH })), false;
   const tab = activeDocument();
-  if (new TextEncoder().encode(JSON.stringify(tab.store.getState().doc)).length > MAX_DOCUMENT_BYTES) return fail(t("collab.tooLarge")), false;
+  if (new TextEncoder().encode(JSON.stringify(tab.store.getState().doc)).length > MAX_DOCUMENT_BYTES)
+    return fail(t("collab.tooLarge")), false;
   useCollabStore.setState({ mode: "starting", error: null });
   presenceSent = null;
   try {
@@ -145,11 +169,19 @@ export async function shareActiveTab({ password, aiAllowed = false }: { password
       ...(password ? { password: await verifier(password) } : {}),
     });
     // L'onglet garde son fichier et son état « modifié » ; son historique devient personnel.
-    session.store.setState({ filePath: original.filePath, savedDoc: original.savedDoc === original.doc ? original.doc : original.savedDoc });
+    session.store.setState({
+      filePath: original.filePath,
+      savedDoc: original.savedDoc === original.doc ? original.doc : original.savedDoc,
+    });
     replaceDocument(tab.id, { id: tab.id, store: session.store, view: tab.view });
     const sync = () => {
       const s = session.state.getState();
-      useCollabStore.setState({ participants: s.participants, aiAllowed: s.aiAllowed, presence: trackPresence(s.presence), ...trackChat(s.chat, "host") });
+      useCollabStore.setState({
+        participants: s.participants,
+        aiAllowed: s.aiAllowed,
+        presence: trackPresence(s.presence),
+        ...trackChat(s.chat, "host"),
+      });
     };
     const offState = session.state.subscribe(sync);
     // Onglet fermé : fin du partage.
@@ -187,7 +219,16 @@ export async function stopSharing() {
     store.setState({ filePath: state.filePath, savedDoc: state.savedDoc });
     replaceDocument(tab.id, { id: tab.id, store, view: tab.view });
   }
-  useCollabStore.setState({ mode: "idle", tabId: null, links: null, participants: [], presence: {}, chat: [], unread: 0, you: null });
+  useCollabStore.setState({
+    mode: "idle",
+    tabId: null,
+    links: null,
+    participants: [],
+    presence: {},
+    chat: [],
+    unread: 0,
+    you: null,
+  });
 }
 
 export const setGuestsAi = (allowed: boolean) => host?.session.setAiAllowed(allowed);
@@ -310,14 +351,25 @@ async function endGuestSession(reason: string | null) {
   off();
   clearTimeout(retry);
   const tabId = useCollabStore.getState().tabId;
-  useCollabStore.setState({ mode: "idle", tabId: null, participants: [], presence: {}, chat: [], unread: 0, you: null, guest: null });
+  useCollabStore.setState({
+    mode: "idle",
+    tabId: null,
+    participants: [],
+    presence: {},
+    chat: [],
+    unread: 0,
+    you: null,
+    guest: null,
+  });
   if (tabId) {
     const copy = createDocumentHandle(session.snapshot());
     // Copie modifiée (non enregistrée) : rien ne se perd à la fermeture.
     copy.store.setState({ savedDoc: { ...copy.store.getState().doc } });
     replaceDocument(tabId, copy);
     setTitle(copy.id, null);
-    useWorkspaceStore.setState((s) => ({ untitled: { ...s.untitled, [copy.id]: Math.max(0, ...Object.values(s.untitled)) + 1 } }));
+    useWorkspaceStore.setState((s) => ({
+      untitled: { ...s.untitled, [copy.id]: Math.max(0, ...Object.values(s.untitled)) + 1 },
+    }));
   }
   const messages: Record<string, string> = {
     stopped: t("collab.endedStopped"),
@@ -328,7 +380,12 @@ async function endGuestSession(reason: string | null) {
     full: t("collab.endedFull"),
   };
   if (reason && messages[reason]) {
-    await alertDialog({ title: t("collab.endedTitle"), message: messages[reason]!, ...(tabId ? { detail: t("collab.copyKept") } : {}), okLabel: t("common.ok") });
+    await alertDialog({
+      title: t("collab.endedTitle"),
+      message: messages[reason]!,
+      ...(tabId ? { detail: t("collab.copyKept") } : {}),
+      okLabel: t("common.ok"),
+    });
   }
 }
 
@@ -356,7 +413,10 @@ let presenceAt = 0;
 let presenceTimer: ReturnType<typeof setTimeout> | undefined;
 
 const samePresence = (a: Presence, b: Presence) =>
-  a.view === b.view && a.cursor?.x === b.cursor?.x && a.cursor?.y === b.cursor?.y && a.selection.join() === b.selection.join();
+  a.view === b.view &&
+  a.cursor?.x === b.cursor?.x &&
+  a.cursor?.y === b.cursor?.y &&
+  a.selection.join() === b.selection.join();
 
 function flushPresence() {
   presenceTimer = undefined;
@@ -430,7 +490,9 @@ export function collabMirror(): CollabMirror {
 }
 
 export const sameCollabMirror = (a: CollabMirror, b: CollabMirror) =>
-  (Object.keys(a) as (keyof CollabMirror)[]).every((k) => (k === "views" ? JSON.stringify(a.views) === JSON.stringify(b.views) : a[k] === b[k]));
+  (Object.keys(a) as (keyof CollabMirror)[]).every((k) =>
+    k === "views" ? JSON.stringify(a.views) === JSON.stringify(b.views) : a[k] === b[k],
+  );
 
 export function applyCollabMirror(mirror: CollabMirror) {
   // Rien de changé : pas de nouvel état (il repartirait vers la principale par les abonnements).
@@ -438,7 +500,9 @@ export function applyCollabMirror(mirror: CollabMirror) {
   const { views, ...rest } = mirror;
   useCollabStore.setState({
     ...rest,
-    presence: Object.fromEntries(Object.entries(views).map(([id, view]) => [id, { view, cursor: null, selection: [], movedAt: 0 }])),
+    presence: Object.fromEntries(
+      Object.entries(views).map(([id, view]) => [id, { view, cursor: null, selection: [], movedAt: 0 }]),
+    ),
   });
 }
 

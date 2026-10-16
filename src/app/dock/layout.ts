@@ -38,7 +38,7 @@ export interface FloatingGroup extends Group {
 export type LastPlace = { group: string } | { zone: Zone } | { rect: Rect };
 
 export interface DockLayout {
-  zones: Record<Zone, { groups: Group[]; /** Largeur (droite) ou hauteur (bas), en px. */ size: number }>;
+  zones: Record<Zone, { groups: Group[] /** Largeur (droite) ou hauteur (bas), en px. */; size: number }>;
   floating: FloatingGroup[];
   hidden: SectionId[];
   lastPlace: Partial<Record<SectionId, LastPlace>>;
@@ -72,7 +72,10 @@ const group = (sections: SectionId[], id = newGroupId()): Group => ({
 export function defaultLayout(): DockLayout {
   return {
     zones: {
-      right: { groups: [group(["properties"], "right"), { ...group(["attributes"], "attributes"), weight: 1.5 }], size: 320 },
+      right: {
+        groups: [group(["properties"], "right"), { ...group(["attributes"], "attributes"), weight: 1.5 }],
+        size: 320,
+      },
       bottom: { groups: [group(["mld", "sql", "issues"], "bottom")], size: 224 },
     },
     floating: [],
@@ -101,7 +104,8 @@ const clone = (layout: DockLayout): DockLayout => structuredClone(layout);
 /** Retire les groupes vides et répare les onglets actifs. */
 function tidy(layout: DockLayout): DockLayout {
   const fix = <G extends Group>(g: G): G => (g.sections.includes(g.active) ? g : { ...g, active: g.sections[0]! });
-  for (const zone of ZONES) layout.zones[zone].groups = layout.zones[zone].groups.filter((g) => g.sections.length).map(fix);
+  for (const zone of ZONES)
+    layout.zones[zone].groups = layout.zones[zone].groups.filter((g) => g.sections.length).map(fix);
   layout.floating = layout.floating.filter((g) => g.sections.length).map(fix);
   return layout;
 }
@@ -126,7 +130,12 @@ function detach(layout: DockLayout, section: SectionId): LastPlace | null {
 
 /** Insère des sections (ou un groupe entier) à la cible. */
 function attach(layout: DockLayout, sections: SectionId[], target: DropTarget, base?: Group): DockLayout {
-  const moved: Group = { ...(base ?? group(sections)), sections, active: base?.active ?? sections[0]!, collapsed: false };
+  const moved: Group = {
+    ...(base ?? group(sections)),
+    sections,
+    active: base?.active ?? sections[0]!,
+    collapsed: false,
+  };
   if (target.kind === "group") {
     const found = findGroup(layout, target.group);
     if (!found) return attach(layout, sections, { kind: "zone", zone: "right", index: Infinity }, base);
@@ -162,7 +171,8 @@ export function moveGroup(layout: DockLayout, id: string, target: Exclude<DropTa
     const from = groups.indexOf(g);
     groups.splice(from, 1);
     // Même zone, plus loin : l'indice cible tient compte du groupe retiré.
-    if (target.kind === "zone" && target.zone === zone && target.index > from) target = { ...target, index: target.index - 1 };
+    if (target.kind === "zone" && target.zone === zone && target.index > from)
+      target = { ...target, index: target.index - 1 };
   } else {
     next.floating = next.floating.filter((x) => x.id !== id);
   }
@@ -222,7 +232,10 @@ export function showSection(layout: DockLayout, section: SectionId): DockLayout 
   const place = next.lastPlace[section];
   delete next.lastPlace[section];
   // Groupe flottant déjà rouvert à la même place (sections d'un groupe fermé) : on le rejoint.
-  const sameRect = place && "rect" in place ? next.floating.find((g) => JSON.stringify(g.rect) === JSON.stringify(place.rect)) : undefined;
+  const sameRect =
+    place && "rect" in place
+      ? next.floating.find((g) => JSON.stringify(g.rect) === JSON.stringify(place.rect))
+      : undefined;
   const target: DropTarget =
     place && "group" in place && findGroup(next, place.group)
       ? { kind: "group", group: place.group }
@@ -265,10 +278,13 @@ export function setToolbar(layout: DockLayout, toolbar: Partial<DockLayout["tool
 /** Ramène sur `fallback` (la fenêtre principale) ce qui n'est visible sur aucun écran. */
 export function keepOnScreen(layout: DockLayout, screens: Rect[], fallback: Rect): DockLayout {
   const visible = (r: Rect) =>
-    screens.some((s) => r.x + 40 < s.x + s.width && r.x + r.width - 40 > s.x && r.y >= s.y - 10 && r.y + 20 < s.y + s.height);
+    screens.some(
+      (s) => r.x + 40 < s.x + s.width && r.x + r.width - 40 > s.x && r.y >= s.y - 10 && r.y + 20 < s.y + s.height,
+    );
   const next = clone(layout);
   next.floating.forEach((g, i) => {
-    if (!visible(g.rect)) g.rect = { ...g.rect, x: fallback.x + fallback.width - g.rect.width - 40 - i * 24, y: fallback.y + 80 + i * 24 };
+    if (!visible(g.rect))
+      g.rect = { ...g.rect, x: fallback.x + fallback.width - g.rect.width - 40 - i * 24, y: fallback.y + 80 + i * 24 };
   });
   const p = next.toolbar.position;
   if (p && !visible({ x: p.x, y: p.y, width: 200, height: 40 })) next.toolbar.position = null;

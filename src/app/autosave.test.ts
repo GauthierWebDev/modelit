@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LocalStore } from "@/platform/localStore";
-import { readCopies, type AutosaveEntry } from "./autosave";
+import { type AutosaveEntry, readCopies } from "./autosave";
 
 const memoryStore = (data: Record<string, string>): LocalStore => ({
   get: async (key) => data[key] ?? null,
@@ -8,7 +8,11 @@ const memoryStore = (data: Record<string, string>): LocalStore => ({
   remove: async (key) => void delete data[key],
 });
 
-const entry = (filePath: string | null): AutosaveEntry => ({ savedAt: "2026-10-15T10:00:00.000Z", filePath, content: "{}" });
+const entry = (filePath: string | null): AutosaveEntry => ({
+  savedAt: "2026-10-15T10:00:00.000Z",
+  filePath,
+  content: "{}",
+});
 
 /** Récupération après un arrêt brutal, une copie par onglet (overrides O-22, O-44). */
 describe("copies de la sauvegarde automatique", () => {

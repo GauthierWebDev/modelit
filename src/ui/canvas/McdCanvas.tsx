@@ -3,41 +3,49 @@ import {
   createAssociation,
   diagramLinks,
   diagramNodes,
+  type Id,
   linkSourceId,
   nextFreeName,
+  type Point,
   positionOf,
   setBends,
-  type Id,
-  type Point,
 } from "@core/index";
-import { useCallback, useEffect, useMemo, useState, type PointerEvent } from "react";
-import { addAssociation, addEntity, addInheritance, connectNodes, removeBend, renameAttribute, renameNode } from "@/app/commands";
+import { type PointerEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  addAssociation,
+  addEntity,
+  addInheritance,
+  connectNodes,
+  removeBend,
+  renameAttribute,
+  renameNode,
+} from "@/app/commands";
 import { useIssuesByTarget } from "@/app/derived";
-import { t } from "@/i18n";
-import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { revealSection } from "@/app/dock/actions";
+import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { useUiStore } from "@/app/uiStore";
+import { t } from "@/i18n";
 import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { CanvasSurface, hitId, hitIdAt } from "./CanvasSurface";
-import { InlineEditor } from "./InlineRename";
-import { openCanvasMenu } from "./objectActions";
 import {
+  associationNamesByLink,
   center,
   INHERITANCE_SIZE,
-  PAD_X,
-  ROW_HEIGHT,
-  TITLE_HEIGHT,
-  associationNamesByLink,
   inheritanceGeometries,
   intersects,
   linkGeometries,
+  type NodeLayout,
   nodeLayout,
   normalizeRect,
+  PAD_X,
+  type Rect,
+  ROW_HEIGHT,
   reflexiveBends,
   snap,
-  type NodeLayout,
-  type Rect,
+  TITLE_HEIGHT,
 } from "./geometry";
+import { InlineEditor } from "./InlineRename";
+import { openCanvasMenu } from "./objectActions";
 import { InheritanceLinkShape, InheritanceShape, LinkHandles, LinkShape, NodeShape } from "./shapes";
 import { layoutsOf } from "./viewport";
 
@@ -81,7 +89,10 @@ export function McdCanvas() {
   const stopRenaming = useCallback(() => setRenaming(null), []);
 
   const layouts = useMemo(() => layoutsOf(doc), [doc]);
-  const geometries = useMemo(() => linkGeometries(doc.links, layouts, doc.layout.bends), [doc.links, layouts, doc.layout.bends]);
+  const geometries = useMemo(
+    () => linkGeometries(doc.links, layouts, doc.layout.bends),
+    [doc.links, layouts, doc.layout.bends],
+  );
   const inheritance = useMemo(
     () => inheritanceGeometries(doc.inheritances, doc.inheritanceLinks, layouts, doc.layout.bends),
     [doc.inheritances, doc.inheritanceLinks, layouts, doc.layout.bends],
@@ -115,7 +126,10 @@ export function McdCanvas() {
 
   /** Position de la nouvelle association : centrée entre les deux entités. */
   function associationPosition(a: NodeLayout, b: NodeLayout): Point {
-    const name = nextFreeName("Association", doc.associations.map((x) => x.name));
+    const name = nextFreeName(
+      "Association",
+      doc.associations.map((x) => x.name),
+    );
     const size = nodeLayout(createAssociation(name), { x: 0, y: 0 }, doc.settings.display);
     const ca = center(a);
     const cb = center(b);
@@ -131,14 +145,20 @@ export function McdCanvas() {
    * l'ensemble pour rester distincte de la première (`reflexiveBends`).
    */
   function reflexivePlacement(e: NodeLayout) {
-    const name = nextFreeName("Association", doc.associations.map((x) => x.name));
+    const name = nextFreeName(
+      "Association",
+      doc.associations.map((x) => x.name),
+    );
     const size = nodeLayout(createAssociation(name), { x: 0, y: 0 }, doc.settings.display);
     const ce = center(e);
     const others = [...layouts.values()];
     const MARGIN = 16;
     const isFree = (p: Point) =>
       !others.some((r) =>
-        intersects({ x: p.x - MARGIN, y: p.y - MARGIN, width: size.width + 2 * MARGIN, height: size.height + 2 * MARGIN }, r),
+        intersects(
+          { x: p.x - MARGIN, y: p.y - MARGIN, width: size.width + 2 * MARGIN, height: size.height + 2 * MARGIN },
+          r,
+        ),
       );
     type Side = "right" | "below" | "left" | "above";
     const at = (side: Side, distance: number): Point => {
@@ -229,7 +249,10 @@ export function McdCanvas() {
       const position = { x: snap(point.x, grid), y: snap(point.y, grid) };
       if (tool === "inheritance") {
         // Le triangle est centré sur le clic.
-        const at = { x: snap(point.x - INHERITANCE_SIZE.width / 2, grid), y: snap(point.y - INHERITANCE_SIZE.height / 2, grid) };
+        const at = {
+          x: snap(point.x - INHERITANCE_SIZE.width / 2, grid),
+          y: snap(point.y - INHERITANCE_SIZE.height / 2, grid),
+        };
         select([addInheritance(docHandle, at)]);
       } else {
         select([tool === "entity" ? addEntity(docHandle, position) : addAssociation(docHandle, position)]);
@@ -287,7 +310,11 @@ export function McdCanvas() {
           }
           // Les cassures d'un lien suivent quand ses deux extrémités sont déplacées ensemble.
           for (const [id, bends] of gesture.bendOrigins) {
-            setBends(d.layout, id, bends.map((b) => ({ x: snap(b.x + dx, grid), y: snap(b.y + dy, grid) })));
+            setBends(
+              d.layout,
+              id,
+              bends.map((b) => ({ x: snap(b.x + dx, grid), y: snap(b.y + dy, grid) })),
+            );
           }
         });
         break;
@@ -337,7 +364,14 @@ export function McdCanvas() {
 
   /** Titre ou rubrique d'une entité / association sous le point (O-58). */
   function renameTargetAt(point: Point): { nodeId: Id; attributeId: Id | null } | null {
-    const hit = [...layouts].findLast(([id, l]) => !doc.inheritances.some((h) => h.id === id) && point.x >= l.x && point.x <= l.x + l.width && point.y >= l.y && point.y <= l.y + l.height);
+    const hit = [...layouts].findLast(
+      ([id, l]) =>
+        !doc.inheritances.some((h) => h.id === id) &&
+        point.x >= l.x &&
+        point.x <= l.x + l.width &&
+        point.y >= l.y &&
+        point.y <= l.y + l.height,
+    );
     if (!hit) return null;
     const [nodeId, l] = hit;
     const dy = point.y - l.y;
@@ -348,136 +382,151 @@ export function McdCanvas() {
 
   return (
     <>
-    <CanvasSurface
-      grid={grid}
-      className={tool === "select" ? "" : "cursor-crosshair"}
-      onDoubleClick={(_, point) => {
-        if (tool !== "select" || readOnly) return;
-        const target = renameTargetAt(point);
-        if (!target) return;
-        select([target.nodeId]);
-        setRenaming(target);
-      }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={() => {
-        if (gesture?.type === "move" || gesture?.type === "bend") docHandle.store.getState().cancel();
-        setGesture(null);
-      }}
-      onContextMenu={(e) => {
-        // Outil de création : abandon et retour à la sélection (override O-16).
-        if (tool !== "select") {
-          e.preventDefault();
+      <CanvasSurface
+        grid={grid}
+        className={tool === "select" ? "" : "cursor-crosshair"}
+        onDoubleClick={(_, point) => {
+          if (tool !== "select" || readOnly) return;
+          const target = renameTargetAt(point);
+          if (!target) return;
+          select([target.nodeId]);
+          setRenaming(target);
+        }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={() => {
+          if (gesture?.type === "move" || gesture?.type === "bend") docHandle.store.getState().cancel();
           setGesture(null);
-          setTool("select");
-          return;
-        }
-        // Clic droit sur une cassure : la supprimer.
-        // Repéré au pointeur : le canevas peut avoir capturé le pointeur (cible = le canevas).
-        const under = document.elementFromPoint(e.clientX, e.clientY);
-        const handle = under?.closest<SVGElement>("[data-handle=bend]");
-        const linkId = hitIdAt(e);
-        if (!handle || !linkId) return openCanvasMenu(docHandle, e, linkId);
-        e.preventDefault();
-        removeBend(docHandle, linkId, Number(handle.dataset.index));
-      }}
-    >
-      {geometries.map((g) => (
-        <LinkShape key={g.link.id} geometry={g} selected={selected.has(g.link.id)} />
-      ))}
-      {inheritance.links.map((g) => (
-        <InheritanceLinkShape key={g.link.id} geometry={g} selected={selected.has(g.link.id)} />
-      ))}
-      {doc.inheritances.map((h) => {
-        const triangle = inheritance.triangles.get(h.id);
-        return (
-          triangle && (
-            <InheritanceShape
-              key={h.id}
-              inheritance={h}
-              layout={layouts.get(h.id)!}
-              triangle={triangle}
-              selected={selected.has(h.id) || (gesture?.type === "link" && gesture.fromId === h.id)}
-              issues={issues.get(h.id)}
-            />
-          )
-        );
-      })}
-      {doc.associations.map((a) => (
-        <NodeShape
-          key={a.id}
-          node={a}
-          layout={layouts.get(a.id)!}
-          selected={selected.has(a.id) || (gesture?.type === "link" && gesture.fromId === a.id)}
-          issues={issues.get(a.id)}
-          functional={functional.has(a.id)}
-          referencedKey={referencedKeys.get(a.id)}
-          linkNames={linkNames}
-        />
-      ))}
-      {doc.entities.map((e) => (
-        <NodeShape
-          key={e.id}
-          node={e}
-          layout={layouts.get(e.id)!}
-          selected={selected.has(e.id) || (gesture?.type === "link" && gesture.fromId === e.id)}
-          issues={issues.get(e.id)}
-          linkNames={linkNames}
-        />
-      ))}
-      {linkSource && gesture?.type === "link" && (
-        <line
-          x1={center(linkSource).x}
-          y1={center(linkSource).y}
-          x2={gesture.current.x}
-          y2={gesture.current.y}
-          stroke="var(--mcd-selection)"
-          strokeDasharray="4 3"
-          pointerEvents="none"
-          data-ui-only=""
-        />
-      )}
-      {[...geometries, ...inheritance.links]
-        .filter((g) => selected.has(g.link.id))
-        .map((g) => (
-          <LinkHandles
-            key={`handles-${g.link.id}`}
-            geometry={g}
-            activeIndex={activeBend?.linkId === g.link.id ? activeBend.index : null}
+        }}
+        onContextMenu={(e) => {
+          // Outil de création : abandon et retour à la sélection (override O-16).
+          if (tool !== "select") {
+            e.preventDefault();
+            setGesture(null);
+            setTool("select");
+            return;
+          }
+          // Clic droit sur une cassure : la supprimer.
+          // Repéré au pointeur : le canevas peut avoir capturé le pointeur (cible = le canevas).
+          const under = document.elementFromPoint(e.clientX, e.clientY);
+          const handle = under?.closest<SVGElement>("[data-handle=bend]");
+          const linkId = hitIdAt(e);
+          if (!handle || !linkId) return openCanvasMenu(docHandle, e, linkId);
+          e.preventDefault();
+          removeBend(docHandle, linkId, Number(handle.dataset.index));
+        }}
+      >
+        {geometries.map((g) => (
+          <LinkShape key={g.link.id} geometry={g} selected={selected.has(g.link.id)} />
+        ))}
+        {inheritance.links.map((g) => (
+          <InheritanceLinkShape key={g.link.id} geometry={g} selected={selected.has(g.link.id)} />
+        ))}
+        {doc.inheritances.map((h) => {
+          const triangle = inheritance.triangles.get(h.id);
+          return (
+            triangle && (
+              <InheritanceShape
+                key={h.id}
+                inheritance={h}
+                layout={layouts.get(h.id)!}
+                triangle={triangle}
+                selected={selected.has(h.id) || (gesture?.type === "link" && gesture.fromId === h.id)}
+                issues={issues.get(h.id)}
+              />
+            )
+          );
+        })}
+        {doc.associations.map((a) => (
+          <NodeShape
+            key={a.id}
+            node={a}
+            layout={layouts.get(a.id)!}
+            selected={selected.has(a.id) || (gesture?.type === "link" && gesture.fromId === a.id)}
+            issues={issues.get(a.id)}
+            functional={functional.has(a.id)}
+            referencedKey={referencedKeys.get(a.id)}
+            linkNames={linkNames}
           />
         ))}
-      {activeBendPoint && (
-        <g
-          data-bend-delete=""
-          data-tooltip={t("canvas.deleteBend")}
-          className="cursor-pointer"
-          transform={`translate(${activeBendPoint.x + 14} ${activeBendPoint.y - 14})`}
-        >
-          <circle r={8} fill="var(--mcd-error)" stroke="var(--mcd-canvas)" strokeWidth={1.5} />
-          <path d="M-3,-3 L3,3 M3,-3 L-3,3" stroke="#fff" strokeWidth={1.75} strokeLinecap="round" />
-        </g>
-      )}
-      {marquee && (
-        <rect
-          {...marquee}
-          fill="var(--mcd-selection)"
-          fillOpacity={0.08}
-          stroke="var(--mcd-selection)"
-          strokeDasharray="4 3"
-          vectorEffect="non-scaling-stroke"
-          pointerEvents="none"
-          data-ui-only=""
+        {doc.entities.map((e) => (
+          <NodeShape
+            key={e.id}
+            node={e}
+            layout={layouts.get(e.id)!}
+            selected={selected.has(e.id) || (gesture?.type === "link" && gesture.fromId === e.id)}
+            issues={issues.get(e.id)}
+            linkNames={linkNames}
+          />
+        ))}
+        {linkSource && gesture?.type === "link" && (
+          <line
+            x1={center(linkSource).x}
+            y1={center(linkSource).y}
+            x2={gesture.current.x}
+            y2={gesture.current.y}
+            stroke="var(--mcd-selection)"
+            strokeDasharray="4 3"
+            pointerEvents="none"
+            data-ui-only=""
+          />
+        )}
+        {[...geometries, ...inheritance.links]
+          .filter((g) => selected.has(g.link.id))
+          .map((g) => (
+            <LinkHandles
+              key={`handles-${g.link.id}`}
+              geometry={g}
+              activeIndex={activeBend?.linkId === g.link.id ? activeBend.index : null}
+            />
+          ))}
+        {activeBendPoint && (
+          <g
+            data-bend-delete=""
+            data-tooltip={t("canvas.deleteBend")}
+            className="cursor-pointer"
+            transform={`translate(${activeBendPoint.x + 14} ${activeBendPoint.y - 14})`}
+          >
+            <circle r={8} fill="var(--mcd-error)" stroke="var(--mcd-canvas)" strokeWidth={1.5} />
+            <path d="M-3,-3 L3,3 M3,-3 L-3,3" stroke="#fff" strokeWidth={1.75} strokeLinecap="round" />
+          </g>
+        )}
+        {marquee && (
+          <rect
+            {...marquee}
+            fill="var(--mcd-selection)"
+            fillOpacity={0.08}
+            stroke="var(--mcd-selection)"
+            strokeDasharray="4 3"
+            vectorEffect="non-scaling-stroke"
+            pointerEvents="none"
+            data-ui-only=""
+          />
+        )}
+      </CanvasSurface>
+      {renaming && (
+        <McdRename
+          key={`${renaming.nodeId}:${renaming.attributeId}`}
+          target={renaming}
+          layouts={layouts}
+          onClose={stopRenaming}
         />
       )}
-    </CanvasSurface>
-    {renaming && <McdRename key={`${renaming.nodeId}:${renaming.attributeId}`} target={renaming} layouts={layouts} onClose={stopRenaming} />}
     </>
   );
 }
 
 /** Champ de renommage d'un nom d'entité / association ou d'une rubrique (override O-58). */
-function McdRename({ target, layouts, onClose }: { target: { nodeId: Id; attributeId: Id | null }; layouts: Map<Id, NodeLayout>; onClose: () => void }) {
+function McdRename({
+  target,
+  layouts,
+  onClose,
+}: {
+  target: { nodeId: Id; attributeId: Id | null };
+  layouts: Map<Id, NodeLayout>;
+  onClose: () => void;
+}) {
   const docHandle = useDocumentHandle();
   const node = useDocument((s) => [...s.doc.entities, ...s.doc.associations].find((n) => n.id === target.nodeId));
   const l = layouts.get(target.nodeId);

@@ -4,14 +4,25 @@ import { sqlTypeToDataType } from "../reverse/types";
 import { MSG } from "../validation/messages";
 import type { Context } from "./context";
 import { enforcesCheck, sameDialect } from "./dialects";
-import { likeToRegex, type Condition, type Operand, parseCondition, renderCondition, typeConflict, type TypeFamily } from "./expressions";
+import {
+  type Condition,
+  likeToRegex,
+  type Operand,
+  parseCondition,
+  renderCondition,
+  type TypeFamily,
+  typeConflict,
+} from "./expressions";
 import { effectiveCollationClass, freeTypeFallback, icuCollations } from "./types";
 
 /** CHECK écrit pour la cible, ou `null` (non traduisible ou incompatible : commentaire + perte). */
 export function check(ctx: Context, table: LogicalTable, check: CheckConstraint, column?: string): string | null {
   let expression: string | null = null;
   if (sameDialect(check.dialect, ctx.target.dbms) || check.dialect === "generic") {
-    expression = check.dialect === "generic" ? renderStructured(ctx, table, check.expression) ?? check.expression : check.expression;
+    expression =
+      check.dialect === "generic"
+        ? (renderStructured(ctx, table, check.expression) ?? check.expression)
+        : check.expression;
   } else {
     expression = renderStructured(ctx, table, check.expression, check.dialect);
   }
@@ -34,11 +45,19 @@ export function check(ctx: Context, table: LogicalTable, check: CheckConstraint,
 }
 
 /** Réécrit une condition CHECK structurée pour la cible (`null` si hors du sous-ensemble). */
-export function renderStructured(ctx: Context, table: LogicalTable, expression: string, dialect?: SqlDialect): string | null {
+export function renderStructured(
+  ctx: Context,
+  table: LogicalTable,
+  expression: string,
+  dialect?: SqlDialect,
+): string | null {
   const condition = parseCondition(expression);
   if (!condition) return null;
   const caseSensitive = (name: string) => Boolean(table.columns.find((c) => c.name === name)?.caseSensitive);
-  const translated = dialect === "sqlserver" ? sqlServerLikes(ctx, booleanLiterals(condition, table), table) : booleanLiterals(condition, table);
+  const translated =
+    dialect === "sqlserver"
+      ? sqlServerLikes(ctx, booleanLiterals(condition, table), table)
+      : booleanLiterals(condition, table);
   return translated && renderCondition(translated, ctx.target, caseSensitive);
 }
 
@@ -62,11 +81,21 @@ function sqlServerLikes(ctx: Context, c: Condition, table: LogicalTable): Condit
       const regex = c.pattern.kind === "string" ? likeToRegex(c.pattern.value) : null;
       if (!regex) return c;
       if (!ctx.dialect.constraints.regex) return null;
-      const column = c.operand.kind === "column" ? table.columns.find((col) => col.name.toLowerCase() === (c.operand as { name: string }).name.toLowerCase()) : undefined;
+      const column =
+        c.operand.kind === "column"
+          ? table.columns.find((col) => col.name.toLowerCase() === (c.operand as { name: string }).name.toLowerCase())
+          : undefined;
       const klass = column ? effectiveCollationClass(ctx, column) : undefined;
       const insensitive = klass === "ci" || klass === "ai_ci";
       const nondeterministic = insensitive && icuCollations(ctx);
-      return { kind: "regex", operand: c.operand, pattern: regex, negated: c.negated, insensitive, ...(nondeterministic ? { collateC: true } : {}) };
+      return {
+        kind: "regex",
+        operand: c.operand,
+        pattern: regex,
+        negated: c.negated,
+        insensitive,
+        ...(nondeterministic ? { collateC: true } : {}),
+      };
     }
     default:
       return c;
@@ -75,8 +104,11 @@ function sqlServerLikes(ctx: Context, c: Condition, table: LogicalTable): Condit
 
 /** Colonne booléenne comparée à 0 / 1 (BIT SQL Server, TINYINT(1) MySQL) : FALSE / TRUE (O-41). */
 function booleanLiterals(c: Condition, table: LogicalTable): Condition {
-  const isBoolean = (o: Operand) => o.kind === "column" && table.columns.find((col) => col.name.toLowerCase() === o.name.toLowerCase())?.type?.kind === "boolean";
-  const literal = (o: Operand): Operand => (o.kind === "number" && (o.value === "0" || o.value === "1") ? { kind: "boolean", value: o.value === "1" } : o);
+  const isBoolean = (o: Operand) =>
+    o.kind === "column" &&
+    table.columns.find((col) => col.name.toLowerCase() === o.name.toLowerCase())?.type?.kind === "boolean";
+  const literal = (o: Operand): Operand =>
+    o.kind === "number" && (o.value === "0" || o.value === "1") ? { kind: "boolean", value: o.value === "1" } : o;
   switch (c.kind) {
     case "and":
     case "or":
@@ -84,7 +116,11 @@ function booleanLiterals(c: Condition, table: LogicalTable): Condition {
     case "not":
       return { ...c, item: booleanLiterals(c.item, table) };
     case "compare":
-      return isBoolean(c.left) ? { ...c, right: literal(c.right) } : isBoolean(c.right) ? { ...c, left: literal(c.left) } : c;
+      return isBoolean(c.left)
+        ? { ...c, right: literal(c.right) }
+        : isBoolean(c.right)
+          ? { ...c, left: literal(c.left) }
+          : c;
     case "in":
       return isBoolean(c.operand) ? { ...c, values: c.values.map(literal) } : c;
     default:
@@ -119,7 +155,9 @@ function familyOf(ctx: Context, table: LogicalTable, name: string): TypeFamily |
       // Type libre réémis tel quel ou remplacé par du texte : famille d'après sa conversion.
       const fallback = column.sourceType ? freeTypeFallback(ctx, type.sql).sql : type.sql;
       const parsed = sqlTypeToDataType(fallback, false, dbms);
-      return parsed && parsed.kind !== "free" ? familyOf(ctx, { ...table, columns: [{ ...column, type: parsed, sourceType: undefined }] }, name) : undefined;
+      return parsed && parsed.kind !== "free"
+        ? familyOf(ctx, { ...table, columns: [{ ...column, type: parsed, sourceType: undefined }] }, name)
+        : undefined;
     }
     default:
       return undefined;

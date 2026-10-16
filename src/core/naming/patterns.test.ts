@@ -53,6 +53,10 @@ describe("schémas libres (override O-26)", () => {
       model: { settings: { autoIdMask: "Id_[Classe]", keys: { primary: "[Nom]", foreign: "[Table]_[Colonne]" } } },
     });
     const { settings } = deserializeModel(text).doc;
-    expect([settings.autoIdMask, settings.keys.primary, settings.keys.foreign]).toEqual(["Id_<entity>", "<name>", "<table>_<column>"]);
+    expect([settings.autoIdMask, settings.keys.primary, settings.keys.foreign]).toEqual([
+      "Id_<entity>",
+      "<name>",
+      "<table>_<column>",
+    ]);
   });
 });

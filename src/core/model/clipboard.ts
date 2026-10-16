@@ -1,4 +1,14 @@
-import type { Association, DiagramLayout, Entity, Id, Inheritance, InheritanceLink, Link, ModelDocument, Point } from "./document";
+import type {
+  Association,
+  DiagramLayout,
+  Entity,
+  Id,
+  Inheritance,
+  InheritanceLink,
+  Link,
+  ModelDocument,
+  Point,
+} from "./document";
 import { newId } from "./factory";
 import type { KeyMember } from "./physical";
 
@@ -40,7 +50,16 @@ export function extractFragment(doc: ModelDocument, ids: Id[]): ModelFragment | 
     const bends = doc.layout.bends[link.id];
     if (bends?.length) layout.bends[link.id] = bends;
   }
-  return structuredClone({ format: FRAGMENT_FORMAT, version: 1, entities, associations, inheritances, links, inheritanceLinks, layout });
+  return structuredClone({
+    format: FRAGMENT_FORMAT,
+    version: 1,
+    entities,
+    associations,
+    inheritances,
+    links,
+    inheritanceLinks,
+    layout,
+  });
 }
 
 /** Fragment relu du presse-papiers ; null pour tout autre contenu. */
@@ -74,7 +93,9 @@ export function pasteFragment(doc: ModelDocument, fragment: ModelFragment, at?: 
   // Noms libres : « Client » → « Client_2 », « Client_3 »…
   const entityNames = new Set(doc.entities.map((e) => e.name));
   const associationNames = new Set(doc.associations.map((a) => a.name));
-  const logicalNames = new Set([...doc.entities, ...doc.associations].map((n) => n.logicalName).filter((n): n is string => Boolean(n)));
+  const logicalNames = new Set(
+    [...doc.entities, ...doc.associations].map((n) => n.logicalName).filter((n): n is string => Boolean(n)),
+  );
   for (const e of copy.entities) e.name = freeName(e.name, entityNames);
   for (const a of copy.associations) a.name = freeName(a.name, associationNames);
   for (const n of [...copy.entities, ...copy.associations]) {
@@ -88,15 +109,21 @@ export function pasteFragment(doc: ModelDocument, fragment: ModelFragment, at?: 
   const reachable = (id: Id) => pasted.has(id) || existing.has(id);
   const links = copy.links.filter((l) => reachable(l.entityId));
   const inheritanceLinks = copy.inheritanceLinks.filter((l) => reachable(l.entityId));
-  const dropped = new Set([...copy.links, ...copy.inheritanceLinks].map((l) => l.id).filter((id) => !links.some((l) => l.id === id) && !inheritanceLinks.some((l) => l.id === id)));
+  const dropped = new Set(
+    [...copy.links, ...copy.inheritanceLinks]
+      .map((l) => l.id)
+      .filter((id) => !links.some((l) => l.id === id) && !inheritanceLinks.some((l) => l.id === id)),
+  );
   for (const link of links) delete link.foreignKeyConstraintName;
   for (const h of copy.inheritances) {
-    if (h.parentId && !inheritanceLinks.some((l) => l.inheritanceId === h.id && l.entityId === h.parentId)) h.parentId = undefined;
+    if (h.parentId && !inheritanceLinks.some((l) => l.inheritanceId === h.id && l.entityId === h.parentId))
+      h.parentId = undefined;
   }
   for (const n of [...copy.entities, ...copy.associations]) withoutLinks(n, dropped);
 
   const offset = at ? offsetTo(fragment, at) : pasteOffset(doc, fragment);
-  for (const [id, p] of Object.entries(copy.layout.positions)) doc.layout.positions[id] = { x: p.x + offset.x, y: p.y + offset.y };
+  for (const [id, p] of Object.entries(copy.layout.positions))
+    doc.layout.positions[id] = { x: p.x + offset.x, y: p.y + offset.y };
   for (const [id, bends] of Object.entries(copy.layout.bends)) {
     if (!dropped.has(id)) doc.layout.bends[id] = bends.map((p) => ({ x: p.x + offset.x, y: p.y + offset.y }));
   }
@@ -171,7 +198,9 @@ function withoutConstraintNames(node: Entity | Association) {
 function withoutLinks(node: Entity | Association, dropped: Set<Id>) {
   if (!dropped.size) return;
   const keep = (m: KeyMember) => !("linkId" in m) || !dropped.has(m.linkId);
-  const prune = <K extends { members: KeyMember[]; prefixes?: (number | null)[]; include?: KeyMember[] }>(key: K): K => ({
+  const prune = <K extends { members: KeyMember[]; prefixes?: (number | null)[]; include?: KeyMember[] }>(
+    key: K,
+  ): K => ({
     ...key,
     members: key.members.filter(keep),
     // Les longueurs de préfixe suivent les membres, position par position.

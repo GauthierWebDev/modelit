@@ -1,11 +1,11 @@
 import { diagramLinks, diagramNodes } from "@core/index";
 import { useEffect } from "react";
+import { selectReadOnlyTab, useCollabStore } from "@/app/collab/session";
 import { deleteObjects, removeBend } from "@/app/commands";
 import { closeDocument, newDocument, newTab, openDocument, saveDocument } from "@/app/fileCommands";
-import { useUiStore, type Tool } from "@/app/uiStore";
+import { type Tool, useUiStore } from "@/app/uiStore";
 import { chooseTool, showView } from "@/app/viewCommands";
 import { activateNeighbour, activeDocument } from "@/app/workspace";
-import { selectReadOnlyTab, useCollabStore } from "@/app/collab/session";
 import { endNudge, nudgeSelection } from "@/ui/canvas/arrange";
 import { fitToWindow, zoomBy, zoomTo } from "@/ui/canvas/viewport";
 
@@ -21,7 +21,12 @@ export const MODEL_SETTINGS_SHORTCUT = isMac ? "⌥⌘," : "Ctrl+Alt+,";
 let commaCode = "Comma";
 
 /** Flèches : déplacement de la sélection au clavier (override O-57). */
-const ARROWS: Record<string, [number, number]> = { arrowleft: [-1, 0], arrowright: [1, 0], arrowup: [0, -1], arrowdown: [0, 1] };
+const ARROWS: Record<string, [number, number]> = {
+  arrowleft: [-1, 0],
+  arrowright: [1, 0],
+  arrowup: [0, -1],
+  arrowdown: [0, 1],
+};
 
 /** Le schéma a le focus (ou rien) : les flèches déplacent la sélection, pas une liste ou un champ. */
 const onDiagram = (target: EventTarget | null) =>
@@ -30,7 +35,8 @@ const onDiagram = (target: EventTarget | null) =>
 const TOOL_KEYS: Record<string, Tool> = { v: "select", e: "entity", a: "association", h: "inheritance", l: "link" };
 
 const isEditable = (target: EventTarget | null) =>
-  target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+  target instanceof HTMLElement &&
+  (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
 /** Raccourcis clavier globaux ; ils agissent sur le document actif de la fenêtre. */
 export function useShortcuts() {
@@ -108,7 +114,12 @@ export function useShortcuts() {
         fitToWindow(doc);
       } else if (TOOL_KEYS[key] && !e.altKey) {
         chooseTool(doc, TOOL_KEYS[key]);
-      } else if (ARROWS[key] && onDiagram(e.target) && !e.altKey && selectReadOnlyTab(useCollabStore.getState()) !== doc.id) {
+      } else if (
+        ARROWS[key] &&
+        onDiagram(e.target) &&
+        !e.altKey &&
+        selectReadOnlyTab(useCollabStore.getState()) !== doc.id
+      ) {
         e.preventDefault();
         const grid = docStore.doc.settings.grid;
         const step = (grid.enabled ? grid.size : 1) * (e.shiftKey ? 10 : 1);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { IDENTITY_COLORS, displayName, newIdentity, randomName } from "./identity";
+import { displayName, IDENTITY_COLORS, newIdentity, randomName } from "./identity";
 
 /** Identité d'un participant (O-05 §3). */
 describe("identité", () => {

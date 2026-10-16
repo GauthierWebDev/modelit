@@ -57,7 +57,11 @@ export type ToMain =
   | { type: "change"; documentId: string; label: MessageKey; patches: Patch[] }
   | { type: "undo"; documentId: string }
   | { type: "redo"; documentId: string }
-  | { type: "view"; documentId: string; patch: Partial<Pick<DocumentViewState, "view" | "selection" | "viewport" | "activeBend">> }
+  | {
+      type: "view";
+      documentId: string;
+      patch: Partial<Pick<DocumentViewState, "view" | "selection" | "viewport" | "activeBend">>;
+    }
   | { type: "ui"; patch: UiPatch }
   | { type: "dock"; layout: DockLayout }
   | { type: "command"; command: MainCommand }
@@ -84,4 +88,3 @@ export interface Channel<Out, In> {
   send(message: Out): void;
   listen(handler: (message: In) => void): () => void;
 }
-

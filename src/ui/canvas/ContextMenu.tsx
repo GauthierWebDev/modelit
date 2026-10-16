@@ -28,7 +28,9 @@ export const useContextMenu = create<ContextMenuState>()((set) => ({
 export function blockNativeContextMenu(): () => void {
   const onContextMenu = (e: MouseEvent) => {
     const target = e.target;
-    const editable = target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
+    const editable =
+      target instanceof HTMLElement &&
+      (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
     if (editable || window.getSelection()?.toString()) return;
     e.preventDefault();
   };
@@ -77,7 +79,11 @@ export function ContextMenuLayer() {
     <div
       ref={ref}
       role="menu"
-      style={{ left: position?.left ?? menu.x, top: position?.top ?? menu.y, visibility: position ? "visible" : "hidden" }}
+      style={{
+        left: position?.left ?? menu.x,
+        top: position?.top ?? menu.y,
+        visibility: position ? "visible" : "hidden",
+      }}
       className="fixed z-50 min-w-52 rounded border border-neutral-200 bg-white py-1 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
       onContextMenu={(e) => e.preventDefault()}
     >
@@ -121,7 +127,9 @@ export function ContextMenuLayer() {
               {action.checked ? <Check size={14} /> : action.icon}
             </span>
             <span className="flex-1">{action.label}</span>
-            {action.shortcut && <span className="pl-6 text-xs text-neutral-400 dark:text-neutral-500">{action.shortcut}</span>}
+            {action.shortcut && (
+              <span className="pl-6 text-xs text-neutral-400 dark:text-neutral-500">{action.shortcut}</span>
+            )}
           </button>
         ),
       )}

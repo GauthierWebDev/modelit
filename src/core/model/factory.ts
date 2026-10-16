@@ -1,5 +1,5 @@
-import type { Association, Attribute, Entity, Id, Inheritance, InheritanceLink, Link, ModelDocument } from "./document";
 import { applyPattern } from "../naming/patterns";
+import type { Association, Attribute, Entity, Id, Inheritance, InheritanceLink, Link, ModelDocument } from "./document";
 import type { KeyPattern } from "./settings";
 import { defaultSettings } from "./settings";
 

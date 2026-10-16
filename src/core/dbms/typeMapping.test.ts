@@ -45,7 +45,12 @@ function parseTable(text: string) {
   const [header, ...rows] = text
     .trim()
     .split("\n")
-    .map((l) => l.split("|").slice(1, -1).map((c) => c.trim()));
+    .map((l) =>
+      l
+        .split("|")
+        .slice(1, -1)
+        .map((c) => c.trim()),
+    );
   return rows.map((cells) => Object.fromEntries(header!.map((h, i) => [h, cells[i]!])));
 }
 
@@ -105,6 +110,8 @@ describe("correspondance des types", () => {
     // Même type SQL que l'entier, sauf redéfinition par un SGBD personnalisé (O-59).
     expect(sqlType(foreignKeyDataType({ kind: "counter" })!, "postgresql", "18")).toBe("INTEGER");
     expect(sqlType(foreignKeyDataType({ kind: "counter", bits: 64 })!, "oracle", "19c")).toBe("NUMBER(20)");
-    expect(sqlType(foreignKeyDataType({ kind: "counter" })!, "postgresql", "18", { counterForeignKey: "BIGINT" })).toBe("BIGINT");
+    expect(sqlType(foreignKeyDataType({ kind: "counter" })!, "postgresql", "18", { counterForeignKey: "BIGINT" })).toBe(
+      "BIGINT",
+    );
   });
 });

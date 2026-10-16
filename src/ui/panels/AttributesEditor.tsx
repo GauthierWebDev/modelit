@@ -8,7 +8,15 @@ import { CheckRow } from "./PhysicalSection";
  * Annotations physiques d'une rubrique (O-29) : valeur par défaut, CHECK, type d'origine, casse.
  * Affichées dans le bloc « Avancé » du détail de la section Rubriques (O-50).
  */
-export function AdvancedFields({ attribute: a, dialect, update }: { attribute: Attribute; dialect: SqlDialect; update: (patch: Partial<Attribute>) => void }) {
+export function AdvancedFields({
+  attribute: a,
+  dialect,
+  update,
+}: {
+  attribute: Attribute;
+  dialect: SqlDialect;
+  update: (patch: Partial<Attribute>) => void;
+}) {
   return (
     <div className="flex flex-col gap-1">
       <Field label="DEFAULT">
@@ -36,7 +44,9 @@ export function AdvancedFields({ attribute: a, dialect, update }: { attribute: A
       )}
       {a.sourceType && (
         <div className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
-          <span className="min-w-0 flex-1 truncate">{t("physical.sourceType", { type: a.sourceType.sql, dialect: a.sourceType.dialect })}</span>
+          <span className="min-w-0 flex-1 truncate">
+            {t("physical.sourceType", { type: a.sourceType.sql, dialect: a.sourceType.dialect })}
+          </span>
           <IconButton tooltip={t("physical.forgetSourceType")} onClick={() => update({ sourceType: undefined })}>
             <Trash2 size={12} />
           </IconButton>
@@ -44,17 +54,32 @@ export function AdvancedFields({ attribute: a, dialect, update }: { attribute: A
       )}
       {a.domain && (
         <p className="text-xs text-neutral-500 dark:text-neutral-400">
-          {t(a.domain.kind === "enum" ? "physical.domainEnum" : "physical.domainSet", { values: a.domain.values.join(", ") })}
+          {t(a.domain.kind === "enum" ? "physical.domainEnum" : "physical.domainSet", {
+            values: a.domain.values.join(", "),
+          })}
         </p>
       )}
       {a.generated && (
         <p className="font-mono text-xs text-neutral-500 dark:text-neutral-400">
-          {t("physical.generated", { expression: a.generated.expression, mode: a.generated.stored ? "STORED" : "VIRTUAL" })}
+          {t("physical.generated", {
+            expression: a.generated.expression,
+            mode: a.generated.stored ? "STORED" : "VIRTUAL",
+          })}
         </p>
       )}
-      {a.onUpdate && <p className="font-mono text-xs text-neutral-500 dark:text-neutral-400">ON UPDATE {a.onUpdate.expression}</p>}
-      <Checkbox label={t("physical.unsigned")} checked={Boolean(a.unsigned)} onChange={(on) => update({ unsigned: on || undefined })} />
-      <Checkbox label={t("physical.caseSensitive")} checked={Boolean(a.caseSensitive)} onChange={(on) => update({ caseSensitive: on || undefined })} />
+      {a.onUpdate && (
+        <p className="font-mono text-xs text-neutral-500 dark:text-neutral-400">ON UPDATE {a.onUpdate.expression}</p>
+      )}
+      <Checkbox
+        label={t("physical.unsigned")}
+        checked={Boolean(a.unsigned)}
+        onChange={(on) => update({ unsigned: on || undefined })}
+      />
+      <Checkbox
+        label={t("physical.caseSensitive")}
+        checked={Boolean(a.caseSensitive)}
+        onChange={(on) => update({ caseSensitive: on || undefined })}
+      />
     </div>
   );
 }

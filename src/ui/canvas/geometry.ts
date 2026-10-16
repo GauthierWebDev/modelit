@@ -1,4 +1,14 @@
-import type { Association, Attribute, Entity, Inheritance, InheritanceLink, Link, ModelDocument, ModelNode, Point } from "@core/index";
+import type {
+  Association,
+  Attribute,
+  Entity,
+  Inheritance,
+  InheritanceLink,
+  Link,
+  ModelDocument,
+  ModelNode,
+  Point,
+} from "@core/index";
 import { t } from "@/i18n";
 
 /** Mise en page des objets du schéma, en coordonnées du modèle. */
@@ -92,15 +102,28 @@ export function alternateText(alternate: NonNullable<AttributeMarks["alternate"]
  * de la patte (clé `linkId`, pour une entité) et nom de son entité (clé `entity:linkId`, pour une
  * association dont c'est une patte).
  */
-export function associationNamesByLink(doc: Pick<ModelDocument, "links" | "associations"> & Partial<Pick<ModelDocument, "entities">>): Map<string, string> {
+export function associationNamesByLink(
+  doc: Pick<ModelDocument, "links" | "associations"> & Partial<Pick<ModelDocument, "entities">>,
+): Map<string, string> {
   const associations = new Map(doc.associations.map((a) => [a.id, a.name]));
   const entities = new Map((doc.entities ?? []).map((e) => [e.id, e.name]));
-  return new Map(doc.links.flatMap((l) => [[l.id, associations.get(l.associationId) ?? ""], [`entity:${l.id}`, entities.get(l.entityId) ?? ""]] as [string, string][]));
+  return new Map(
+    doc.links.flatMap(
+      (l) =>
+        [
+          [l.id, associations.get(l.associationId) ?? ""],
+          [`entity:${l.id}`, entities.get(l.entityId) ?? ""],
+        ] as [string, string][],
+    ),
+  );
 }
 
 export const TAG_FONT_SIZE = 10;
 
-export function attributeMarks(node: Entity | Association, linkNames?: Map<string, string>): Map<string, AttributeMarks> {
+export function attributeMarks(
+  node: Entity | Association,
+  linkNames?: Map<string, string>,
+): Map<string, AttributeMarks> {
   // Rubrique unique à elle seule (UNIQUE, ou identifiant alternatif réduit à elle seule, entière) :
   // simplement en gras. Seuls les autres identifiants alternatifs reçoivent une étiquette AI.
   type Group = { ids: string[]; prefixes: (number | null)[]; scope?: string; expression?: string; condition?: string };
@@ -118,7 +141,13 @@ export function attributeMarks(node: Entity | Association, linkNames?: Map<strin
       continue;
     }
     // Membres venus d'une patte : identifiant relatif à l'association (« unique par parent ») (O-39).
-    const scope = [...new Set(key.members.flatMap((m) => ("linkId" in m ? [linkNames?.get(node.kind === "association" ? `entity:${m.linkId}` : m.linkId) || "#"] : [])))].join(", ");
+    const scope = [
+      ...new Set(
+        key.members.flatMap((m) =>
+          "linkId" in m ? [linkNames?.get(node.kind === "association" ? `entity:${m.linkId}` : m.linkId) || "#"] : [],
+        ),
+      ),
+    ].join(", ");
     groups.push({
       ids: local,
       prefixes: ids.filter((id) => id !== null).map((_, i) => key.prefixes?.[i] ?? null),
@@ -128,7 +157,11 @@ export function attributeMarks(node: Entity | Association, linkNames?: Map<strin
   }
   const marks = new Map<string, AttributeMarks>();
   for (const a of node.attributes)
-    marks.set(a.id, { label: a.generated ? `/${a.name}` : a.name, derived: Boolean(a.generated), bold: a.identifier || unique.has(a.id) });
+    marks.set(a.id, {
+      label: a.generated ? `/${a.name}` : a.name,
+      derived: Boolean(a.generated),
+      bold: a.identifier || unique.has(a.id),
+    });
   groups.forEach((group, index) => {
     const tag = groups.length > 1 ? `AI${index + 1}` : "AI";
     group.ids.forEach((id, i) => {
@@ -154,7 +187,9 @@ export function attributeStyle(mark: AttributeMarks): TextStyle {
 /** Largeur d'une rubrique et de ses marques. */
 export function attributeWidth(mark: AttributeMarks): number {
   let width = textWidth(mark.label, attributeStyle(mark));
-  if (mark.alternate) width += 6 + (textWidth(alternateText(mark.alternate)) * TAG_FONT_SIZE) / FONT_SIZE + (mark.alternate.prefix ? 12 : 0);
+  if (mark.alternate)
+    width +=
+      6 + (textWidth(alternateText(mark.alternate)) * TAG_FONT_SIZE) / FONT_SIZE + (mark.alternate.prefix ? 12 : 0);
   return width;
 }
 
@@ -162,12 +197,20 @@ export function attributeWidth(mark: AttributeMarks): number {
 export const INHERITANCE_SIZE = { width: 56, height: 56 };
 
 /** Encombrement d'un objet placé en `position` (coin haut-gauche, `doc.layout`). */
-export function nodeLayout(node: ModelNode, position: Point, display: DisplayOptions, linkNames?: Map<string, string>): NodeLayout {
+export function nodeLayout(
+  node: ModelNode,
+  position: Point,
+  display: DisplayOptions,
+  linkNames?: Map<string, string>,
+): NodeLayout {
   if (node.kind === "inheritance") return { x: position.x, y: position.y, ...INHERITANCE_SIZE, rows: [] };
   const attributes = display.showAttributes ? node.attributes : [];
   const rows = attributes.map((attribute, i) => ({ attribute, y: TITLE_HEIGHT + 4 + i * ROW_HEIGHT }));
   const marks = attributeMarks(node, linkNames);
-  const contentWidth = Math.max(textWidth(node.name, { weight: TITLE_WEIGHT }), ...rows.map((r) => attributeWidth(marks.get(r.attribute.id)!)));
+  const contentWidth = Math.max(
+    textWidth(node.name, { weight: TITLE_WEIGHT }),
+    ...rows.map((r) => attributeWidth(marks.get(r.attribute.id)!)),
+  );
   const width = Math.ceil(Math.max(MIN_WIDTH[node.kind], contentWidth + 2 * PAD_X));
   const height = rows.length > 0 ? TITLE_HEIGHT + 4 + rows.length * ROW_HEIGHT + PAD_BOTTOM : TITLE_HEIGHT + 10;
   return { x: position.x, y: position.y, width, height, rows };
@@ -213,10 +256,16 @@ function rolePosition(role: string, points: Point[], entity: Rect, association: 
   const halfWidth = (textWidth(role) * (TAG_FONT_SIZE + 1)) / FONT_SIZE / 2 + 3;
   const halfHeight = 8;
   const touches = (p: Point, r: Rect) =>
-    p.x + halfWidth > r.x && p.x - halfWidth < r.x + r.width && p.y + halfHeight > r.y && p.y - halfHeight < r.y + r.height;
+    p.x + halfWidth > r.x &&
+    p.x - halfWidth < r.x + r.width &&
+    p.y + halfHeight > r.y &&
+    p.y - halfHeight < r.y + r.height;
   let candidate = to;
   for (let distance = 22; distance <= Math.max(22, length - 10); distance += 4) {
-    candidate = { x: to.x - ux * distance + uy * (halfWidth * Math.abs(uy) + 8), y: to.y - uy * distance - ux * (halfWidth * Math.abs(uy) + 8) };
+    candidate = {
+      x: to.x - ux * distance + uy * (halfWidth * Math.abs(uy) + 8),
+      y: to.y - uy * distance - ux * (halfWidth * Math.abs(uy) + 8),
+    };
     if (!touches(candidate, entity) && !touches(candidate, association)) return candidate;
   }
   return candidate;
@@ -227,7 +276,11 @@ function rolePosition(role: string, points: Point[], entity: Rect, association: 
  * Plusieurs pattes droites entre la même association et la même entité (réflexive)
  * sont décalées en parallèle.
  */
-export function linkGeometries(links: Link[], layouts: Map<string, NodeLayout>, allBends: Record<string, Point[]> = {}): LinkGeometry[] {
+export function linkGeometries(
+  links: Link[],
+  layouts: Map<string, NodeLayout>,
+  allBends: Record<string, Point[]> = {},
+): LinkGeometry[] {
   const groups = new Map<string, Link[]>();
   for (const link of links) {
     if (allBends[link.id]?.length) continue;
@@ -249,7 +302,10 @@ export function linkGeometries(links: Link[], layouts: Map<string, NodeLayout>, 
       const ce = center(e);
       const len = Math.hypot(ce.x - ca.x, ce.y - ca.y) || 1;
       const offset = (group.indexOf(link) - (group.length - 1) / 2) * 18;
-      const shift = (p: Point): Point => ({ x: p.x - ((ce.y - ca.y) / len) * offset, y: p.y + ((ce.x - ca.x) / len) * offset });
+      const shift = (p: Point): Point => ({
+        x: p.x - ((ce.y - ca.y) / len) * offset,
+        y: p.y + ((ce.x - ca.x) / len) * offset,
+      });
       points = [shift(clipToRect(a, shift(ce))), shift(clipToRect(e, shift(ca)))];
     }
     const to = points.at(-1)!;
@@ -258,7 +314,13 @@ export function linkGeometries(links: Link[], layouts: Map<string, NodeLayout>, 
     const ux = (to.x - before.x) / len;
     const uy = (to.y - before.y) / len;
     const label = { x: to.x - ux * 22 - uy * 12, y: to.y - uy * 22 + ux * 12 };
-    result.push({ link, bends, points, label, ...(link.role?.trim() ? { role: rolePosition(link.role.trim(), points, e, a) } : {}) });
+    result.push({
+      link,
+      bends,
+      points,
+      label,
+      ...(link.role?.trim() ? { role: rolePosition(link.role.trim(), points, e, a) } : {}),
+    });
   }
   return result;
 }
@@ -398,12 +460,28 @@ export function reflexiveBends(
 
   const candidates: Point[][] = [];
   for (const y of [top, bottom]) {
-    candidates.push([{ x: ca.x, y }, { x: ce.x, y }]);
-    for (const x of sideX) candidates.push([{ x: ca.x, y }, { x, y }, { x, y: ce.y }]);
+    candidates.push([
+      { x: ca.x, y },
+      { x: ce.x, y },
+    ]);
+    for (const x of sideX)
+      candidates.push([
+        { x: ca.x, y },
+        { x, y },
+        { x, y: ce.y },
+      ]);
   }
   for (const x of [left, right]) {
-    candidates.push([{ x, y: ca.y }, { x, y: ce.y }]);
-    for (const y of sideY) candidates.push([{ x, y: ca.y }, { x, y }, { x: ce.x, y }]);
+    candidates.push([
+      { x, y: ca.y },
+      { x, y: ce.y },
+    ]);
+    for (const y of sideY)
+      candidates.push([
+        { x, y: ca.y },
+        { x, y },
+        { x: ce.x, y },
+      ]);
   }
 
   const all = [...obstacles, entity, association];
@@ -414,11 +492,19 @@ export function reflexiveBends(
     const length = path.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - path[i]!.x, p.y - path[i]!.y), 0);
     // Les extrémités touchent l'entité et l'association : seuls les segments intermédiaires comptent.
     // Un tronçon qui longe la première patte (droite association–entité) la rendrait invisible.
-    const alongFirst = path.slice(1).some((p, i) => distanceToSegment(p, ca, ce) < 8 && distanceToSegment(path[i]!, ca, ce) < 8);
+    const alongFirst = path
+      .slice(1)
+      .some((p, i) => distanceToSegment(p, ca, ce) < 8 && distanceToSegment(path[i]!, ca, ce) < 8);
     // Ni la croiser : les deux pattes d'une réflexive ne se coupent pas.
     const crossesFirst = path.slice(1).some((p, i) => segmentsIntersect(path[i]!, p, first[0], first[1]));
     const cut = lines.filter(([a, b]) => path.slice(1).some((p, i) => segmentsIntersect(path[i]!, p, a, b))).length;
-    return crossings(path.slice(1, -1), all) * 1e6 + crossings(path, obstacles) * 1e6 + (alongFirst || crossesFirst ? 1e5 : 0) + cut * 1e4 + length;
+    return (
+      crossings(path.slice(1, -1), all) * 1e6 +
+      crossings(path, obstacles) * 1e6 +
+      (alongFirst || crossesFirst ? 1e5 : 0) +
+      cut * 1e4 +
+      length
+    );
   };
   return candidates.reduce((best, c) => (score(c) < score(best) ? c : best));
 }

@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 /**
  * Menu déroulant : un bouton déclencheur, une liste d'éléments sous lui.
@@ -46,7 +46,15 @@ export function Menu({
   );
 }
 
-export function MenuItem({ onSelect, children, shortcut }: { onSelect: () => void; children: ReactNode; shortcut?: string }) {
+export function MenuItem({
+  onSelect,
+  children,
+  shortcut,
+}: {
+  onSelect: () => void;
+  children: ReactNode;
+  shortcut?: string;
+}) {
   return (
     <button
       type="button"
@@ -63,7 +71,9 @@ export function MenuItem({ onSelect, children, shortcut }: { onSelect: () => voi
 
 /** Intitulé d'un groupe d'éléments. */
 export const MenuLabel = ({ children }: { children: ReactNode }) => (
-  <p className="px-3 pt-1.5 pb-0.5 text-xs font-semibold tracking-wide whitespace-nowrap text-neutral-500 uppercase dark:text-neutral-400">{children}</p>
+  <p className="px-3 pt-1.5 pb-0.5 text-xs font-semibold tracking-wide whitespace-nowrap text-neutral-500 uppercase dark:text-neutral-400">
+    {children}
+  </p>
 );
 
 export function MenuCheck({
@@ -92,4 +102,6 @@ export function MenuCheck({
   );
 }
 
-export const MenuSeparator = () => <div role="separator" className="my-1 border-t border-neutral-200 dark:border-neutral-700" />;
+export const MenuSeparator = () => (
+  <div role="separator" className="my-1 border-t border-neutral-200 dark:border-neutral-700" />
+);

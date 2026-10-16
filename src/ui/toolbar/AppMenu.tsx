@@ -1,5 +1,5 @@
 import { Menu as MenuIcon } from "lucide-react";
-import { usePreferencesStore, type ThemePreference } from "@/app/preferencesStore";
+import { type ThemePreference, usePreferencesStore } from "@/app/preferencesStore";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { IconButton } from "@/ui/common/controls";

@@ -1,10 +1,10 @@
-import { Copy, LogOut, Send, Square, UserX, Users } from "lucide-react";
+import { Copy, LogOut, Send, Square, Users, UserX } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { CHAT_MAX, type ChatMessage, type Role } from "@/app/collab/protocol";
 import type { CollabAction } from "@/app/collab/session";
 import { useCollabStore } from "@/app/collab/session";
-import { CHAT_MAX, type ChatMessage, type Role } from "@/app/collab/protocol";
 import { useUiStore } from "@/app/uiStore";
-import { t, type MessageKey } from "@/i18n";
+import { type MessageKey, t } from "@/i18n";
 import { Checkbox } from "@/ui/common/controls";
 import { tip } from "@/ui/common/Tooltip";
 import { mainCommand } from "@/ui/windows/mainCommands";
@@ -12,7 +12,11 @@ import { mainCommand } from "@/ui/windows/mainCommands";
 /** Actions de session : exécutées par la fenêtre principale, même depuis une section flottante. */
 const act = (action: CollabAction) => mainCommand({ name: "collab", action });
 
-const ROLE_LABEL: Record<Role, MessageKey> = { host: "collab.role.host", editor: "collab.role.editor", reader: "collab.role.reader" };
+const ROLE_LABEL: Record<Role, MessageKey> = {
+  host: "collab.role.host",
+  editor: "collab.role.editor",
+  reader: "collab.role.reader",
+};
 const VIEW_LABEL = { mcd: "MCD", mld: "MLD", mpd: "MPD" } as const;
 
 /** Libellé de l'onglet : badge des messages non lus (O-05 §6). */
@@ -22,7 +26,10 @@ export function SessionTitle() {
     <span className="flex items-center gap-1">
       {t("dock.section.session")}
       {unread > 0 && (
-        <span className="min-w-4 rounded-full bg-blue-600 px-1 text-center text-[10px] leading-4 font-semibold text-white" aria-label={t("collab.unread", { n: unread })}>
+        <span
+          className="min-w-4 rounded-full bg-blue-600 px-1 text-center text-[10px] leading-4 font-semibold text-white"
+          aria-label={t("collab.unread", { n: unread })}
+        >
           {unread > 99 ? "99+" : unread}
         </span>
       )}
@@ -34,8 +41,12 @@ const time = (at: number) => new Date(at).toLocaleTimeString([], { hour: "2-digi
 
 function ChatLine({ message }: { message: ChatMessage }) {
   if (message.kind !== "text") {
-    const key = { joined: "collab.chat.joined", left: "collab.chat.left", kicked: "collab.chat.kicked" }[message.kind] as MessageKey;
-    return <li className="px-1 text-xs text-neutral-500 italic dark:text-neutral-400">{t(key, { name: message.name })}</li>;
+    const key = { joined: "collab.chat.joined", left: "collab.chat.left", kicked: "collab.chat.kicked" }[
+      message.kind
+    ] as MessageKey;
+    return (
+      <li className="px-1 text-xs text-neutral-500 italic dark:text-neutral-400">{t(key, { name: message.name })}</li>
+    );
   }
   return (
     <li className="px-1 text-sm">
@@ -68,7 +79,11 @@ function Chat() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col border-t border-neutral-200 dark:border-neutral-700">
-      <ul ref={list} aria-label={t("collab.chat")} className="flex min-h-16 flex-1 flex-col gap-1.5 overflow-y-auto py-2">
+      <ul
+        ref={list}
+        aria-label={t("collab.chat")}
+        className="flex min-h-16 flex-1 flex-col gap-1.5 overflow-y-auto py-2"
+      >
         {chat.length === 0 && <li className="px-1 text-xs text-neutral-400">{t("collab.chat.empty")}</li>}
         {chat.map((m) => (
           <ChatLine key={m.id} message={m} />
@@ -156,18 +171,31 @@ export function SessionSection() {
           </>
         )}
         <div className="flex-1" />
-        <button type="button" className={`${small} text-red-600 dark:text-red-400`} onClick={() => act({ kind: isHost ? "stop" : "leave" })}>
+        <button
+          type="button"
+          className={`${small} text-red-600 dark:text-red-400`}
+          onClick={() => act({ kind: isHost ? "stop" : "leave" })}
+        >
           {isHost ? <Square size={12} /> : <LogOut size={12} />}
           {isHost ? t("collab.stop") : t("collab.leave")}
         </button>
       </div>
-      {isHost && <Checkbox label={t("collab.allowAi")} checked={aiAllowed} onChange={(allowed) => act({ kind: "guestsAi", allowed })} />}
+      {isHost && (
+        <Checkbox
+          label={t("collab.allowAi")}
+          checked={aiAllowed}
+          onChange={(allowed) => act({ kind: "guestsAi", allowed })}
+        />
+      )}
 
       <ul aria-label={t("collab.participantsList")} className="flex flex-col gap-0.5">
         {participants.map((p) => {
           const view = presence[p.id]?.view;
           return (
-            <li key={p.id} className="group flex items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800">
+            <li
+              key={p.id}
+              className="group flex items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            >
               <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: p.color }} />
               <span className="min-w-0 truncate">
                 {p.name}
@@ -175,7 +203,9 @@ export function SessionSection() {
               </span>
               <span className="text-xs text-neutral-400">{t(ROLE_LABEL[p.role])}</span>
               <div className="flex-1" />
-              {view && p.id !== you && <span className="text-[10px] font-semibold text-neutral-400">{VIEW_LABEL[view]}</span>}
+              {view && p.id !== you && (
+                <span className="text-[10px] font-semibold text-neutral-400">{VIEW_LABEL[view]}</span>
+              )}
               {isHost && p.role !== "host" && (
                 <button
                   type="button"

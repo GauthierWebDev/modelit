@@ -2,11 +2,12 @@ import type { Point } from "@core/index";
 import { useEffect, useState } from "react";
 import { CURSOR_IDLE, reportPresence, useCollabStore } from "@/app/collab/session";
 import { useDocumentView } from "@/app/document/DocumentContext";
-import type { DocumentHandle } from "@/app/document/handle";
 import type { Viewport } from "@/app/document/documentView";
+import type { DocumentHandle } from "@/app/document/handle";
 
 /** Vrai si `doc` est l'onglet de la session en cours (partagé ou rejoint). */
-export const useIsSessionTab = (doc: DocumentHandle) => useCollabStore((s) => s.tabId === doc.id && (s.mode === "host" || s.mode === "guest"));
+export const useIsSessionTab = (doc: DocumentHandle) =>
+  useCollabStore((s) => s.tabId === doc.id && (s.mode === "host" || s.mode === "guest"));
 
 /**
  * Envoie ma présence pendant une session (O-05 §5) : vue et sélection à chaque changement ; le
@@ -54,15 +55,38 @@ export function RemoteCursors({ viewport }: { viewport: Viewport }) {
     <g pointerEvents="none" data-remote-cursors="">
       {participants.map((p) => {
         const state = presence[p.id];
-        if (p.id === you || !state?.cursor || state.view !== view || Math.max(now, Date.now()) - state.movedAt > CURSOR_IDLE) return null;
+        if (
+          p.id === you ||
+          !state?.cursor ||
+          state.view !== view ||
+          Math.max(now, Date.now()) - state.movedAt > CURSOR_IDLE
+        )
+          return null;
         const x = state.cursor.x * viewport.zoom + viewport.x;
         const y = state.cursor.y * viewport.zoom + viewport.y;
         return (
-          <g key={p.id} data-cursor={p.id} style={{ transform: `translate(${x}px, ${y}px)`, transition: "transform 80ms linear" }}>
-            <path d="M0,0 L0,16 L4.5,12 L7.5,19 L10,18 L7,11 L12.5,11 Z" fill={p.color} stroke="white" strokeWidth={1.2} strokeLinejoin="round" />
+          <g
+            key={p.id}
+            data-cursor={p.id}
+            style={{ transform: `translate(${x}px, ${y}px)`, transition: "transform 80ms linear" }}
+          >
+            <path
+              d="M0,0 L0,16 L4.5,12 L7.5,19 L10,18 L7,11 L12.5,11 Z"
+              fill={p.color}
+              stroke="white"
+              strokeWidth={1.2}
+              strokeLinejoin="round"
+            />
             <g transform="translate(12 18)">
               <rect rx={4} height={18} width={p.name.length * 6.6 + 12} fill={p.color} />
-              <text x={6} y={13} fontSize={11} fontWeight={600} fill="white" style={{ fontFamily: "system-ui, sans-serif" }}>
+              <text
+                x={6}
+                y={13}
+                fontSize={11}
+                fontWeight={600}
+                fill="white"
+                style={{ fontFamily: "system-ui, sans-serif" }}
+              >
                 {p.name}
               </text>
             </g>

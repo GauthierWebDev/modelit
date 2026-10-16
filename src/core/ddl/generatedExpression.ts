@@ -1,6 +1,6 @@
 import type { DataType } from "../model/datatype";
 import type { SqlDialect } from "../model/physical";
-import { tokenize, type Token } from "../reverse/tokenize";
+import { type Token, tokenize } from "../reverse/tokenize";
 import { quoteIdentifier, type Target } from "./dialects";
 
 /**
@@ -78,7 +78,8 @@ function factor(r: Reader): Node {
     if (lower === "interval") {
       const amount = r.next();
       const unit = r.next();
-      if (amount?.type !== "number" || unit?.type !== "word" || !UNITS.has(unit.value.toLowerCase())) throw new Error("intervalle");
+      if (amount?.type !== "number" || unit?.type !== "word" || !UNITS.has(unit.value.toLowerCase()))
+        throw new Error("intervalle");
       return { kind: "interval", amount: amount.value, unit: unit.value.toLowerCase() };
     }
     if (r.punct("(")) {
@@ -112,7 +113,15 @@ export interface TranslationContext {
 /** Expression traduite pour la cible, ou `null` (non traduisible). */
 export function translateGenerated(text: string, source: SqlDialect, context: TranslationContext): string | null {
   // Sous-ensemble commun à MySQL et Oracle (colonnes, + − × ÷, fonctions usuelles) (O-39).
-  if (source !== "mysql" && source !== "mariadb" && source !== "oracle" && source !== "sqlserver" && source !== "generic" && source !== context.target.dbms) return null;
+  if (
+    source !== "mysql" &&
+    source !== "mariadb" &&
+    source !== "oracle" &&
+    source !== "sqlserver" &&
+    source !== "generic" &&
+    source !== context.target.dbms
+  )
+    return null;
   let tree: Node;
   try {
     const r = new Reader(tokenize(text).filter((t) => t.type !== "end"));
@@ -131,10 +140,20 @@ export function translateGenerated(text: string, source: SqlDialect, context: Tr
 }
 
 function addsDaysToDate(n: Node, ctx: TranslationContext): boolean {
-  if (n.kind !== "binary") return n.kind === "call" || n.kind === "negate" ? (n.kind === "call" ? n.args : [n.arg]).some((a) => addsDaysToDate(a, ctx)) : false;
-  const temporal = (x: Node) => x.kind === "column" && ["date", "datetime"].includes(ctx.columnType(x.name)?.kind ?? "");
-  const numeric = (x: Node) => x.kind === "number" || (x.kind === "column" && ["integer", "decimal", "real"].includes(ctx.columnType(x.name)?.kind ?? ""));
-  if ((n.op === "+" || n.op === "-") && ((temporal(n.left) && numeric(n.right)) || (numeric(n.left) && temporal(n.right)))) return true;
+  if (n.kind !== "binary")
+    return n.kind === "call" || n.kind === "negate"
+      ? (n.kind === "call" ? n.args : [n.arg]).some((a) => addsDaysToDate(a, ctx))
+      : false;
+  const temporal = (x: Node) =>
+    x.kind === "column" && ["date", "datetime"].includes(ctx.columnType(x.name)?.kind ?? "");
+  const numeric = (x: Node) =>
+    x.kind === "number" ||
+    (x.kind === "column" && ["integer", "decimal", "real"].includes(ctx.columnType(x.name)?.kind ?? ""));
+  if (
+    (n.op === "+" || n.op === "-") &&
+    ((temporal(n.left) && numeric(n.right)) || (numeric(n.left) && temporal(n.right)))
+  )
+    return true;
   return addsDaysToDate(n.left, ctx) || addsDaysToDate(n.right, ctx);
 }
 
@@ -155,7 +174,11 @@ function render(n: Node, ctx: TranslationContext): string {
     case "date": {
       if (!pg) throw new Error("DATE");
       // timestamptz → date dépend du fuseau de session : interdit dans une colonne calculée.
-      if (n.arg.kind === "column" && ctx.columnType(n.arg.name)?.kind === "datetime" && (ctx.columnType(n.arg.name) as { withTimeZone: boolean }).withTimeZone) {
+      if (
+        n.arg.kind === "column" &&
+        ctx.columnType(n.arg.name)?.kind === "datetime" &&
+        (ctx.columnType(n.arg.name) as { withTimeZone: boolean }).withTimeZone
+      ) {
         throw new Error("non immuable");
       }
       const inner = render(n.arg, ctx);

@@ -1,6 +1,14 @@
 import type { DataType } from "../model/datatype";
 import type { Association, CardinalityMax, Entity, InheritanceConstraint, ModelDocument } from "../model/document";
-import { createAssociation, createAttribute, createEntity, createInheritance, createInheritanceLink, createLink, emptyDocument } from "../model/factory";
+import {
+  createAssociation,
+  createAttribute,
+  createEntity,
+  createInheritance,
+  createInheritanceLink,
+  createLink,
+  emptyDocument,
+} from "../model/factory";
 
 /**
  * Petit DSL de construction de modèles pour les tests.
@@ -56,7 +64,8 @@ export function model() {
       h.constraint = constraint;
       if (parent) h.parentId = id(parent);
       doc.inheritances.push(h);
-      for (const name of [...(parent ? [parent] : []), ...children]) doc.inheritanceLinks.push(createInheritanceLink(h.id, id(name)));
+      for (const name of [...(parent ? [parent] : []), ...children])
+        doc.inheritanceLinks.push(createInheritanceLink(h.id, id(name)));
       return api;
     },
     typed(entity: string, attribute: string, type: DataType) {

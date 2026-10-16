@@ -33,7 +33,8 @@ export function qualifiedName(ctx: Context, schema: string | undefined, name: st
   return `${target ? `${q(ctx, target)}.` : ""}${q(ctx, name, caseSensitive)}`;
 }
 
-export const tableName = (ctx: Context, table: LogicalTable) => qualifiedName(ctx, table.schema, table.name, table.caseSensitive);
+export const tableName = (ctx: Context, table: LogicalTable) =>
+  qualifiedName(ctx, table.schema, table.name, table.caseSensitive);
 
 /** Nom de contrainte : explicite (raccourci si besoin), ou généré selon l'option, ou aucun. */
 export function constraintName(
@@ -67,7 +68,8 @@ export function declareSchema(ctx: Context, schema: string | undefined, table: L
   const rules = ctx.dialect.schemas;
   const target = schemaOf(ctx, schema);
   if (!rules || !target) {
-    if (!rules && !["dbo", "public"].includes(schema.toLowerCase())) ctx.report.add("name", table.name, MSG.lossSchema(schema));
+    if (!rules && !["dbo", "public"].includes(schema.toLowerCase()))
+      ctx.report.add("name", table.name, MSG.lossSchema(schema));
     return;
   }
   const lower = target.toLowerCase();

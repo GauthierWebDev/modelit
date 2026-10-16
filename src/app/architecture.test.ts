@@ -22,14 +22,18 @@ function sources(dir: string): string[] {
 describe("architecture des documents", () => {
   it("aucun store de document global", () => {
     const offenders = sources(SRC)
-      .filter((file) => /\buseDocumentStore\b|\bcreate<(DocumentState|DocumentViewState)>/.test(readFileSync(file, "utf8")))
+      .filter((file) =>
+        /\buseDocumentStore\b|\bcreate<(DocumentState|DocumentViewState)>/.test(readFileSync(file, "utf8")),
+      )
       .map((file) => relative(SRC, file));
     expect(offenders).toEqual([]);
   });
 
   it("app/document ne crée que des stores instanciables (zustand/vanilla)", () => {
     const offenders = sources(DOCUMENT_DIR)
-      .filter((file) => /from\s+["']zustand["']/.test(readFileSync(file, "utf8")) && !file.endsWith("DocumentContext.tsx"))
+      .filter(
+        (file) => /from\s+["']zustand["']/.test(readFileSync(file, "utf8")) && !file.endsWith("DocumentContext.tsx"),
+      )
       .map((file) => relative(SRC, file));
     expect(offenders).toEqual([]);
   });

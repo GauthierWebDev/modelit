@@ -1,5 +1,5 @@
-import { applyPatches, enablePatches, type Draft } from "immer";
 import type { ModelDocument } from "@core/index";
+import { applyPatches, type Draft, enablePatches } from "immer";
 import { collabMirror, sameCollabMirror, useCollabStore } from "../collab/session";
 import { useDialogStore } from "../dialogStore";
 import { selectIsDirty, selectRedoLabel, selectUndoLabel } from "../document/documentStore";
@@ -34,7 +34,14 @@ export function snapshot(): MirrorState {
     redoLabel: selectRedoLabel(state),
     view: { view: view.view, selection: view.selection, viewport: view.viewport, activeBend: view.activeBend },
     ui: { tool: ui.tool },
-    modal: useDialogStore.getState().queue.length > 0 || ui.exportOpen || ui.optionsOpen || ui.modelSettingsOpen || ui.reverseOpen || ui.shareOpen || ui.about !== null,
+    modal:
+      useDialogStore.getState().queue.length > 0 ||
+      ui.exportOpen ||
+      ui.optionsOpen ||
+      ui.modelSettingsOpen ||
+      ui.reverseOpen ||
+      ui.shareOpen ||
+      ui.about !== null,
     collab: collabMirror(),
   };
 }
@@ -118,7 +125,9 @@ export function startOwner(
         return broadcast(true);
       case "change":
         if (message.documentId !== doc.id) return;
-        return doc.store.getState().change(message.label, (draft) => void applyPatches(draft as Draft<ModelDocument>, message.patches));
+        return doc.store
+          .getState()
+          .change(message.label, (draft) => void applyPatches(draft as Draft<ModelDocument>, message.patches));
       case "undo":
         if (message.documentId === doc.id) doc.store.getState().undo();
         return;

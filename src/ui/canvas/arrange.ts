@@ -1,16 +1,16 @@
 import {
+  type Alignment,
   alignBoxes,
+  type Box,
   bendsOf,
+  type DistributeAxis,
   diagramLinks,
   distributeBoxes,
+  type Id,
   linkSourceId,
+  type Point,
   positionOf,
   setBends,
-  type Alignment,
-  type Box,
-  type DistributeAxis,
-  type Id,
-  type Point,
 } from "@core/index";
 import { offsetNodes } from "@/app/commands";
 import { logicalModelOf } from "@/app/derived";
@@ -28,13 +28,17 @@ export function selectedBoxes(doc: DocumentHandle): Box[] {
   const model = doc.store.getState().doc;
   const { view, selection } = doc.view.getState();
   const wanted = new Set(selection);
-  if (view === "mcd") return [...layoutsOf(model)].filter(([id]) => wanted.has(id)).map(([id, r]) => ({ id, x: r.x, y: r.y, width: r.width, height: r.height }));
+  if (view === "mcd")
+    return [...layoutsOf(model)]
+      .filter(([id]) => wanted.has(id))
+      .map(([id, r]) => ({ id, x: r.x, y: r.y, width: r.width, height: r.height }));
   return tableLayouts(logicalModelOf(model), model, view)
     .filter((t) => wanted.has(t.sourceId))
     .map((t) => ({ id: t.sourceId, x: t.x, y: t.y, width: t.width, height: t.height }));
 }
 
-export const alignSelection = (doc: DocumentHandle, alignment: Alignment) => offsetNodes(doc, alignBoxes(selectedBoxes(doc), alignment), "history.align");
+export const alignSelection = (doc: DocumentHandle, alignment: Alignment) =>
+  offsetNodes(doc, alignBoxes(selectedBoxes(doc), alignment), "history.align");
 
 export const distributeSelection = (doc: DocumentHandle, axis: DistributeAxis) =>
   offsetNodes(doc, distributeBoxes(selectedBoxes(doc), axis), "history.distribute");
@@ -54,7 +58,8 @@ export function nudgeSelection(doc: DocumentHandle, dx: number, dy: number) {
     const origins = new Map([...ids].map((id) => [id, positionOf(model.layout, id)]));
     // Les cassures d'un trait suivent quand ses deux extrémités bougent ensemble.
     const bends = new Map<Id, Point[]>();
-    for (const l of diagramLinks(model)) if (ids.has(linkSourceId(l)) && ids.has(l.entityId)) bends.set(l.id, bendsOf(model.layout, l.id));
+    for (const l of diagramLinks(model))
+      if (ids.has(linkSourceId(l)) && ids.has(l.entityId)) bends.set(l.id, bendsOf(model.layout, l.id));
     nudge = { origins, bends, offset: { x: 0, y: 0 } };
     nudges.set(doc.id, nudge);
     store.begin();
@@ -63,7 +68,12 @@ export function nudgeSelection(doc: DocumentHandle, dx: number, dy: number) {
   const { origins, bends, offset } = nudge;
   store.preview((d) => {
     for (const [id, p] of origins) d.layout.positions[id] = { x: p.x + offset.x, y: p.y + offset.y };
-    for (const [id, points] of bends) setBends(d.layout, id, points.map((b) => ({ x: b.x + offset.x, y: b.y + offset.y })));
+    for (const [id, points] of bends)
+      setBends(
+        d.layout,
+        id,
+        points.map((b) => ({ x: b.x + offset.x, y: b.y + offset.y })),
+      );
   });
 }
 

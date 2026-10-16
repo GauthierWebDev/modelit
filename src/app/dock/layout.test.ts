@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   closeGroup,
+  type DockLayout,
   defaultLayout,
   groupOf,
   hideSection,
@@ -11,7 +12,6 @@ import {
   setActive,
   showSection,
   toggleCollapsed,
-  type DockLayout,
 } from "./layout";
 
 const rect = { x: 100, y: 100, width: 300, height: 200 };
@@ -25,7 +25,12 @@ const shape = (layout: DockLayout) => ({
 /** Sections ancrables ou flottantes (override O-46). */
 describe("disposition des sections", () => {
   it("par défaut : celle d'avant O-46 ; la section Session, masquée, s'affiche pendant une session (O-05 §7)", () => {
-    expect(shape(defaultLayout())).toEqual({ right: ["properties", "attributes"], bottom: ["mld|sql|issues"], floating: [], hidden: ["session"] });
+    expect(shape(defaultLayout())).toEqual({
+      right: ["properties", "attributes"],
+      bottom: ["mld|sql|issues"],
+      floating: [],
+      hidden: ["session"],
+    });
     expect(shape(showSection(defaultLayout(), "session")).right).toEqual(["properties|session", "attributes"]);
   });
 
@@ -98,9 +103,17 @@ describe("disposition des sections", () => {
   });
 
   it("position hors de tout écran : ramenée sur la fenêtre principale", () => {
-    let layout = moveSection(defaultLayout(), "sql", { kind: "float", rect: { x: 5000, y: 100, width: 300, height: 200 } });
+    let layout = moveSection(defaultLayout(), "sql", {
+      kind: "float",
+      rect: { x: 5000, y: 100, width: 300, height: 200 },
+    });
     layout = { ...layout, toolbar: { floating: true, position: { x: -3000, y: 0 } } };
-    const fixed = keepOnScreen(layout, [{ x: 0, y: 0, width: 1920, height: 1080 }], { x: 0, y: 0, width: 1280, height: 800 });
+    const fixed = keepOnScreen(layout, [{ x: 0, y: 0, width: 1920, height: 1080 }], {
+      x: 0,
+      y: 0,
+      width: 1280,
+      height: 800,
+    });
     expect(fixed.floating[0]!.rect.x).toBeLessThan(1280);
     expect(fixed.toolbar.position).toBeNull();
   });
@@ -108,26 +121,69 @@ describe("disposition des sections", () => {
   it("disposition relue abîmée : réparée", () => {
     expect(shape(sanitizeLayout(null))).toEqual(shape(defaultLayout()));
     const repaired = sanitizeLayout({
-      zones: { right: { groups: [{ id: "a", sections: ["properties", "inconnue", "properties"], active: "x" }] }, bottom: { groups: [] } },
-      floating: [{ id: "f", sections: ["sql"], rect: { x: 1, y: 2, width: 300, height: 200 } }, { id: "sans-rect", sections: ["mld"] }],
+      zones: {
+        right: { groups: [{ id: "a", sections: ["properties", "inconnue", "properties"], active: "x" }] },
+        bottom: { groups: [] },
+      },
+      floating: [
+        { id: "f", sections: ["sql"], rect: { x: 1, y: 2, width: 300, height: 200 } },
+        { id: "sans-rect", sections: ["mld"] },
+      ],
       hidden: ["issues", "sql"],
     });
-    expect(shape(repaired)).toEqual({ right: ["properties", "attributes", "mld"], bottom: [], floating: ["sql"], hidden: ["issues", "session"] });
+    expect(shape(repaired)).toEqual({
+      right: ["properties", "attributes", "mld"],
+      bottom: [],
+      floating: ["sql"],
+      hidden: ["issues", "session"],
+    });
     expect(repaired.zones.right.groups[0]!.active).toBe("properties");
   });
 
   it("disposition d'une version sans Rubriques : ajoutée sous le groupe des Propriétés (O-50)", () => {
     const old = {
-      zones: { right: { groups: [{ id: "r", sections: ["properties", "model"] }, { id: "s", sections: ["sql"] }] }, bottom: { groups: [{ id: "b", sections: ["mld", "issues"] }] } },
+      zones: {
+        right: {
+          groups: [
+            { id: "r", sections: ["properties", "model"] },
+            { id: "s", sections: ["sql"] },
+          ],
+        },
+        bottom: { groups: [{ id: "b", sections: ["mld", "issues"] }] },
+      },
       hidden: ["session"],
     };
-    expect(shape(sanitizeLayout(old))).toMatchObject({ right: ["properties", "attributes", "sql"], bottom: ["mld|issues"] });
-    const floatingProperties = { ...old, zones: { ...old.zones, right: { groups: [{ id: "s", sections: ["sql"] }] } }, floating: [{ id: "f", sections: ["properties", "model"], rect }] };
-    expect(shape(sanitizeLayout(floatingProperties))).toMatchObject({ right: ["sql", "attributes"], floating: ["properties"] });
+    expect(shape(sanitizeLayout(old))).toMatchObject({
+      right: ["properties", "attributes", "sql"],
+      bottom: ["mld|issues"],
+    });
+    const floatingProperties = {
+      ...old,
+      zones: { ...old.zones, right: { groups: [{ id: "s", sections: ["sql"] }] } },
+      floating: [{ id: "f", sections: ["properties", "model"], rect }],
+    };
+    expect(shape(sanitizeLayout(floatingProperties))).toMatchObject({
+      right: ["sql", "attributes"],
+      floating: ["properties"],
+    });
   });
 
   it("disposition d'une version avec la section Modèle : retirée, groupe vide compris (O-55)", () => {
-    const old = { zones: { right: { groups: [{ id: "r", sections: ["properties"] }, { id: "m", sections: ["model"] }] }, bottom: { groups: [{ id: "b", sections: ["mld", "sql", "issues"] }] } }, hidden: ["session"] };
-    expect(shape(sanitizeLayout(old))).toMatchObject({ right: ["properties", "attributes"], bottom: ["mld|sql|issues"] });
+    const old = {
+      zones: {
+        right: {
+          groups: [
+            { id: "r", sections: ["properties"] },
+            { id: "m", sections: ["model"] },
+          ],
+        },
+        bottom: { groups: [{ id: "b", sections: ["mld", "sql", "issues"] }] },
+      },
+      hidden: ["session"],
+    };
+    expect(shape(sanitizeLayout(old))).toMatchObject({
+      right: ["properties", "attributes"],
+      bottom: ["mld|sql|issues"],
+    });
   });
 });

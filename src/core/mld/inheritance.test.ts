@@ -7,10 +7,7 @@ import { mldPlainText } from "./text";
 import { toLogicalModel } from "./transform";
 
 const personnes = () =>
-  model()
-    .entity("PERSONNE", ["id*", "nom"])
-    .entity("CLIENT", ["remise"])
-    .entity("FOURNISSEUR", ["siret"]);
+  model().entity("PERSONNE", ["id*", "nom"]).entity("CLIENT", ["remise"]).entity("FOURNISSEUR", ["siret"]);
 
 describe("héritage (override O-18)", () => {
   it("chaque sous-type reçoit la clé du surtype, en clé primaire et étrangère", () => {
@@ -25,7 +22,9 @@ describe("héritage (override O-18)", () => {
   });
 
   it("SQL : le surtype est créé avant les sous-types", () => {
-    const result = generateDdl(toLogicalModel(personnes().inherit("PERSONNE", ["CLIENT", "FOURNISSEUR"]).build()), { dbms: "sqlite" });
+    const result = generateDdl(toLogicalModel(personnes().inherit("PERSONNE", ["CLIENT", "FOURNISSEUR"]).build()), {
+      dbms: "sqlite",
+    });
     expect(result.ok && result.sql.indexOf("CREATE TABLE PERSONNE")).toBe(0);
   });
 
@@ -40,14 +39,19 @@ describe("héritage (override O-18)", () => {
   });
 
   it("sans entité cible", () => {
-    const messages = toLogicalModel(personnes().inherit(null, ["PERSONNE", "CLIENT", "FOURNISSEUR"]).build()).issues.map((i) => i.message);
+    const messages = toLogicalModel(
+      personnes().inherit(null, ["PERSONNE", "CLIENT", "FOURNISSEUR"]).build(),
+    ).issues.map((i) => i.message);
     expect(messages).toContain(MSG.inheritanceNeedsParent);
   });
 
   it("une seule entité spécialisée suffit (override O-36) ; aucune : erreur", () => {
     const one = toLogicalModel(personnes().inherit("PERSONNE", ["CLIENT"]).build());
     expect(one.issues.map((i) => i.message)).not.toContain(MSG.inheritanceNeedsChild);
-    expect(one.tables.find((t) => t.name === "CLIENT")).toMatchObject({ primaryKey: ["id"], foreignKeys: [expect.objectContaining({ referencedTable: "PERSONNE" })] });
+    expect(one.tables.find((t) => t.name === "CLIENT")).toMatchObject({
+      primaryKey: ["id"],
+      foreignKeys: [expect.objectContaining({ referencedTable: "PERSONNE" })],
+    });
     const none = toLogicalModel(personnes().inherit("PERSONNE", []).build());
     expect(none.issues.map((i) => i.message)).toContain(MSG.inheritanceNeedsChild);
   });

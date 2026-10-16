@@ -51,7 +51,13 @@ export function confirmDialog(options: {
 }
 
 /** Affiche un message ; la promesse se résout à la fermeture. */
-export async function alertDialog(options: { title: string; message: string; detail?: string; okLabel: string; tone?: DialogTone }): Promise<void> {
+export async function alertDialog(options: {
+  title: string;
+  message: string;
+  detail?: string;
+  okLabel: string;
+  tone?: DialogTone;
+}): Promise<void> {
   await enqueue({ kind: "alert", tone: "error", ...options });
 }
 
@@ -64,7 +70,8 @@ export function settleDialog(id: number, ok: boolean) {
 }
 
 /** Erreur (ouverture, enregistrement, export…). */
-export const showError = (message: string) => alertDialog({ title: t("common.error"), message, okLabel: t("common.ok") });
+export const showError = (message: string) =>
+  alertDialog({ title: t("common.error"), message, okLabel: t("common.ok") });
 
 /** Avertissements groupés en une seule boîte (ex. à l'ouverture d'un fichier). */
 export async function showWarnings(messages: string[]) {

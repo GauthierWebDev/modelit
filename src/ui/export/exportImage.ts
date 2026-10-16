@@ -86,7 +86,10 @@ export async function buildSvg(
   const values = themeValues(names, options.theme);
   body = body.replace(/var\((--[\w-]+)\)/g, (_, name: string) => values.get(name) || "currentColor");
 
-  const fontCss = await embeddedFontCss(content.textContent ?? "", content.querySelector("[font-style=italic]") !== null);
+  const fontCss = await embeddedFontCss(
+    content.textContent ?? "",
+    content.querySelector("[font-style=italic]") !== null,
+  );
   const style = fontCss ? `<style>${fontCss}</style>` : "";
 
   const background = options.background

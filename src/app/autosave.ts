@@ -1,7 +1,7 @@
 import { deserializeModel, serializeModel } from "@core/index";
 import { t } from "@/i18n";
+import { indexedDbStore, type LocalStore, removeLegacyLocalStorageCopy } from "@/platform/localStore";
 import { confirmDialog } from "./dialogStore";
-import { indexedDbStore, removeLegacyLocalStorageCopy, type LocalStore } from "@/platform/localStore";
 import { selectIsDirty } from "./document/documentStore";
 import type { DocumentHandle } from "./document/handle";
 import { documentName } from "./fileCommands";
@@ -188,7 +188,9 @@ async function offerRecovery() {
     });
     if (ok) {
       for (const copy of found.copies) {
-        const restored = openInTab((doc) => doc.store.getState().restore(deserializeModel(copy.content).doc, copy.filePath));
+        const restored = openInTab((doc) =>
+          doc.store.getState().restore(deserializeModel(copy.content).doc, copy.filePath),
+        );
         track(restored);
         // Nouvelle copie sous l'identifiant du document rouvert, avant d'effacer l'ancienne.
         await write(restored);

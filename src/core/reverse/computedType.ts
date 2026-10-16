@@ -1,6 +1,6 @@
 import type { DataType } from "../model/datatype";
 import type { SqlDialect } from "../model/physical";
-import { tokenize, type Token } from "./tokenize";
+import { type Token, tokenize } from "./tokenize";
 import { sqlTypeToDataType } from "./types";
 
 /**
@@ -37,10 +37,21 @@ function combine(op: string, a: Inferred, b: Inferred): Inferred {
     if (a.kind !== "text" || b.kind !== "text") return undefined;
     const unicode = a.encoding === "unicode" || b.encoding === "unicode";
     const large = a.length === "large" || b.length === "large" || a.size === undefined || b.size === undefined;
-    return large ? { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "large" } : { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "variable", size: a.size! + b.size! };
+    return large
+      ? { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "large" }
+      : { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "variable", size: a.size! + b.size! };
   }
   if (!numeric(a) || !numeric(b)) return undefined;
-  if (a.kind === "real" || b.kind === "real") return { kind: "real", precision: a.kind === "real" && a.precision === "double" ? "double" : b.kind === "real" && b.precision === "double" ? "double" : "single" };
+  if (a.kind === "real" || b.kind === "real")
+    return {
+      kind: "real",
+      precision:
+        a.kind === "real" && a.precision === "double"
+          ? "double"
+          : b.kind === "real" && b.precision === "double"
+            ? "double"
+            : "single",
+    };
   if (a.kind === "decimal" || b.kind === "decimal") {
     const x = asDecimal(a)!;
     const y = asDecimal(b)!;
@@ -79,7 +90,11 @@ class Reader {
   }
 }
 
-export function inferComputedType(expression: string, columnType: (name: string) => DataType | undefined, dialect?: SqlDialect): DataType | undefined {
+export function inferComputedType(
+  expression: string,
+  columnType: (name: string) => DataType | undefined,
+  dialect?: SqlDialect,
+): DataType | undefined {
   const r = new Reader(tokenize(expression, { dialect }).filter((t) => t.type !== "end"));
   const sum = (): Inferred => {
     let left = product();
@@ -121,7 +136,13 @@ export function inferComputedType(expression: string, columnType: (name: string)
       const digits = (whole!.replace(/^0+/, "") + fraction!).length || 1;
       return { kind: "decimal", precision: Math.max(digits, fraction!.length), scale: fraction!.length };
     }
-    if (t.type === "string") return { kind: "text", encoding: /^N'/i.test(t.raw) ? "unicode" : "ascii", length: "variable", size: Math.max(1, t.value.length) };
+    if (t.type === "string")
+      return {
+        kind: "text",
+        encoding: /^N'/i.test(t.raw) ? "unicode" : "ascii",
+        length: "variable",
+        size: Math.max(1, t.value.length),
+      };
     if (t.type === "punct" && t.value === "(") {
       const inner = sum();
       if (!r.punct(")")) return undefined;
@@ -157,7 +178,16 @@ export function inferComputedType(expression: string, columnType: (name: string)
         return list[0] ? sub(list[0]) : undefined;
       case "cast": {
         const as = list[0]?.findIndex((x) => x.type === "word" && x.value.toLowerCase() === "as") ?? -1;
-        return as > 0 ? sqlTypeToDataType(list[0]!.slice(as + 1).map((x) => x.raw).join(""), false, dialect) : undefined;
+        return as > 0
+          ? sqlTypeToDataType(
+              list[0]!
+                .slice(as + 1)
+                .map((x) => x.raw)
+                .join(""),
+              false,
+              dialect,
+            )
+          : undefined;
       }
       case "convert":
         return list[0] ? sqlTypeToDataType(list[0].map((x) => x.raw).join(""), false, dialect) : undefined;

@@ -1,4 +1,13 @@
-import { generateDdl, targetOf, toLogicalModel, type DdlResult, type Id, type Issue, type LogicalModel, type ModelDocument } from "@core/index";
+import {
+  type DdlResult,
+  generateDdl,
+  type Id,
+  type Issue,
+  type LogicalModel,
+  type ModelDocument,
+  targetOf,
+  toLogicalModel,
+} from "@core/index";
 import { getLocale } from "@/i18n";
 import { useDocument } from "./document/DocumentContext";
 

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { useCollabStore } from "../collab/session";
 import { addEntity, renameNode } from "../commands";
 import { selectUndoLabel } from "../document/documentStore";
 import { activeDocument, openInTab, resetWorkspace } from "../workspace";
-import { useCollabStore } from "../collab/session";
 import { startOwner } from "./owner";
 import type { Channel, MainCommand, ToMain, ToReplica } from "./protocol";
 import { startReplica } from "./replica";

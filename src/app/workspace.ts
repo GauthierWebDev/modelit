@@ -125,7 +125,7 @@ export function closeTab(id: string) {
 export function replaceDocument(id: string, doc: DocumentHandle) {
   const { documents, activeId, untitled, titles } = useWorkspaceStore.getState();
   if (!documents.some((d) => d.id === id)) return;
-  const rename = <T,>(record: Record<string, T>) => {
+  const rename = <T>(record: Record<string, T>) => {
     if (doc.id === id || !(id in record)) return record;
     const { [id]: value, ...rest } = record;
     return { ...rest, [doc.id]: value! };
@@ -145,7 +145,11 @@ export function addTab(doc: DocumentHandle, title?: string) {
   useWorkspaceStore.setState({
     documents: [...documents.slice(0, index + 1), doc, ...documents.slice(index + 1)],
     activeId: doc.id,
-    ...(title ? { titles: { ...titles, [doc.id]: title } } : doc.store.getState().filePath ? {} : { untitled: { ...untitled, [doc.id]: nextUntitled(untitled) } }),
+    ...(title
+      ? { titles: { ...titles, [doc.id]: title } }
+      : doc.store.getState().filePath
+        ? {}
+        : { untitled: { ...untitled, [doc.id]: nextUntitled(untitled) } }),
   });
 }
 

@@ -5,12 +5,24 @@ import type { DdlOptions } from "../model/settings";
 import { maxIdentifierLength, type Target } from "./dialects";
 import { parseCondition } from "./expressions";
 import { LossReport } from "./losses";
-import { dialectOf, type Dialect } from "./targets";
+import { type Dialect, dialectOf } from "./targets";
 
 /** Options de génération dont le script dépend. */
 export type Options = Pick<
   DdlOptions,
-  "foreignKeysInAlter" | "indexes" | "constraintNaming" | "unsigned" | "enums" | "sets" | "collations" | "oracleDates" | "emptyStrings" | "strictRanges" | "spatial" | "sqlServerCollation" | "dboSchema"
+  | "foreignKeysInAlter"
+  | "indexes"
+  | "constraintNaming"
+  | "unsigned"
+  | "enums"
+  | "sets"
+  | "collations"
+  | "oracleDates"
+  | "emptyStrings"
+  | "strictRanges"
+  | "spatial"
+  | "sqlServerCollation"
+  | "dboSchema"
 >;
 
 export const DEFAULT_OPTIONS: Options = {
@@ -76,7 +88,8 @@ export const INDENT = "   ";
 
 export const sqlString = (value: string) => `'${value.replaceAll("'", "''")}'`;
 
-export const describeKey = (key: LogicalKey) => `(${key.columns.map((c, i) => (key.prefixes?.[i] ? `${c}(${key.prefixes[i]})` : c)).join(", ")})`;
+export const describeKey = (key: LogicalKey) =>
+  `(${key.columns.map((c, i) => (key.prefixes?.[i] ? `${c}(${key.prefixes[i]})` : c)).join(", ")})`;
 
 export const describe = (type: DataType) => JSON.stringify(type);
 

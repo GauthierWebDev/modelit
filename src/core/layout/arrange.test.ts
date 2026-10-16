@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alignBoxes, distributeBoxes, type Box } from "./arrange";
+import { alignBoxes, type Box, distributeBoxes } from "./arrange";
 
 const box = (id: string, x: number, y: number, width = 100, height = 50): Box => ({ id, x, y, width, height });
 const apply = (boxes: Box[], offsets: Map<string, { x: number; y: number }>) =>

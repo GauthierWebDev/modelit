@@ -10,7 +10,11 @@ export function IdentityOptions() {
   return (
     <>
       <Field label={t("collab.name")}>
-        <CommitInput value={identity.name} placeholder={randomName(identity.seed)} onCommit={(name) => void setIdentity({ name: name.trim() })} />
+        <CommitInput
+          value={identity.name}
+          placeholder={randomName(identity.seed)}
+          onCommit={(name) => void setIdentity({ name: name.trim() })}
+        />
       </Field>
       <Field label={t("collab.color")}>
         <div role="radiogroup" aria-label={t("collab.color")} className="flex flex-wrap gap-1.5">

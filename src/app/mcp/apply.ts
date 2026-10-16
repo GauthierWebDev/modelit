@@ -1,15 +1,15 @@
 import {
-  createAttribute,
-  diagramNodes,
-  positionOf,
-  sqlTypeToDataType,
   type Attribute,
   type Cardinality,
+  createAttribute,
   type Dbms,
+  diagramNodes,
   type Id,
   type InheritanceConstraint,
   type ModelDocument,
   type Point,
+  positionOf,
+  sqlTypeToDataType,
 } from "@core/index";
 import * as cmd from "../commands";
 import type { Recipe } from "../document/documentStore";
@@ -82,10 +82,7 @@ function toAttribute(spec: AttributeSpec, dbms: Dbms): Attribute {
 /** Entité, association ou héritage désigné par identifiant, ou par nom (sans tenir compte de la casse). */
 function resolve(doc: ModelDocument, ref: string, kind?: "entity" | "association"): Id {
   const lower = ref.trim().toLowerCase();
-  const pools = [
-    ...(kind !== "association" ? [doc.entities] : []),
-    ...(kind !== "entity" ? [doc.associations] : []),
-  ];
+  const pools = [...(kind !== "association" ? [doc.entities] : []), ...(kind !== "entity" ? [doc.associations] : [])];
   for (const pool of pools) {
     const found = pool.find((x) => x.id === ref) ?? pool.find((x) => x.name.toLowerCase() === lower);
     if (found) return found.id;
@@ -109,7 +106,12 @@ function freeSpot(doc: ModelDocument, index: number): Point {
 
 const check = (message: string | null, context: string) => message && refuse(`${context}: ${message}`);
 
-function applyOne(doc: DocumentHandle, operation: Operation, created: Record<string, Id>, placed: { n: number }): string {
+function applyOne(
+  doc: DocumentHandle,
+  operation: Operation,
+  created: Record<string, Id>,
+  placed: { n: number },
+): string {
   const current = () => doc.store.getState().doc;
   switch (operation.op) {
     case "create_entity": {
@@ -117,7 +119,14 @@ function applyOne(doc: DocumentHandle, operation: Operation, created: Record<str
       check(cmd.renameNode(doc, id, operation.name), `entity « ${operation.name} »`);
       if (operation.attributes?.length) {
         const dbms = current().settings.dbms;
-        check(cmd.setAttributes(doc, id, operation.attributes.map((a) => toAttribute(a, dbms))), `entity « ${operation.name} »`);
+        check(
+          cmd.setAttributes(
+            doc,
+            id,
+            operation.attributes.map((a) => toAttribute(a, dbms)),
+          ),
+          `entity « ${operation.name} »`,
+        );
       }
       created[operation.name] = id;
       return `entity ${operation.name} created`;
@@ -130,25 +139,41 @@ function applyOne(doc: DocumentHandle, operation: Operation, created: Record<str
       if (entities.length === 2 && entities[0] === entities[1]) {
         // Réflexive : deux pattes vers la même entité (override O-08).
         const result = cmd.connectNodes(doc, entities[0]!, entities[1]!, { associationPosition: spot });
-        if (!result || "error" in result) return refuse(`association « ${operation.name} »: ${result && "error" in result ? result.error : "not created"}`);
+        if (!result || "error" in result)
+          return refuse(
+            `association « ${operation.name} »: ${result && "error" in result ? result.error : "not created"}`,
+          );
         id = result.created;
       } else {
         id = cmd.addAssociation(doc, spot);
         for (const entity of entities) {
           const result = cmd.addLink(doc, id, entity);
-          if (!result || "error" in result) return refuse(`association « ${operation.name} »: ${result && "error" in result ? result.error : "link refused"}`);
+          if (!result || "error" in result)
+            return refuse(
+              `association « ${operation.name} »: ${result && "error" in result ? result.error : "link refused"}`,
+            );
         }
       }
       check(cmd.renameNode(doc, id, operation.name), `association « ${operation.name} »`);
       const links = current().links.filter((l) => l.associationId === id);
       operation.links.forEach((spec, i) => {
         const link = links[i]!;
-        check(cmd.setLinkCardinality(doc, link.id, parseCardinality(spec.cardinality)), `association « ${operation.name} »`);
+        check(
+          cmd.setLinkCardinality(doc, link.id, parseCardinality(spec.cardinality)),
+          `association « ${operation.name} »`,
+        );
         if (spec.relativeIdentifier) cmd.updateLink(doc, link.id, { relativeId: true });
       });
       if (operation.attributes?.length) {
         const dbms = current().settings.dbms;
-        check(cmd.setAttributes(doc, id, operation.attributes.map((a) => toAttribute(a, dbms))), `association « ${operation.name} »`);
+        check(
+          cmd.setAttributes(
+            doc,
+            id,
+            operation.attributes.map((a) => toAttribute(a, dbms)),
+          ),
+          `association « ${operation.name} »`,
+        );
       }
       created[operation.name] = id;
       return `association ${operation.name} created`;
@@ -160,7 +185,8 @@ function applyOne(doc: DocumentHandle, operation: Operation, created: Record<str
       const id = cmd.addInheritance(doc, freeSpot(current(), placed.n++));
       for (const entity of [parent, ...children]) {
         const result = cmd.addInheritanceLink(doc, id, entity);
-        if (!result || "error" in result) return refuse(`inheritance: ${result && "error" in result ? result.error : "link refused"}`);
+        if (!result || "error" in result)
+          return refuse(`inheritance: ${result && "error" in result ? result.error : "link refused"}`);
       }
       cmd.setInheritanceParent(doc, id, parent);
       if (operation.constraint) cmd.setInheritanceConstraint(doc, id, operation.constraint);
@@ -178,7 +204,10 @@ function applyOne(doc: DocumentHandle, operation: Operation, created: Record<str
       const owner = [...current().entities, ...current().associations].find((n) => n.id === id);
       if (!owner) return refuse(`« ${operation.target} » has no attributes`);
       const next = operation.attributes.map((a) => toAttribute(a, dbms));
-      check(cmd.setAttributes(doc, id, operation.op === "add_attributes" ? [...owner.attributes, ...next] : next), `attributes of « ${operation.target} »`);
+      check(
+        cmd.setAttributes(doc, id, operation.op === "add_attributes" ? [...owner.attributes, ...next] : next),
+        `attributes of « ${operation.target} »`,
+      );
       return `attributes of ${operation.target} ${operation.op === "add_attributes" ? "extended" : "replaced"}`;
     }
     case "set_link": {
@@ -186,8 +215,13 @@ function applyOne(doc: DocumentHandle, operation: Operation, created: Record<str
       const entity = resolve(current(), operation.entity, "entity");
       const link = current().links.find((l) => l.associationId === association && l.entityId === entity);
       if (!link) return refuse(`no link between « ${operation.association} » and « ${operation.entity} »`);
-      if (operation.cardinality) check(cmd.setLinkCardinality(doc, link.id, parseCardinality(operation.cardinality)), `link ${operation.association}–${operation.entity}`);
-      if (operation.relativeIdentifier !== undefined) cmd.updateLink(doc, link.id, { relativeId: operation.relativeIdentifier });
+      if (operation.cardinality)
+        check(
+          cmd.setLinkCardinality(doc, link.id, parseCardinality(operation.cardinality)),
+          `link ${operation.association}–${operation.entity}`,
+        );
+      if (operation.relativeIdentifier !== undefined)
+        cmd.updateLink(doc, link.id, { relativeId: operation.relativeIdentifier });
       return `link ${operation.association}–${operation.entity} updated`;
     }
     case "delete": {

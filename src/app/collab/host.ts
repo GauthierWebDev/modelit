@@ -1,7 +1,16 @@
 import type { ModelDocument } from "@core/index";
 import { create } from "zustand";
 import { failureDelay, MAX_ATTEMPTS, randomHex } from "./password";
-import { CHAT_MAX, MAX_PARTICIPANTS, type ChatMessage, type HostLink, type Participant, type Presence, type ToGuest, type ToHost } from "./protocol";
+import {
+  CHAT_MAX,
+  type ChatMessage,
+  type HostLink,
+  MAX_PARTICIPANTS,
+  type Participant,
+  type Presence,
+  type ToGuest,
+  type ToHost,
+} from "./protocol";
 import { createSessionStore, type SessionStore } from "./sessionStore";
 
 /**
@@ -41,12 +50,14 @@ export interface HostSession {
 }
 
 const createHostState = (participants: Participant[], aiAllowed: boolean) =>
-  create<{ participants: Participant[]; aiAllowed: boolean; presence: Record<string, Presence>; chat: ChatMessage[] }>(() => ({
-    participants,
-    aiAllowed,
-    presence: {},
-    chat: [],
-  }));
+  create<{ participants: Participant[]; aiAllowed: boolean; presence: Record<string, Presence>; chat: ChatMessage[] }>(
+    () => ({
+      participants,
+      aiAllowed,
+      presence: {},
+      chat: [],
+    }),
+  );
 
 /** Messages gardés en mémoire pour les nouveaux venus, le temps de la session seulement. */
 const CHAT_KEPT = 500;
@@ -70,7 +81,15 @@ export function startHost({
   const everyone = () => [host, ...guests.values()];
   let chatId = 0;
   const post = (kind: ChatMessage["kind"], who: Participant, text = "") => {
-    const message: ChatMessage = { id: ++chatId, kind, author: who.id, name: who.name, color: who.color, text: text.slice(0, CHAT_MAX), at: Date.now() };
+    const message: ChatMessage = {
+      id: ++chatId,
+      kind,
+      author: who.id,
+      name: who.name,
+      color: who.color,
+      text: text.slice(0, CHAT_MAX),
+      at: Date.now(),
+    };
     state.setState((s) => ({ chat: [...s.chat, message].slice(-CHAT_KEPT) }));
     broadcast({ type: "chat", message });
   };
@@ -139,7 +158,16 @@ export function startHost({
     post("joined", guest);
     guests.set(peer, guest);
     const { aiAllowed: ai, chat } = state.getState();
-    link.send(peer, { type: "welcome", you: peer, role, doc: store.getState().doc, participants: everyone(), aiAllowed: ai, chat, ...(title ? { title } : {}) });
+    link.send(peer, {
+      type: "welcome",
+      you: peer,
+      role,
+      doc: store.getState().doc,
+      participants: everyone(),
+      aiAllowed: ai,
+      chat,
+      ...(title ? { title } : {}),
+    });
     for (const [id, value] of presence) link.send(peer, { type: "presence", id, presence: value });
     publishParticipants();
   };
@@ -154,7 +182,8 @@ export function startHost({
         if (!guest) return;
         const doc = store.getState().doc;
         if (guest.role !== "editor") return link.send(peer, { type: "rejected", reason: "read-only", doc });
-        if (message.ai && !state.getState().aiAllowed) return link.send(peer, { type: "rejected", reason: "ai-disabled", doc });
+        if (message.ai && !state.getState().aiAllowed)
+          return link.send(peer, { type: "rejected", reason: "ai-disabled", doc });
         store.getState().applyRemote(message.ops);
         return broadcast({ type: "ops", ops: message.ops, author: peer });
       }

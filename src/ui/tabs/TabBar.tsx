@@ -1,11 +1,11 @@
 import { Plus, Users, X } from "lucide-react";
-import { useEffect, useRef, type PointerEvent } from "react";
+import { type PointerEvent, useEffect, useRef } from "react";
 import { useStore } from "zustand";
+import { useCollabStore } from "@/app/collab/session";
 import { selectIsDirty } from "@/app/document/documentStore";
 import type { DocumentHandle } from "@/app/document/handle";
 import { closeDocument, documentName, newTab } from "@/app/fileCommands";
 import { activate, moveTab, useWorkspaceStore } from "@/app/workspace";
-import { useCollabStore } from "@/app/collab/session";
 import { t } from "@/i18n";
 import { tip } from "@/ui/common/Tooltip";
 import { MOD } from "@/ui/shortcuts";

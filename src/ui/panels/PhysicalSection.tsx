@@ -1,6 +1,6 @@
 import type { Association, Attribute, CheckConstraint, Entity, KeyMember, ModelDocument } from "@core/index";
 import { Plus, Trash2 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import * as cmd from "@/app/commands";
 import { useDocumentHandle } from "@/app/document/DocumentContext";
 import { t } from "@/i18n";
@@ -12,12 +12,22 @@ import { Checkbox, CommitInput, Field, IconButton, Section } from "@/ui/common/c
  * identifiants alternatifs (UNIQUE), index. Le générateur les réapplique quand le SGBD cible le
  * permet. `children` : réglages placés en tête (casse significative de l'entité).
  */
-export function PhysicalSection({ doc, node, children }: { doc: ModelDocument; node: Entity | Association; children?: ReactNode }) {
+export function PhysicalSection({
+  doc,
+  node,
+  children,
+}: {
+  doc: ModelDocument;
+  node: Entity | Association;
+  children?: ReactNode;
+}) {
   const handle = useDocumentHandle();
   const isEntity = doc.entities.some((e) => e.id === node.id);
   const memberName = (member: KeyMember) => {
     if ("attributeId" in member) return node.attributes.find((a) => a.id === member.attributeId)?.name ?? "?";
-    const origin = [...doc.entities, ...doc.associations].flatMap((n) => n.attributes).find((a) => a.id === member.originId);
+    const origin = [...doc.entities, ...doc.associations]
+      .flatMap((n) => n.attributes)
+      .find((a) => a.id === member.originId);
     return `#${origin?.name ?? "?"}`;
   };
   const edit = (recipe: (n: Entity | Association) => void) => cmd.updatePhysical(handle, node.id, recipe);
@@ -62,7 +72,9 @@ export function PhysicalSection({ doc, node, children }: { doc: ModelDocument; n
       <MembersPicker
         label={t("physical.addAlternateKey")}
         attributes={node.attributes}
-        onAdd={(ids) => edit((n) => void (n.alternateKeys ??= []).push({ members: ids.map((attributeId) => ({ attributeId })) }))}
+        onAdd={(ids) =>
+          edit((n) => void (n.alternateKeys ??= []).push({ members: ids.map((attributeId) => ({ attributeId })) }))
+        }
       />
 
       <SubTitle>{t("physical.indexes")}</SubTitle>
@@ -78,26 +90,42 @@ export function PhysicalSection({ doc, node, children }: { doc: ModelDocument; n
       <MembersPicker
         label={t("physical.addIndex")}
         attributes={node.attributes}
-        onAdd={(ids) => edit((n) => void (n.indexes ??= []).push({ members: ids.map((attributeId) => ({ attributeId })) }))}
+        onAdd={(ids) =>
+          edit((n) => void (n.indexes ??= []).push({ members: ids.map((attributeId) => ({ attributeId })) }))
+        }
       />
     </Section>
   );
 }
 
 function SubTitle({ children }: { children: string }) {
-  return <p className="mt-1 text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:text-neutral-400">{children}</p>;
+  return (
+    <p className="mt-1 text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:text-neutral-400">
+      {children}
+    </p>
+  );
 }
 
 function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="flex items-center gap-1 self-start text-xs text-blue-600 hover:underline dark:text-blue-400">
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1 self-start text-xs text-blue-600 hover:underline dark:text-blue-400"
+    >
       <Plus size={12} /> {label}
     </button>
   );
 }
 
 /** Contrainte CHECK : nom facultatif et expression ; le dialecte d'origine est rappelé. */
-export function CheckRow({ check, onChange }: { check: CheckConstraint; onChange: (check: CheckConstraint | null) => void }) {
+export function CheckRow({
+  check,
+  onChange,
+}: {
+  check: CheckConstraint;
+  onChange: (check: CheckConstraint | null) => void;
+}) {
   return (
     <div className="flex flex-col gap-1 rounded border border-neutral-200 p-1.5 dark:border-neutral-700">
       <div className="flex items-center gap-1">
@@ -114,14 +142,26 @@ export function CheckRow({ check, onChange }: { check: CheckConstraint; onChange
       <CommitInput
         className="font-mono text-xs"
         value={check.expression}
-        onCommit={(expression) => (expression.trim() ? void onChange({ ...check, expression: expression.trim() }) : t("physical.emptyExpression"))}
+        onCommit={(expression) =>
+          expression.trim() ? void onChange({ ...check, expression: expression.trim() }) : t("physical.emptyExpression")
+        }
       />
       <p className="text-[11px] text-neutral-400">{t("physical.dialect", { dialect: check.dialect })}</p>
     </div>
   );
 }
 
-function KeyRow({ name, members, onRename, onDelete }: { name?: string; members: string[]; onRename: (name: string | undefined) => void; onDelete: () => void }) {
+function KeyRow({
+  name,
+  members,
+  onRename,
+  onDelete,
+}: {
+  name?: string;
+  members: string[];
+  onRename: (name: string | undefined) => void;
+  onDelete: () => void;
+}) {
   return (
     <div className="flex items-center gap-1 text-sm">
       <span className="min-w-0 flex-1 truncate font-mono text-xs">({members.join(", ")})</span>
@@ -139,7 +179,15 @@ function KeyRow({ name, members, onRename, onDelete }: { name?: string; members:
 }
 
 /** Choix des rubriques d'un nouvel identifiant alternatif ou index. */
-function MembersPicker({ label, attributes, onAdd }: { label: string; attributes: Attribute[]; onAdd: (ids: string[]) => void }) {
+function MembersPicker({
+  label,
+  attributes,
+  onAdd,
+}: {
+  label: string;
+  attributes: Attribute[];
+  onAdd: (ids: string[]) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState<string[]>([]);
   if (!open) return <AddButton label={label} onClick={() => setOpen(true)} />;

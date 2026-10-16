@@ -2,14 +2,14 @@ import type { DataType } from "./datatype";
 import type {
   AlternateKey,
   CheckConstraint,
+  ConstraintState,
   GeneratedColumn,
   IndexDefinition,
   ReferentialAction,
-  SourceType,
-  SqlExpression,
-  ConstraintState,
   SequenceDefinition,
+  SourceType,
   SqlDialect,
+  SqlExpression,
   TriggerDefinition,
   ValueDomain,
 } from "./physical";
@@ -257,7 +257,8 @@ export function setBends(layout: DiagramLayout, id: Id, bends: Point[]) {
 export type DiagramLink = Link | InheritanceLink;
 
 /** Objet (association ou héritage) à l'autre bout de l'entité. */
-export const linkSourceId = (link: DiagramLink): Id => ("associationId" in link ? link.associationId : link.inheritanceId);
+export const linkSourceId = (link: DiagramLink): Id =>
+  "associationId" in link ? link.associationId : link.inheritanceId;
 
 export const diagramLinks = (doc: Pick<ModelDocument, "links" | "inheritanceLinks">): DiagramLink[] => [
   ...doc.links,
@@ -283,7 +284,8 @@ export function sourceDialects(doc: Pick<ModelDocument, "entities" | "associatio
   const found = new Set<SqlDialect>();
   for (const node of [...doc.entities, ...doc.associations]) {
     for (const a of node.attributes) {
-      for (const dialect of [a.sourceType?.dialect, a.defaultValue?.dialect, a.check?.dialect]) if (dialect) found.add(dialect);
+      for (const dialect of [a.sourceType?.dialect, a.defaultValue?.dialect, a.check?.dialect])
+        if (dialect) found.add(dialect);
       if (a.unsigned) found.add("mysql");
     }
   }

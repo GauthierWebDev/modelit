@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { generateDdl } from "../ddl/generate";
 import { createAssociation, createAutoIdentifier, createLink } from "../model/factory";
-import { MSG } from "../validation/messages";
 import { model } from "../testing/builder";
+import { MSG } from "../validation/messages";
 import { hasErrors, issueMessage } from "./logical";
 import { mldPlainText } from "./text";
 import { toLogicalModel } from "./transform";
@@ -198,7 +198,11 @@ describe("renommage des clés étrangères (override O-07)", () => {
   it("chaque colonne migrée indique sa patte et son nom par défaut", () => {
     const doc = model().entity("A", ["a*"]).entity("B", ["b*"]).association("R", ["A 0,n", "B 1,1"]).build();
     const column = toLogicalModel(doc).tables[1]!.columns[1]!;
-    expect(column.origin).toEqual({ linkId: doc.links[0]!.id, attributeId: doc.entities[0]!.attributes[0]!.id, defaultName: "a" });
+    expect(column.origin).toEqual({
+      linkId: doc.links[0]!.id,
+      attributeId: doc.entities[0]!.attributes[0]!.id,
+      defaultName: "a",
+    });
   });
 });
 
@@ -279,7 +283,10 @@ describe("vocabulaire par couche (override O-24)", () => {
       .entity("D", [])
       .inherit("B", ["C", "D"])
       .build();
-    const texts = toLogicalModel(doc).issues.flatMap((i) => [issueMessage(i, "conceptual"), issueMessage(i, "logical")]);
+    const texts = toLogicalModel(doc).issues.flatMap((i) => [
+      issueMessage(i, "conceptual"),
+      issueMessage(i, "logical"),
+    ]);
     expect(texts.length).toBeGreaterThan(4);
     expect(texts.filter((t) => /identifiant/i.test(t))).toEqual([]);
   });

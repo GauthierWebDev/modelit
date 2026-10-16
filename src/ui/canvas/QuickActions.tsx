@@ -26,7 +26,8 @@ export function QuickActions() {
   const ref = useRef<HTMLDivElement>(null);
 
   const id = selection.length === 1 ? selection[0]! : null;
-  const owner = id && (model.entities.some((e) => e.id === id) || model.associations.some((a) => a.id === id)) ? id : null;
+  const owner =
+    id && (model.entities.some((e) => e.id === id) || model.associations.some((a) => a.id === id)) ? id : null;
   useEffect(() => setOpen(false), [owner]);
   useEffect(() => {
     if (!open) return;

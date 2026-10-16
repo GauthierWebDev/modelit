@@ -1,5 +1,5 @@
 import { isAtLeast } from "../../dbms/versions";
-import { standard, type Dialect } from "./dialect";
+import { type Dialect, standard } from "./dialect";
 
 export function oracle(version: string | undefined): Dialect {
   return {
@@ -18,11 +18,19 @@ export function oracle(version: string | undefined): Dialect {
     counters: {
       ...standard.counters,
       keepSourceType: (sql, source) =>
-        /^NUMBER\(\d+\)/.test(sql) && /^number\s*(\(\s*\d+\s*\))?$/i.test(source.trim()) ? sql.replace(/^NUMBER\(\d+\)/, source.trim()) : sql,
+        /^NUMBER\(\d+\)/.test(sql) && /^number\s*(\(\s*\d+\s*\))?$/i.test(source.trim())
+          ? sql.replace(/^NUMBER\(\d+\)/, source.trim())
+          : sql,
       onNullIdentity: true,
     },
     sequences: isAtLeast("oracle", version, "12c")
-      ? { next: (name) => `${name}.NEXTVAL`, valueType: () => undefined, noCache: "NOCACHE", noCycle: "NOCYCLE", ownedBy: false }
+      ? {
+          next: (name) => `${name}.NEXTVAL`,
+          valueType: () => undefined,
+          noCache: "NOCACHE",
+          noCycle: "NOCYCLE",
+          ownedBy: false,
+        }
       : null,
     generated: { ...standard.generated!, stored: false },
     constraints: {
