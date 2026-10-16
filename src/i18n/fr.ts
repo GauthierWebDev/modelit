@@ -489,6 +489,7 @@ export const fr = {
   "history.renameForeignKey": "Renommer la clé étrangère",
   "history.renameTable": "Renommer la table",
   "history.renameColumn": "Renommer la colonne",
+  "history.renameAttribute": "Renommer la rubrique",
   "history.straighten": "Supprimer la cassure",
   "history.removeBend": "Supprimer un point de cassure",
   "history.autoLayout": "Placement automatique",

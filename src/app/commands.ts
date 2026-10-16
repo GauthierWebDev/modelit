@@ -337,6 +337,15 @@ export function setAttributes(doc: DocumentHandle, ownerId: Id, attributes: Attr
   return null;
 }
 
+/** Renomme une rubrique (nom conceptuel, renommage sur place dans le MCD, override O-58). */
+export function renameAttribute(doc: DocumentHandle, ownerId: Id, attributeId: Id, name: string): Check {
+  const owner = [...current(doc).entities, ...current(doc).associations].find((n) => n.id === ownerId);
+  const attribute = owner?.attributes.find((a) => a.id === attributeId);
+  if (!owner || !attribute || attribute.name === name.trim()) return null;
+  const attributes = owner.attributes.map((a) => (a.id === attributeId ? { ...a, name: name.trim() } : a));
+  return setAttributes(doc, ownerId, attributes, "history.renameAttribute");
+}
+
 /** Ajoute en fin de liste une rubrique au nom libre (« rubrique_N ») ; renvoie son identifiant. */
 export function addAttribute(doc: DocumentHandle, ownerId: Id): Id | null {
   const owner = [...current(doc).entities, ...current(doc).associations].find((n) => n.id === ownerId);
