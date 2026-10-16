@@ -24,6 +24,7 @@ export * from "./mld/transform";
 export * from "./mld/text";
 export * from "./mld/rename";
 export * from "./ddl/generate";
+export { targetOf, type Target } from "./ddl/dialects";
 export { detectDialect } from "./reverse/dialect";
 export * from "./io/modelFile";
 export * from "./reverse/build";

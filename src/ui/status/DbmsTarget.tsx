@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import { Database } from "lucide-react";
-import { DBMS_LIST, GENERIC_VERSION, versionFeatures, versionOptions } from "@core/index";
-import { setDbmsVersion, setTargetDbms } from "@/app/commands";
+import { Database, Wrench } from "lucide-react";
+import { DBMS_LIST, GENERIC_VERSION, versionFeatures, versionOptions, type Dbms } from "@core/index";
+import { applyCustomDbms, dbmsLabel as targetLabel, setDbmsVersion, setTargetDbms } from "@/app/commands";
+import { usePreferencesStore } from "@/app/preferencesStore";
+import { useUiStore } from "@/app/uiStore";
 import { useDocument, useDocumentHandle } from "@/app/document/DocumentContext";
 import { t } from "@/i18n";
 import { useSessionReadOnly } from "@/ui/collab/readOnly";
-import { Field, Select } from "@/ui/common/controls";
+import { Field, inputClass, Select } from "@/ui/common/controls";
 import { tip } from "@/ui/common/Tooltip";
 
 /**
@@ -16,7 +18,8 @@ import { tip } from "@/ui/common/Tooltip";
 export function DbmsTarget() {
   const doc = useDocumentHandle();
   const readOnly = useSessionReadOnly(doc);
-  const { dbms, dbmsVersion } = useDocument((s) => s.doc.settings);
+  const { dbms, dbmsVersion, customDbms: custom } = useDocument((s) => s.doc.settings);
+  const library = usePreferencesStore((s) => s.customDbms);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -43,10 +46,19 @@ export function DbmsTarget() {
     };
   }, [open]);
 
-  const dbmsLabel = DBMS_LIST.find((d) => d.id === dbms)?.label ?? dbms;
   const versions = versionOptions(dbms);
-  const versionLabel = dbmsVersion === GENERIC_VERSION ? null : versions.find((v) => v.id === dbmsVersion)?.label;
+  const base = targetLabel(dbms, dbmsVersion);
   const features = versionFeatures(dbms, dbmsVersion);
+  const redefined = custom ? Object.keys(custom.types).length : 0;
+  // SGBD personnalisé (O-59) : « custom:<id> » ; celui du modèle est listé même s'il n'est pas dans la bibliothèque.
+  const value = custom ? `custom:${custom.id}` : dbms;
+  const customOptions = [...library.map((d) => ({ id: d.id, name: d.name })), ...(custom && !library.some((d) => d.id === custom.id) ? [{ id: custom.id, name: custom.name }] : [])];
+  const choose = (next: string) => {
+    if (!next.startsWith("custom:")) return setTargetDbms(doc, next as Dbms);
+    const id = next.slice("custom:".length);
+    const entry = library.find((d) => d.id === id);
+    if (entry) applyCustomDbms(doc, entry);
+  };
 
   return (
     <div ref={ref} className="relative flex">
@@ -57,8 +69,8 @@ export function DbmsTarget() {
         onClick={() => (open ? close() : setOpen(true))}
         className={`flex items-center gap-1 rounded px-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-700 ${open ? "bg-neutral-200 dark:bg-neutral-700" : ""}`}
       >
-        <Database size={12} />
-        {versionLabel ? `${dbmsLabel} ${versionLabel}` : dbmsLabel}
+        {custom ? <Wrench size={12} /> : <Database size={12} />}
+        {custom ? custom.name : base}
       </button>
       {open && (
         <div
@@ -69,12 +81,43 @@ export function DbmsTarget() {
           <h2 className="text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:text-neutral-400">{t("target.title")}</h2>
           <fieldset disabled={readOnly} className="flex flex-col gap-2">
             <Field label={t("toolbar.dbms")}>
-              <Select value={dbms} options={DBMS_LIST.map((d) => ({ id: d.id, label: d.label }))} onChange={(value) => setTargetDbms(doc, value)} />
+              <select className={inputClass} value={value} onChange={(e) => choose(e.target.value)}>
+                {DBMS_LIST.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.label}
+                  </option>
+                ))}
+                {customOptions.length > 0 && (
+                  <optgroup label={t("customDbms.library")}>
+                    {customOptions.map((d) => (
+                      <option key={d.id} value={`custom:${d.id}`}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
             </Field>
             <Field label={t("toolbar.version")}>
               <Select value={dbmsVersion} options={versions} onChange={(value) => setDbmsVersion(doc, value)} />
             </Field>
           </fieldset>
+          {custom && (
+            <p className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+              {t("customDbms.basedOnLabel", { dbms: base })} · {t("customDbms.typesCount", { n: redefined })}
+            </p>
+          )}
+          <button
+            type="button"
+            className="self-start text-xs text-blue-600 hover:underline dark:text-blue-400"
+            onClick={() => {
+              close();
+              usePreferencesStore.getState().setModelSettingsTab("types");
+              useUiStore.getState().setModelSettingsOpen(true);
+            }}
+          >
+            {t("customDbms.editTypes")}
+          </button>
           <div className="text-xs text-neutral-500 dark:text-neutral-400">
             {dbmsVersion === GENERIC_VERSION ? (
               t("target.generic")

@@ -103,6 +103,10 @@ met pas à jour automatiquement : seules les releases le font.
   clic droit dans le vide du schéma.
 - **Menu Affichage** (œil, barre d'outils) : rubriques dans le schéma, grille et son pas, flèches et
   texte des liens entre tables.
+- **SGBD personnalisés** (paramètres du modèle, onglet Types SQL) : redéfinir le type SQL de chaque type
+  conceptuel (Compteur → BIGSERIAL…), à partir d'un SGBD et d'une version ; « Enregistrer dans mes SGBD »
+  pour les réutiliser (liste « Mes SGBD » de la cible, gestion dans les options générales). Dans le MPD,
+  double-clic sur le type d'une colonne pour le fixer pour ce SGBD.
 - **Barre d'état** : sélection, problèmes (clic : section Problèmes), zoom, et SGBD cible et version
   (boîte « Cible »).
 - Les sections de droite éditent l'objet sélectionné (Propriétés, Rubriques).

@@ -95,7 +95,14 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
     const dy = point.y - layout.y;
     if (dy < TITLE_HEIGHT) return { sourceId: layout.sourceId, column: null };
     const row = layout.rows.find((r) => dy >= r.y && dy < r.y + ROW_HEIGHT);
-    return row ? columnTarget(layout.sourceId, row.column) : null;
+    if (!row) return null;
+    // MPD : le type d'une colonne propre, hors compteur (O-59) ; ailleurs sur la ligne, son nom.
+    const dx = point.x - layout.x;
+    if (mode === "mpd" && dx >= layout.typeX - 4 && dx < layout.constraintsX - 4) {
+      const { attributeId, origin, type } = row.column;
+      return attributeId && !origin && type?.kind !== "counter" ? { sourceId: layout.sourceId, column: { attributeId }, part: "type" } : null;
+    }
+    return columnTarget(layout.sourceId, row.column);
   }
 
   return (

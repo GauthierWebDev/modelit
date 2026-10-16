@@ -9,7 +9,8 @@ export type IntegerBits = 8 | 16 | 32 | 64;
 
 export type DataType =
   | { kind: "text"; encoding: TextEncoding; length: TextLength; size?: number; collation?: string }
-  | { kind: "integer"; bits: IntegerBits }
+  /** `counterKey` : clé étrangère vers un compteur (type « clé étrangère compteur » d'un SGBD personnalisé, O-59). */
+  | { kind: "integer"; bits: IntegerBits; counterKey?: boolean }
   /** Décimal exact ; sans précision : nombre décimal libre (Oracle NUMBER, PostgreSQL NUMERIC) (O-39). Échelle négative permise (arrondi à gauche de la virgule). */
   | { kind: "decimal"; precision?: number; scale: number }
   | { kind: "real"; precision: "single" | "double" }

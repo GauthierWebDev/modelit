@@ -93,6 +93,8 @@ const FR = {
   reverseSharedColumns: (table: string, columns: string) =>
     `« ${table} » : la clé étrangère réutilise la ou les colonnes ${columns} d'une autre clé. Le MCD ne sait pas l'exprimer ; le partage est conservé en annotation et réappliqué au SQL.`,
   // rapport de pertes du script (O-29)
+  customDbmsHeader: (name: string, base: string) => `SGBD personnalisé « ${name} », basé sur ${base}`,
+  invalidTemplateVariable: (variable: string) => `Variable ${variable} sans objet pour ce type.`,
   lossHeader: (target: string, count: number) => `Rapport de conversion vers ${target} : ${count} élément(s) abandonné(s) ou dégradé(s)`,
   lossType: (from: string, to: string) => `type ${from} → ${to} (pas d'équivalent exact)`,
   lossAutoIncrement: () => "auto-incrément abandonné : la cible ne le permet pas ici (colonne réduite à un entier)",
@@ -298,6 +300,8 @@ const EN: Messages = {
     `“${table}” references the junction table “${referenced}”: this link cannot be represented in the CDM.`,
   reverseSharedColumns: (table, columns) =>
     `“${table}”: the foreign key reuses column(s) ${columns} of another key. The CDM cannot express this; the sharing is kept as an annotation and reapplied to the SQL.`,
+  customDbmsHeader: (name, base) => `Custom DBMS “${name}”, based on ${base}`,
+  invalidTemplateVariable: (variable) => `Variable ${variable} does not apply to this type.`,
   lossHeader: (target, count) => `Conversion report for ${target}: ${count} item(s) dropped or degraded`,
   lossType: (from, to) => `type ${from} → ${to} (no exact equivalent)`,
   lossAutoIncrement: () => "auto-increment dropped: not supported by the target here (plain integer column)",

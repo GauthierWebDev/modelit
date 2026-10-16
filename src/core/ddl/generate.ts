@@ -101,10 +101,20 @@ const DEFAULT_OPTIONS: Pick<
 };
 
 /** Même dialecte : l'expression ou le type d'origine peut être réémis tel quel. */
-function sameDialect(source: SqlDialect | undefined, target: Dbms) {
+export function sameDialect(source: SqlDialect | undefined, target: Dbms) {
   if (!source) return false;
   const family = (d: SqlDialect) => (d === "mariadb" ? "mysql" : d);
   return family(source) === family(target);
+}
+
+/**
+ * Type affiché dans le MPD (O-59) : celui que le script émet le plus souvent — type de la colonne pour
+ * ce dialecte (« type d'origine »), sinon type redéfini du SGBD personnalisé, sinon type du SGBD.
+ * Les conversions fines du script (domaines, non-signés…) n'y figurent pas.
+ */
+export function displayedSqlType(column: Pick<LogicalColumn, "type" | "sourceType">, target: Target): string | null {
+  if (column.sourceType && sameDialect(column.sourceType.dialect, target.dbms) && column.type?.kind !== "counter") return column.sourceType.sql;
+  return column.type ? sqlType(column.type, target.dbms, target.version, target.custom?.types) : null;
 }
 
 /**
@@ -295,13 +305,13 @@ class Generator {
 
     // Oracle DATE (date et heure à la seconde) : TIMESTAMP(0), ou DATE en option — heure perdue (O-39).
     if (source?.dialect === "oracle" && /^date$/i.test(source.sql.trim()) && effective.kind === "datetime" && this.options.oracleDates === "date") {
-      const sql = sqlType({ kind: "date" }, dbms, version) ?? "DATE";
+      const sql = sqlType({ kind: "date" }, dbms, version, this.target.custom?.types) ?? "DATE";
       this.loss("type", table.name, MSG.lossOracleDate(sql), column.name);
       return { sql, checks };
     }
 
     if (effective.kind === "counter") {
-      let sql = sqlType(effective, dbms, version) ?? "INTEGER";
+      let sql = sqlType(effective, dbms, version, this.target.custom?.types) ?? "INTEGER";
       // Oracle vers Oracle : le type d'origine du compteur (NUMBER(10)) est conservé (O-39).
       if (same && dbms === "oracle" && /^NUMBER\(\d+\)/.test(sql) && /^number\s*(\(\s*\d+\s*\))?$/i.test(source!.sql.trim())) sql = sql.replace(/^NUMBER\(\d+\)/, source!.sql.trim());
       // Sans IDENTITY / SERIAL… (SQLite hors clé primaire simple, Oracle avant 12c) : simple entier.
@@ -330,12 +340,12 @@ class Generator {
     if (effective.kind === "decimal") {
       if (effective.precision === undefined && dbms === "db2") return { sql: "DECFLOAT(34)", checks };
       if (effective.precision === undefined && !["postgresql", "oracle", "sqlite"].includes(dbms)) {
-        const bounded = sqlType({ kind: "decimal", precision: mysql ? 65 : 38, scale: mysql ? 30 : 10 }, dbms, version) ?? "DECIMAL(38,10)";
+        const bounded = sqlType({ kind: "decimal", precision: mysql ? 65 : 38, scale: mysql ? 30 : 10 }, dbms, version, this.target.custom?.types) ?? "DECIMAL(38,10)";
         this.loss("type", table.name, MSG.lossDecimalUnbounded(source?.sql ?? "NUMERIC", bounded), column.name);
         return { sql: bounded, checks };
       }
       if (effective.scale < 0 && !(dbms === "oracle" || (dbms === "postgresql" && isAtLeast("postgresql", version, "15")))) {
-        const widened = sqlType({ kind: "decimal", precision: (effective.precision ?? 38) - effective.scale, scale: 0 }, dbms, version) ?? "NUMERIC";
+        const widened = sqlType({ kind: "decimal", precision: (effective.precision ?? 38) - effective.scale, scale: 0 }, dbms, version, this.target.custom?.types) ?? "NUMERIC";
         this.loss("type", table.name, MSG.lossNegativeScale(source?.sql ?? describe(effective), widened), column.name);
         return { sql: widened, checks };
       }
@@ -353,11 +363,11 @@ class Generator {
     // Texte long (LOB) là où la cible ne sait pas le comparer : borné, avec perte.
     const bound = effective.kind === "text" && effective.length === "large" && effective.encoding !== "binary" ? boundedTextSize(this.target, usage(table, column.name)) : undefined;
     if (effective.kind === "text" && bound !== undefined) {
-      const bounded = sqlType({ ...effective, length: "variable", size: bound }, dbms, version)!;
-      if (!column.foreign) this.loss("type", table.name, MSG.lossType(source?.sql ?? sqlType(effective, dbms, version) ?? "TEXT", bounded), column.name);
+      const bounded = sqlType({ ...effective, length: "variable", size: bound }, dbms, version, this.target.custom?.types)!;
+      if (!column.foreign) this.loss("type", table.name, MSG.lossType(source?.sql ?? sqlType(effective, dbms, version, this.target.custom?.types) ?? "TEXT", bounded), column.name);
       return { sql: bounded + collate, checks };
     }
-    let sql = sqlType(effective, dbms, version);
+    let sql = sqlType(effective, dbms, version, this.target.custom?.types);
     // PostgreSQL : binaire borné → BYTEA, jamais BIT / BIT VARYING (des bits, pas des octets) (O-39).
     if (dbms === "postgresql" && effective.kind === "text" && effective.encoding === "binary" && effective.length !== "large") {
       if (!column.foreign) this.loss("type", table.name, MSG.lossType(source?.sql ?? describe(effective), "BYTEA"), column.name);
@@ -1377,7 +1387,7 @@ function freeTypeFallback(sql: string, target: Target): { sql: string; lossy: bo
   };
   const known = table[base]?.[dbms];
   if (known) return { sql: known, lossy: !["uuid", "json", "jsonb", "uniqueidentifier"].includes(known.toLowerCase()) };
-  const text = sqlType({ kind: "text", encoding: "unicode", length: "large" }, dbms, target.version) ?? "TEXT";
+  const text = sqlType({ kind: "text", encoding: "unicode", length: "large" }, dbms, target.version, target.custom?.types) ?? "TEXT";
   return { sql: text, lossy: true };
 }
 
@@ -1411,10 +1421,12 @@ export const formatLossGroup = (g: LossGroup) =>
 
 /** En-tête du script : rapport de pertes en commentaire SQL. */
 function header(target: Target, losses: Loss[]): string {
-  if (!losses.length) return "";
   const label = `${DBMS_LIST.find((d) => d.id === target.dbms)?.label ?? target.dbms}${target.version && target.version !== GENERIC_VERSION ? ` ${target.version}` : ""}`;
+  // SGBD personnalisé : toujours annoncé, pour qu'on sache que ce n'est plus le SGBD tel quel (O-59).
+  const custom = target.custom ? [`-- ${MSG.customDbmsHeader(target.custom.name, label)}`, ""] : [];
+  if (!losses.length) return custom.length ? [...custom, ""].join("\n") : "";
   const lines = groupLosses(losses).map((g) => `--   • ${formatLossGroup(g)}`);
-  return [`-- ${MSG.lossHeader(label, losses.length)}`, ...lines, "", ""].join("\n");
+  return [...custom, `-- ${MSG.lossHeader(target.custom?.name ?? label, losses.length)}`, ...lines, "", ""].join("\n");
 }
 
 export function generateDdl(model: LogicalModel, target: SqlTarget, options: Partial<DdlOptions> = {}): DdlResult {

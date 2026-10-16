@@ -1,3 +1,4 @@
+import { TYPE_KEYS, type TypeTemplates } from "../dbms/typeMapping";
 import { resolveVersion } from "../dbms/versions";
 import { migrateLegacyPattern } from "../naming/patterns";
 import { MSG } from "../validation/messages";
@@ -111,6 +112,8 @@ function normalize(model: RawModel): ModelDocument {
   settings.keys.primary = migrateLegacyPattern(settings.keys.primary);
   settings.keys.foreign = migrateLegacyPattern(settings.keys.foreign);
   settings.dbmsVersion = resolveVersion(settings.dbms, typeof raw.dbmsVersion === "string" ? raw.dbmsVersion : undefined);
+  settings.customDbms = readCustomDbms(raw.customDbms);
+  if (!settings.customDbms) delete settings.customDbms;
   const layout = model.layout;
   return {
     settings,
@@ -133,6 +136,14 @@ function normalize(model: RawModel): ModelDocument {
 
 const isRecord = (v: unknown): v is RawModel => typeof v === "object" && v !== null && !Array.isArray(v);
 const asArray = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+
+/** SGBD personnalisé relu (O-59) : champ facultatif ; illisible, il est ignoré (cible standard). */
+function readCustomDbms(raw: unknown): DocumentSettings["customDbms"] {
+  if (!isRecord(raw) || typeof raw.id !== "string" || typeof raw.name !== "string") return undefined;
+  const types: TypeTemplates = {};
+  if (isRecord(raw.types)) for (const key of TYPE_KEYS) if (typeof raw.types[key] === "string" && raw.types[key].trim()) types[key] = raw.types[key];
+  return { id: raw.id, name: raw.name, types };
+}
 
 function deepMerge(base: object, override: RawModel): object {
   const out: RawModel = { ...base };

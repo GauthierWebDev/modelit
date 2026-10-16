@@ -10,13 +10,14 @@ import { Checkbox, Select } from "@/ui/common/controls";
 import { Modal } from "@/ui/common/Modal";
 import { ReadOnly } from "@/ui/panels/Inspector";
 import { KeyPatternField } from "@/ui/panels/sections";
+import { TypesTab } from "./TypesTab";
 
 /**
  * Boîte « Paramètres du modèle » (override O-55) : paramètres du document actif, en onglets.
  * Chaque changement s'applique tout de suite et s'annule avec ⌘Z ; pas de bouton Valider.
  */
 
-const TABS: ModelSettingsTab[] = ["naming", "script", "conversions"];
+const TABS: ModelSettingsTab[] = ["naming", "script", "conversions", "types"];
 
 export function ModelSettingsDialog() {
   const open = useUiStore((s) => s.modelSettingsOpen);
@@ -60,6 +61,7 @@ export function ModelSettingsDialog() {
           {tab === "naming" && <NamingTab />}
           {tab === "script" && <ScriptTab />}
           {tab === "conversions" && <ConversionsTab />}
+          {tab === "types" && <TypesTab />}
         </ReadOnly>
       </div>
     </Modal>

@@ -1,4 +1,4 @@
-import { generateDdl, toLogicalModel, type DdlResult, type Id, type Issue, type LogicalModel, type ModelDocument } from "@core/index";
+import { generateDdl, targetOf, toLogicalModel, type DdlResult, type Id, type Issue, type LogicalModel, type ModelDocument } from "@core/index";
 import { getLocale } from "@/i18n";
 import { useDocument } from "./document/DocumentContext";
 
@@ -39,7 +39,7 @@ export function ddlOf(doc: ModelDocument): DdlResult {
   const logical = logicalModelOf(doc);
   const hit = ddlCache.get(logical);
   if (hit && hit.settings === doc.settings) return hit.result;
-  const result = generateDdl(logical, { dbms: doc.settings.dbms, version: doc.settings.dbmsVersion }, doc.settings.ddl);
+  const result = generateDdl(logical, targetOf(doc.settings), doc.settings.ddl);
   ddlCache.set(logical, { settings: doc.settings, result });
   return result;
 }
