@@ -55,6 +55,8 @@ const FR = {
     `Le nom « ${name} » est porté deux fois par « ${owner} » (rubrique ou clé étrangère) : renommez la clé étrangère.`,
   duplicateColumnLogical: (table: string, column: string) =>
     `Colonne « ${column} » en double dans la table « ${table} » : renommez la clé étrangère.`,
+  tableNameTaken: (table: string) => `Une autre table s'appelle déjà « ${table} ».`,
+  columnNameTaken: (table: string, column: string) => `La table « ${table} » a déjà une colonne « ${column} ».`,
   untypedConceptual: (owner: string, attribute: string) => `La rubrique « ${attribute} » de « ${owner} » n'a pas de type.`,
   untypedLogical: (table: string, column: string) =>
     `La colonne « ${column} » de la table « ${table} » n'a pas de type : elle sera émise sans type dans le SQL.`,
@@ -263,6 +265,8 @@ const EN: Messages = {
   duplicateColumnConceptual: (owner, name) =>
     `The name “${name}” is used twice by “${owner}” (attribute or foreign key): rename the foreign key.`,
   duplicateColumnLogical: (table, column) => `Duplicate column “${column}” in table “${table}”: rename the foreign key.`,
+  tableNameTaken: (table) => `Another table is already named “${table}”.`,
+  columnNameTaken: (table, column) => `Table “${table}” already has a column “${column}”.`,
   untypedConceptual: (owner, attribute) => `Attribute “${attribute}” of “${owner}” has no type.`,
   untypedLogical: (table, column) => `Column “${column}” of table “${table}” has no type: it will be generated without a type in SQL.`,
   naryWithFunctionalLeg:

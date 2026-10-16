@@ -59,6 +59,8 @@ met pas à jour automatiquement : seules les releases le font.
 - **E** / **A** / **H** / **L** / **V** : outils Entité, Association, Héritage, Lien, Sélection. Entité et
   Lien marchent aussi dans le MLD et le MPD (relier deux tables crée l'association) ; Association et
   Héritage sont réservés au MCD.
+- **Double-clic** sur le titre d'une table ou une colonne, dans le MLD ou le MPD : renommage sur place
+  (nom logique de l'entité ou de la rubrique, ou nom de la clé étrangère ; vide = nom par défaut).
   Clic droit : abandon de la création en cours et retour à la Sélection ; avec la Sélection, menu
   contextuel selon ce qui est sous le pointeur (vide : coller ici, créer ; objet : copier, dupliquer,
   ajouter une rubrique… ; patte : cardinalités).

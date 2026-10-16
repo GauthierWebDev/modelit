@@ -6,6 +6,7 @@ import {
   checkAttributes,
   checkEntityName,
   checkLinkCardinality,
+  checkLogicalRename,
   createAssociation,
   createInheritance,
   createInheritanceLink,
@@ -30,6 +31,9 @@ import {
   type Id,
   type InheritanceConstraint,
   type Link,
+  type LogicalColumn,
+  type LogicalModel,
+  type LogicalTable,
   type ModelDocument,
   type Point,
 } from "@core/index";
@@ -188,6 +192,32 @@ export function renameForeignKey(doc: DocumentHandle, linkId: Id, attributeId: I
     link.foreignKeyNames = Object.keys(names).length ? names : undefined;
   });
   return null;
+}
+
+/**
+ * Renomme une table (`column` absent) ou une colonne depuis le MLD / MPD (override O-56), dans le
+ * MCD : nom logique de l'entité ou de l'association, nom logique de la rubrique, ou nom de la clé
+ * étrangère (O-07). Un nom vide rend le nom par défaut ; un nom inchangé ne fait rien.
+ */
+export function renameLogical(doc: DocumentHandle, logical: LogicalModel, table: LogicalTable, column: LogicalColumn | null, name: string): Check {
+  const trimmed = name.trim();
+  if (trimmed === (column ?? table).name) return null;
+  const error = checkLogicalRename(logical, table.name, column?.name ?? null, trimmed);
+  if (error) return error;
+  const value = trimmed || undefined;
+  const ownerId = table.source.id;
+  if (!column) {
+    change(doc, "history.renameTable", (d) => {
+      const node = findNode(d, ownerId);
+      if (node) node.logicalName = value;
+    });
+    return null;
+  }
+  if (column.origin) return renameForeignKey(doc, column.origin.linkId, column.origin.attributeId, trimmed);
+  const owner = [...current(doc).entities, ...current(doc).associations].find((n) => n.id === ownerId);
+  if (!owner || !column.attributeId) return null;
+  const attributes = owner.attributes.map((a) => (a.id === column.attributeId ? { ...a, logicalName: value } : a));
+  return setAttributes(doc, ownerId, attributes, "history.renameColumn");
 }
 
 /** Patte d'association ou lien d'héritage, dans un brouillon. */

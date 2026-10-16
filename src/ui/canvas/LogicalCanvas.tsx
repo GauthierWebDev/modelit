@@ -1,12 +1,14 @@
 import type { Id, Issue, Point, RelationLabelMode } from "@core/index";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { addEntity, connectNodes } from "@/app/commands";
 import { useUiStore } from "@/app/uiStore";
 import { useIssuesByTarget, useLogicalModel } from "@/app/derived";
 import { t } from "@/i18n";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { revealSection } from "@/app/dock/actions";
+import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { CanvasSurface, hitId, hitIdAt } from "./CanvasSurface";
+import { columnTarget, InlineRename, type RenameTarget } from "./InlineRename";
 import { openCanvasMenu } from "./objectActions";
 import { FONT_FAMILY, FONT_SIZE, PAD_X, ROW_HEIGHT, snap, TITLE_HEIGHT, TITLE_WEIGHT } from "./geometry";
 import {
@@ -29,6 +31,9 @@ import { ErrorBadge } from "./shapes";
  * Outils Entité et Lien (override O-54) : créer une entité, relier deux tables (association
  * 0,n / 0,n, d'où une table de correspondance) ou une table de correspondance à une table
  * d'entité (nouvelle patte), comme dans le MCD.
+ *
+ * Double-clic sur le titre d'une table ou une colonne (override O-56) : renommage sur place, traduit
+ * dans le MCD (nom logique, ou nom de la clé étrangère).
  *
  * Traits entre tables (override O-25) : sans flèche par défaut ; libellé facultatif (nom de la
  * clé étrangère, ou texte libre saisi sur la patte / le lien d'héritage). Cliquer sur un trait
@@ -55,6 +60,9 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
   useEffect(() => {
     if (tool !== "link") setLink(null);
   }, [tool]);
+  const readOnly = useSessionReadOnly(docHandle);
+  const [renaming, setRenaming] = useState<RenameTarget | null>(null);
+  const stopRenaming = useCallback(() => setRenaming(null), []);
   const tableOf = (id: Id | null) => (id ? layouts.find((l) => l.sourceId === id) : undefined);
 
   function connect(fromId: Id, toId: Id | null) {
@@ -78,7 +86,18 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
     [doc.links, doc.inheritanceLinks],
   );
 
+  /** Titre ou colonne sous le point (O-56) : cible du renommage. */
+  function renameTargetAt(point: Point): RenameTarget | null {
+    const layout = layouts.findLast((l) => point.x >= l.x && point.x <= l.x + l.width && point.y >= l.y && point.y <= l.y + l.height);
+    if (!layout) return null;
+    const dy = point.y - layout.y;
+    if (dy < TITLE_HEIGHT) return { sourceId: layout.sourceId, column: null };
+    const row = layout.rows.find((r) => dy >= r.y && dy < r.y + ROW_HEIGHT);
+    return row ? columnTarget(layout.sourceId, row.column) : null;
+  }
+
   return (
+    <>
     <CanvasSurface
       grid={grid}
       panOnEmpty
@@ -140,6 +159,13 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
         if (drag.current) docHandle.store.getState().cancel();
         drag.current = null;
       }}
+      onDoubleClick={(_, point) => {
+        if (tool !== "select" || readOnly) return;
+        const target = renameTargetAt(point);
+        if (!target) return;
+        select([target.sourceId]);
+        setRenaming(target);
+      }}
     >
       {references.map((r) => {
         const active = selected.has(r.relationId) || selected.has(r.sourceId);
@@ -199,6 +225,8 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
         );
       })}
     </CanvasSurface>
+    {renaming && <InlineRename key={JSON.stringify(renaming)} target={renaming} layouts={layouts} mode={mode} onClose={stopRenaming} />}
+    </>
   );
 }
 

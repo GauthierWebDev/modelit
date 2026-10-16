@@ -25,6 +25,8 @@ export interface LogicalColumn {
   foreign: boolean;
   complement?: string;
   comment?: string;
+  /** Rubrique d'origine d'une colonne propre (renommage depuis le MLD / MPD, O-56). */
+  attributeId?: Id;
   /**
    * Colonne migrée par une patte (clé étrangère, ou discriminant d'une entité fictive) :
    * permet de la renommer (override O-07).
