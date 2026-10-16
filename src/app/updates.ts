@@ -1,6 +1,6 @@
 import { t } from "@/i18n";
 import { APP_INFO, CHANGELOG } from "./appInfo";
-import { checkForUpdate, updatesSupported, type AvailableUpdate } from "@/platform/updater";
+import { checkForUpdate, updatesConfigured, updatesSupported, type AvailableUpdate } from "@/platform/updater";
 import { alertDialog, confirmDialog, showError } from "./dialogStore";
 import { confirmLoseAllChanges } from "./fileCommands";
 import { usePreferencesStore } from "./preferencesStore";
@@ -38,6 +38,10 @@ async function run(manual: boolean) {
   if (busy) return;
   busy = true;
   try {
+    if (!(await updatesConfigured())) {
+      if (manual) await alertDialog({ title: t("update.title"), message: t("update.notConfigured"), okLabel: t("common.ok"), tone: "info" });
+      return;
+    }
     let update: AvailableUpdate | null;
     try {
       update = await checkForUpdate();

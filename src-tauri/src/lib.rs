@@ -4,6 +4,19 @@
 mod collab;
 mod mcp;
 
+/// Vrai si la configuration donne une adresse de mise à jour : seuls les builds de release
+/// (tag `vX.Y.Z`, CI) en reçoivent une ; les autres builds ne peuvent pas se mettre à jour.
+#[tauri::command]
+fn updater_configured(app: tauri::AppHandle) -> bool {
+    app.config()
+        .plugins
+        .0
+        .get("updater")
+        .and_then(|updater| updater.get("endpoints"))
+        .and_then(|endpoints| endpoints.as_array())
+        .is_some_and(|endpoints| !endpoints.is_empty())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -33,7 +46,8 @@ pub fn run() {
             collab::collab_host_stop,
             collab::collab_guest_connect,
             collab::collab_guest_send,
-            collab::collab_guest_close
+            collab::collab_guest_close,
+            updater_configured
         ])
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

@@ -503,6 +503,7 @@ export const en: Record<MessageKey, string> = {
   "update.upToDate": "ModelIt is up to date.",
   "update.downloading": "Downloading the update…",
   "update.downloadingPercent": "Downloading the update: {percent}%",
+  "update.notConfigured": "This copy of ModelIt is a development build: it cannot update itself. Install the latest version from the releases page.",
   "update.checkFailed": "Unable to check for updates: {error}",
   "update.installFailed": "The update failed: {error}",
   "toolbar.about": "About ModelIt",

@@ -518,6 +518,7 @@ export const fr = {
   "update.upToDate": "ModelIt est à jour.",
   "update.downloading": "Téléchargement de la mise à jour…",
   "update.downloadingPercent": "Téléchargement de la mise à jour : {percent} %",
+  "update.notConfigured": "Cette copie de ModelIt est un build de développement : elle ne peut pas se mettre à jour automatiquement. Installez la dernière version depuis la page des releases.",
   "update.checkFailed": "Impossible de rechercher les mises à jour : {error}",
   "update.installFailed": "La mise à jour a échoué : {error}",
   "toolbar.about": "À propos de ModelIt",
