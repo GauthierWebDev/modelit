@@ -5,10 +5,27 @@ import { closeDocument, newDocument, newTab, openDocument, saveDocument } from "
 import { useUiStore, type Tool } from "@/app/uiStore";
 import { chooseTool, showView } from "@/app/viewCommands";
 import { activateNeighbour, activeDocument } from "@/app/workspace";
+import { selectReadOnlyTab, useCollabStore } from "@/app/collab/session";
+import { endNudge, nudgeSelection } from "@/ui/canvas/arrange";
 import { fitToWindow, zoomBy, zoomTo } from "@/ui/canvas/viewport";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 export const MOD = isMac ? "⌘" : "Ctrl+";
+export const MODEL_SETTINGS_SHORTCUT = isMac ? "⌥⌘," : "Ctrl+Alt+,";
+
+/**
+ * Touche physique de la virgule (O-55) : avec ⌥ (macOS) ou Ctrl + Alt (AltGr), `key` ne donne plus
+ * « , », et `code` dépend de la disposition (« Comma » en QWERTY, « KeyM » en AZERTY). Elle est apprise
+ * à chaque virgule tapée ; dans l'application macOS, le menu natif porte aussi le raccourci.
+ */
+let commaCode = "Comma";
+
+/** Flèches : déplacement de la sélection au clavier (override O-57). */
+const ARROWS: Record<string, [number, number]> = { arrowleft: [-1, 0], arrowright: [1, 0], arrowup: [0, -1], arrowdown: [0, 1] };
+
+/** Le schéma a le focus (ou rien) : les flèches déplacent la sélection, pas une liste ou un champ. */
+const onDiagram = (target: EventTarget | null) =>
+  target === document.body || (target instanceof Element && target.closest("[data-canvas]") !== null);
 
 const TOOL_KEYS: Record<string, Tool> = { v: "select", e: "entity", a: "association", h: "inheritance", l: "link" };
 
@@ -19,6 +36,7 @@ const isEditable = (target: EventTarget | null) =>
 export function useShortcuts() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === ",") commaCode = e.code;
       // Boîte modale ouverte : les raccourcis du schéma et des fichiers sont suspendus.
       if (document.querySelector('[aria-modal="true"]')) return;
       const mod = isMac ? e.metaKey : e.ctrlKey;
@@ -32,6 +50,12 @@ export function useShortcuts() {
       if (e.ctrlKey && key === "tab") {
         e.preventDefault();
         activateNeighbour(e.shiftKey ? -1 : 1);
+        return;
+      }
+
+      if (mod && e.altKey && (e.code === commaCode || e.key === ",")) {
+        e.preventDefault();
+        ui.setModelSettingsOpen(true);
         return;
       }
 
@@ -84,9 +108,24 @@ export function useShortcuts() {
         fitToWindow(doc);
       } else if (TOOL_KEYS[key] && !e.altKey) {
         chooseTool(doc, TOOL_KEYS[key]);
+      } else if (ARROWS[key] && onDiagram(e.target) && !e.altKey && selectReadOnlyTab(useCollabStore.getState()) !== doc.id) {
+        e.preventDefault();
+        const grid = docStore.doc.settings.grid;
+        const step = (grid.enabled ? grid.size : 1) * (e.shiftKey ? 10 : 1);
+        const [dx, dy] = ARROWS[key];
+        nudgeSelection(doc, dx * step, dy * step);
       }
     };
+    // Relâcher les flèches (ou quitter la fenêtre) clôt le déplacement : une entrée d'historique.
+    const onKeyUp = (e: KeyboardEvent) => ARROWS[e.key.toLowerCase()] && endNudge(activeDocument());
+    const onBlur = () => endNudge(activeDocument());
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
   }, []);
 }

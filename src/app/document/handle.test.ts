@@ -51,14 +51,19 @@ describe("documents instanciables", () => {
     expect(b.view.getState().view).toBe("mpd");
   });
 
-  it("outil de la fenêtre : seulement dans le MCD, remis à Sélection en quittant le MCD", () => {
+  it("outil de la fenêtre : Association et Héritage seulement dans le MCD (O-54)", () => {
     const doc = createDocumentHandle(emptyDocument());
     chooseTool(doc, "entity");
-    expect(useUiStore.getState().tool).toBe("entity");
     showView(doc, "mld");
+    expect(useUiStore.getState().tool).toBe("entity");
+    showView(doc, "mcd");
+    chooseTool(doc, "association");
+    showView(doc, "mpd");
     expect(useUiStore.getState().tool).toBe("select");
-    chooseTool(doc, "entity");
+    chooseTool(doc, "inheritance");
     expect(useUiStore.getState().tool).toBe("select");
+    chooseTool(doc, "link");
+    expect(useUiStore.getState().tool).toBe("link");
   });
 
   it("MLD dérivé mis en cache par document : deux documents ne se chassent pas", () => {

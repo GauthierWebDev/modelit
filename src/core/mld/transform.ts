@@ -235,6 +235,7 @@ function attributeColumns(ctx: Context, owner: Entity | Association, table: stri
   }
   return owner.attributes.map((a) => ({
     name: columnName(ctx, a, table, owner),
+    attributeId: a.id,
     type: a.type,
     notNull: a.notNull,
     unique: a.unique,
@@ -608,7 +609,7 @@ function checkInheritances(ctx: Context) {
     const parentId = inheritance.parentId && entityIds.includes(inheritance.parentId) ? inheritance.parentId : undefined;
     const children = entityIds.filter((id) => id !== parentId);
     if (!parentId) ctx.issues.push({ severity: "error", message: MSG.inheritanceNeedsParent, target });
-    if (children.length < 1) ctx.issues.push({ severity: "error", message: MSG.inheritanceNeedsTwoChildren, target });
+    if (children.length < 1) ctx.issues.push({ severity: "error", message: MSG.inheritanceNeedsChild, target });
     if (!parentId) continue;
     for (const child of children) {
       if (ctx.parents.has(child)) {

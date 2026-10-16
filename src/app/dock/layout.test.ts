@@ -25,26 +25,26 @@ const shape = (layout: DockLayout) => ({
 /** Sections ancrables ou flottantes (override O-46). */
 describe("disposition des sections", () => {
   it("par défaut : celle d'avant O-46 ; la section Session, masquée, s'affiche pendant une session (O-05 §7)", () => {
-    expect(shape(defaultLayout())).toEqual({ right: ["properties|model"], bottom: ["mld|sql|issues"], floating: [], hidden: ["session"] });
-    expect(shape(showSection(defaultLayout(), "session")).right).toEqual(["properties|model|session"]);
+    expect(shape(defaultLayout())).toEqual({ right: ["properties", "attributes"], bottom: ["mld|sql|issues"], floating: [], hidden: ["session"] });
+    expect(shape(showSection(defaultLayout(), "session")).right).toEqual(["properties|session", "attributes"]);
   });
 
   it("glisser un onglet sur un autre groupe : il le rejoint et devient actif", () => {
     const layout = moveSection(defaultLayout(), "issues", { kind: "group", group: "right" });
-    expect(shape(layout)).toMatchObject({ right: ["properties|model|issues"], bottom: ["mld|sql"] });
+    expect(shape(layout)).toMatchObject({ right: ["properties|issues", "attributes"], bottom: ["mld|sql"] });
     expect(groupOf(layout, "issues")!.group.active).toBe("issues");
     expect(groupOf(layout, "mld")!.group.active).toBe("mld");
   });
 
   it("glisser un onglet au bord d'une zone : nouveau groupe ancré à cet endroit", () => {
-    const layout = moveSection(defaultLayout(), "model", { kind: "zone", zone: "right", index: 1 });
-    expect(shape(layout).right).toEqual(["properties", "model"]);
+    const layout = moveSection(defaultLayout(), "issues", { kind: "zone", zone: "right", index: 1 });
+    expect(shape(layout).right).toEqual(["properties", "issues", "attributes"]);
   });
 
   it("glisser un onglet ailleurs : groupe flottant ; le dernier onglet d'un groupe le fait disparaître", () => {
     let layout = moveSection(defaultLayout(), "properties", { kind: "float", rect });
-    layout = moveSection(layout, "model", { kind: "group", group: layout.floating[0]!.id });
-    expect(shape(layout)).toMatchObject({ right: [], floating: ["properties|model"] });
+    layout = moveSection(layout, "issues", { kind: "group", group: layout.floating[0]!.id });
+    expect(shape(layout)).toMatchObject({ right: ["attributes"], floating: ["properties|issues"] });
     expect(layout.floating[0]!.rect).toEqual(rect);
   });
 
@@ -54,14 +54,14 @@ describe("disposition des sections", () => {
     expect(shape(layout)).toMatchObject({ bottom: [], floating: ["mld|sql|issues"] });
     expect(layout.floating[0]!.active).toBe("sql");
     layout = moveGroup(layout, "bottom", { kind: "zone", zone: "right", index: 0 });
-    expect(shape(layout)).toMatchObject({ right: ["mld|sql|issues", "properties|model"], floating: [] });
+    expect(shape(layout)).toMatchObject({ right: ["mld|sql|issues", "properties", "attributes"], floating: [] });
   });
 
   it("réordonner dans la même zone", () => {
-    let layout = moveSection(defaultLayout(), "model", { kind: "zone", zone: "right", index: 1 });
+    let layout = moveSection(defaultLayout(), "issues", { kind: "zone", zone: "right", index: 1 });
     const first = layout.zones.right.groups[0]!.id;
     layout = moveGroup(layout, first, { kind: "zone", zone: "right", index: 2 });
-    expect(shape(layout).right).toEqual(["model", "properties"]);
+    expect(shape(layout).right).toEqual(["issues", "properties", "attributes"]);
   });
 
   it("fermer un groupe masque ses sections ; les réafficher les rend à leur place", () => {
@@ -76,17 +76,17 @@ describe("disposition des sections", () => {
   });
 
   it("section masquée depuis un groupe qui existe encore : elle y revient", () => {
-    let layout = hideSection(defaultLayout(), "model");
-    expect(shape(layout).right).toEqual(["properties"]);
-    layout = showSection(layout, "model");
-    expect(shape(layout).right).toEqual(["properties|model"]);
+    let layout = hideSection(defaultLayout(), "issues");
+    expect(shape(layout).bottom).toEqual(["mld|sql"]);
+    layout = showSection(layout, "issues");
+    expect(shape(layout).bottom).toEqual(["mld|sql|issues"]);
   });
 
   it("replier un groupe ; choisir un onglet le déplie", () => {
-    let layout = toggleCollapsed(defaultLayout(), "right");
-    expect(layout.zones.right.groups[0]!.collapsed).toBe(true);
-    layout = setActive(layout, "right", "model");
-    expect(layout.zones.right.groups[0]!).toMatchObject({ collapsed: false, active: "model" });
+    let layout = toggleCollapsed(defaultLayout(), "bottom");
+    expect(layout.zones.bottom.groups[0]!.collapsed).toBe(true);
+    layout = setActive(layout, "bottom", "sql");
+    expect(layout.zones.bottom.groups[0]!).toMatchObject({ collapsed: false, active: "sql" });
   });
 
   it("les opérations ne modifient pas la disposition d'origine", () => {
@@ -112,7 +112,22 @@ describe("disposition des sections", () => {
       floating: [{ id: "f", sections: ["sql"], rect: { x: 1, y: 2, width: 300, height: 200 } }, { id: "sans-rect", sections: ["mld"] }],
       hidden: ["issues", "sql"],
     });
-    expect(shape(repaired)).toEqual({ right: ["properties", "model", "mld"], bottom: [], floating: ["sql"], hidden: ["issues", "session"] });
+    expect(shape(repaired)).toEqual({ right: ["properties", "attributes", "mld"], bottom: [], floating: ["sql"], hidden: ["issues", "session"] });
     expect(repaired.zones.right.groups[0]!.active).toBe("properties");
+  });
+
+  it("disposition d'une version sans Rubriques : ajoutée sous le groupe des Propriétés (O-50)", () => {
+    const old = {
+      zones: { right: { groups: [{ id: "r", sections: ["properties", "model"] }, { id: "s", sections: ["sql"] }] }, bottom: { groups: [{ id: "b", sections: ["mld", "issues"] }] } },
+      hidden: ["session"],
+    };
+    expect(shape(sanitizeLayout(old))).toMatchObject({ right: ["properties", "attributes", "sql"], bottom: ["mld|issues"] });
+    const floatingProperties = { ...old, zones: { ...old.zones, right: { groups: [{ id: "s", sections: ["sql"] }] } }, floating: [{ id: "f", sections: ["properties", "model"], rect }] };
+    expect(shape(sanitizeLayout(floatingProperties))).toMatchObject({ right: ["sql", "attributes"], floating: ["properties"] });
+  });
+
+  it("disposition d'une version avec la section Modèle : retirée, groupe vide compris (O-55)", () => {
+    const old = { zones: { right: { groups: [{ id: "r", sections: ["properties"] }, { id: "m", sections: ["model"] }] }, bottom: { groups: [{ id: "b", sections: ["mld", "sql", "issues"] }] } }, hidden: ["session"] };
+    expect(shape(sanitizeLayout(old))).toMatchObject({ right: ["properties", "attributes"], bottom: ["mld|sql|issues"] });
   });
 });

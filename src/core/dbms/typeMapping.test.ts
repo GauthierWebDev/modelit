@@ -101,6 +101,10 @@ describe("correspondance des types", () => {
   });
 
   it("une clé étrangère vers un compteur devient un entier", () => {
-    expect(foreignKeyDataType({ kind: "counter" })).toEqual({ kind: "integer", bits: 32 });
+    expect(foreignKeyDataType({ kind: "counter" })).toEqual({ kind: "integer", bits: 32, counterKey: true });
+    // Même type SQL que l'entier, sauf redéfinition par un SGBD personnalisé (O-59).
+    expect(sqlType(foreignKeyDataType({ kind: "counter" })!, "postgresql", "18")).toBe("INTEGER");
+    expect(sqlType(foreignKeyDataType({ kind: "counter", bits: 64 })!, "oracle", "19c")).toBe("NUMBER(20)");
+    expect(sqlType(foreignKeyDataType({ kind: "counter" })!, "postgresql", "18", { counterForeignKey: "BIGINT" })).toBe("BIGINT");
   });
 });

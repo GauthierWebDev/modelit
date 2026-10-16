@@ -56,7 +56,9 @@ export const MldTitle = () => <>{t("output.mld")}</>;
 
 export function SqlTitle() {
   const dbms = useDocument((s) => s.doc.settings.dbms);
-  return <>{t("output.sql", { dbms: DBMS_LIST.find((d) => d.id === dbms)?.label ?? "" })}</>;
+  // SGBD personnalisé : son nom, pour ne pas le confondre avec le SGBD de base (O-59).
+  const custom = useDocument((s) => s.doc.settings.customDbms?.name);
+  return <>{t("output.sql", { dbms: custom ?? DBMS_LIST.find((d) => d.id === dbms)?.label ?? "" })}</>;
 }
 
 export function IssuesTitle() {

@@ -40,7 +40,7 @@ export function PathSection({ linkId, bends }: { linkId: string; bends: number }
 
 export function CommentSection({ value, onCommit }: { value?: string; onCommit: (comment: string | undefined) => void }) {
   return (
-    <Section title={t("inspector.comment")}>
+    <Section title={t("inspector.comment")} collapsible="node.comment" summary={value ? "•" : undefined}>
       <textarea
         key={value}
         className="min-h-16 w-full rounded border border-neutral-300 bg-white px-1.5 py-1 text-sm outline-none focus:border-blue-500 dark:border-neutral-600 dark:bg-neutral-800"

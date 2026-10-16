@@ -9,6 +9,7 @@ import { LOCALES, t } from "@/i18n";
 import { mcpAvailable } from "@/platform/mcp";
 import { updatesSupported } from "@/platform/updater";
 import { McpOptions } from "@/ui/mcp/McpOptions";
+import { CustomDbmsLibrary } from "./CustomDbmsLibrary";
 import { IdentityOptions } from "@/ui/collab/IdentityOptions";
 import { Checkbox, CommitInput, Field, inputClass, Select } from "@/ui/common/controls";
 import { Modal } from "@/ui/common/Modal";
@@ -108,6 +109,10 @@ export function OptionsDialog() {
         >
           {t("options.applyToCurrent")}
         </button>
+      </Group>
+
+      <Group title={t("customDbms.library")}>
+        <CustomDbmsLibrary />
       </Group>
 
       <Group title={t("options.autosave")}>

@@ -1,4 +1,6 @@
 import type { Dbms } from "../dbms/dbms";
+import type { TypeTemplates } from "../dbms/typeMapping";
+import type { DocumentSettings } from "../model/settings";
 import { isAtLeast } from "../dbms/versions";
 import type { ReferentialAction } from "../model/physical";
 
@@ -11,7 +13,16 @@ import type { ReferentialAction } from "../model/physical";
 export interface Target {
   dbms: Dbms;
   version?: string;
+  /** SGBD personnalisé basé sur `dbms` / `version` (override O-59) : nom et types redéfinis. */
+  custom?: { name: string; types: TypeTemplates };
 }
+
+/** Cible de génération d'un modèle, personnalisation comprise (O-59). */
+export const targetOf = (s: Pick<DocumentSettings, "dbms" | "dbmsVersion" | "customDbms">): Target => ({
+  dbms: s.dbms,
+  version: s.dbmsVersion,
+  ...(s.customDbms ? { custom: { name: s.customDbms.name, types: s.customDbms.types } } : {}),
+});
 
 // ---------------------------------------------------------------------------------------------
 // Identifiants

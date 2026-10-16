@@ -10,11 +10,13 @@ import { scheduleUpdateCheck, showWhatsNew } from "@/app/updates";
 import { activeDocument, useActiveDocument, useWorkspaceStore } from "@/app/workspace";
 import { t } from "@/i18n";
 import { closeAllFloats, nativeWindows } from "@/platform/floatWindows";
-import { onCloseRequested, onMenuAbout, onMenuCloseTab, setWindowTitle } from "@/platform/window";
+import { onCloseRequested, onMenuAbout, onMenuCloseTab, onMenuModelSettings, setWindowTitle } from "@/platform/window";
 import { FloatManager } from "./windows/FloatManager";
 import { McpBridge } from "./mcp/McpBridge";
 import { CollabBridge } from "./collab/CollabBridge";
 import { CollabIndicator } from "./collab/CollabIndicator";
+import { DbmsTarget } from "./status/DbmsTarget";
+import { IssuesStatus, SelectionStatus, ZoomStatus } from "./status/StatusItems";
 import { ShareDialog } from "./collab/ShareDialog";
 import { McpIndicator } from "./mcp/McpIndicator";
 import { AboutDialog } from "./about/AboutDialog";
@@ -24,10 +26,14 @@ import { DialogHost } from "./common/DialogHost";
 import { TooltipLayer } from "./common/Tooltip";
 import { ExportDialog } from "./export/ExportDialog";
 import { OptionsDialog } from "./options/OptionsDialog";
+import { ModelSettingsDialog } from "./settings/ModelSettingsDialog";
 import { ReverseDialog } from "./reverse/ReverseDialog";
 import { TabBar } from "./tabs/TabBar";
 import { DockZone, DragGhost, FloatingGroups } from "./dock/Dock";
 import { useShortcuts } from "./shortcuts";
+import { useClipboard } from "./clipboard";
+import { blockNativeContextMenu, ContextMenuLayer } from "./canvas/ContextMenu";
+import { QuickActions } from "./canvas/QuickActions";
 import { useApplyTheme } from "./theme";
 import { ToolbarHost } from "./toolbar/ToolbarHost";
 
@@ -45,6 +51,7 @@ export function App() {
 
 function Workbench() {
   useShortcuts();
+  useClipboard();
   useApplyTheme();
   const doc = useDocumentHandle();
   const view = useDocumentView((s) => s.view);
@@ -63,9 +70,11 @@ function Workbench() {
   }, [title, dirty]);
 
   useEffect(() => startAutosave(), []);
+  useEffect(() => blockNativeContextMenu(), []);
   useEffect(() => scheduleUpdateCheck(), []);
   useEffect(() => showWhatsNew(), []);
   useEffect(() => onMenuAbout(() => useUiStore.getState().setAbout("about")), []);
+  useEffect(() => onMenuModelSettings(() => useUiStore.getState().setModelSettingsOpen(true)), []);
   useEffect(() => onMenuCloseTab(() => void closeDocument(activeDocument())), []);
 
   useEffect(
@@ -93,8 +102,9 @@ function Workbench() {
       {/* Remonté à chaque changement d'onglet : gestes en cours et saisies locales repartent de zéro. */}
       <div key={doc.id} className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1">
+          <div className="relative min-h-0 flex-1 overflow-hidden">
             {view === "mcd" ? <McdCanvas /> : <LogicalCanvas key={view} mode={view} />}
+            <QuickActions />
           </div>
           <DockZone zone="bottom" />
         </div>
@@ -106,11 +116,13 @@ function Workbench() {
       <DragGhost />
       <ExportDialog />
       <OptionsDialog />
+      <ModelSettingsDialog />
       <AboutDialog />
       <ReverseDialog />
       <ShareDialog />
       <CollabBridge />
       <DialogHost />
+      <ContextMenuLayer />
       <TooltipLayer />
       <footer className="flex h-6 flex-none items-center gap-3 border-t border-neutral-200 bg-neutral-50 px-3 text-xs text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900">
         <span>
@@ -118,8 +130,14 @@ function Workbench() {
           {dirty && ` — ${t("app.modified")}`}
         </span>
         {status && <span className={status.kind === "error" ? "text-red-600" : ""}>{status.text}</span>}
-        <CollabIndicator />
-        <McpIndicator />
+        <div className="ml-auto flex items-center gap-3">
+          <SelectionStatus />
+          <IssuesStatus />
+          <ZoomStatus />
+          <CollabIndicator />
+          <McpIndicator />
+          <DbmsTarget />
+        </div>
       </footer>
     </div>
   );

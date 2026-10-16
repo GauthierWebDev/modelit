@@ -23,42 +23,52 @@ interface UiState {
   optionsOpen: boolean;
   /** Boîte À propos : onglet affiché, ou `null` si fermée. */
   about: AboutTab | null;
+  /** Boîte « Paramètres du modèle » ouverte (O-55). */
+  modelSettingsOpen: boolean;
   /** Boîte « Rétroconception » ouverte. */
   reverseOpen: boolean;
   /** Boîte « Session collaborative » ouverte (O-05). */
   shareOpen: boolean;
   tool: Tool;
   status: StatusMessage | null;
-  /** Vue avancée de l'inspecteur : annotations physiques (override O-29). */
-  advanced: boolean;
+  /** Rubrique dont la section Rubriques doit ouvrir la saisie du nom (« Ajouter une rubrique », O-53). */
+  attributeToEdit: string | null;
+  /** Rubrique que la section Rubriques doit choisir, sans saisie (colonne renommée dans le MLD, O-56). */
+  attributeToShow: string | null;
 
   setExportOpen: (open: boolean) => void;
   setOptionsOpen: (open: boolean) => void;
   setAbout: (tab: AboutTab | null) => void;
+  setModelSettingsOpen: (open: boolean) => void;
   setReverseOpen: (open: boolean) => void;
   setShareOpen: (open: boolean) => void;
   setTool: (tool: Tool) => void;
-  setAdvanced: (advanced: boolean) => void;
   notify: (status: StatusMessage | null) => void;
+  editAttribute: (id: string | null) => void;
+  showAttribute: (id: string | null) => void;
 }
 
 export const useUiStore = create<UiState>()((set) => ({
   exportOpen: false,
   optionsOpen: false,
   about: null,
+  modelSettingsOpen: false,
   reverseOpen: false,
   shareOpen: false,
   tool: "select",
   status: null,
-  advanced: false,
+  attributeToEdit: null,
+  attributeToShow: null,
 
   // Outil valable seulement dans le MCD : passer par `chooseTool` / `showView` (viewCommands.ts).
   setTool: (tool) => set({ tool }),
   setExportOpen: (exportOpen) => set({ exportOpen }),
   setOptionsOpen: (optionsOpen) => set({ optionsOpen }),
   setAbout: (about) => set({ about }),
+  setModelSettingsOpen: (modelSettingsOpen) => set({ modelSettingsOpen }),
   setReverseOpen: (reverseOpen) => set({ reverseOpen }),
   setShareOpen: (shareOpen) => set({ shareOpen }),
-  setAdvanced: (advanced) => set({ advanced }),
   notify: (status) => set({ status }),
+  editAttribute: (attributeToEdit) => set({ attributeToEdit }),
+  showAttribute: (attributeToShow) => set({ attributeToShow }),
 }));

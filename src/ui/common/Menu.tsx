@@ -46,28 +46,45 @@ export function Menu({
   );
 }
 
-export function MenuItem({ onSelect, children }: { onSelect: () => void; children: ReactNode }) {
+export function MenuItem({ onSelect, children, shortcut }: { onSelect: () => void; children: ReactNode; shortcut?: string }) {
   return (
     <button
       type="button"
       role="menuitem"
       onClick={onSelect}
-      className="flex w-full items-center gap-2 px-3 py-1 text-left hover:bg-neutral-100 dark:hover:bg-neutral-700"
+      className="flex w-full items-center gap-2 px-3 py-1 text-left whitespace-nowrap hover:bg-neutral-100 dark:hover:bg-neutral-700"
     >
       <span className="w-3.5 flex-none" />
-      {children}
+      <span className="flex-1">{children}</span>
+      {shortcut && <span className="pl-6 text-xs text-neutral-400 dark:text-neutral-500">{shortcut}</span>}
     </button>
   );
 }
 
-export function MenuCheck({ checked, onSelect, children }: { checked: boolean; onSelect: () => void; children: ReactNode }) {
+/** Intitulé d'un groupe d'éléments. */
+export const MenuLabel = ({ children }: { children: ReactNode }) => (
+  <p className="px-3 pt-1.5 pb-0.5 text-xs font-semibold tracking-wide whitespace-nowrap text-neutral-500 uppercase dark:text-neutral-400">{children}</p>
+);
+
+export function MenuCheck({
+  checked,
+  onSelect,
+  children,
+  disabled,
+}: {
+  checked: boolean;
+  onSelect: () => void;
+  children: ReactNode;
+  disabled?: boolean;
+}) {
   return (
     <button
       type="button"
       role="menuitemcheckbox"
       aria-checked={checked}
+      disabled={disabled}
       onClick={onSelect}
-      className="flex w-full items-center gap-2 px-3 py-1 text-left hover:bg-neutral-100 dark:hover:bg-neutral-700"
+      className="flex w-full items-center gap-2 px-3 py-1 text-left whitespace-nowrap hover:bg-neutral-100 disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-neutral-700"
     >
       <span className="flex w-3.5 flex-none justify-center">{checked && <Check size={14} />}</span>
       {children}

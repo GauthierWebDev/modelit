@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { deserializeModel, FILE_FORMAT } from "../io/modelFile";
 import { sqlType } from "./typeMapping";
-import { GENERIC_VERSION, isAtLeast, latestVersion, resolveVersion } from "./versions";
+import { DBMS_VERSIONS, GENERIC_VERSION, isAtLeast, latestVersion, resolveVersion, versionFeatureThresholds, versionFeatures } from "./versions";
+import { MSG } from "../validation/messages";
 
 describe("versions des SGBD (override O-04)", () => {
   it("comparaison de versions", () => {
@@ -30,5 +31,19 @@ describe("versions des SGBD (override O-04)", () => {
   it("un fichier sans version prend la plus récente de son SGBD", () => {
     const text = JSON.stringify({ format: FILE_FORMAT, version: 1, model: { settings: { dbms: "mysql" } } });
     expect(deserializeModel(text).doc.settings.dbmsVersion).toBe(latestVersion("mysql"));
+  });
+
+  it("ce qu'apporte une version (O-49)", () => {
+    expect(versionFeatures("postgresql", "9.6")).toEqual([]);
+    expect(versionFeatures("postgresql", "10")).toEqual([MSG.versionFeature.identity]);
+    expect(versionFeatures("postgresql", "18")).toContain(MSG.versionFeature.uuidv7);
+    expect(versionFeatures("oracle", "21c")).not.toContain(MSG.versionFeature.booleanType);
+    expect(versionFeatures("oracle", "23ai")).toContain(MSG.versionFeature.booleanType);
+    expect(versionFeatures("postgresql", GENERIC_VERSION)).toEqual([]);
+  });
+
+  it("chaque seuil est une version connue de son SGBD", () => {
+    const unknown = versionFeatureThresholds().filter(({ dbms, since }) => !DBMS_VERSIONS[dbms].some((v) => v.id === since));
+    expect(unknown).toEqual([]);
   });
 });

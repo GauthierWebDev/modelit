@@ -1,11 +1,16 @@
-import type { Id, Issue, Point, RelationLabelMode } from "@core/index";
-import { useMemo, useRef } from "react";
+import { bendsOf, diagramLinks, linkSourceId, positionOf, setBends, type Id, type Issue, type Point, type RelationLabelMode } from "@core/index";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { addEntity, connectNodes } from "@/app/commands";
+import { useUiStore } from "@/app/uiStore";
 import { useIssuesByTarget, useLogicalModel } from "@/app/derived";
 import { t } from "@/i18n";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { revealSection } from "@/app/dock/actions";
-import { CanvasSurface, hitId } from "./CanvasSurface";
-import { FONT_FAMILY, FONT_SIZE, PAD_X, ROW_HEIGHT, snap, TITLE_HEIGHT, TITLE_WEIGHT } from "./geometry";
+import { useSessionReadOnly } from "@/ui/collab/readOnly";
+import { CanvasSurface, hitId, hitIdAt } from "./CanvasSurface";
+import { columnTarget, InlineRename, type RenameTarget } from "./InlineRename";
+import { openCanvasMenu } from "./objectActions";
+import { FONT_FAMILY, FONT_SIZE, intersects, normalizeRect, PAD_X, ROW_HEIGHT, snap, TITLE_HEIGHT, TITLE_WEIGHT } from "./geometry";
 import {
   columnStyle,
   KEY_BAR_X,
@@ -21,7 +26,15 @@ import { ErrorBadge } from "./shapes";
  * Vues MLD et MPD (override O-01). Leur contenu est dérivé du MCD et leur disposition
  * est celle du MCD : déplacer une table déplace l'entité ou l'association d'origine.
  * Cliquer sur une table sélectionne l'objet du MCD d'origine (édité dans l'inspecteur).
- * Glisser dans le vide déplace la vue.
+ * Glisser dans le vide trace un rectangle de sélection (Maj : ajout), comme dans le MCD (O-57) ;
+ * la vue se déplace à la molette, au pavé tactile ou au bouton du milieu.
+ *
+ * Outils Entité et Lien (override O-54) : créer une entité, relier deux tables (association
+ * 0,n / 0,n, d'où une table de correspondance) ou une table de correspondance à une table
+ * d'entité (nouvelle patte), comme dans le MCD.
+ *
+ * Double-clic sur le titre d'une table ou une colonne (override O-56) : renommage sur place, traduit
+ * dans le MCD (nom logique, ou nom de la clé étrangère).
  *
  * Traits entre tables (override O-25) : sans flèche par défaut ; libellé facultatif (nom de la
  * clé étrangère, ou texte libre saisi sur la patte / le lien d'héritage). Cliquer sur un trait
@@ -39,44 +52,159 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
   const references = useMemo(() => referenceGeometries(layouts), [layouts]);
   const selected = new Set(selection);
   const grid = doc.settings.grid.enabled ? doc.settings.grid.size : null;
-  const drag = useRef<{ id: Id; start: Point; origin: Point } | null>(null);
+  /** Déplacement des tables sélectionnées : positions et cassures (traits entre deux d'entre elles) d'origine. */
+  const drag = useRef<{ start: Point; origins: Map<Id, Point>; bends: Map<Id, Point[]> } | null>(null);
+  const toggleSelected = useDocumentView((s) => s.toggleSelected);
+  /** Rectangle de sélection en cours (O-57) ; `base` : sélection conservée (Maj). */
+  const [marquee, setMarquee] = useState<{ start: Point; current: Point; base: Id[] } | null>(null);
+  const tool = useUiStore((s) => s.tool);
+  const setTool = useUiStore((s) => s.setTool);
+  const notify = useUiStore((s) => s.notify);
+  /** Lien en cours (O-54) ; `pending` : premier clic fait, en attente du second. */
+  const [link, setLink] = useState<{ fromId: Id; start: Point; current: Point; pending: boolean } | null>(null);
+  useEffect(() => {
+    if (tool !== "link") setLink(null);
+  }, [tool]);
+  const readOnly = useSessionReadOnly(docHandle);
+  const [renaming, setRenaming] = useState<RenameTarget | null>(null);
+  const stopRenaming = useCallback(() => setRenaming(null), []);
+  const tableOf = (id: Id | null) => (id ? layouts.find((l) => l.sourceId === id) : undefined);
+
+  function connect(fromId: Id, toId: Id | null) {
+    setLink(null);
+    const a = tableOf(fromId);
+    const b = tableOf(toId);
+    if (!a || !b || !toId) return;
+    // L'association (invisible ici) se place entre les deux tables, ou à droite d'une réflexive.
+    const position =
+      fromId === toId
+        ? { x: snap(a.x + a.width + 60, grid), y: snap(a.y, grid) }
+        : { x: snap((a.x + a.width / 2 + b.x + b.width / 2) / 2 - 40, grid), y: snap((a.y + a.height / 2 + b.y + b.height / 2) / 2 - 20, grid) };
+    const result = connectNodes(docHandle, fromId, toId, { associationPosition: position });
+    if (!result) return;
+    if ("error" in result) notify({ kind: "error", text: result.error });
+    else select([result.created]);
+  }
   const { relationArrows: arrows, relationLabels: labelMode } = doc.settings.display;
   const labels = useMemo(
     () => new Map([...doc.links, ...doc.inheritanceLinks].map((l) => [l.id, l.relationLabel?.trim() ?? ""])),
     [doc.links, doc.inheritanceLinks],
   );
 
+  /** Titre ou colonne sous le point (O-56) : cible du renommage. */
+  function renameTargetAt(point: Point): RenameTarget | null {
+    const layout = layouts.findLast((l) => point.x >= l.x && point.x <= l.x + l.width && point.y >= l.y && point.y <= l.y + l.height);
+    if (!layout) return null;
+    const dy = point.y - layout.y;
+    if (dy < TITLE_HEIGHT) return { sourceId: layout.sourceId, column: null };
+    const row = layout.rows.find((r) => dy >= r.y && dy < r.y + ROW_HEIGHT);
+    if (!row) return null;
+    // MPD : le type d'une colonne propre, hors compteur (O-59) ; ailleurs sur la ligne, son nom.
+    const dx = point.x - layout.x;
+    if (mode === "mpd" && dx >= layout.typeX - 4 && dx < layout.constraintsX - 4) {
+      const { attributeId, origin, type } = row.column;
+      return attributeId && !origin && type?.kind !== "counter" ? { sourceId: layout.sourceId, column: { attributeId }, part: "type" } : null;
+    }
+    return columnTarget(layout.sourceId, row.column);
+  }
+
   return (
+    <>
     <CanvasSurface
       grid={grid}
-      panOnEmpty
+      className={tool === "select" ? "" : "cursor-crosshair"}
       onPointerDown={(e, point) => {
         const hit = hitId(e);
-        select(hit ? [hit] : []);
+        const table = tableOf(hit)?.sourceId ?? null;
+        if (tool === "entity") {
+          if (!hit) {
+            select([addEntity(docHandle, { x: snap(point.x, grid), y: snap(point.y, grid) })]);
+            setTool("select");
+          }
+          return true;
+        }
+        if (tool === "link") {
+          if (link?.pending) {
+            if (table) connect(link.fromId, table);
+            else setLink(null);
+          } else if (table) setLink({ fromId: table, start: point, current: point, pending: false });
+          return true;
+        }
+        // Vide : rectangle de sélection ; avec Maj, ajouté à la sélection (O-57, comme dans le MCD).
+        if (!hit) {
+          const base = e.shiftKey ? selection : [];
+          if (!e.shiftKey) select([]);
+          setMarquee({ start: point, current: point, base });
+          return true;
+        }
+        // Maj + clic : ajoute ou retire de la sélection (O-57, comme dans le MCD).
+        if (hit && e.shiftKey) {
+          toggleSelected(hit);
+          return true;
+        }
+        const ids = hit && selected.has(hit) ? selection : hit ? [hit] : [];
+        if (!(hit && selected.has(hit))) select(ids);
         if (hit && (e.target as Element).closest("[data-badge]")) {
           revealSection("issues");
           return true;
         }
         if (!hit) return false;
-        const layout = layouts.find((l) => l.sourceId === hit);
-        if (!layout) return true; // trait entre tables : sélection seule
+        if (!tableOf(hit)) return true; // trait entre tables : sélection seule
+        const moved = new Set(ids.filter((id) => tableOf(id)));
+        const origins = new Map([...moved].map((id) => [id, positionOf(doc.layout, id)]));
+        const bends = new Map<Id, Point[]>();
+        for (const l of diagramLinks(doc)) if (moved.has(linkSourceId(l)) && moved.has(l.entityId)) bends.set(l.id, bendsOf(doc.layout, l.id));
         docHandle.store.getState().begin();
-        drag.current = { id: hit, start: point, origin: { x: layout.x, y: layout.y } };
+        drag.current = { start: point, origins, bends };
         return true;
       }}
       onPointerMove={(_, point) => {
+        if (link) setLink({ ...link, current: point });
+        if (marquee) {
+          const rect = normalizeRect(marquee.start, point);
+          const inside = layouts.filter((l) => intersects(rect, l)).map((l) => l.sourceId);
+          select([...new Set([...marquee.base, ...inside])]);
+          setMarquee({ ...marquee, current: point });
+          return;
+        }
         const d = drag.current;
         if (!d) return;
-        const position = { x: snap(d.origin.x + point.x - d.start.x, grid), y: snap(d.origin.y + point.y - d.start.y, grid) };
-        docHandle.store.getState().preview((draft) => void (draft.layout.positions[d.id] = position));
+        const dx = point.x - d.start.x;
+        const dy = point.y - d.start.y;
+        docHandle.store.getState().preview((draft) => {
+          for (const [id, o] of d.origins) draft.layout.positions[id] = { x: snap(o.x + dx, grid), y: snap(o.y + dy, grid) };
+          for (const [id, points] of d.bends) setBends(draft.layout, id, points.map((b) => ({ x: snap(b.x + dx, grid), y: snap(b.y + dy, grid) })));
+        });
       }}
-      onPointerUp={() => {
-        if (drag.current) docHandle.store.getState().commit("history.moveTable");
+      onPointerUp={(e, point) => {
+        if (link && !link.pending) {
+          // Glisser : relier à la table sous le pointeur ; simple clic : attendre le second clic.
+          const dragged = Math.hypot(point.x - link.start.x, point.y - link.start.y) > 4;
+          if (dragged) connect(link.fromId, tableOf(hitIdAt(e))?.sourceId ?? null);
+          else setLink({ ...link, pending: true });
+        }
+        if (drag.current) docHandle.store.getState().commit(drag.current.origins.size > 1 ? "history.moveSelection" : "history.moveTable");
         drag.current = null;
+        setMarquee(null);
+      }}
+      onContextMenu={(e) => {
+        // Outil de création : abandon et retour à la sélection (override O-16) ; sinon, menu (O-53).
+        if (tool === "select") return openCanvasMenu(docHandle, e, hitIdAt(e));
+        e.preventDefault();
+        setLink(null);
+        setTool("select");
       }}
       onPointerCancel={() => {
         if (drag.current) docHandle.store.getState().cancel();
         drag.current = null;
+        setMarquee(null);
+      }}
+      onDoubleClick={(_, point) => {
+        if (tool !== "select" || readOnly) return;
+        const target = renameTargetAt(point);
+        if (!target) return;
+        select([target.sourceId]);
+        setRenaming(target);
       }}
     >
       {references.map((r) => {
@@ -96,8 +224,20 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
         );
       })}
       {layouts.map((l) => (
-        <TableShape key={l.sourceId} layout={l} mode={mode} selected={selected.has(l.sourceId)} issues={issues.get(l.sourceId)} />
+        <TableShape key={l.sourceId} layout={l} mode={mode} selected={selected.has(l.sourceId) || link?.fromId === l.sourceId} issues={issues.get(l.sourceId)} />
       ))}
+      {link && tableOf(link.fromId) && (
+        <line
+          x1={tableOf(link.fromId)!.x + tableOf(link.fromId)!.width / 2}
+          y1={tableOf(link.fromId)!.y + tableOf(link.fromId)!.height / 2}
+          x2={link.current.x}
+          y2={link.current.y}
+          stroke="var(--mcd-selection)"
+          strokeDasharray="4 3"
+          pointerEvents="none"
+          data-ui-only=""
+        />
+      )}
       {/* Libellés des traits, au-dessus des tables pour rester lisibles. */}
       {references.map((r) => {
         const label = relationLabel(r, labelMode, labels);
@@ -124,7 +264,21 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
           </text>
         );
       })}
+      {marquee && (
+        <rect
+          {...normalizeRect(marquee.start, marquee.current)}
+          fill="var(--mcd-selection)"
+          fillOpacity={0.08}
+          stroke="var(--mcd-selection)"
+          strokeDasharray="4 3"
+          vectorEffect="non-scaling-stroke"
+          pointerEvents="none"
+          data-ui-only=""
+        />
+      )}
     </CanvasSurface>
+    {renaming && <InlineRename key={JSON.stringify(renaming)} target={renaming} layouts={layouts} mode={mode} onClose={stopRenaming} />}
+    </>
   );
 }
 

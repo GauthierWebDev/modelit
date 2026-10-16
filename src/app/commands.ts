@@ -6,6 +6,13 @@ import {
   checkAttributes,
   checkEntityName,
   checkLinkCardinality,
+  DBMS_LIST,
+  GENERIC_VERSION,
+  invalidTemplateVariable,
+  sameDialect,
+  versionOptions,
+  type TypeKey,
+  checkLogicalRename,
   createAssociation,
   createInheritance,
   createInheritanceLink,
@@ -15,6 +22,7 @@ import {
   linkSourceId,
   positionOf,
   setBends,
+  createAttribute,
   createAutoIdentifier,
   createEntity,
   createLink,
@@ -29,6 +37,9 @@ import {
   type Id,
   type InheritanceConstraint,
   type Link,
+  type LogicalColumn,
+  type LogicalModel,
+  type LogicalTable,
   type ModelDocument,
   type Point,
 } from "@core/index";
@@ -36,6 +47,7 @@ import type { Draft } from "immer";
 import { t, type MessageKey } from "@/i18n";
 import type { DocumentHandle } from "./document/handle";
 import { applyModelDefaults } from "./modelDefaults";
+import type { LibraryDbms } from "./preferencesStore";
 
 /**
  * Commandes métier : seul point d'entrée de l'interface pour modifier le modèle.
@@ -189,6 +201,32 @@ export function renameForeignKey(doc: DocumentHandle, linkId: Id, attributeId: I
   return null;
 }
 
+/**
+ * Renomme une table (`column` absent) ou une colonne depuis le MLD / MPD (override O-56), dans le
+ * MCD : nom logique de l'entité ou de l'association, nom logique de la rubrique, ou nom de la clé
+ * étrangère (O-07). Un nom vide rend le nom par défaut ; un nom inchangé ne fait rien.
+ */
+export function renameLogical(doc: DocumentHandle, logical: LogicalModel, table: LogicalTable, column: LogicalColumn | null, name: string): Check {
+  const trimmed = name.trim();
+  if (trimmed === (column ?? table).name) return null;
+  const error = checkLogicalRename(logical, table.name, column?.name ?? null, trimmed);
+  if (error) return error;
+  const value = trimmed || undefined;
+  const ownerId = table.source.id;
+  if (!column) {
+    change(doc, "history.renameTable", (d) => {
+      const node = findNode(d, ownerId);
+      if (node) node.logicalName = value;
+    });
+    return null;
+  }
+  if (column.origin) return renameForeignKey(doc, column.origin.linkId, column.origin.attributeId, trimmed);
+  const owner = [...current(doc).entities, ...current(doc).associations].find((n) => n.id === ownerId);
+  if (!owner || !column.attributeId) return null;
+  const attributes = owner.attributes.map((a) => (a.id === column.attributeId ? { ...a, logicalName: value } : a));
+  return setAttributes(doc, ownerId, attributes, "history.renameColumn");
+}
+
 /** Patte d'association ou lien d'héritage, dans un brouillon. */
 export const findDiagramLink = (d: Draft<ModelDocument>, id: Id) =>
   d.links.find((l) => l.id === id) ?? d.inheritanceLinks.find((l) => l.id === id);
@@ -201,6 +239,25 @@ export function straightenLink(doc: DocumentHandle, linkId: Id) {
 export function removeBend(doc: DocumentHandle, linkId: Id, index: number) {
   doc.view.getState().setActiveBend(null);
   change(doc, "history.removeBend", (d) => setBends(d.layout, linkId, bendsOf(d.layout, linkId).filter((_, i) => i !== index)));
+}
+
+/**
+ * Décale des objets (aligner, répartir, override O-57). Les cassures d'un trait dont les deux
+ * extrémités bougent suivent leur décalage moyen ; les autres restent en place.
+ */
+export function offsetNodes(doc: DocumentHandle, offsets: Map<Id, Point>, label: MessageKey) {
+  if (!offsets.size) return;
+  const model = current(doc);
+  const positions = new Map<Id, Point>();
+  for (const [id, o] of offsets) {
+    const p = positionOf(model.layout, id);
+    positions.set(id, { x: p.x + o.x, y: p.y + o.y });
+  }
+  const kept = new Map<Id, Point[]>();
+  for (const link of diagramLinks(model)) {
+    if (!offsets.has(linkSourceId(link)) || !offsets.has(link.entityId)) kept.set(link.id, bendsOf(model.layout, link.id));
+  }
+  moveNodes(doc, positions, kept, label);
 }
 
 /**
@@ -233,10 +290,10 @@ export function moveNodes(doc: DocumentHandle, positions: Map<Id, Point>, bends 
   });
 }
 
-export function deleteObjects(doc: DocumentHandle, ids: Id[]) {
+export function deleteObjects(doc: DocumentHandle, ids: Id[], label: MessageKey = "history.delete") {
   if (ids.length === 0) return;
   const gone = new Set(ids);
-  change(doc, "history.delete", (d) => {
+  change(doc, label, (d) => {
     d.entities = d.entities.filter((e) => !gone.has(e.id));
     d.associations = d.associations.filter((a) => !gone.has(a.id));
     d.links = d.links.filter((l) => !gone.has(l.id) && !gone.has(l.entityId) && !gone.has(l.associationId));
@@ -306,6 +363,26 @@ export function setAttributes(doc: DocumentHandle, ownerId: Id, attributes: Attr
   return null;
 }
 
+/** Renomme une rubrique (nom conceptuel, renommage sur place dans le MCD, override O-58). */
+export function renameAttribute(doc: DocumentHandle, ownerId: Id, attributeId: Id, name: string): Check {
+  const owner = [...current(doc).entities, ...current(doc).associations].find((n) => n.id === ownerId);
+  const attribute = owner?.attributes.find((a) => a.id === attributeId);
+  if (!owner || !attribute || attribute.name === name.trim()) return null;
+  const attributes = owner.attributes.map((a) => (a.id === attributeId ? { ...a, name: name.trim() } : a));
+  return setAttributes(doc, ownerId, attributes, "history.renameAttribute");
+}
+
+/** Ajoute en fin de liste une rubrique au nom libre (« rubrique_N ») ; renvoie son identifiant. */
+export function addAttribute(doc: DocumentHandle, ownerId: Id): Id | null {
+  const owner = [...current(doc).entities, ...current(doc).associations].find((n) => n.id === ownerId);
+  if (!owner) return null;
+  const taken = new Set(owner.attributes.map((a) => a.name));
+  let n = owner.attributes.length + 1;
+  while (taken.has(t("attribute.defaultName", { n }))) n++;
+  const created = createAttribute(t("attribute.defaultName", { n }));
+  return setAttributes(doc, ownerId, [...owner.attributes, created], "history.addAttribute") ? null : created.id;
+}
+
 export function addAutoIdentifier(doc: DocumentHandle, entityId: Id): Check {
   const model = current(doc);
   const entity = model.entities.find((e) => e.id === entityId);
@@ -335,7 +412,7 @@ export function updateLink(
   });
 }
 
-/** Annotations physiques d'une entité ou d'une association (vue avancée, override O-29). */
+/** Annotations physiques d'une entité ou d'une association (bloc « Avancé », overrides O-29, O-50). */
 export function updatePhysical(doc: DocumentHandle, nodeId: Id, recipe: (node: Entity | Association) => void) {
   change(doc, "history.editPhysical", (d) => {
     const node = findNode(d, nodeId);
@@ -343,12 +420,88 @@ export function updatePhysical(doc: DocumentHandle, nodeId: Id, recipe: (node: E
   });
 }
 
-/** Change de SGBD cible ; la version passe à la plus récente de ce SGBD (override O-04). */
-export function setTargetDbms(doc: DocumentHandle, dbms: Dbms) {
+/**
+ * Change de SGBD cible ; la version passe à la plus récente de ce SGBD (override O-04). Choisir un
+ * SGBD standard retire la personnalisation (O-59) ; `keepCustom` : changement de la base d'un SGBD
+ * personnalisé.
+ */
+export function setTargetDbms(doc: DocumentHandle, dbms: Dbms, keepCustom = false) {
   updateSettings(doc, "history.changeDbms", (s) => {
     s.dbms = dbms;
     s.dbmsVersion = resolveVersion(dbms, undefined);
+    if (!keepCustom) delete s.customDbms;
   });
+}
+
+/** Libellé d'un SGBD et de sa version (« PostgreSQL 18 »), version générique omise. */
+export function dbmsLabel(dbms: Dbms, version: string): string {
+  const name = DBMS_LIST.find((d) => d.id === dbms)?.label ?? dbms;
+  const v = version === GENERIC_VERSION ? null : versionOptions(dbms).find((o) => o.id === version)?.label;
+  return v ? `${name} ${v}` : name;
+}
+
+/** Personnalise la cible du modèle (O-59) : SGBD personnalisé basé sur la cible actuelle. */
+export function customizeTarget(doc: DocumentHandle) {
+  const { dbms, dbmsVersion } = current(doc).settings;
+  const name = t("customDbms.defaultName", { dbms: dbmsLabel(dbms, dbmsVersion) });
+  updateSettings(doc, "history.customizeDbms", (s) => void (s.customDbms = { id: crypto.randomUUID(), name, types: {} }));
+}
+
+/** Retire la personnalisation : la cible redevient le SGBD de base, tel quel. */
+export function removeCustomization(doc: DocumentHandle) {
+  updateSettings(doc, "history.uncustomizeDbms", (s) => void delete s.customDbms);
+}
+
+/** Choisit un SGBD personnalisé de la bibliothèque : sa définition est copiée dans le modèle. */
+export function applyCustomDbms(doc: DocumentHandle, dbms: LibraryDbms) {
+  updateSettings(doc, "history.changeDbms", (s) => {
+    s.dbms = dbms.base;
+    s.dbmsVersion = resolveVersion(dbms.base, dbms.version);
+    s.customDbms = { id: dbms.id, name: dbms.name, types: { ...dbms.types } };
+  });
+}
+
+export function renameCustomDbms(doc: DocumentHandle, name: string): Check {
+  if (!name.trim()) return MSG.emptyName;
+  updateSettings(doc, "history.customizeDbms", (s) => void (s.customDbms && (s.customDbms.name = name.trim())));
+  return null;
+}
+
+/** Redéfinit le type SQL d'un type conceptuel ; vide, le type de la base revient. */
+export function setCustomType(doc: DocumentHandle, key: TypeKey, template: string): Check {
+  const custom = current(doc).settings.customDbms;
+  if (!custom) return null;
+  const value = template.trim();
+  if ((custom.types[key] ?? "") === value) return null;
+  const invalid = value ? invalidTemplateVariable(key, value) : null;
+  if (invalid) return MSG.invalidTemplateVariable(invalid);
+  updateSettings(doc, "history.customType", (s) => {
+    if (!s.customDbms) return;
+    if (value) s.customDbms.types[key] = value;
+    else delete s.customDbms.types[key];
+  });
+  return null;
+}
+
+export function resetCustomTypes(doc: DocumentHandle) {
+  updateSettings(doc, "history.customType", (s) => void (s.customDbms && (s.customDbms.types = {})));
+}
+
+/**
+ * Type SQL d'une colonne pour le SGBD de la cible, saisi dans le MPD (O-59) : annotation « type
+ * d'origine » de la rubrique (O-29) ; vide, le type calculé revient.
+ */
+export function setColumnSqlType(doc: DocumentHandle, ownerId: Id, attributeId: Id, sql: string): Check {
+  const owner = [...current(doc).entities, ...current(doc).associations].find((n) => n.id === ownerId);
+  if (!owner) return null;
+  const dialect = current(doc).settings.dbms;
+  const value = sql.trim();
+  const attribute = owner.attributes.find((a) => a.id === attributeId);
+  const mine = attribute?.sourceType && sameDialect(attribute.sourceType.dialect, dialect);
+  // Vide : seul le type de ce dialecte est retiré ; celui d'un autre (rétroconception) reste.
+  if (!attribute || (!value && !mine) || (mine && attribute.sourceType!.sql === value)) return null;
+  const attributes = owner.attributes.map((a) => (a.id === attributeId ? { ...a, sourceType: value ? { sql: value, dialect } : undefined } : a));
+  return setAttributes(doc, ownerId, attributes, "history.columnType");
 }
 
 export function setDbmsVersion(doc: DocumentHandle, version: string) {

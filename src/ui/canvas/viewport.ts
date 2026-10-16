@@ -82,3 +82,39 @@ export function fitToRects(doc: DocumentHandle, layouts: Rect[], maxZoom = 1.5) 
     y: (canvasSize.height - (maxY - minY) * zoom) / 2 - minY * zoom,
   });
 }
+
+/** Rectangles (coordonnées du modèle) des objets `ids` dans la vue courante : objets du MCD ou tables. */
+export function objectRects(doc: DocumentHandle, ids: string[]): Rect[] {
+  const model = doc.store.getState().doc;
+  const view = doc.view.getState().view;
+  const wanted = new Set(ids);
+  return view === "mcd"
+    ? [...layoutsOf(model).entries()].filter(([id]) => wanted.has(id)).map(([, r]) => r)
+    : tableLayouts(logicalModelOf(model), model, view).filter((t) => wanted.has(t.sourceId));
+}
+
+/** Point du modèle sous un point de l'écran (`clientX`, `clientY`). */
+export function clientToModel(doc: DocumentHandle, client: Point): Point {
+  const rect = canvasElement?.getBoundingClientRect() ?? { left: 0, top: 0 };
+  const { viewport } = doc.view.getState();
+  return { x: (client.x - rect.left - viewport.x) / viewport.zoom, y: (client.y - rect.top - viewport.y) / viewport.zoom };
+}
+
+/**
+ * Fait défiler la vue (sans changer le zoom) pour montrer les objets `ids` s'ils sont hors
+ * champ : leur emprise est centrée. Ex. objets collés (O-52).
+ */
+export function revealObjects(doc: DocumentHandle, ids: string[]) {
+  const { viewport, setViewport } = doc.view.getState();
+  const rects = objectRects(doc, ids);
+  if (!rects.length) return;
+  const size = canvasSizeNow();
+  const minX = Math.min(...rects.map((r) => r.x));
+  const minY = Math.min(...rects.map((r) => r.y));
+  const maxX = Math.max(...rects.map((r) => r.x + r.width));
+  const maxY = Math.max(...rects.map((r) => r.y + r.height));
+  const z = viewport.zoom;
+  const visible = minX * z + viewport.x >= 0 && minY * z + viewport.y >= 0 && maxX * z + viewport.x <= size.width && maxY * z + viewport.y <= size.height;
+  if (visible) return;
+  setViewport({ zoom: z, x: size.width / 2 - ((minX + maxX) / 2) * z, y: size.height / 2 - ((minY + maxY) / 2) * z });
+}

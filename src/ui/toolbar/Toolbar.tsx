@@ -1,23 +1,21 @@
 import { useEffect } from "react";
-import { DBMS_LIST, versionOptions } from "@core/index";
-import { ChevronDown, DatabaseZap, FilePlus, FolderOpen, GripVertical, ImageDown, Info, LayoutDashboard, Maximize, Monitor, Moon, MousePointer2, PanelsTopLeft, Redo2, Save, Settings, Spline, Square, Sun, Triangle, Undo2, Users, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronDown, GripVertical, LayoutDashboard, MousePointer2, Redo2, Spline, Square, Triangle, Undo2, Users } from "lucide-react";
+import { AppMenu } from "./AppMenu";
+import { DisplayMenu } from "./DisplayMenu";
 import type { PointerEvent, ReactNode } from "react";
-import { setDbmsVersion, setTargetDbms } from "@/app/commands";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { selectRedoLabel, selectUndoLabel } from "@/app/document/documentStore";
 import type { ViewMode } from "@/app/document/documentView";
-import { usePreferencesStore, type ThemePreference } from "@/app/preferencesStore";
 import { useCollabStore } from "@/app/collab/session";
 import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { useUiStore, type Tool } from "@/app/uiStore";
-import { chooseTool, showView } from "@/app/viewCommands";
+import { chooseTool, showView, toolAvailable } from "@/app/viewCommands";
 import { t, type MessageKey } from "@/i18n";
 import { mainCommand } from "@/ui/windows/mainCommands";
-import { FitSelect, IconButton } from "@/ui/common/controls";
+import { IconButton } from "@/ui/common/controls";
 import { Menu, MenuItem } from "@/ui/common/Menu";
 import { updateDock } from "@/app/dock/actions";
 import { setToolbar } from "@/app/dock/layout";
-import { SectionChecks } from "@/ui/dock/Dock";
 import { tip } from "@/ui/common/Tooltip";
 import { MOD } from "@/ui/shortcuts";
 
@@ -44,18 +42,13 @@ function AssociationIcon() {
 export const views = (): { id: ViewMode; label: string; title: string }[] =>
   (["mcd", "mld", "mpd"] as const).map((id) => ({ id, label: t(`view.${id}`), title: t(`view.${id}.title`) }));
 
-const THEMES: { id: ThemePreference; label: MessageKey; icon: ReactNode }[] = [
-  { id: "system", label: "theme.system", icon: <Monitor size={16} /> },
-  { id: "light", label: "theme.light", icon: <Sun size={16} /> },
-  { id: "dark", label: "theme.dark", icon: <Moon size={16} /> },
-];
-
 /**
- * Barre d'outils principale (override O-45). `floating` : barre flottante, largeur ajustée à son
+ * Barre d'outils principale (overrides O-45, O-51) : l'édition seulement ; fichier, sections,
+ * thème et options sont dans le menu ≡, le zoom dans la barre d'état. `floating` : barre flottante, largeur ajustée à son
  * contenu ; `onGripDown` : poignée de déplacement (gérée par `ToolbarHost`).
  */
 export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; onGripDown?: (e: PointerEvent<HTMLElement>) => void }) {
-  const { tool, setOptionsOpen, setExportOpen, setReverseOpen, setShareOpen, setAbout } = useUiStore();
+  const { tool, setShareOpen } = useUiStore();
   const sharing = useCollabStore((s) => s.mode === "host" || s.mode === "guest");
   const doc = useDocumentHandle();
   // Lecture seule (lecteur, reconnexion) : seul l'outil de sélection reste (O-05 §4.3).
@@ -64,14 +57,9 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
     if (readOnly && tool !== "select") chooseTool(doc, "select");
   }, [readOnly, tool, doc]);
   const view = useDocumentView((s) => s.view);
-  const zoom = useDocumentView((s) => s.viewport.zoom);
   const undoLabel = useDocument(selectUndoLabel);
   const redoLabel = useDocument(selectRedoLabel);
-  const { dbms, dbmsVersion } = useDocument((s) => s.doc.settings);
   const { undo, redo } = doc.store.getState();
-  const { theme, setTheme } = usePreferencesStore();
-  const themeIndex = THEMES.findIndex((x) => x.id === theme);
-  const currentTheme = THEMES[themeIndex] ?? THEMES[0]!;
 
   return (
     <div
@@ -92,23 +80,7 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
       >
         <GripVertical size={14} />
       </span>
-      <Group>
-        <IconButton tooltip={t("toolbar.new", { key: `${MOD}N` })} onClick={() => mainCommand({ name: "new" })}>
-          <FilePlus size={16} />
-        </IconButton>
-        <IconButton tooltip={t("toolbar.open", { key: `${MOD}O` })} onClick={() => mainCommand({ name: "open" })}>
-          <FolderOpen size={16} />
-        </IconButton>
-        <IconButton tooltip={t("toolbar.save", { key: `${MOD}S` })} onClick={() => mainCommand({ name: "save" })}>
-          <Save size={16} />
-        </IconButton>
-        <IconButton tooltip={t("toolbar.exportImage", { key: `${MOD}E` })} onClick={() => setExportOpen(true)}>
-          <ImageDown size={16} />
-        </IconButton>
-        <IconButton tooltip={t("toolbar.reverse")} onClick={() => setReverseOpen(true)}>
-          <DatabaseZap size={16} />
-        </IconButton>
-      </Group>
+      <AppMenu />
       <Group>
         <IconButton
           tooltip={undoLabel ? t("toolbar.undoAction", { label: t(undoLabel), key: `${MOD}Z` }) : t("toolbar.undo")}
@@ -145,6 +117,7 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
             </button>
           ))}
         </div>
+        <DisplayMenu />
       </Group>
       <Group>
         {TOOLS.map((x) => (
@@ -152,7 +125,7 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
             key={x.id}
             tooltip={t("tool.tooltip", { label: t(x.label), key: x.key })}
             active={tool === x.id}
-            disabled={(view !== "mcd" || readOnly) && x.id !== "select"}
+            disabled={(!toolAvailable(x.id, view) || readOnly) && x.id !== "select"}
             onClick={() => chooseTool(doc, x.id)}
           >
             {x.icon}
@@ -161,66 +134,14 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
         ))}
       </Group>
       <Group>
-        <IconButton tooltip={t("toolbar.zoomOut")} onClick={() => mainCommand({ name: "zoomBy", factor: 1 / 1.2 })}>
-          <ZoomOut size={16} />
-        </IconButton>
-        <button
-          type="button"
-          {...tip(t("toolbar.zoomReset"))}
-          className="w-12 text-center text-xs text-neutral-600 tabular-nums hover:underline dark:text-neutral-300"
-          onClick={() => mainCommand({ name: "zoomTo", zoom: 1 })}
-        >
-          {Math.round(zoom * 100)} %
-        </button>
-        <IconButton tooltip={t("toolbar.zoomIn")} onClick={() => mainCommand({ name: "zoomBy", factor: 1.2 })}>
-          <ZoomIn size={16} />
-        </IconButton>
-        <IconButton tooltip={t("toolbar.fit")} onClick={() => mainCommand({ name: "fit" })}>
-          <Maximize size={16} />
-        </IconButton>
-      </Group>
-      <Group>
         <IconButton tooltip={t("toolbar.autoLayout")} onClick={() => mainCommand({ name: "autoLayout" })}>
           <LayoutDashboard size={16} />
           <span className="hidden text-xs whitespace-nowrap 2xl:inline">{t("toolbar.autoLayoutShort")}</span>
         </IconButton>
       </Group>
       {floating ? <div className="w-1" /> : <div className="flex-1" />}
-      <label className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400" {...tip(t("toolbar.dbmsTooltip"))}>
-        {t("toolbar.dbms")}
-        <FitSelect
-          value={dbms}
-          options={DBMS_LIST.map((d) => ({ id: d.id, label: d.label }))}
-          onChange={(value) => setTargetDbms(doc, value)}
-        />
-        <FitSelect
-          value={dbmsVersion}
-          label={t("toolbar.version")}
-          options={versionOptions(dbms)}
-          onChange={(value) => setDbmsVersion(doc, value)}
-        />
-      </label>
       <IconButton tooltip={t("collab.share")} active={sharing} onClick={() => setShareOpen(true)}>
         <Users size={16} />
-      </IconButton>
-      <IconButton
-        tooltip={t("toolbar.themeCycle", { theme: t(currentTheme.label) })}
-        onClick={() => setTheme(THEMES[(themeIndex + 1) % THEMES.length]!.id)}
-      >
-        {currentTheme.icon}
-      </IconButton>
-      <Menu trigger={({ toggle }) => (
-        <IconButton tooltip={t("toolbar.sections")} onClick={toggle}>
-          <PanelsTopLeft size={16} />
-        </IconButton>
-      )}>
-        {(close) => <SectionChecks close={close} withReset />}
-      </Menu>
-      <IconButton tooltip={t("toolbar.options", { key: `${MOD},` })} onClick={() => setOptionsOpen(true)}>
-        <Settings size={16} />
-      </IconButton>
-      <IconButton tooltip={t("toolbar.about")} onClick={() => setAbout("about")}>
-        <Info size={16} />
       </IconButton>
       <Menu
         trigger={({ toggle }) => (

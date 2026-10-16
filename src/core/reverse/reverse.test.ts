@@ -3,6 +3,7 @@ import { generateDdl } from "../ddl/generate";
 import { hasErrors } from "../mld/logical";
 import { mldPlainText } from "../mld/text";
 import { toLogicalModel } from "../mld/transform";
+import { sourceDialects } from "../model/document";
 import { emptyDocument } from "../model/factory";
 import { model } from "../testing/builder";
 import { reverseEngineer } from "./build";
@@ -255,5 +256,18 @@ describe("types", () => {
     for (const text of ["", "CREATE", "CREATE TABLE", "CREATE TABLE (", "CREATE TABLE t (a", "'unterminated", "$$ x", "ALTER TABLE"]) {
       expect(() => parseSql(text)).not.toThrow();
     }
+  });
+});
+
+describe("SGBD d'origine du modèle (O-55)", () => {
+  it("repère le dialecte des rubriques rétroconçues", () => {
+    const mysql = reverseEngineer("CREATE TABLE t (id INT UNSIGNED PRIMARY KEY, etat ENUM('a','b'));", emptyDocument(), "mysql").doc;
+    expect([...sourceDialects(mysql)]).toEqual(["mysql"]);
+    const oracle = reverseEngineer("CREATE TABLE t (id NUMBER(4) PRIMARY KEY, d DATE);", emptyDocument(), "oracle").doc;
+    expect([...sourceDialects(oracle)]).toEqual(["oracle"]);
+  });
+
+  it("ne trouve rien dans un modèle dessiné", () => {
+    expect(sourceDialects(model().entity("Client", ["id_client*", "nom"]).build()).size).toBe(0);
   });
 });

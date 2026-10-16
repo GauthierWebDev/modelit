@@ -19,7 +19,7 @@ export function CollabIndicator() {
     <button
       type="button"
       onClick={() => useUiStore.getState().setShareOpen(true)}
-      className="ml-auto flex items-center gap-1 text-emerald-600 hover:underline dark:text-emerald-400"
+      className="flex items-center gap-1 text-emerald-600 hover:underline dark:text-emerald-400"
     >
       <Users size={12} />
       {label} · {t("collab.participants", { n: participants.length })}

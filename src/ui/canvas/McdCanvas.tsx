@@ -10,17 +10,23 @@ import {
   type Id,
   type Point,
 } from "@core/index";
-import { useEffect, useMemo, useState, type PointerEvent } from "react";
-import { addAssociation, addEntity, addInheritance, connectNodes, removeBend } from "@/app/commands";
+import { useCallback, useEffect, useMemo, useState, type PointerEvent } from "react";
+import { addAssociation, addEntity, addInheritance, connectNodes, removeBend, renameAttribute, renameNode } from "@/app/commands";
 import { useIssuesByTarget } from "@/app/derived";
 import { t } from "@/i18n";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { revealSection } from "@/app/dock/actions";
 import { useUiStore } from "@/app/uiStore";
+import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { CanvasSurface, hitId, hitIdAt } from "./CanvasSurface";
+import { InlineEditor } from "./InlineRename";
+import { openCanvasMenu } from "./objectActions";
 import {
   center,
   INHERITANCE_SIZE,
+  PAD_X,
+  ROW_HEIGHT,
+  TITLE_HEIGHT,
   associationNamesByLink,
   inheritanceGeometries,
   intersects,
@@ -69,6 +75,10 @@ export function McdCanvas() {
   const { selection, select, toggleSelected, activeBend, setActiveBend } = useDocumentView((s) => s);
   const issues = useIssuesByTarget();
   const [gesture, setGesture] = useState<Gesture | null>(null);
+  const readOnly = useSessionReadOnly(docHandle);
+  /** Renommage sur place (override O-58) : nom de l'objet (`attributeId` nul) ou d'une rubrique. */
+  const [renaming, setRenaming] = useState<{ nodeId: Id; attributeId: Id | null } | null>(null);
+  const stopRenaming = useCallback(() => setRenaming(null), []);
 
   const layouts = useMemo(() => layoutsOf(doc), [doc]);
   const geometries = useMemo(() => linkGeometries(doc.links, layouts, doc.layout.bends), [doc.links, layouts, doc.layout.bends]);
@@ -325,10 +335,29 @@ export function McdCanvas() {
   const marquee: Rect | null = gesture?.type === "marquee" ? normalizeRect(gesture.start, gesture.current) : null;
   const linkSource = gesture?.type === "link" ? layouts.get(gesture.fromId) : undefined;
 
+  /** Titre ou rubrique d'une entité / association sous le point (O-58). */
+  function renameTargetAt(point: Point): { nodeId: Id; attributeId: Id | null } | null {
+    const hit = [...layouts].findLast(([id, l]) => !doc.inheritances.some((h) => h.id === id) && point.x >= l.x && point.x <= l.x + l.width && point.y >= l.y && point.y <= l.y + l.height);
+    if (!hit) return null;
+    const [nodeId, l] = hit;
+    const dy = point.y - l.y;
+    if (dy < TITLE_HEIGHT) return { nodeId, attributeId: null };
+    const row = l.rows.find((r) => dy >= r.y && dy < r.y + ROW_HEIGHT);
+    return row ? { nodeId, attributeId: row.attribute.id } : null;
+  }
+
   return (
+    <>
     <CanvasSurface
       grid={grid}
       className={tool === "select" ? "" : "cursor-crosshair"}
+      onDoubleClick={(_, point) => {
+        if (tool !== "select" || readOnly) return;
+        const target = renameTargetAt(point);
+        if (!target) return;
+        select([target.nodeId]);
+        setRenaming(target);
+      }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -345,9 +374,11 @@ export function McdCanvas() {
           return;
         }
         // Clic droit sur une cassure : la supprimer.
-        const handle = (e.target as Element).closest<SVGElement>("[data-handle=bend]");
-        const linkId = hitId(e);
-        if (!handle || !linkId) return;
+        // Repéré au pointeur : le canevas peut avoir capturé le pointeur (cible = le canevas).
+        const under = document.elementFromPoint(e.clientX, e.clientY);
+        const handle = under?.closest<SVGElement>("[data-handle=bend]");
+        const linkId = hitIdAt(e);
+        if (!handle || !linkId) return openCanvasMenu(docHandle, e, linkId);
         e.preventDefault();
         removeBend(docHandle, linkId, Number(handle.dataset.index));
       }}
@@ -440,5 +471,37 @@ export function McdCanvas() {
         />
       )}
     </CanvasSurface>
+    {renaming && <McdRename key={`${renaming.nodeId}:${renaming.attributeId}`} target={renaming} layouts={layouts} onClose={stopRenaming} />}
+    </>
+  );
+}
+
+/** Champ de renommage d'un nom d'entité / association ou d'une rubrique (override O-58). */
+function McdRename({ target, layouts, onClose }: { target: { nodeId: Id; attributeId: Id | null }; layouts: Map<Id, NodeLayout>; onClose: () => void }) {
+  const docHandle = useDocumentHandle();
+  const node = useDocument((s) => [...s.doc.entities, ...s.doc.associations].find((n) => n.id === target.nodeId));
+  const l = layouts.get(target.nodeId);
+  const row = target.attributeId ? l?.rows.find((r) => r.attribute.id === target.attributeId) : undefined;
+  const missing = !node || !l || (target.attributeId !== null && !row);
+  useEffect(() => {
+    if (missing) onClose();
+  }, [missing, onClose]);
+  if (missing) return null;
+  const box = row
+    ? { x: l.x + PAD_X - 3, y: l.y + row.y, width: l.width - PAD_X - 2 + 3, height: ROW_HEIGHT }
+    : { x: l.x + 2, y: l.y + 2, width: l.width - 4, height: TITLE_HEIGHT - 4 };
+  return (
+    <InlineEditor
+      box={box}
+      value={row ? row.attribute.name : node.name}
+      title={!row}
+      onClose={onClose}
+      commit={(value) => {
+        if (!row) return renameNode(docHandle, node.id, value);
+        const error = renameAttribute(docHandle, node.id, row.attribute.id, value);
+        if (!error) useUiStore.getState().showAttribute(row.attribute.id);
+        return error;
+      }}
+    />
   );
 }

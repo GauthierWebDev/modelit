@@ -64,5 +64,8 @@ function onMenuEvent(event: string, handler: () => void): () => void {
 /** Élément « About » du menu de l'application (macOS). */
 export const onMenuAbout = (handler: () => void) => onMenuEvent("menu-about", handler);
 
+/** Élément « Model Settings… » (⌥⌘,) du menu de l'application (macOS, override O-55). */
+export const onMenuModelSettings = (handler: () => void) => onMenuEvent("menu-model-settings", handler);
+
 /** Élément « Close Tab » (⌘W) du menu (macOS, override O-44). */
 export const onMenuCloseTab = (handler: () => void) => onMenuEvent("menu-close-tab", handler);

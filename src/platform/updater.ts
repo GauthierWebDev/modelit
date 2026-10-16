@@ -1,10 +1,11 @@
-import { isTauri } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 
 /**
  * Mises à jour de l'application (plugin updater de Tauri) : la release GitHub publiée la plus
  * récente décrit, dans `latest.json`, la version et un installeur signé par plateforme. La
  * signature est vérifiée avec la clé publique de `tauri.conf.json` avant toute installation.
- * Hors Tauri (navigateur), aucune mise à jour.
+ * Hors Tauri (navigateur), aucune mise à jour. Seuls les builds de release connaissent l'adresse
+ * de `latest.json` (ajoutée par la CI) : les autres builds ne peuvent pas se mettre à jour.
  */
 
 export interface AvailableUpdate {
@@ -40,3 +41,8 @@ export async function checkForUpdate(): Promise<AvailableUpdate | null> {
 }
 
 export const updatesSupported = isTauri;
+
+/** Faux pour un build sans adresse de mise à jour (développement, installeur joint à un run de CI). */
+export async function updatesConfigured(): Promise<boolean> {
+  return isTauri() && (await invoke<boolean>("updater_configured"));
+}

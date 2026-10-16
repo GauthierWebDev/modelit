@@ -3,15 +3,22 @@ import type { ViewMode } from "./document/documentView";
 import { useUiStore, type Tool } from "./uiStore";
 
 /**
- * Changement de vue et d'outil. Les outils de création n'existent que dans le MCD : la vue
- * appartient au document, l'outil à la fenêtre, d'où ces fonctions qui touchent les deux.
+ * Changement de vue et d'outil. La vue appartient au document, l'outil à la fenêtre, d'où ces
+ * fonctions qui touchent les deux.
  */
+
+/**
+ * Outil utilisable dans une vue (override O-54) : Entité et Lien partout ; Association et
+ * Héritage, conceptuels (leur objet n'est dessiné que dans le MCD), seulement dans le MCD.
+ */
+export const toolAvailable = (tool: Tool, view: ViewMode) => view === "mcd" || (tool !== "association" && tool !== "inheritance");
 
 export function showView(doc: DocumentHandle, view: ViewMode) {
   doc.view.getState().setView(view);
-  if (view !== "mcd") useUiStore.getState().setTool("select");
+  const ui = useUiStore.getState();
+  if (!toolAvailable(ui.tool, view)) ui.setTool("select");
 }
 
 export function chooseTool(doc: DocumentHandle, tool: Tool) {
-  if (doc.view.getState().view === "mcd") useUiStore.getState().setTool(tool);
+  if (toolAvailable(tool, doc.view.getState().view)) useUiStore.getState().setTool(tool);
 }

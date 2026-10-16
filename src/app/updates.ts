@@ -1,18 +1,17 @@
 import { t } from "@/i18n";
 import { APP_INFO, CHANGELOG } from "./appInfo";
-import { checkForUpdate, updatesSupported, type AvailableUpdate } from "@/platform/updater";
+import { checkForUpdate, updatesConfigured, updatesSupported, type AvailableUpdate } from "@/platform/updater";
 import { alertDialog, confirmDialog, showError } from "./dialogStore";
 import { confirmLoseAllChanges } from "./fileCommands";
 import { usePreferencesStore } from "./preferencesStore";
 import { useUiStore } from "./uiStore";
 
 /**
- * Proposition de mise à jour : vérification automatique au lancement (au plus une fois par jour,
- * désactivable dans les options), ou à la demande depuis les options. Après une mise à jour, les
+ * Proposition de mise à jour : vérification automatique à chaque lancement (désactivable dans
+ * les options), ou à la demande depuis les options. Après une mise à jour, les
  * nouveautés de la version sont montrées une fois (À propos → Nouveautés).
  */
 
-const CHECK_INTERVAL = 24 * 60 * 60 * 1000;
 /** Laisse l'application (et une éventuelle récupération de sauvegarde) s'afficher d'abord. */
 const STARTUP_DELAY = 5000;
 /** Notes de version affichées dans la boîte ; la suite reste sur la page de la release. */
@@ -24,9 +23,7 @@ let busy = false;
 export function scheduleUpdateCheck(): () => void {
   if (!updatesSupported()) return () => {};
   const timer = window.setTimeout(() => {
-    const prefs = usePreferencesStore.getState();
-    if (!prefs.updateCheck || Date.now() - prefs.lastUpdateCheck < CHECK_INTERVAL) return;
-    void run(false);
+    if (usePreferencesStore.getState().updateCheck) void run(false);
   }, STARTUP_DELAY);
   return () => window.clearTimeout(timer);
 }
@@ -38,10 +35,13 @@ async function run(manual: boolean) {
   if (busy) return;
   busy = true;
   try {
+    if (!(await updatesConfigured())) {
+      if (manual) await alertDialog({ title: t("update.title"), message: t("update.notConfigured"), okLabel: t("common.ok"), tone: "info" });
+      return;
+    }
     let update: AvailableUpdate | null;
     try {
       update = await checkForUpdate();
-      usePreferencesStore.getState().setLastUpdateCheck(Date.now());
     } catch (e) {
       // Hors ligne, GitHub indisponible… : sans conséquence pour une vérification automatique.
       if (manual) await showError(t("update.checkFailed", { error: String(e) }));

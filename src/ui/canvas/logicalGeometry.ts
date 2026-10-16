@@ -1,5 +1,6 @@
 import {
-  sqlType,
+  displayedSqlType,
+  targetOf,
   uniqueColumnNames,
   type Id,
   type LogicalColumn,
@@ -72,7 +73,7 @@ export function columnStyle(row: Pick<TableRow, "column" | "primaryKey" | "uniqu
 }
 
 function rowsOf(table: LogicalTable, mode: LogicalViewMode, doc: ModelDocument): Omit<TableRow, "y">[] {
-  const { dbms, dbmsVersion } = doc.settings;
+  const target = targetOf(doc.settings);
   const composite = table.primaryKey.length > 1;
   const uniqueColumns = uniqueColumnNames(table);
   return orderedColumns(table).map((column) => {
@@ -93,7 +94,7 @@ function rowsOf(table: LogicalTable, mode: LogicalViewMode, doc: ModelDocument):
       unique,
       label,
       indent,
-      type: column.type ? sqlType(column.type, dbms, dbmsVersion) : null,
+      type: displayedSqlType(column, target),
       constraints: constraints.length ? constraints.join(" ") : null,
     };
   });
