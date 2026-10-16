@@ -29,47 +29,47 @@ const matches = (target: NonNullable<RenameTarget["column"]>, column: LogicalCol
     ? column.attributeId === target.attributeId
     : column.origin?.linkId === target.linkId && column.origin.attributeId === target.originId;
 
+/** Zone du champ, en coordonnées du modèle. */
+export interface EditorBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /**
- * Champ posé sur le titre ou la colonne, au-dessus du canevas : il suit le zoom et le défilement.
- * Entrée ou la perte du focus valident ; Échap annule. Un nom refusé est signalé dans la barre
- * d'état ; avec Entrée, le champ reste ouvert pour corriger.
+ * Champ de renommage posé sur le schéma, au-dessus du canevas : il suit le zoom et le défilement.
+ * Entrée ou la perte du focus valident ; Échap annule. `commit` renvoie le message d'un nom refusé,
+ * affiché dans la barre d'état ; avec Entrée, le champ reste alors ouvert pour corriger.
  */
-export function InlineRename({ target, layouts, mode, onClose }: { target: RenameTarget; layouts: TableLayout[]; mode: LogicalViewMode; onClose: () => void }) {
-  const doc = useDocumentHandle();
-  const logical = useLogicalModel();
+export function InlineEditor({
+  box,
+  value,
+  placeholder,
+  title,
+  commit,
+  onClose,
+}: {
+  box: EditorBox;
+  value: string;
+  placeholder?: string;
+  /** Titre : gras et centré. */
+  title: boolean;
+  commit: (value: string) => string | null;
+  onClose: () => void;
+}) {
   const viewport = useDocumentView((s) => s.viewport);
   const input = useRef<HTMLInputElement>(null);
   const done = useRef(false);
-
-  const layout = layouts.find((l) => l.sourceId === target.sourceId);
-  const row = target.column && layout?.rows.find((r) => matches(target.column!, r.column));
-  const missing = !layout || (target.column !== null && !row);
-  useEffect(() => {
-    if (missing) onClose();
-  }, [missing, onClose]);
   useEffect(() => {
     input.current?.focus();
     input.current?.select();
   }, []);
-  if (missing) return null;
 
-  const title = !row;
-  const name = row ? row.column.name : layout.table.name;
-  // Ligne : du début du nom jusqu'au type (MPD) ou au bord de la table ; titre : toute la largeur.
-  const left = row ? PAD_X + row.indent - 3 : 2;
-  const box = row
-    ? { x: layout.x + left, y: layout.y + row.y, width: (mode === "mpd" ? layout.typeX - 4 : layout.width - 2) - left, height: ROW_HEIGHT }
-    : { x: layout.x + left, y: layout.y + 2, width: layout.width - 4, height: TITLE_HEIGHT - 4 };
-
-  /** Valide ; renvoie vrai si le nom est accepté. */
-  const commit = (): boolean => {
-    const error = renameLogical(doc, logical, layout.table, row?.column ?? null, input.current!.value);
-    if (error) {
-      useUiStore.getState().notify({ kind: "error", text: error });
-      return false;
-    }
-    if (row?.column.attributeId) useUiStore.getState().showAttribute(row.column.attributeId);
-    return true;
+  const accept = (): boolean => {
+    const error = commit(input.current!.value);
+    if (error) useUiStore.getState().notify({ kind: "error", text: error });
+    return !error;
   };
   const close = () => {
     done.current = true;
@@ -77,11 +77,11 @@ export function InlineRename({ target, layouts, mode, onClose }: { target: Renam
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    // Les raccourcis du schéma (Suppr, Échap…) ne s'appliquent pas pendant la saisie.
+    // Les raccourcis du schéma (Suppr, Échap, flèches…) ne s'appliquent pas pendant la saisie.
     e.stopPropagation();
     if (e.key === "Enter") {
       e.preventDefault();
-      if (commit()) close();
+      if (accept()) close();
     } else if (e.key === "Escape") {
       e.preventDefault();
       close();
@@ -91,14 +91,14 @@ export function InlineRename({ target, layouts, mode, onClose }: { target: Renam
   return (
     <input
       ref={input}
-      defaultValue={name}
-      placeholder={row?.column.origin?.defaultName}
+      defaultValue={value}
+      placeholder={placeholder}
       spellCheck={false}
-      aria-label={name}
+      aria-label={value}
       onKeyDown={onKeyDown}
       onBlur={() => {
         if (done.current) return;
-        commit();
+        accept();
         close();
       }}
       style={{
@@ -112,6 +112,39 @@ export function InlineRename({ target, layouts, mode, onClose }: { target: Renam
         textAlign: title ? "center" : undefined,
       }}
       className="absolute z-10 rounded-sm border border-blue-500 bg-white px-[3px] text-neutral-900 outline-none dark:bg-neutral-800 dark:text-neutral-100"
+    />
+  );
+}
+
+/** Renommage d'un titre de table ou d'une colonne du MLD / MPD (override O-56). */
+export function InlineRename({ target, layouts, mode, onClose }: { target: RenameTarget; layouts: TableLayout[]; mode: LogicalViewMode; onClose: () => void }) {
+  const doc = useDocumentHandle();
+  const logical = useLogicalModel();
+  const layout = layouts.find((l) => l.sourceId === target.sourceId);
+  const row = target.column && layout?.rows.find((r) => matches(target.column!, r.column));
+  const missing = !layout || (target.column !== null && !row);
+  useEffect(() => {
+    if (missing) onClose();
+  }, [missing, onClose]);
+  if (missing) return null;
+
+  // Ligne : du début du nom jusqu'au type (MPD) ou au bord de la table ; titre : toute la largeur.
+  const left = row ? PAD_X + row.indent - 3 : 2;
+  const box = row
+    ? { x: layout.x + left, y: layout.y + row.y, width: (mode === "mpd" ? layout.typeX - 4 : layout.width - 2) - left, height: ROW_HEIGHT }
+    : { x: layout.x + left, y: layout.y + 2, width: layout.width - 4, height: TITLE_HEIGHT - 4 };
+  return (
+    <InlineEditor
+      box={box}
+      value={row ? row.column.name : layout.table.name}
+      placeholder={row?.column.origin?.defaultName}
+      title={!row}
+      onClose={onClose}
+      commit={(value) => {
+        const error = renameLogical(doc, logical, layout.table, row?.column ?? null, value);
+        if (!error && row?.column.attributeId) useUiStore.getState().showAttribute(row.column.attributeId);
+        return error;
+      }}
     />
   );
 }
