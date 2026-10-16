@@ -1,4 +1,5 @@
 import type { Dbms } from "../../dbms/dbms";
+import type { ReferentialAction } from "../../model/physical";
 
 /**
  * Ce que le script fait différemment selon le SGBD cible : une implémentation par SGBD
@@ -7,7 +8,9 @@ import type { Dbms } from "../../dbms/dbms";
  *
  * Chaque section ne sert qu'à un module : schémas (naming.ts), types et compteurs (types.ts),
  * séquences (sequences.ts), colonnes (columns.ts), contraintes (constraints.ts, checks.ts),
- * UNIQUE et index (constraints.ts, indexes.ts). `standard` donne le comportement du SQL de base.
+ * UNIQUE et index (constraints.ts, indexes.ts) ; identifiants, actions référentielles, expressions
+ * (dialects.ts) et collations (collation.ts). `standard` donne le comportement du SQL de base ;
+ * identifiants, actions et expressions sont propres à chaque SGBD.
  */
 export interface Dialect {
   readonly dbms: Dbms;
@@ -29,6 +32,67 @@ export interface Dialect {
   readonly partitioning: boolean;
   /** Déclencheur réémis vers le même dialecte (corps sans point-virgule final). */
   trigger(body: string): string;
+  readonly identifiers: IdentifierRules;
+  /** Actions référentielles acceptées, par événement (O-29). */
+  readonly actions: ActionRules;
+  /** Écriture des expressions de CHECK et de DEFAULT (O-29, O-39). */
+  readonly expressions: ExpressionRules;
+  /** Collation de chaque classe de comparaison (O-35, O-37). */
+  readonly collations: CollationRules;
+}
+
+export interface IdentifierRules {
+  /** Délimiteurs d'un identifiant. */
+  quotes: readonly [string, string];
+  /** Repli de casse des identifiants non délimités. */
+  folding?: "lower" | "upper";
+  /** Mots réservés, en minuscules (`reservedWords`). */
+  reserved: ReadonlySet<string>;
+  /** Longueur maximale d'un identifiant (octets / caractères selon le SGBD). */
+  maxLength: number;
+}
+
+export interface ActionRules {
+  delete: readonly ReferentialAction[];
+  update: readonly ReferentialAction[];
+  /** Comportement obtenu sans clause : NO ACTION, ou RESTRICT pour Sybase. */
+  implicit: readonly ReferentialAction[];
+}
+
+/** `localtimestamp` : date et heure locales à la seconde, sans fuseau (Oracle SYSDATE) (O-39). */
+export type DateFunction =
+  | "current_date"
+  | "current_time"
+  | "current_timestamp"
+  | "localtimestamp"
+  | "localtimestamp_seconds"
+  | "utc_timestamp";
+
+/** Fonctions sans argument d'une valeur par défaut, hors dates (O-39). */
+export type SpecialFunction = "current_user" | "uuid" | "uuid_sequential";
+
+export interface ExpressionRules {
+  /** Littéraux booléens TRUE / FALSE disponibles. */
+  booleanLiterals: boolean;
+  /** Fonctions de date / heure courantes (`null` : non disponible). */
+  dates: Record<DateFunction, string | null>;
+  /** Fonctions spéciales (`null` : non disponible en DEFAULT). */
+  functions: Record<SpecialFunction, string | null>;
+}
+
+export type CollationResult =
+  /** Clause à écrire (vide : comportement par défaut de la cible) ; `preamble` : à créer avant. */
+  | { kind: "emit"; sql: string; preamble?: string; approximation?: string }
+  /** Non transposable : rien n'est écrit, la perte est signalée. */
+  | { kind: "dropped" };
+
+export interface CollationRules {
+  /** Sensible à la casse et aux accents : clause (vide : comportement par défaut). */
+  sensitive: string;
+  /** Binaire : clause (vide : comportement par défaut), ou `null` : non transposable. */
+  binary: string | null;
+  /** Insensible à la casse (`ci`), et aux accents (`ai_ci`). */
+  insensitive(klass: "ci" | "ai_ci"): CollationResult;
 }
 
 export interface SchemaRules {
@@ -150,6 +214,10 @@ export interface ConstraintRules {
   notValidatedSuffix: string;
   /** Chemins de cascade multiples ou cycliques refusés (SQL Server). */
   singleCascadePath: boolean;
+  /** ALTER TABLE … ADD CONSTRAINT … FOREIGN KEY possible (pas en SQLite). */
+  alterForeignKey: boolean;
+  /** CHECK appliqué (MySQL l'ignore avant 8.0.16). */
+  enforcedChecks: boolean;
 }
 
 export interface UniqueRules {
@@ -187,8 +255,28 @@ export interface IndexRules {
   include: boolean;
 }
 
+/** Mots réservés communs (SQL standard), complétés par SGBD (`reservedWords`). */
+const COMMON = `add all alter and any as asc between both by case cast check collate column constraint create cross
+current_date current_time current_timestamp current_user default delete desc distinct drop else end except exists
+false fetch for foreign from full grant group having in inner insert intersect into is join leading left like not
+null of on or order outer primary references right select set some table then to trailing true union unique update
+user using values when where with`;
+
+/** Mots réservés d'un SGBD : les mots communs et les siens. */
+export const reservedWords = (specific: string): ReadonlySet<string> =>
+  new Set(`${COMMON} ${specific}`.split(/\s+/).filter(Boolean));
+
+/** Toutes les actions référentielles. */
+export const ALL_ACTIONS: readonly ReferentialAction[] = [
+  "cascade",
+  "set null",
+  "set default",
+  "restrict",
+  "no action",
+];
+
 /** Comportement du SQL de base, que chaque SGBD complète ou corrige. */
-export const standard: Omit<Dialect, "dbms"> = {
+export const standard: Omit<Dialect, "dbms" | "identifiers" | "actions" | "expressions"> = {
   schemas: null,
   types: {
     nativeDomains: false,
@@ -223,6 +311,8 @@ export const standard: Omit<Dialect, "dbms"> = {
     notValidated: () => false,
     notValidatedSuffix: " NOT VALID",
     singleCascadePath: false,
+    alterForeignKey: true,
+    enforcedChecks: true,
   },
   uniques: { methods: false, singleNull: false, equalNulls: null, include: false },
   indexes: {
@@ -239,4 +329,5 @@ export const standard: Omit<Dialect, "dbms"> = {
   comments: null,
   partitioning: false,
   trigger: (body) => `${body};`,
+  collations: { sensitive: "", binary: null, insensitive: () => ({ kind: "dropped" }) },
 };

@@ -1,6 +1,11 @@
-import { isAtLeast } from "../dbms/versions";
 import type { SqlDialect } from "../model/physical";
 import type { Target } from "./dialects";
+import { dialectOf } from "./targets";
+import type { CollationResult } from "./targets/dialect";
+import { PG_COLLATIONS } from "./targets/postgresql";
+
+export type { CollationResult };
+export { PG_COLLATIONS };
 
 /**
  * Traduction des collations de colonne (overrides O-35, O-37).
@@ -17,18 +22,6 @@ import type { Target } from "./dialects";
  */
 
 export type CollationClass = "binary" | "sensitive" | "ci" | "ai_ci" | "other";
-
-/** Collations ICU non déterministes créées en tête de script PostgreSQL. */
-export const PG_COLLATIONS: Record<"ci" | "ai_ci", { name: string; locale: string }> = {
-  ci: { name: "merise_ci", locale: "und-u-ks-level2" },
-  ai_ci: { name: "merise_ai_ci", locale: "und-u-ks-level1" },
-};
-
-export type CollationResult =
-  /** Clause à écrire (vide : comportement par défaut de la cible) ; `preamble` : à créer avant. */
-  | { kind: "emit"; sql: string; preamble?: string; approximation?: string }
-  /** Non transposable : rien n'est écrit, la perte est signalée. */
-  | { kind: "dropped" };
 
 const sameFamily = (a: SqlDialect, b: string) => (a === "mariadb" ? "mysql" : a) === (b === "mariadb" ? "mysql" : b);
 
@@ -110,7 +103,7 @@ export function translateCollation(
   // Serveur sans ICU (option) : collation déterministe par défaut, comparaisons sensibles (O-38).
   if (
     !icu &&
-    target.dbms === "postgresql" &&
+    dialectOf(target).types.nondeterministicCollations &&
     (klass === "ci" || klass === "ai_ci") &&
     !(source && sameFamily(source, target.dbms))
   ) {
@@ -129,61 +122,13 @@ export function translateCollation(
 }
 
 function translateClass(name: string, source: SqlDialect | undefined, target: Target): CollationResult {
-  const { dbms, version } = target;
-  if (source && sameFamily(source, dbms)) return { kind: "emit", sql: `COLLATE ${name}` };
+  if (source && sameFamily(source, target.dbms)) return { kind: "emit", sql: `COLLATE ${name}` };
   const klass = collationClass(name);
   if (klass === "other") return { kind: "dropped" };
-  if (klass === "sensitive") {
-    // Comportement par défaut des collations déterministes (PostgreSQL, Oracle, DB2, SQLite).
-    if (dbms === "mysql" || dbms === "mariadb") return { kind: "emit", sql: "COLLATE utf8mb4_0900_as_cs" };
-    if (dbms === "sqlserver") return { kind: "emit", sql: "COLLATE Latin1_General_100_CS_AS" };
-    return { kind: "emit", sql: "" };
-  }
-  if (klass === "binary") {
-    switch (dbms) {
-      case "postgresql":
-        return { kind: "emit", sql: 'COLLATE "C"' };
-      case "mysql":
-      case "mariadb":
-        return { kind: "emit", sql: "COLLATE utf8mb4_bin" };
-      case "sqlserver":
-        return { kind: "emit", sql: "COLLATE Latin1_General_BIN2" };
-      case "oracle":
-        return { kind: "emit", sql: "" }; // comparaison binaire : comportement par défaut (NLS_COMP = BINARY)
-      case "sqlite":
-        return { kind: "emit", sql: "" }; // BINARY : collation par défaut de SQLite
-      default:
-        return { kind: "dropped" };
-    }
-  }
+  const rules = dialectOf(target).collations;
+  // Comportement par défaut des collations déterministes (PostgreSQL, Oracle, DB2, SQLite).
+  if (klass === "sensitive") return { kind: "emit", sql: rules.sensitive };
+  if (klass === "binary") return rules.binary === null ? { kind: "dropped" } : { kind: "emit", sql: rules.binary };
   // Insensible à la casse (et aux accents) : ci / ai_ci.
-  switch (dbms) {
-    case "postgresql": {
-      // Collation ICU non déterministe (PostgreSQL 12+) ; LIKE dessus seulement à partir de 18.
-      if (!isAtLeast("postgresql", version, "12")) return { kind: "dropped" };
-      const { name: pgName, locale } = PG_COLLATIONS[klass];
-      return {
-        kind: "emit",
-        sql: `COLLATE ${pgName}`,
-        preamble: `CREATE COLLATION IF NOT EXISTS ${pgName} (provider = icu, locale = '${locale}', deterministic = false);`,
-        ...(isAtLeast("postgresql", version, "18") ? {} : { approximation: "like" }),
-      };
-    }
-    case "mysql":
-      return { kind: "emit", sql: klass === "ci" ? "COLLATE utf8mb4_0900_as_ci" : "COLLATE utf8mb4_0900_ai_ci" };
-    case "mariadb":
-      return klass === "ai_ci"
-        ? { kind: "emit", sql: "COLLATE utf8mb4_unicode_ci" }
-        : { kind: "emit", sql: "COLLATE utf8mb4_unicode_ci", approximation: "accents" };
-    case "sqlserver":
-      return {
-        kind: "emit",
-        sql: klass === "ci" ? "COLLATE Latin1_General_100_CI_AS" : "COLLATE Latin1_General_100_CI_AI",
-      };
-    case "sqlite":
-      // NOCASE : casse ASCII seulement, accents distingués.
-      return { kind: "emit", sql: "COLLATE NOCASE", approximation: "nocase" };
-    default:
-      return { kind: "dropped" };
-  }
+  return rules.insensitive(klass);
 }

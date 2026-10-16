@@ -1,5 +1,17 @@
 import { isAtLeast } from "../../dbms/versions";
-import { type Dialect, standard } from "./dialect";
+import { ALL_ACTIONS, type Dialect, reservedWords, standard } from "./dialect";
+
+/** Mots réservés propres au SGBD (les mots communs sont ajoutés par `reservedWords`). */
+const RESERVED =
+  reservedWords(`analyse analyze array asymmetric authorization binary collation concurrently current_catalog current_role
+current_schema deferrable do freeze ilike initially isnull lateral limit localtime localtimestamp natural notnull offset
+only overlaps placing returning session_user similar symmetric system_user tablesample variadic verbose window`);
+
+/** Collations ICU non déterministes créées en tête de script (O-38). */
+export const PG_COLLATIONS: Record<"ci" | "ai_ci", { name: string; locale: string }> = {
+  ci: { name: "merise_ci", locale: "und-u-ks-level2" },
+  ai_ci: { name: "merise_ai_ci", locale: "und-u-ks-level1" },
+};
 
 /** Méthodes d'index de PostgreSQL autres que B-tree (non uniques). */
 const METHODS = ["hash", "gin", "gist", "brin", "spgist"];
@@ -50,5 +62,39 @@ export function postgresql(version: string | undefined): Dialect {
     },
     comments: "statement",
     partitioning: true,
+    identifiers: { quotes: ['"', '"'], folding: "lower", reserved: RESERVED, maxLength: 63 },
+    actions: { delete: ALL_ACTIONS, update: ALL_ACTIONS, implicit: [] },
+    expressions: {
+      booleanLiterals: true,
+      dates: {
+        current_date: "CURRENT_DATE",
+        current_time: "CURRENT_TIME",
+        current_timestamp: "CURRENT_TIMESTAMP",
+        localtimestamp: "LOCALTIMESTAMP",
+        localtimestamp_seconds: "LOCALTIMESTAMP(0)",
+        utc_timestamp: "(now() AT TIME ZONE 'UTC')",
+      },
+      // uuid_sequential : UUID croissant (NEWSEQUENTIALID) — uuidv7() à partir de PostgreSQL 18 (O-42).
+      functions: {
+        current_user: "CURRENT_USER",
+        uuid: since("13") ? "gen_random_uuid()" : null,
+        uuid_sequential: since("18") ? "uuidv7()" : since("13") ? "gen_random_uuid()" : null,
+      },
+    },
+    collations: {
+      sensitive: "",
+      binary: 'COLLATE "C"',
+      insensitive: (klass) => {
+        // Collation ICU non déterministe (PostgreSQL 12+) ; LIKE dessus seulement à partir de 18.
+        if (!since("12")) return { kind: "dropped" };
+        const { name, locale } = PG_COLLATIONS[klass];
+        return {
+          kind: "emit",
+          sql: `COLLATE ${name}`,
+          preamble: `CREATE COLLATION IF NOT EXISTS ${name} (provider = icu, locale = '${locale}', deterministic = false);`,
+          ...(since("18") ? {} : { approximation: "like" }),
+        };
+      },
+    },
   };
 }
