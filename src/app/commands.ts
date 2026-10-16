@@ -15,6 +15,7 @@ import {
   linkSourceId,
   positionOf,
   setBends,
+  createAttribute,
   createAutoIdentifier,
   createEntity,
   createLink,
@@ -304,6 +305,17 @@ export function setAttributes(doc: DocumentHandle, ownerId: Id, attributes: Attr
     if (owner) owner.attributes = attributes;
   });
   return null;
+}
+
+/** Ajoute en fin de liste une rubrique au nom libre (« rubrique_N ») ; renvoie son identifiant. */
+export function addAttribute(doc: DocumentHandle, ownerId: Id): Id | null {
+  const owner = [...current(doc).entities, ...current(doc).associations].find((n) => n.id === ownerId);
+  if (!owner) return null;
+  const taken = new Set(owner.attributes.map((a) => a.name));
+  let n = owner.attributes.length + 1;
+  while (taken.has(t("attribute.defaultName", { n }))) n++;
+  const created = createAttribute(t("attribute.defaultName", { n }));
+  return setAttributes(doc, ownerId, [...owner.attributes, created], "history.addAttribute") ? null : created.id;
 }
 
 export function addAutoIdentifier(doc: DocumentHandle, entityId: Id): Check {

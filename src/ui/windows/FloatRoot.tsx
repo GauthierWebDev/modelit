@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { blockNativeContextMenu } from "@/ui/canvas/ContextMenu";
 import { updateDock } from "@/app/dock/actions";
 import { closeGroup, findGroup, setToolbar } from "@/app/dock/layout";
 import { DocumentProvider } from "@/app/document/DocumentContext";
@@ -48,6 +49,8 @@ const self: {
 export function FloatRoot({ kind }: { kind: Kind }) {
   const [replica, setReplica] = useState<Replica | null>(null);
   useApplyTheme();
+  // Pas de menu contextuel natif dans les fenêtres flottantes non plus (O-53).
+  useEffect(() => blockNativeContextMenu(), []);
 
   useLayoutEffect(() => {
     // Fenêtre transparente : seule la barre ou le groupe (coins arrondis, ombre) est visible.

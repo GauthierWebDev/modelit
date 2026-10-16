@@ -31,6 +31,8 @@ import { TabBar } from "./tabs/TabBar";
 import { DockZone, DragGhost, FloatingGroups } from "./dock/Dock";
 import { useShortcuts } from "./shortcuts";
 import { useClipboard } from "./clipboard";
+import { blockNativeContextMenu, ContextMenuLayer } from "./canvas/ContextMenu";
+import { QuickActions } from "./canvas/QuickActions";
 import { useApplyTheme } from "./theme";
 import { ToolbarHost } from "./toolbar/ToolbarHost";
 
@@ -67,6 +69,7 @@ function Workbench() {
   }, [title, dirty]);
 
   useEffect(() => startAutosave(), []);
+  useEffect(() => blockNativeContextMenu(), []);
   useEffect(() => scheduleUpdateCheck(), []);
   useEffect(() => showWhatsNew(), []);
   useEffect(() => onMenuAbout(() => useUiStore.getState().setAbout("about")), []);
@@ -97,8 +100,9 @@ function Workbench() {
       {/* Remonté à chaque changement d'onglet : gestes en cours et saisies locales repartent de zéro. */}
       <div key={doc.id} className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1">
+          <div className="relative min-h-0 flex-1 overflow-hidden">
             {view === "mcd" ? <McdCanvas /> : <LogicalCanvas key={view} mode={view} />}
+            <QuickActions />
           </div>
           <DockZone zone="bottom" />
         </div>
@@ -115,6 +119,7 @@ function Workbench() {
       <ShareDialog />
       <CollabBridge />
       <DialogHost />
+      <ContextMenuLayer />
       <TooltipLayer />
       <footer className="flex h-6 flex-none items-center gap-3 border-t border-neutral-200 bg-neutral-50 px-3 text-xs text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900">
         <span>

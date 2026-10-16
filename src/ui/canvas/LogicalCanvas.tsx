@@ -7,6 +7,7 @@ import { t } from "@/i18n";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { revealSection } from "@/app/dock/actions";
 import { CanvasSurface, hitId, hitIdAt } from "./CanvasSurface";
+import { openCanvasMenu } from "./objectActions";
 import { FONT_FAMILY, FONT_SIZE, PAD_X, ROW_HEIGHT, snap, TITLE_HEIGHT, TITLE_WEIGHT } from "./geometry";
 import {
   columnStyle,
@@ -129,8 +130,8 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
         drag.current = null;
       }}
       onContextMenu={(e) => {
-        // Outil de création : abandon et retour à la sélection (override O-16).
-        if (tool === "select") return;
+        // Outil de création : abandon et retour à la sélection (override O-16) ; sinon, menu (O-53).
+        if (tool === "select") return openCanvasMenu(docHandle, e, hitIdAt(e));
         e.preventDefault();
         setLink(null);
         setTool("select");

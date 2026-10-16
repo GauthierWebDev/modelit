@@ -58,10 +58,11 @@ export function parseFragment(text: string): ModelFragment | null {
 
 /**
  * Colle `fragment` dans `doc` (modifié sur place) et renvoie les identifiants des objets collés.
- * Dans le document d'origine (un objet copié y existe encore), les copies sont décalées de deux
- * pas de grille, autant de fois que nécessaire pour ne pas recouvrir un collage précédent.
+ * `at` (« Coller ici », O-53) : coin supérieur gauche des objets collés. Sinon, dans le document
+ * d'origine (un objet copié y existe encore), les copies sont décalées de deux pas de grille,
+ * autant de fois que nécessaire pour ne pas recouvrir un collage précédent.
  */
-export function pasteFragment(doc: ModelDocument, fragment: ModelFragment): Id[] {
+export function pasteFragment(doc: ModelDocument, fragment: ModelFragment, at?: Point): Id[] {
   const ids = new Map<Id, Id>();
   for (const node of [...fragment.entities, ...fragment.associations, ...fragment.inheritances]) {
     ids.set(node.id, newId());
@@ -94,10 +95,10 @@ export function pasteFragment(doc: ModelDocument, fragment: ModelFragment): Id[]
   }
   for (const n of [...copy.entities, ...copy.associations]) withoutLinks(n, dropped);
 
-  const offset = pasteOffset(doc, fragment);
-  for (const [id, p] of Object.entries(copy.layout.positions)) doc.layout.positions[id] = { x: p.x + offset, y: p.y + offset };
+  const offset = at ? offsetTo(fragment, at) : pasteOffset(doc, fragment);
+  for (const [id, p] of Object.entries(copy.layout.positions)) doc.layout.positions[id] = { x: p.x + offset.x, y: p.y + offset.y };
   for (const [id, bends] of Object.entries(copy.layout.bends)) {
-    if (!dropped.has(id)) doc.layout.bends[id] = bends.map((p) => ({ x: p.x + offset, y: p.y + offset }));
+    if (!dropped.has(id)) doc.layout.bends[id] = bends.map((p) => ({ x: p.x + offset.x, y: p.y + offset.y }));
   }
   doc.entities.push(...copy.entities);
   doc.associations.push(...copy.associations);
@@ -107,17 +108,24 @@ export function pasteFragment(doc: ModelDocument, fragment: ModelFragment): Id[]
   return [...copy.entities, ...copy.associations, ...copy.inheritances].map((n) => n.id);
 }
 
+/** Décalage qui amène le coin supérieur gauche des objets du fragment en `at`. */
+function offsetTo(fragment: ModelFragment, at: Point): Point {
+  const positions = Object.values(fragment.layout.positions);
+  if (!positions.length) return at;
+  return { x: at.x - Math.min(...positions.map((p) => p.x)), y: at.y - Math.min(...positions.map((p) => p.y)) };
+}
+
 /** Décalage des copies : 0 dans un autre document, sinon k × 2 pas de grille (premier k libre). */
-function pasteOffset(doc: ModelDocument, fragment: ModelFragment): number {
+function pasteOffset(doc: ModelDocument, fragment: ModelFragment): Point {
   const nodes = [...fragment.entities, ...fragment.associations, ...fragment.inheritances];
   const present = new Set([...doc.entities, ...doc.associations, ...doc.inheritances].map((n) => n.id));
-  if (!nodes.some((n) => present.has(n.id))) return 0;
+  if (!nodes.some((n) => present.has(n.id))) return { x: 0, y: 0 };
   const step = 2 * doc.settings.grid.size;
   const anchor = fragment.layout.positions[nodes[0]!.id] ?? { x: 0, y: 0 };
   const occupied = (p: Point) => Object.values(doc.layout.positions).some((q) => q.x === p.x && q.y === p.y);
   let k = 1;
   while (occupied({ x: anchor.x + k * step, y: anchor.y + k * step })) k++;
-  return k * step;
+  return { x: k * step, y: k * step };
 }
 
 /** Premier nom libre : le nom lui-même, sinon base_2, base_3… (base : sans un « _N » déjà copié). */
