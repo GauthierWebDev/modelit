@@ -78,7 +78,7 @@ ne sont pas concernées.
 - **Placement auto.** (barre d'outils, et après une rétroconception) : range tout le MCD sur une
   grille sans traits qui se croisent ni traversent un objet, en dégageant les cardinalités ;
   disposition commune au MCD, au MLD et au MPD ; calcul en ≈ 0,2 s, en parallèle.
-- SGBD cible, version et thème : à droite de la barre d'outils.
+- SGBD cible et version : bouton à droite de la barre d'état (boîte « Cible ») ; thème : barre d'outils.
 - Le panneau de droite édite l'objet sélectionné (ou les paramètres du document).
 - Le MLD textuel, le script SQL et les problèmes se mettent à jour en temps réel.
 - ⌘/Ctrl + Z, ⇧⌘/Ctrl + Z, ⌘/Ctrl + S, ⌘/Ctrl + O, ⌘/Ctrl + N, Suppr, ⌘/Ctrl + A, ⌘/Ctrl + I.
