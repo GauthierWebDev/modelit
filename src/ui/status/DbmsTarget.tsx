@@ -1,6 +1,6 @@
 import { DBMS_LIST, type Dbms, GENERIC_VERSION, versionFeatures, versionOptions } from "@core/index";
 import { Database, Wrench } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { applyCustomDbms, setDbmsVersion, setTargetDbms, dbmsLabel as targetLabel } from "@/app/commands";
 import { useDocument, useDocumentHandle } from "@/app/document/DocumentContext";
 import { usePreferencesStore } from "@/app/preferencesStore";
@@ -23,11 +23,11 @@ export function DbmsTarget() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const close = () => {
+  const close = useCallback(() => {
     setOpen(false);
     // Rend le clavier au canevas : les raccourcis ne doivent pas viser une liste de la boîte.
     if (ref.current?.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
-  };
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -44,7 +44,7 @@ export function DbmsTarget() {
       window.removeEventListener("pointerdown", onPointer, true);
       window.removeEventListener("keydown", onKey, true);
     };
-  }, [open]);
+  }, [open, close]);
 
   const versions = versionOptions(dbms);
   const base = targetLabel(dbms, dbmsVersion);

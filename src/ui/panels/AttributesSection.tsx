@@ -8,7 +8,7 @@ import {
   type ModelDocument,
 } from "@core/index";
 import { GripVertical, KeyRound, Plus, Trash2 } from "lucide-react";
-import { type KeyboardEvent, type PointerEvent, useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, type PointerEvent, useCallback, useEffect, useRef, useState } from "react";
 import * as cmd from "@/app/commands";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { useUiStore } from "@/app/uiStore";
@@ -28,6 +28,7 @@ export function AttributesSection() {
   const doc = useDocument((s) => s.doc);
   const selection = useDocumentView((s) => s.selection);
   const [error, setError] = useState<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: effacer l'erreur quand la sélection change
   useEffect(() => setError(null), [selection]);
   const report = (message: string | null) => {
     setError(message);
@@ -75,7 +76,7 @@ function AttributesPanel({
   const [selected, setSelected] = useState<Id | null>(null);
   /** Demande de saisie du nom (rubrique ajoutée, Entrée sur une ligne) : le détail est remonté, nom sélectionné. */
   const [editing, setEditing] = useState<{ id: Id; n: number } | null>(null);
-  const edit = (id: Id) => setEditing((e) => ({ id, n: (e?.n ?? 0) + 1 }));
+  const edit = useCallback((id: Id) => setEditing((e) => ({ id, n: (e?.n ?? 0) + 1 })), []);
   // Rubrique ajoutée hors de la section (« ⋯ », menu contextuel, O-53) : la choisir et la nommer.
   const toEdit = useUiStore((s) => s.attributeToEdit);
   useEffect(() => {
@@ -83,7 +84,7 @@ function AttributesPanel({
     setSelected(toEdit);
     edit(toEdit);
     useUiStore.getState().editAttribute(null);
-  }, [toEdit, attributes]);
+  }, [toEdit, attributes, edit]);
   // Colonne renommée dans le MLD / MPD (O-56) : la rubrique est choisie, le focus reste sur le canevas.
   const toShow = useUiStore((s) => s.attributeToShow);
   useEffect(() => {

@@ -122,6 +122,7 @@ export function McdCanvas() {
   const grid = doc.settings.grid.enabled ? doc.settings.grid.size : null;
 
   // Changer d'outil (ex. Échap) abandonne un lien en cours.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: abandonner le lien en cours quand l'outil change
   useEffect(() => setGesture((g) => (g?.type === "link" ? null : g)), [tool]);
 
   /** Position de la nouvelle association : centrée entre les deux entités. */

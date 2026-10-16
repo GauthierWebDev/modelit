@@ -39,6 +39,7 @@ export function PropertiesSection() {
   const doc = useDocument((s) => s.doc);
   const selection = useDocumentView((s) => s.selection);
   const [error, setError] = useState<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: effacer l'erreur quand la sélection change
   useEffect(() => setError(null), [selection]);
   /** Affiche le message d'une commande refusée et le renvoie (pour les champs). */
   const report = (message: string | null) => {
