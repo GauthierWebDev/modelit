@@ -10,7 +10,7 @@ import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { CanvasSurface, hitId, hitIdAt } from "./CanvasSurface";
 import { columnTarget, InlineRename, type RenameTarget } from "./InlineRename";
 import { openCanvasMenu } from "./objectActions";
-import { FONT_FAMILY, FONT_SIZE, PAD_X, ROW_HEIGHT, snap, TITLE_HEIGHT, TITLE_WEIGHT } from "./geometry";
+import { FONT_FAMILY, FONT_SIZE, intersects, normalizeRect, PAD_X, ROW_HEIGHT, snap, TITLE_HEIGHT, TITLE_WEIGHT } from "./geometry";
 import {
   columnStyle,
   KEY_BAR_X,
@@ -26,7 +26,8 @@ import { ErrorBadge } from "./shapes";
  * Vues MLD et MPD (override O-01). Leur contenu est dérivé du MCD et leur disposition
  * est celle du MCD : déplacer une table déplace l'entité ou l'association d'origine.
  * Cliquer sur une table sélectionne l'objet du MCD d'origine (édité dans l'inspecteur).
- * Glisser dans le vide déplace la vue.
+ * Glisser dans le vide trace un rectangle de sélection (Maj : ajout), comme dans le MCD (O-57) ;
+ * la vue se déplace à la molette, au pavé tactile ou au bouton du milieu.
  *
  * Outils Entité et Lien (override O-54) : créer une entité, relier deux tables (association
  * 0,n / 0,n, d'où une table de correspondance) ou une table de correspondance à une table
@@ -54,6 +55,8 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
   /** Déplacement des tables sélectionnées : positions et cassures (traits entre deux d'entre elles) d'origine. */
   const drag = useRef<{ start: Point; origins: Map<Id, Point>; bends: Map<Id, Point[]> } | null>(null);
   const toggleSelected = useDocumentView((s) => s.toggleSelected);
+  /** Rectangle de sélection en cours (O-57) ; `base` : sélection conservée (Maj). */
+  const [marquee, setMarquee] = useState<{ start: Point; current: Point; base: Id[] } | null>(null);
   const tool = useUiStore((s) => s.tool);
   const setTool = useUiStore((s) => s.setTool);
   const notify = useUiStore((s) => s.notify);
@@ -109,7 +112,6 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
     <>
     <CanvasSurface
       grid={grid}
-      panOnEmpty
       className={tool === "select" ? "" : "cursor-crosshair"}
       onPointerDown={(e, point) => {
         const hit = hitId(e);
@@ -126,6 +128,13 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
             if (table) connect(link.fromId, table);
             else setLink(null);
           } else if (table) setLink({ fromId: table, start: point, current: point, pending: false });
+          return true;
+        }
+        // Vide : rectangle de sélection ; avec Maj, ajouté à la sélection (O-57, comme dans le MCD).
+        if (!hit) {
+          const base = e.shiftKey ? selection : [];
+          if (!e.shiftKey) select([]);
+          setMarquee({ start: point, current: point, base });
           return true;
         }
         // Maj + clic : ajoute ou retire de la sélection (O-57, comme dans le MCD).
@@ -151,6 +160,13 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
       }}
       onPointerMove={(_, point) => {
         if (link) setLink({ ...link, current: point });
+        if (marquee) {
+          const rect = normalizeRect(marquee.start, point);
+          const inside = layouts.filter((l) => intersects(rect, l)).map((l) => l.sourceId);
+          select([...new Set([...marquee.base, ...inside])]);
+          setMarquee({ ...marquee, current: point });
+          return;
+        }
         const d = drag.current;
         if (!d) return;
         const dx = point.x - d.start.x;
@@ -169,6 +185,7 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
         }
         if (drag.current) docHandle.store.getState().commit(drag.current.origins.size > 1 ? "history.moveSelection" : "history.moveTable");
         drag.current = null;
+        setMarquee(null);
       }}
       onContextMenu={(e) => {
         // Outil de création : abandon et retour à la sélection (override O-16) ; sinon, menu (O-53).
@@ -180,6 +197,7 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
       onPointerCancel={() => {
         if (drag.current) docHandle.store.getState().cancel();
         drag.current = null;
+        setMarquee(null);
       }}
       onDoubleClick={(_, point) => {
         if (tool !== "select" || readOnly) return;
@@ -246,6 +264,18 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
           </text>
         );
       })}
+      {marquee && (
+        <rect
+          {...normalizeRect(marquee.start, marquee.current)}
+          fill="var(--mcd-selection)"
+          fillOpacity={0.08}
+          stroke="var(--mcd-selection)"
+          strokeDasharray="4 3"
+          vectorEffect="non-scaling-stroke"
+          pointerEvents="none"
+          data-ui-only=""
+        />
+      )}
     </CanvasSurface>
     {renaming && <InlineRename key={JSON.stringify(renaming)} target={renaming} layouts={layouts} mode={mode} onClose={stopRenaming} />}
     </>
