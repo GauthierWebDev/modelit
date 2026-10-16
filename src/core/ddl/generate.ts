@@ -35,6 +35,9 @@ import {
   type TypeFamily,
 } from "./expressions";
 import { translateGenerated } from "./generatedExpression";
+import { groupLosses, formatLossGroup, LossReport, type Loss, type LossCategory } from "./losses";
+
+export { formatLossGroup, groupLosses, type Loss, type LossCategory, type LossGroup } from "./losses";
 
 /**
  * Script LDD (override O-29).
@@ -47,34 +50,6 @@ import { translateGenerated } from "./generatedExpression";
  *  - Tout ce que la cible ne sait pas exprimer est abandonné ou dégradé, jamais en silence :
  *    rapport de pertes en tête de script et sous forme structurée (`losses`).
  */
-
-export type LossCategory =
-  | "type"
-  | "default"
-  | "check"
-  | "action"
-  | "name"
-  | "autoIncrement"
-  | "option"
-  | "collation"
-  | "unsigned"
-  | "domain"
-  | "generated"
-  | "onUpdate"
-  | "index"
-  | "comment"
-  | "trigger"
-  /** Clauses physiques sans effet sur les données : stockage, partitionnement (O-39). */
-  | "physical";
-
-export interface Loss {
-  category: LossCategory;
-  table: string;
-  column?: string;
-  message: string;
-  /** P0 : comportement d'exécution changé (ex. DEFAULT d'une colonne NOT NULL abandonné) (O-42). */
-  priority?: "P0";
-}
 
 export type DdlResult = { ok: true; sql: string; losses: Loss[] } | { ok: false; error: string };
 
@@ -162,7 +137,7 @@ export function planOrder(tables: LogicalTable[], allInAlter: boolean): { order:
 export const orderByDependencies = (tables: LogicalTable[]) => planOrder(tables, false).order;
 
 class Generator {
-  readonly losses: Loss[] = [];
+  readonly report = new LossReport();
   /** Instructions avant les tables (types énumérés) et après (index sur expression, commentaires, déclencheurs). */
   private readonly preamble: string[] = [];
   private readonly epilogue: string[] = [];
@@ -181,7 +156,7 @@ class Generator {
   }
 
   loss(category: LossCategory, table: string, message: string, column?: string, priority?: "P0") {
-    this.losses.push({ category, table, column, message, ...(priority ? { priority } : {}) });
+    this.report.add(category, table, message, column, priority);
   }
 
   q(name: string, caseSensitive = false) {
@@ -529,7 +504,7 @@ class Generator {
     if (source?.dialect !== "sqlserver" || this.target.dbms === "sqlserver") return undefined;
     if (column.type?.kind !== "text" || column.type.encoding === "binary") return undefined;
     const name = { ci_as: "Latin1_General_CI_AS", ci_ai: "Latin1_General_CI_AI", cs_as: "Latin1_General_CS_AS" }[this.options.sqlServerCollation];
-    if (!this.losses.some((l) => l.message === MSG.lossSqlServerCollation(name))) this.loss("collation", "", MSG.lossSqlServerCollation(name));
+    if (!this.report.has(MSG.lossSqlServerCollation(name))) this.loss("collation", "", MSG.lossSqlServerCollation(name));
     return name;
   }
 
@@ -1393,32 +1368,6 @@ function freeTypeFallback(sql: string, target: Target): { sql: string; lossy: bo
 
 const describe = (type: DataType) => JSON.stringify(type);
 
-/** Pertes regroupées par message identique (O-37) : une ligne par perte, avec ses emplacements. */
-export interface LossGroup {
-  category: LossCategory;
-  message: string;
-  priority?: "P0";
-  /** `table` ou `table.colonne`, dans l'ordre d'apparition. */
-  places: string[];
-}
-
-export function groupLosses(losses: Loss[]): LossGroup[] {
-  const groups: LossGroup[] = [];
-  for (const l of losses) {
-    const place = [l.table, l.column].filter(Boolean).join(".");
-    const group = groups.find((g) => g.message === l.message && g.category === l.category && g.priority === l.priority);
-    if (group) {
-      if (place && !group.places.includes(place)) group.places.push(place);
-    } else groups.push({ category: l.category, message: l.message, ...(l.priority ? { priority: l.priority } : {}), places: place ? [place] : [] });
-  }
-  return groups;
-}
-
-/** Ligne de rapport : « lieu — message », ou « message : lieu1, lieu2… » pour un groupe. */
-export const formatLossGroup = (g: LossGroup) =>
-  (g.priority ? `[${g.priority}] ` : "") +
-  (g.places.length === 0 ? g.message : g.places.length === 1 ? `${g.places[0]} — ${g.message}` : `${g.message} : ${g.places.join(", ")}`);
-
 /** En-tête du script : rapport de pertes en commentaire SQL. */
 function header(target: Target, losses: Loss[]): string {
   const label = `${DBMS_LIST.find((d) => d.id === target.dbms)?.label ?? target.dbms}${target.version && target.version !== GENERIC_VERSION ? ` ${target.version}` : ""}`;
@@ -1433,6 +1382,6 @@ export function generateDdl(model: LogicalModel, target: SqlTarget, options: Par
   if (hasErrors(model)) return { ok: false, error: MSG.sqlBlocked };
   const generator = new Generator(target, { ...DEFAULT_OPTIONS, ...options });
   const body = generator.run(model);
-  const sql = body ? `${header(target, generator.losses)}${body}\n` : "";
-  return { ok: true, sql, losses: generator.losses };
+  const sql = body ? `${header(target, generator.report.entries)}${body}\n` : "";
+  return { ok: true, sql, losses: generator.report.entries };
 }
