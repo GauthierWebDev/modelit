@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { ChevronDown, GripVertical, LayoutDashboard, MousePointer2, Redo2, Spline, Square, Triangle, Undo2, Users } from "lucide-react";
 import { AppMenu } from "./AppMenu";
+import { DisplayMenu } from "./DisplayMenu";
 import type { PointerEvent, ReactNode } from "react";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { selectRedoLabel, selectUndoLabel } from "@/app/document/documentStore";
@@ -116,6 +117,7 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
             </button>
           ))}
         </div>
+        <DisplayMenu />
       </Group>
       <Group>
         {TOOLS.map((x) => (

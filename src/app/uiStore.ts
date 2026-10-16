@@ -23,6 +23,8 @@ interface UiState {
   optionsOpen: boolean;
   /** Boîte À propos : onglet affiché, ou `null` si fermée. */
   about: AboutTab | null;
+  /** Boîte « Paramètres du modèle » ouverte (O-55). */
+  modelSettingsOpen: boolean;
   /** Boîte « Rétroconception » ouverte. */
   reverseOpen: boolean;
   /** Boîte « Session collaborative » ouverte (O-05). */
@@ -35,6 +37,7 @@ interface UiState {
   setExportOpen: (open: boolean) => void;
   setOptionsOpen: (open: boolean) => void;
   setAbout: (tab: AboutTab | null) => void;
+  setModelSettingsOpen: (open: boolean) => void;
   setReverseOpen: (open: boolean) => void;
   setShareOpen: (open: boolean) => void;
   setTool: (tool: Tool) => void;
@@ -46,6 +49,7 @@ export const useUiStore = create<UiState>()((set) => ({
   exportOpen: false,
   optionsOpen: false,
   about: null,
+  modelSettingsOpen: false,
   reverseOpen: false,
   shareOpen: false,
   tool: "select",
@@ -57,6 +61,7 @@ export const useUiStore = create<UiState>()((set) => ({
   setExportOpen: (exportOpen) => set({ exportOpen }),
   setOptionsOpen: (optionsOpen) => set({ optionsOpen }),
   setAbout: (about) => set({ about }),
+  setModelSettingsOpen: (modelSettingsOpen) => set({ modelSettingsOpen }),
   setReverseOpen: (reverseOpen) => set({ reverseOpen }),
   setShareOpen: (shareOpen) => set({ shareOpen }),
   notify: (status) => set({ status }),

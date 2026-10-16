@@ -10,7 +10,7 @@ import { scheduleUpdateCheck, showWhatsNew } from "@/app/updates";
 import { activeDocument, useActiveDocument, useWorkspaceStore } from "@/app/workspace";
 import { t } from "@/i18n";
 import { closeAllFloats, nativeWindows } from "@/platform/floatWindows";
-import { onCloseRequested, onMenuAbout, onMenuCloseTab, setWindowTitle } from "@/platform/window";
+import { onCloseRequested, onMenuAbout, onMenuCloseTab, onMenuModelSettings, setWindowTitle } from "@/platform/window";
 import { FloatManager } from "./windows/FloatManager";
 import { McpBridge } from "./mcp/McpBridge";
 import { CollabBridge } from "./collab/CollabBridge";
@@ -26,6 +26,7 @@ import { DialogHost } from "./common/DialogHost";
 import { TooltipLayer } from "./common/Tooltip";
 import { ExportDialog } from "./export/ExportDialog";
 import { OptionsDialog } from "./options/OptionsDialog";
+import { ModelSettingsDialog } from "./settings/ModelSettingsDialog";
 import { ReverseDialog } from "./reverse/ReverseDialog";
 import { TabBar } from "./tabs/TabBar";
 import { DockZone, DragGhost, FloatingGroups } from "./dock/Dock";
@@ -73,6 +74,7 @@ function Workbench() {
   useEffect(() => scheduleUpdateCheck(), []);
   useEffect(() => showWhatsNew(), []);
   useEffect(() => onMenuAbout(() => useUiStore.getState().setAbout("about")), []);
+  useEffect(() => onMenuModelSettings(() => useUiStore.getState().setModelSettingsOpen(true)), []);
   useEffect(() => onMenuCloseTab(() => void closeDocument(activeDocument())), []);
 
   useEffect(
@@ -114,6 +116,7 @@ function Workbench() {
       <DragGhost />
       <ExportDialog />
       <OptionsDialog />
+      <ModelSettingsDialog />
       <AboutDialog />
       <ReverseDialog />
       <ShareDialog />

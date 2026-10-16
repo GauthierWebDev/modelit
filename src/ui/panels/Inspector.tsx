@@ -1,7 +1,6 @@
 import {
   bendsOf,
   REFERENTIAL_ACTIONS,
-  TYPOLOGIES,
   type Association,
   type Cardinality,
   type Entity,
@@ -13,17 +12,18 @@ import { useEffect, useState, type ReactNode } from "react";
 import * as cmd from "@/app/commands";
 import { revealSection } from "@/app/dock/actions";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
+import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { Checkbox, CommitInput, ErrorBanner, Field, NumberInput, Section, Select } from "@/ui/common/controls";
 import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { ForeignKeysSection } from "./ForeignKeysSection";
 import { InheritanceLinkPanel, InheritancePanel } from "./InheritancePanels";
 import { PhysicalSection } from "./PhysicalSection";
-import { CommentSection, KeyPatternField, PathSection, RelationTextSection } from "./sections";
+import { CommentSection, PathSection, RelationTextSection } from "./sections";
 
 /**
  * Section « Propriétés » (override O-46) : édite l'objet sélectionné. Les paramètres du document
- * sont dans la section « Modèle ».
+ * sont dans la boîte « Paramètres du modèle » (O-55).
  */
 export function PropertiesSection() {
   const doc = useDocument((s) => s.doc);
@@ -41,8 +41,8 @@ export function PropertiesSection() {
     content = (
       <div className="p-3 text-sm text-neutral-500">
         <p>{t("dock.noSelection")}</p>
-        <button type="button" className="mt-1 text-blue-600 hover:underline dark:text-blue-400" onClick={() => revealSection("model")}>
-          {t("dock.showModel")}
+        <button type="button" className="mt-1 text-blue-600 hover:underline dark:text-blue-400" onClick={() => useUiStore.getState().setModelSettingsOpen(true)}>
+          {t("menu.modelSettings")}
         </button>
       </div>
     );
@@ -81,18 +81,6 @@ export function ReadOnly({ children }: { children: ReactNode }) {
         {children}
       </fieldset>
     </>
-  );
-}
-
-/** Section « Modèle » (override O-46) : paramètres du document. */
-export function ModelSection() {
-  const doc = useDocument((s) => s.doc);
-  return (
-    <div className="flex h-full flex-col overflow-y-auto">
-      <ReadOnly>
-        <DocumentSettingsPanel doc={doc} />
-      </ReadOnly>
-    </div>
   );
 }
 
@@ -267,174 +255,6 @@ function LinkPanel({ doc, link, report }: { doc: ModelDocument; link: Link; repo
       </Section>
       <PathSection linkId={link.id} bends={bendsOf(doc.layout, link.id).length} />
       <RelationTextSection linkId={link.id} value={link.relationLabel} />
-    </>
-  );
-}
-
-function DocumentSettingsPanel({ doc }: { doc: ModelDocument }) {
-  const handle = useDocumentHandle();
-  const s = doc.settings;
-  return (
-    <>
-      <Section title={t("inspector.logicalNames")}>
-        <Field label={t("inspector.typology")}>
-          <Select
-            value={s.naming.typology}
-            options={TYPOLOGIES.map((id) => ({ id, label: t(`typology.${id}`) }))}
-            onChange={(typology) => cmd.updateSettings(handle, "history.typology", (d) => void (d.naming.typology = typology))}
-          />
-        </Field>
-        <Checkbox
-          label={t("inspector.stripAccents")}
-          checked={s.naming.stripAccents}
-          onChange={(v) => cmd.updateSettings(handle, "history.stripAccents", (d) => void (d.naming.stripAccents = v))}
-        />
-      </Section>
-      <Section title={t("inspector.keys")}>
-        <Field label={t("inspector.autoIdMask")}>
-          <KeyPatternField
-            kind="discriminant"
-            value={s.autoIdMask}
-            onChange={(pattern) => cmd.updateSettings(handle, "history.autoIdMask", (d) => void (d.autoIdMask = pattern))}
-          />
-        </Field>
-        <Field label={t("inspector.primaryKey")}>
-          <KeyPatternField
-            kind="primaryKey"
-            value={s.keys.primary}
-            onChange={(pattern) => cmd.updateSettings(handle, "history.primaryKeyMask", (d) => void (d.keys.primary = pattern))}
-          />
-        </Field>
-        <Field label={t("inspector.foreignKey")}>
-          <KeyPatternField
-            kind="foreignKey"
-            value={s.keys.foreign}
-            onChange={(pattern) => cmd.updateSettings(handle, "history.foreignKeyMask", (d) => void (d.keys.foreign = pattern))}
-          />
-        </Field>
-        <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("inspector.keysHelp")}</p>
-      </Section>
-      <Section title={t("inspector.display")}>
-        <Checkbox
-          label={t("inspector.showAttributes")}
-          checked={s.display.showAttributes}
-          onChange={(v) => cmd.updateSettings(handle, "history.showAttributes", (d) => void (d.display.showAttributes = v))}
-        />
-        <Checkbox
-          label={t("inspector.grid")}
-          checked={s.grid.enabled}
-          onChange={(v) => cmd.updateSettings(handle, "history.grid", (d) => void (d.grid.enabled = v))}
-        />
-        <Field label={t("inspector.gridSize")}>
-          <NumberInput min={2} value={s.grid.size} onCommit={(v) => cmd.updateSettings(handle, "history.gridSize", (d) => void (d.grid.size = v ?? 10))} />
-        </Field>
-      </Section>
-      <Section title={t("ddl.title")}>
-        <Checkbox
-          label={t("ddl.foreignKeysInAlter")}
-          checked={s.ddl.foreignKeysInAlter}
-          onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.foreignKeysInAlter = v))}
-        />
-        <Checkbox
-          label={t("ddl.indexes")}
-          checked={s.ddl.indexes}
-          onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.indexes = v))}
-        />
-        <Checkbox
-          label={t("ddl.sourceColumnOrder")}
-          checked={s.ddl.sourceColumnOrder}
-          onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.sourceColumnOrder = v))}
-        />
-        <Checkbox
-          label={t("ddl.strictRanges")}
-          checked={s.ddl.strictRanges}
-          onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.strictRanges = v))}
-        />
-        <Field label={t("ddl.unsigned")}>
-          <Select
-            value={s.ddl.unsigned}
-            options={(["widen", "check"] as const).map((id) => ({ id, label: t(`ddl.unsigned.${id}`) }))}
-            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.unsigned = v))}
-          />
-        </Field>
-        <Field label={t("ddl.enums")}>
-          <Select
-            value={s.ddl.enums}
-            options={(["check", "type"] as const).map((id) => ({ id, label: t(`ddl.enums.${id}`) }))}
-            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.enums = v))}
-          />
-        </Field>
-        <Field label={t("ddl.sets")}>
-          <Select
-            value={s.ddl.sets}
-            options={(["array", "text"] as const).map((id) => ({ id, label: t(`ddl.sets.${id}`) }))}
-            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.sets = v))}
-          />
-        </Field>
-        <Field label={t("ddl.collations")}>
-          <Select
-            value={s.ddl.collations}
-            options={(["icu", "deterministic"] as const).map((id) => ({ id, label: t(`ddl.collations.${id}`) }))}
-            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.collations = v))}
-          />
-        </Field>
-        <Field label={t("ddl.oracleDates")}>
-          <Select
-            value={s.ddl.oracleDates}
-            options={(["timestamp", "date"] as const).map((id) => ({ id, label: t(`ddl.oracleDates.${id}`) }))}
-            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.oracleDates = v))}
-          />
-        </Field>
-        <Field label={t("ddl.emptyStrings")}>
-          <Select
-            value={s.ddl.emptyStrings}
-            options={(["check", "none"] as const).map((id) => ({ id, label: t(`ddl.emptyStrings.${id}`) }))}
-            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.emptyStrings = v))}
-          />
-        </Field>
-        <Field label={t("ddl.spatial")}>
-          <Select
-            value={s.ddl.spatial}
-            options={(["postgis", "wkb", "wkt"] as const).map((id) => ({ id, label: t(`ddl.spatial.${id}`) }))}
-            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.spatial = v))}
-          />
-        </Field>
-        <Field label={t("ddl.sqlServerCollation")}>
-          <Select
-            value={s.ddl.sqlServerCollation}
-            options={(["ci_as", "ci_ai", "cs_as"] as const).map((id) => ({ id, label: t(`ddl.sqlServerCollation.${id}`) }))}
-            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.sqlServerCollation = v))}
-          />
-        </Field>
-        <Field label={t("ddl.dboSchema")}>
-          <Select
-            value={s.ddl.dboSchema}
-            options={(["public", "dbo"] as const).map((id) => ({ id, label: t(`ddl.dboSchema.${id}`) }))}
-            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.dboSchema = v))}
-          />
-        </Field>
-        <Field label={t("ddl.constraintNaming")}>
-          <Select
-            value={s.ddl.constraintNaming}
-            options={(["none", "prefix", "suffix"] as const).map((id) => ({ id, label: t(`ddl.constraintNaming.${id}`) }))}
-            onChange={(v) => cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl.constraintNaming = v))}
-          />
-        </Field>
-      </Section>
-      <Section title={t("inspector.relations")}>
-        <Checkbox
-          label={t("inspector.relationArrows")}
-          checked={s.display.relationArrows}
-          onChange={(v) => cmd.updateSettings(handle, "history.relationArrows", (d) => void (d.display.relationArrows = v))}
-        />
-        <Field label={t("inspector.relationLabels")}>
-          <Select
-            value={s.display.relationLabels}
-            options={(["none", "foreignKey", "text"] as const).map((id) => ({ id, label: t(`inspector.relationLabels.${id}`) }))}
-            onChange={(mode) => cmd.updateSettings(handle, "history.relationLabels", (d) => void (d.display.relationLabels = mode))}
-          />
-        </Field>
-      </Section>
     </>
   );
 }

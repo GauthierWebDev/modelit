@@ -9,6 +9,14 @@ import { fitToWindow, zoomBy, zoomTo } from "@/ui/canvas/viewport";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 export const MOD = isMac ? "⌘" : "Ctrl+";
+export const MODEL_SETTINGS_SHORTCUT = isMac ? "⌥⌘," : "Ctrl+Alt+,";
+
+/**
+ * Touche physique de la virgule (O-55) : avec ⌥ (macOS) ou Ctrl + Alt (AltGr), `key` ne donne plus
+ * « , », et `code` dépend de la disposition (« Comma » en QWERTY, « KeyM » en AZERTY). Elle est apprise
+ * à chaque virgule tapée ; dans l'application macOS, le menu natif porte aussi le raccourci.
+ */
+let commaCode = "Comma";
 
 const TOOL_KEYS: Record<string, Tool> = { v: "select", e: "entity", a: "association", h: "inheritance", l: "link" };
 
@@ -19,6 +27,7 @@ const isEditable = (target: EventTarget | null) =>
 export function useShortcuts() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === ",") commaCode = e.code;
       // Boîte modale ouverte : les raccourcis du schéma et des fichiers sont suspendus.
       if (document.querySelector('[aria-modal="true"]')) return;
       const mod = isMac ? e.metaKey : e.ctrlKey;
@@ -32,6 +41,12 @@ export function useShortcuts() {
       if (e.ctrlKey && key === "tab") {
         e.preventDefault();
         activateNeighbour(e.shiftKey ? -1 : 1);
+        return;
+      }
+
+      if (mod && e.altKey && (e.code === commaCode || e.key === ",")) {
+        e.preventDefault();
+        ui.setModelSettingsOpen(true);
         return;
       }
 

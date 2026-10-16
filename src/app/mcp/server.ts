@@ -158,6 +158,7 @@ function busy(): boolean {
     useDialogStore.getState().queue.length > 0 ||
     ui.exportOpen ||
     ui.optionsOpen ||
+    ui.modelSettingsOpen ||
     ui.reverseOpen ||
     ui.shareOpen ||
     ui.about !== null ||

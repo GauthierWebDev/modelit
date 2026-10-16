@@ -68,6 +68,7 @@ pub fn run() {
 ///   fermeture de la fenêtre : la confirmation des modifications non enregistrées serait
 ///   court-circuitée. Il ferme à la place la fenêtre principale, comme ⌘W ; l'application
 ///   s'arrête une fois sa dernière fenêtre fermée.
+/// - « Model Settings… » (⌥⌘,) ouvre la boîte « Paramètres du modèle » (override O-55).
 /// - « Close Window » (⌘W) devient « Close Tab » : ⌘W ferme l'onglet actif (override O-44), la
 ///   fenêtre se ferme avec ⇧⌘W.
 #[cfg(target_os = "macos")]
@@ -82,6 +83,8 @@ mod macos {
     /// Événements écoutés par l'interface (`src/platform/window.ts`).
     const ABOUT_EVENT: &str = "menu-about";
     const CLOSE_TAB_EVENT: &str = "menu-close-tab";
+    const MODEL_SETTINGS_ID: &str = "model-settings";
+    const MODEL_SETTINGS_EVENT: &str = "menu-model-settings";
 
     pub fn menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         let menu = Menu::default(app)?;
@@ -126,6 +129,9 @@ mod macos {
         let name = &app.package_info().name;
         let about = MenuItem::with_id(app, ABOUT_ID, format!("About {name}"), true, None::<&str>)?;
         app_menu.insert(&about, 0)?;
+        // ⌥⌘, : le menu natif reconnaît la virgule quelle que soit la disposition du clavier (O-55).
+        let settings = MenuItem::with_id(app, MODEL_SETTINGS_ID, "Model Settings…", true, Some("CmdOrCtrl+Alt+,"))?;
+        app_menu.insert(&settings, 1)?;
         let quit = MenuItem::with_id(app, QUIT_ID, format!("Quit {name}"), true, Some("CmdOrCtrl+Q"))?;
         app_menu.append(&quit)
     }
@@ -133,6 +139,8 @@ mod macos {
     pub fn on_menu_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
         if event.id() == ABOUT_ID {
             let _ = app.emit(ABOUT_EVENT, ());
+        } else if event.id() == MODEL_SETTINGS_ID {
+            let _ = app.emit(MODEL_SETTINGS_EVENT, ());
         } else if event.id() == CLOSE_TAB_ID {
             let _ = app.emit(CLOSE_TAB_EVENT, ());
         } else if event.id() == QUIT_ID || event.id() == CLOSE_WINDOW_ID {
