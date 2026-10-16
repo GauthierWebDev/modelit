@@ -1,4 +1,4 @@
-import { extractFragment, parseFragment, pasteFragment, type Id } from "@core/index";
+import { extractFragment, parseFragment, pasteFragment, type Id, type Point } from "@core/index";
 import { selectReadOnlyTab, useCollabStore } from "./collab/session";
 import type { DocumentHandle } from "./document/handle";
 import { deleteObjects } from "./commands";
@@ -30,13 +30,19 @@ export function cutSelection(doc: DocumentHandle): string | null {
   return text;
 }
 
-/** Colle un fragment ; `text` absent : le dernier copié. Faux si le contenu n'est pas un fragment. */
-export function pasteText(doc: DocumentHandle, text: string | null = lastCopied): boolean {
+/** Une copie a été faite dans cette instance (« Coller ici », O-53). */
+export const hasCopy = () => lastCopied !== null;
+
+/**
+ * Colle un fragment ; `text` absent : le dernier copié ; `at` : coin supérieur gauche des objets
+ * collés (« Coller ici »). Faux si le contenu n'est pas un fragment.
+ */
+export function pasteText(doc: DocumentHandle, text: string | null = lastCopied, at?: Point): boolean {
   if (readOnly(doc) || !text) return false;
   const fragment = parseFragment(text);
   if (!fragment) return false;
   let pasted: Id[] = [];
-  doc.store.getState().change("history.paste", (d) => void (pasted = pasteFragment(d, fragment)));
+  doc.store.getState().change("history.paste", (d) => void (pasted = pasteFragment(d, fragment, at)));
   doc.view.getState().select(pasted);
   return true;
 }

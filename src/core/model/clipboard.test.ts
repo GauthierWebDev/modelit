@@ -106,4 +106,12 @@ describe("copier / coller", () => {
     expect(parseFragment("bonjour")).toBeNull();
     expect(parseFragment(JSON.stringify({ format: "autre" }))).toBeNull();
   });
+
+  it("coller ici : coin supérieur gauche des objets au point donné (O-53)", () => {
+    const doc = shop();
+    doc.layout.positions[idOf(doc, "CLIENT")] = { x: 100, y: 200 };
+    doc.layout.positions[idOf(doc, "COMMANDE")] = { x: 300, y: 120 };
+    const ids = pasteFragment(doc, extractFragment(doc, ["CLIENT", "COMMANDE"].map((n) => idOf(doc, n)))!, { x: 500, y: 500 });
+    expect(ids.map((id) => doc.layout.positions[id])).toEqual([{ x: 500, y: 580 }, { x: 700, y: 500 }]);
+  });
 });

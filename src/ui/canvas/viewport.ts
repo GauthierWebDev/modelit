@@ -83,18 +83,30 @@ export function fitToRects(doc: DocumentHandle, layouts: Rect[], maxZoom = 1.5) 
   });
 }
 
+/** Rectangles (coordonnées du modèle) des objets `ids` dans la vue courante : objets du MCD ou tables. */
+export function objectRects(doc: DocumentHandle, ids: string[]): Rect[] {
+  const model = doc.store.getState().doc;
+  const view = doc.view.getState().view;
+  const wanted = new Set(ids);
+  return view === "mcd"
+    ? [...layoutsOf(model).entries()].filter(([id]) => wanted.has(id)).map(([, r]) => r)
+    : tableLayouts(logicalModelOf(model), model, view).filter((t) => wanted.has(t.sourceId));
+}
+
+/** Point du modèle sous un point de l'écran (`clientX`, `clientY`). */
+export function clientToModel(doc: DocumentHandle, client: Point): Point {
+  const rect = canvasElement?.getBoundingClientRect() ?? { left: 0, top: 0 };
+  const { viewport } = doc.view.getState();
+  return { x: (client.x - rect.left - viewport.x) / viewport.zoom, y: (client.y - rect.top - viewport.y) / viewport.zoom };
+}
+
 /**
  * Fait défiler la vue (sans changer le zoom) pour montrer les objets `ids` s'ils sont hors
  * champ : leur emprise est centrée. Ex. objets collés (O-52).
  */
 export function revealObjects(doc: DocumentHandle, ids: string[]) {
-  const model = doc.store.getState().doc;
-  const { view, viewport, setViewport } = doc.view.getState();
-  const wanted = new Set(ids);
-  const rects: Rect[] =
-    view === "mcd"
-      ? [...layoutsOf(model).entries()].filter(([id]) => wanted.has(id)).map(([, r]) => r)
-      : tableLayouts(logicalModelOf(model), model, view).filter((t) => wanted.has(t.sourceId));
+  const { viewport, setViewport } = doc.view.getState();
+  const rects = objectRects(doc, ids);
   if (!rects.length) return;
   const size = canvasSizeNow();
   const minX = Math.min(...rects.map((r) => r.x));

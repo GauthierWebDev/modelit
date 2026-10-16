@@ -29,6 +29,8 @@ interface UiState {
   shareOpen: boolean;
   tool: Tool;
   status: StatusMessage | null;
+  /** Rubrique dont la section Rubriques doit ouvrir la saisie du nom (« Ajouter une rubrique », O-53). */
+  attributeToEdit: string | null;
 
   setExportOpen: (open: boolean) => void;
   setOptionsOpen: (open: boolean) => void;
@@ -37,6 +39,7 @@ interface UiState {
   setShareOpen: (open: boolean) => void;
   setTool: (tool: Tool) => void;
   notify: (status: StatusMessage | null) => void;
+  editAttribute: (id: string | null) => void;
 }
 
 export const useUiStore = create<UiState>()((set) => ({
@@ -47,6 +50,7 @@ export const useUiStore = create<UiState>()((set) => ({
   shareOpen: false,
   tool: "select",
   status: null,
+  attributeToEdit: null,
 
   // Outil valable seulement dans le MCD : passer par `chooseTool` / `showView` (viewCommands.ts).
   setTool: (tool) => set({ tool }),
@@ -56,4 +60,5 @@ export const useUiStore = create<UiState>()((set) => ({
   setReverseOpen: (reverseOpen) => set({ reverseOpen }),
   setShareOpen: (shareOpen) => set({ shareOpen }),
   notify: (status) => set({ status }),
+  editAttribute: (attributeToEdit) => set({ attributeToEdit }),
 }));

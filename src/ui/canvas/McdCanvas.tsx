@@ -18,6 +18,7 @@ import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/
 import { revealSection } from "@/app/dock/actions";
 import { useUiStore } from "@/app/uiStore";
 import { CanvasSurface, hitId, hitIdAt } from "./CanvasSurface";
+import { openCanvasMenu } from "./objectActions";
 import {
   center,
   INHERITANCE_SIZE,
@@ -345,9 +346,11 @@ export function McdCanvas() {
           return;
         }
         // Clic droit sur une cassure : la supprimer.
-        const handle = (e.target as Element).closest<SVGElement>("[data-handle=bend]");
-        const linkId = hitId(e);
-        if (!handle || !linkId) return;
+        // Repéré au pointeur : le canevas peut avoir capturé le pointeur (cible = le canevas).
+        const under = document.elementFromPoint(e.clientX, e.clientY);
+        const handle = under?.closest<SVGElement>("[data-handle=bend]");
+        const linkId = hitIdAt(e);
+        if (!handle || !linkId) return openCanvasMenu(docHandle, e, linkId);
         e.preventDefault();
         removeBend(docHandle, linkId, Number(handle.dataset.index));
       }}

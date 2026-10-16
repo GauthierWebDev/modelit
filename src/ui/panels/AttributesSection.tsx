@@ -3,6 +3,7 @@ import { GripVertical, KeyRound, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import * as cmd from "@/app/commands";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
+import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { Checkbox, CommitInput, Disclosure, ErrorBanner, Field, IconButton } from "@/ui/common/controls";
 import { tip } from "@/ui/common/Tooltip";
@@ -57,6 +58,14 @@ function AttributesPanel({ doc, owner, isEntity, report }: { doc: ModelDocument;
   /** Demande de saisie du nom (rubrique ajoutée, Entrée sur une ligne) : le détail est remonté, nom sélectionné. */
   const [editing, setEditing] = useState<{ id: Id; n: number } | null>(null);
   const edit = (id: Id) => setEditing((e) => ({ id, n: (e?.n ?? 0) + 1 }));
+  // Rubrique ajoutée hors de la section (« ⋯ », menu contextuel, O-53) : la choisir et la nommer.
+  const toEdit = useUiStore((s) => s.attributeToEdit);
+  useEffect(() => {
+    if (!toEdit || !attributes.some((a) => a.id === toEdit)) return;
+    setSelected(toEdit);
+    edit(toEdit);
+    useUiStore.getState().editAttribute(null);
+  }, [toEdit, attributes]);
   const rows = useRef<(HTMLDivElement | null)[]>([]);
   const index = attributes.findIndex((a) => a.id === selected);
   const current = index >= 0 ? attributes[index]! : null;
