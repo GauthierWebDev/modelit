@@ -1,5 +1,20 @@
 import { bendsOf, diagramLinks, diagramNodes, type Cardinality, type Id, type Point } from "@core/index";
-import { ClipboardPaste, Copy, CopyPlus, ListPlus, Scissors, Trash2 } from "lucide-react";
+import {
+  AlignCenterHorizontal,
+  AlignCenterVertical,
+  AlignEndHorizontal,
+  AlignEndVertical,
+  AlignHorizontalSpaceBetween,
+  AlignStartHorizontal,
+  AlignStartVertical,
+  AlignVerticalSpaceBetween,
+  ClipboardPaste,
+  Copy,
+  CopyPlus,
+  ListPlus,
+  Scissors,
+  Trash2,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { copySelection, cutSelection, duplicateSelection, hasCopy, pasteText } from "@/app/clipboardCommands";
 import { selectReadOnlyTab, useCollabStore } from "@/app/collab/session";
@@ -10,6 +25,7 @@ import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { MOD, MODEL_SETTINGS_SHORTCUT } from "@/ui/shortcuts";
 import { mainCommand } from "@/ui/windows/mainCommands";
+import { alignSelection, distributeSelection, selectedBoxes } from "./arrange";
 import { snap, INHERITANCE_SIZE } from "./geometry";
 import { useContextMenu } from "./ContextMenu";
 import { clientToModel, fitToWindow, revealObjects } from "./viewport";
@@ -19,9 +35,10 @@ import { clientToModel, fitToWindow, revealObjects } from "./viewport";
  * Elles passent par les mêmes commandes que les raccourcis (O-52, app/commands).
  */
 
-export type Action =
-  | { kind: "item"; id: string; label: string; icon?: ReactNode; shortcut?: string; disabled?: boolean; checked?: boolean; run: () => void }
-  | { kind: "separator" };
+export type ActionItem = { kind: "item"; id: string; label: string; icon?: ReactNode; shortcut?: string; disabled?: boolean; checked?: boolean; run: () => void };
+
+/** `row` : rangée d'icônes (ex. disposition, O-57). */
+export type Action = ActionItem | { kind: "separator" } | { kind: "row"; id: string; items: ActionItem[] };
 
 const SEPARATOR: Action = { kind: "separator" };
 /** Actions encore permises dans une session en lecture seule. */
@@ -71,6 +88,44 @@ function addAttributeAction(doc: DocumentHandle, ownerId: Id): Action {
   };
 }
 
+const ALIGN_ICONS = {
+  left: <AlignStartVertical size={14} />,
+  center: <AlignCenterVertical size={14} />,
+  right: <AlignEndVertical size={14} />,
+  top: <AlignStartHorizontal size={14} />,
+  middle: <AlignCenterHorizontal size={14} />,
+  bottom: <AlignEndHorizontal size={14} />,
+} as const;
+
+/**
+ * Aligner (à partir de deux objets) et répartir (à partir de trois) la sélection (override O-57) :
+ * section Propriétés et menu contextuel d'une sélection multiple.
+ */
+export function arrangeActions(doc: DocumentHandle): ActionItem[] {
+  const count = selectedBoxes(doc).length;
+  return [
+    ...(Object.keys(ALIGN_ICONS) as (keyof typeof ALIGN_ICONS)[]).map(
+      (id): ActionItem => ({ kind: "item", id: `align-${id}`, label: t(`arrange.align.${id}`), icon: ALIGN_ICONS[id], disabled: count < 2, run: () => alignSelection(doc, id) }),
+    ),
+    {
+      kind: "item",
+      id: "distribute-horizontal",
+      label: t("arrange.distribute.horizontal"),
+      icon: <AlignHorizontalSpaceBetween size={14} />,
+      disabled: count < 3,
+      run: () => distributeSelection(doc, "horizontal"),
+    },
+    {
+      kind: "item",
+      id: "distribute-vertical",
+      label: t("arrange.distribute.vertical"),
+      icon: <AlignVerticalSpaceBetween size={14} />,
+      disabled: count < 3,
+      run: () => distributeSelection(doc, "vertical"),
+    },
+  ];
+}
+
 /** Actions du bouton « ⋯ » d'une entité ou d'une association. */
 export function quickActions(doc: DocumentHandle, ownerId: Id): Action[] {
   const [copy, , duplicate, remove] = editingActions(doc, 1);
@@ -103,9 +158,9 @@ export function contextActions(doc: DocumentHandle, id: Id | null, point: Point)
   const readOnly = selectReadOnlyTab(useCollabStore.getState()) === doc.id;
   const actions = buildContextActions(doc, id, point, model, view, selection);
   if (!readOnly) return actions;
-  const allowed = actions.filter((a) => a.kind === "separator" || READ_ONLY_ALLOWED.has(a.id));
+  const allowed = actions.filter((a) => a.kind === "separator" || (a.kind === "item" && READ_ONLY_ALLOWED.has(a.id)));
   // Pas de séparateur en tête, en fin, ni doublé.
-  return allowed.filter((a, i) => a.kind === "item" || (i > 0 && i < allowed.length - 1 && allowed[i - 1]!.kind === "item"));
+  return allowed.filter((a, i) => a.kind !== "separator" || (i > 0 && i < allowed.length - 1 && allowed[i - 1]!.kind !== "separator"));
 }
 
 function buildContextActions(
@@ -168,7 +223,9 @@ function buildContextActions(
   }
 
   // Plusieurs objets sélectionnés, dont celui-ci : actions sur toute la sélection.
-  if (selection.length > 1 && selection.includes(id)) return editingActions(doc, selection.length);
+  if (selection.length > 1 && selection.includes(id)) {
+    return [{ kind: "row", id: "arrange", items: arrangeActions(doc) }, SEPARATOR, ...editingActions(doc, selection.length)];
+  }
 
   const entity = model.entities.find((e) => e.id === id);
   if (entity) {
