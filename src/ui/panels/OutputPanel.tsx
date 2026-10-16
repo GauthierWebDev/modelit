@@ -98,8 +98,8 @@ function SqlView({ sql, losses }: { sql: string; losses: Loss[] }) {
           {open && (
             <ul className="mt-1 list-disc pl-5 text-xs text-neutral-700 dark:text-neutral-300">
               {/* Une ligne par perte, avec ses emplacements (O-37). */}
-              {groupLosses(losses).map((g, i) => (
-                <li key={i}>
+              {groupLosses(losses).map((g) => (
+                <li key={`${g.category}|${g.priority ?? ""}|${g.message}`}>
                   {g.message}
                   {g.places.length > 0 && (
                     <>
@@ -127,6 +127,7 @@ function MldView() {
         <div key={line.table}>
           <strong>{line.table}</strong> = (
           {line.columns.map((c, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, recalculée
             <span key={`${c.name}-${i}`}>
               {i > 0 && ", "}
               <span
@@ -161,6 +162,7 @@ function IssuesView() {
   return (
     <ul className="font-sans text-sm">
       {issues.map((issue, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, recalculée
         <li key={i}>
           <button
             type="button"

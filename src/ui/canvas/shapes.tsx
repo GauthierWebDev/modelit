@@ -323,6 +323,7 @@ export function LinkHandles({
       ))}
       {bends.map((b, index) => (
         <circle
+          // biome-ignore lint/suspicious/noArrayIndexKey: une cassure est désignée par sa place (data-index)
           key={`bend-${index}`}
           data-handle="bend"
           data-index={index}

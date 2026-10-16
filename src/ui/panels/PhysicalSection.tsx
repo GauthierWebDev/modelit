@@ -49,6 +49,7 @@ export function PhysicalSection({
       <SubTitle>{t("physical.checks")}</SubTitle>
       {(node.checks ?? []).map((check, i) => (
         <CheckRow
+          // biome-ignore lint/suspicious/noArrayIndexKey: éléments sans identifiant dans le modèle ; CommitInput se resynchronise sur sa valeur
           key={i}
           check={check}
           onChange={(next) => edit((n) => void (next ? (n.checks![i] = next) : n.checks!.splice(i, 1)))}
@@ -62,6 +63,7 @@ export function PhysicalSection({
       <SubTitle>{t("physical.alternateKeys")}</SubTitle>
       {(node.alternateKeys ?? []).map((key, i) => (
         <KeyRow
+          // biome-ignore lint/suspicious/noArrayIndexKey: éléments sans identifiant dans le modèle ; CommitInput se resynchronise sur sa valeur
           key={i}
           name={key.name}
           members={key.members.map(memberName)}
@@ -80,6 +82,7 @@ export function PhysicalSection({
       <SubTitle>{t("physical.indexes")}</SubTitle>
       {(node.indexes ?? []).map((index, i) => (
         <KeyRow
+          // biome-ignore lint/suspicious/noArrayIndexKey: éléments sans identifiant dans le modèle ; CommitInput se resynchronise sur sa valeur
           key={i}
           name={index.name}
           members={index.members.map(memberName)}

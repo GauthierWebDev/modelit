@@ -89,6 +89,7 @@ export function ContextMenuLayer() {
     >
       {menu.actions.map((action, i) =>
         action.kind === "separator" ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: séparateur sans identité propre
           <div key={`sep-${i}`} role="separator" className="my-1 border-t border-neutral-200 dark:border-neutral-700" />
         ) : action.kind === "row" ? (
           <div key={action.id} role="group" className="flex gap-0.5 px-2 py-0.5">

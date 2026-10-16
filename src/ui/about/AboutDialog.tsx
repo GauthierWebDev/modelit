@@ -102,12 +102,14 @@ function Changes() {
             )}
           </h3>
           {entry.sections.map((section, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, jamais réordonnée
             <div key={i} className="mt-1.5">
               {section.title && (
                 <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">{section.title}</p>
               )}
               <ul className="ml-4 list-disc">
                 {section.items.map((item, j) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, jamais réordonnée
                   <li key={j}>
                     <Inline text={item} />
                   </li>
@@ -127,10 +129,12 @@ function Inline({ text }: { text: string }) {
     <>
       {text.split(/(`[^`]+`|\*\*[^*]+\*\*)/).map((part, i) =>
         part.startsWith("`") && part.endsWith("`") && part.length > 1 ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, jamais réordonnée
           <code key={i} className="rounded bg-neutral-100 px-1 text-[0.85em] dark:bg-neutral-800">
             {part.slice(1, -1)}
           </code>
         ) : part.startsWith("**") && part.endsWith("**") && part.length > 3 ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, jamais réordonnée
           <strong key={i}>{part.slice(2, -2)}</strong>
         ) : (
           part

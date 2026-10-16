@@ -136,6 +136,7 @@ export function ReverseDialog() {
               </p>
               <ul className="mt-1 list-disc pl-5 text-xs text-neutral-600 dark:text-neutral-300">
                 {report.warnings.map((w, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, jamais réordonnée
                   <li key={i}>{w}</li>
                 ))}
               </ul>
