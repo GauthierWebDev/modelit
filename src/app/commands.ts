@@ -335,7 +335,7 @@ export function updateLink(
   });
 }
 
-/** Annotations physiques d'une entité ou d'une association (vue avancée, override O-29). */
+/** Annotations physiques d'une entité ou d'une association (bloc « Avancé », overrides O-29, O-50). */
 export function updatePhysical(doc: DocumentHandle, nodeId: Id, recipe: (node: Entity | Association) => void) {
   change(doc, "history.editPhysical", (d) => {
     const node = findNode(d, nodeId);

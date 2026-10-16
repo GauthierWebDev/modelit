@@ -33,7 +33,7 @@ export function ForeignKeysSection({ tableOf, linkIds }: { tableOf?: Id; linkIds
   const showTable = linkIds !== undefined;
 
   return (
-    <Section title={t("fk.title")}>
+    <Section title={t("fk.title")} collapsible="node.foreignKeys" summary={`(${rows.length})`}>
       {rows.length === 0 && <p className="text-sm text-neutral-500">{t("fk.none")}</p>}
       {rows.map(({ table, column, referenced }) => {
         const origin = column.origin!;

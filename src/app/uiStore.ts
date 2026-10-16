@@ -29,8 +29,6 @@ interface UiState {
   shareOpen: boolean;
   tool: Tool;
   status: StatusMessage | null;
-  /** Vue avancée de l'inspecteur : annotations physiques (override O-29). */
-  advanced: boolean;
 
   setExportOpen: (open: boolean) => void;
   setOptionsOpen: (open: boolean) => void;
@@ -38,7 +36,6 @@ interface UiState {
   setReverseOpen: (open: boolean) => void;
   setShareOpen: (open: boolean) => void;
   setTool: (tool: Tool) => void;
-  setAdvanced: (advanced: boolean) => void;
   notify: (status: StatusMessage | null) => void;
 }
 
@@ -50,7 +47,6 @@ export const useUiStore = create<UiState>()((set) => ({
   shareOpen: false,
   tool: "select",
   status: null,
-  advanced: false,
 
   // Outil valable seulement dans le MCD : passer par `chooseTool` / `showView` (viewCommands.ts).
   setTool: (tool) => set({ tool }),
@@ -59,6 +55,5 @@ export const useUiStore = create<UiState>()((set) => ({
   setAbout: (about) => set({ about }),
   setReverseOpen: (reverseOpen) => set({ reverseOpen }),
   setShareOpen: (shareOpen) => set({ shareOpen }),
-  setAdvanced: (advanced) => set({ advanced }),
   notify: (status) => set({ status }),
 }));

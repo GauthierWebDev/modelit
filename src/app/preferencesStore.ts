@@ -48,6 +48,8 @@ export interface Preferences {
   lastSeenVersion: string;
   /** Disposition de la barre d'outils et des sections (overrides O-45, O-46). */
   dock: DockLayout;
+  /** Blocs repliables des sections (« Avancé », clés étrangères…) dépliés (O-50) ; absents = repliés. */
+  disclosures: Record<string, boolean>;
   /** Assistants IA par MCP (override O-47) : désactivé par défaut. */
   mcp: McpPreferences;
   /** Identité en session collaborative (O-05 §3). */
@@ -71,6 +73,7 @@ interface PreferencesState extends Preferences {
   setExport: (patch: Partial<ExportPreferences>) => void;
   setUpdateCheck: (enabled: boolean) => void;
   setLastSeenVersion: (version: string) => void;
+  setDisclosure: (id: string, open: boolean) => void;
   /** Applique une opération de `dock/layout.ts` à la disposition. */
   updateDock: (change: (layout: DockLayout) => DockLayout) => void;
   setMcp: (patch: Partial<McpPreferences>) => void;
@@ -94,6 +97,7 @@ const initial: Preferences = {
   updateCheck: true,
   lastSeenVersion: "",
   dock: defaultLayout(),
+  disclosures: {},
   mcp: { enabled: false, port: 47321, token: "" },
   identity: newIdentity(),
 };
@@ -111,6 +115,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       setExport: (patch) => set((s) => ({ export: { ...s.export, ...patch } })),
       setUpdateCheck: (updateCheck) => set({ updateCheck }),
       setLastSeenVersion: (lastSeenVersion) => set({ lastSeenVersion }),
+      setDisclosure: (id, open) => set((s) => ({ disclosures: { ...s.disclosures, [id]: open } })),
       updateDock: (change) => set((s) => ({ dock: change(s.dock) })),
       setMcp: (patch) => set((s) => ({ mcp: { ...s.mcp, ...patch } })),
       setIdentity: (patch) => set((s) => ({ identity: { ...s.identity, ...patch, name: (patch.name ?? s.identity.name).slice(0, 40) } })),

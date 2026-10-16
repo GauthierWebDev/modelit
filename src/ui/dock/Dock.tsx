@@ -230,6 +230,9 @@ function EmptyZoneSlot({ zone }: { zone: Zone }) {
   return <div data-drop-zone={zone} data-drop-index={0} className={`flex-1 ${active ? "bg-blue-500/50" : "bg-blue-500/10"}`} />;
 }
 
+/** Place minimale d'un groupe lors d'un redimensionnement, en px. */
+const MIN_GROUP_SPAN = 80;
+
 /** Séparateur entre deux groupes d'une zone : redistribue la place. */
 function GroupResizer({ zone, index, layout }: { zone: Zone; index: number; layout: DockLayout }) {
   const vertical = zone === "right";
@@ -240,16 +243,20 @@ function GroupResizer({ zone, index, layout }: { zone: Zone; index: number; layo
       {...tip(t("dock.resize"))}
       className={`flex-none bg-neutral-200 hover:bg-blue-400 dark:bg-neutral-700 ${vertical ? "h-1 cursor-row-resize" : "w-1 cursor-col-resize"}`}
       onPointerDown={(e) => {
-        const parent = e.currentTarget.parentElement!.getBoundingClientRect();
+        // La zone entière, pas le parent direct : celui-ci est en `display: contents`, sans boîte
+        // (hauteur 0 : le moindre mouvement envoyait le séparateur en butée).
+        const parent = e.currentTarget.closest("[data-dock-zone]")!.getBoundingClientRect();
         const groups = layout.zones[zone].groups;
         const a = groups[index]!.weight;
         const b = groups[index + 1]!.weight;
         const total = groups.reduce((sum, g) => sum + g.weight, 0);
-        const span = vertical ? parent.height : parent.width;
+        const span = Math.max(1, vertical ? parent.height : parent.width);
+        // Chaque groupe garde au moins son en-tête et un peu de contenu.
+        const min = (MIN_GROUP_SPAN / span) * total;
         const start = vertical ? e.clientY : e.clientX;
         const move = (ev: PointerEvent) => {
           const delta = (((vertical ? ev.clientY : ev.clientX) - start) / span) * total;
-          const clamped = Math.max(-a + 0.1, Math.min(b - 0.1, delta));
+          const clamped = Math.max(Math.min(0, -a + min), Math.min(Math.max(0, b - min), delta));
           updateDock((l) => setWeights(l, zone, index, a + clamped, b - clamped));
         };
         const up = () => {

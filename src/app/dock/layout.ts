@@ -6,7 +6,7 @@
  * ou bien elle est masquée. Un groupe vide n'existe pas.
  */
 
-export const SECTIONS = ["properties", "model", "mld", "sql", "issues", "session"] as const;
+export const SECTIONS = ["properties", "attributes", "model", "mld", "sql", "issues", "session"] as const;
 /** Sections affichées seulement à la demande : masquées par défaut (« session » : O-05 §7). */
 const HIDDEN_BY_DEFAULT: SectionId[] = ["session"];
 export type SectionId = (typeof SECTIONS)[number];
@@ -65,11 +65,11 @@ const group = (sections: SectionId[], id = newGroupId()): Group => ({
   collapsed: false,
 });
 
-/** Disposition par défaut : celle d'avant O-46. */
+/** Disposition par défaut : celle d'avant O-46, plus les rubriques sous les propriétés (O-50). */
 export function defaultLayout(): DockLayout {
   return {
     zones: {
-      right: { groups: [group(["properties", "model"], "right")], size: 320 },
+      right: { groups: [group(["properties", "model"], "right"), { ...group(["attributes"], "attributes"), weight: 1.5 }], size: 320 },
       bottom: { groups: [group(["mld", "sql", "issues"], "bottom")], size: 224 },
     },
     floating: [],
@@ -274,6 +274,18 @@ export function keepOnScreen(layout: DockLayout, screens: Rect[], fallback: Rect
 
 const isSection = (s: unknown): s is SectionId => SECTIONS.includes(s as SectionId);
 
+/** Section apparue dans une version plus récente : placée sous le groupe d'une section voisine. */
+const NEAR: Partial<Record<SectionId, SectionId>> = { attributes: "properties" };
+
+/** Juste sous le groupe ancré qui contient `section`, sinon en bas de la zone de droite (O-50). */
+function placeNear(layout: DockLayout, section: SectionId | undefined): DropTarget {
+  for (const zone of ZONES) {
+    const index = layout.zones[zone].groups.findIndex((g) => section && g.sections.includes(section));
+    if (index >= 0) return { kind: "zone", zone, index: index + 1 };
+  }
+  return { kind: "zone", zone: "right", index: Infinity };
+}
+
 /**
  * Disposition relue des options du poste : toute incohérence (section inconnue, en double,
  * manquante, groupe vide) est réparée, au pire en revenant à la disposition par défaut.
@@ -326,7 +338,7 @@ export function sanitizeLayout(raw: unknown): DockLayout {
       if (HIDDEN_BY_DEFAULT.includes(s)) {
         layout.hidden.push(s);
         layout.lastPlace[s] ??= { group: "right" };
-      } else attach(layout, [s], { kind: "zone", zone: "right", index: Infinity });
+      } else attach(layout, [s], placeNear(layout, NEAR[s]));
     }
     const t = input.toolbar;
     layout.toolbar = {

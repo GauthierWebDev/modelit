@@ -22,7 +22,7 @@ export interface MirrorState {
   undoLabel?: MessageKey;
   redoLabel?: MessageKey;
   view: Pick<DocumentViewState, "view" | "selection" | "viewport" | "activeBend">;
-  ui: { tool: Tool; advanced: boolean };
+  ui: { tool: Tool };
   /** Une boîte modale est ouverte dans la fenêtre principale : les flottantes sont désactivées (O-45). */
   modal: boolean;
   /** Session collaborative (section Session, O-05 §7). */
@@ -43,7 +43,6 @@ export type MainCommand =
 
 export type UiPatch = Partial<{
   tool: Tool;
-  advanced: boolean;
   exportOpen: boolean;
   optionsOpen: boolean;
   reverseOpen: boolean;
