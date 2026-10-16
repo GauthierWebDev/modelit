@@ -56,7 +56,9 @@ met pas à jour automatiquement : seules les releases le font.
 ## Prise en main
 
 - **⌘/Ctrl + 1, 2, 3** : vues MCD, MLD, MPD.
-- **E** / **A** / **H** / **L** / **V** : outils Entité, Association, Héritage, Lien, Sélection (vue MCD).
+- **E** / **A** / **H** / **L** / **V** : outils Entité, Association, Héritage, Lien, Sélection. Entité et
+  Lien marchent aussi dans le MLD et le MPD (relier deux tables crée l'association) ; Association et
+  Héritage sont réservés au MCD.
   Clic droit : abandon de la création en cours et retour à la Sélection.
 - Cliquer dans le vide pour créer une entité ou une association.
 - Outil Lien : cliquer (ou glisser) d'une entité à une autre crée l'association entre elles ;
