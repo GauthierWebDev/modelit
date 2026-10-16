@@ -494,7 +494,7 @@ export const en: Record<MessageKey, string> = {
   "options.autosaveDelayHelp": "0 = after every operation; 1 = at most one save per minute. Decimals allowed (0.5 = 30 s).",
   "options.updates": "Updates",
   "options.updateCheck": "Check for updates at startup",
-  "options.updateHelp": "At most once a day, on ModelIt's GitHub releases. Nothing is installed without your consent.",
+  "options.updateHelp": "At every launch, on ModelIt's GitHub releases. Nothing is installed without your consent.",
   "options.checkNow": "Check now",
   "update.title": "Update",
   "update.available": "ModelIt {version} is available (installed version: {current}).",

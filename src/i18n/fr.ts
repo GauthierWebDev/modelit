@@ -509,7 +509,7 @@ export const fr = {
   "options.autosaveDelayHelp": "0 = après chaque opération ; 1 = au plus une sauvegarde par minute. Décimales acceptées (0,5 = 30 s).",
   "options.updates": "Mises à jour",
   "options.updateCheck": "Rechercher les mises à jour au lancement",
-  "options.updateHelp": "Au plus une fois par jour, sur les releases GitHub de ModelIt. Rien n'est installé sans votre accord.",
+  "options.updateHelp": "À chaque lancement, sur les releases GitHub de ModelIt. Rien n'est installé sans votre accord.",
   "options.checkNow": "Rechercher maintenant",
   "update.title": "Mise à jour",
   "update.available": "ModelIt {version} est disponible (version installée : {current}).",

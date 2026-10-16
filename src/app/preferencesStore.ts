@@ -44,8 +44,6 @@ export interface Preferences {
   export: ExportPreferences;
   /** Recherche automatique des mises à jour au lancement. */
   updateCheck: boolean;
-  /** Date (ms) de la dernière recherche de mise à jour réussie. */
-  lastUpdateCheck: number;
   /** Dernière version lancée sur ce poste : ses nouveautés sont montrées après une mise à jour. */
   lastSeenVersion: string;
   /** Disposition de la barre d'outils et des sections (overrides O-45, O-46). */
@@ -72,7 +70,6 @@ interface PreferencesState extends Preferences {
   setAutosaveDelay: (minutes: number) => void;
   setExport: (patch: Partial<ExportPreferences>) => void;
   setUpdateCheck: (enabled: boolean) => void;
-  setLastUpdateCheck: (time: number) => void;
   setLastSeenVersion: (version: string) => void;
   /** Applique une opération de `dock/layout.ts` à la disposition. */
   updateDock: (change: (layout: DockLayout) => DockLayout) => void;
@@ -95,7 +92,6 @@ const initial: Preferences = {
   autosaveDelay: 0,
   export: { format: "png", theme: "light", transparent: false, color: "#ffffff", dpi: 150 },
   updateCheck: true,
-  lastUpdateCheck: 0,
   lastSeenVersion: "",
   dock: defaultLayout(),
   mcp: { enabled: false, port: 47321, token: "" },
@@ -114,7 +110,6 @@ export const usePreferencesStore = create<PreferencesState>()(
       setAutosaveDelay: (autosaveDelay) => set({ autosaveDelay: Math.max(0, autosaveDelay) }),
       setExport: (patch) => set((s) => ({ export: { ...s.export, ...patch } })),
       setUpdateCheck: (updateCheck) => set({ updateCheck }),
-      setLastUpdateCheck: (lastUpdateCheck) => set({ lastUpdateCheck }),
       setLastSeenVersion: (lastSeenVersion) => set({ lastSeenVersion }),
       updateDock: (change) => set((s) => ({ dock: change(s.dock) })),
       setMcp: (patch) => set((s) => ({ mcp: { ...s.mcp, ...patch } })),
