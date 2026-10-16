@@ -1,4 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { ChevronRight } from "lucide-react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { usePreferencesStore } from "@/app/preferencesStore";
 import { t } from "@/i18n";
 import { tip } from "./Tooltip";
 
@@ -10,7 +12,8 @@ export const inputClass =
 /**
  * Champ texte validé à la sortie du champ ou sur Entrée. `onCommit` peut renvoyer
  * un message d'erreur : la saisie est alors conservée et l'erreur affichée.
- * Échap rétablit la valeur d'origine.
+ * Échap rétablit la valeur d'origine. `autoSelect` : texte sélectionné à la prise du focus
+ * automatique ; `onEnter` : appelé après Entrée, si la saisie est acceptée.
  */
 export function CommitInput({
   value,
@@ -18,23 +21,31 @@ export function CommitInput({
   placeholder,
   className = "",
   autoFocus,
+  autoSelect,
+  onEnter,
 }: {
   value: string;
   onCommit: (value: string) => string | null | void;
   placeholder?: string;
   className?: string;
   autoFocus?: boolean;
+  autoSelect?: boolean;
+  onEnter?: () => void;
 }) {
   const [draft, setDraft] = useState(value);
   const [error, setError] = useState<string | null>(null);
+  /** Sélection du texte à faire une seule fois, à la prise du focus automatique. */
+  const pendingSelect = useRef(autoSelect);
   useEffect(() => {
     setDraft(value);
     setError(null);
   }, [value]);
 
+  /** Vrai si la saisie est acceptée (ou inchangée). */
   const commit = () => {
-    if (draft === value) return setError(null);
-    setError(onCommit(draft) ?? null);
+    const next = draft === value ? null : (onCommit(draft) ?? null);
+    setError(next);
+    return next === null;
   };
 
   return (
@@ -44,10 +55,15 @@ export function CommitInput({
         value={draft}
         placeholder={placeholder}
         autoFocus={autoFocus}
+        ref={(input) => {
+          if (!input || !pendingSelect.current || input !== document.activeElement) return;
+          pendingSelect.current = false;
+          input.select();
+        }}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {
-          if (e.key === "Enter") commit();
+          if (e.key === "Enter" && commit()) onEnter?.();
           if (e.key === "Escape") {
             setDraft(value);
             setError(null);
@@ -134,15 +150,73 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   );
 }
 
-export function Section({ title, children, actions }: { title: string; children: ReactNode; actions?: ReactNode }) {
+const sectionTitle = "text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:text-neutral-400";
+
+/**
+ * Bloc titré d'une section. `collapsible` : identifiant d'un bloc repliable (O-50), replié par
+ * défaut, dont l'état est mémorisé dans les options du poste ; `summary` s'affiche à côté du
+ * titre (ex. un nombre), utile surtout replié.
+ */
+export function Section({
+  title,
+  children,
+  actions,
+  collapsible,
+  summary,
+}: {
+  title: string;
+  children: ReactNode;
+  actions?: ReactNode;
+  collapsible?: string;
+  summary?: ReactNode;
+}) {
+  const stored = usePreferencesStore((s) => (collapsible ? s.disclosures[collapsible] : undefined));
+  const open = !collapsible || stored === true;
   return (
     <section className="border-b border-neutral-200 px-3 py-3 dark:border-neutral-700">
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:text-neutral-400">{title}</h3>
-        {actions}
+      <div className={`flex items-center justify-between ${open ? "mb-2" : ""}`}>
+        {collapsible ? <DisclosureToggle id={collapsible} open={open} title={title} summary={summary} /> : <h3 className={sectionTitle}>{title}</h3>}
+        {open && actions}
       </div>
-      <div className="flex flex-col gap-2">{children}</div>
+      {open && <div className="flex flex-col gap-2">{children}</div>}
     </section>
+  );
+}
+
+/** Bloc repliable à l'intérieur d'un autre (ex. « Avancé » d'une rubrique). */
+export function Disclosure({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+  const open = usePreferencesStore((s) => s.disclosures[id] === true);
+  return (
+    <div className="flex flex-col gap-1">
+      <DisclosureToggle id={id} open={open} title={title} />
+      {open && <div className="flex flex-col gap-1 pl-4">{children}</div>}
+    </div>
+  );
+}
+
+/**
+ * En-tête cliquable d'un bloc repliable. Pas un <button> : il reste utilisable dans un
+ * formulaire désactivé (session en lecture seule), où l'on consulte sans modifier.
+ */
+function DisclosureToggle({ id, open, title, summary }: { id: string; open: boolean; title: string; summary?: ReactNode }) {
+  const toggle = () => usePreferencesStore.getState().setDisclosure(id, !open);
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      aria-expanded={open}
+      onClick={toggle}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        toggle();
+      }}
+      className={`flex cursor-pointer items-center gap-1 select-none hover:text-neutral-800 dark:hover:text-neutral-200 ${sectionTitle}`}
+    >
+      <ChevronRight size={12} className={`transition-transform ${open ? "rotate-90" : ""}`} />
+      {title}
+      {summary !== undefined && <span className="font-normal tracking-normal normal-case">{summary}</span>}
+    </span>
   );
 }
 

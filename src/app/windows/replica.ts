@@ -22,7 +22,7 @@ enablePatches();
 /** Dernier état reçu (nom du document, boîte modale ouverte…). */
 export const useMirrorStore = create<{ state: MirrorState | null }>(() => ({ state: null }));
 
-const UI_KEYS = ["tool", "advanced", "exportOpen", "optionsOpen", "reverseOpen", "shareOpen", "about"] as const;
+const UI_KEYS = ["tool", "exportOpen", "optionsOpen", "reverseOpen", "shareOpen", "about"] as const;
 /** Boîtes de dialogue : elles s'ouvrent dans la fenêtre principale, jamais dans une flottante. */
 const DIALOG_KEYS = ["exportOpen", "optionsOpen", "reverseOpen", "shareOpen", "about"] as const;
 
@@ -83,7 +83,7 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
     setActiveBend: (activeBend) => forwardView({ activeBend }),
   });
 
-  // Outil, vue avancée, boîtes de dialogue : renvoyés à la principale.
+  // Outil, boîtes de dialogue : renvoyés à la principale.
   const offUi = useUiStore.subscribe((s, p) => {
     if (applying) return;
     const patch: UiPatch = {};
@@ -113,7 +113,7 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
       });
       view.setState(state.view);
       const ui = useUiStore.getState();
-      if (ui.tool !== state.ui.tool || ui.advanced !== state.ui.advanced) useUiStore.setState(state.ui);
+      if (ui.tool !== state.ui.tool) useUiStore.setState(state.ui);
       applyCollabMirror(state.collab);
       useMirrorStore.setState({ state });
     } finally {

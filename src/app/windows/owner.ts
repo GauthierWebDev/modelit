@@ -33,7 +33,7 @@ export function snapshot(): MirrorState {
     undoLabel: selectUndoLabel(state),
     redoLabel: selectRedoLabel(state),
     view: { view: view.view, selection: view.selection, viewport: view.viewport, activeBend: view.activeBend },
-    ui: { tool: ui.tool, advanced: ui.advanced },
+    ui: { tool: ui.tool },
     modal: useDialogStore.getState().queue.length > 0 || ui.exportOpen || ui.optionsOpen || ui.reverseOpen || ui.shareOpen || ui.about !== null,
     collab: collabMirror(),
   };
@@ -52,7 +52,6 @@ const same = (a: MirrorState, b: MirrorState) =>
   a.view.viewport === b.view.viewport &&
   a.view.activeBend === b.view.activeBend &&
   a.ui.tool === b.ui.tool &&
-  a.ui.advanced === b.ui.advanced &&
   a.modal === b.modal &&
   sameCollabMirror(a.collab, b.collab);
 

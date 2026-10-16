@@ -8,16 +8,14 @@ import {
   type Link,
   type ModelDocument,
 } from "@core/index";
-import { KeyRound } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import * as cmd from "@/app/commands";
 import { revealSection } from "@/app/dock/actions";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
-import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { Checkbox, CommitInput, ErrorBanner, Field, NumberInput, Section, Select } from "@/ui/common/controls";
 import { useSessionReadOnly } from "@/ui/collab/readOnly";
-import { AttributesEditor } from "./AttributesEditor";
 import { ForeignKeysSection } from "./ForeignKeysSection";
 import { InheritanceLinkPanel, InheritancePanel } from "./InheritancePanels";
 import { PhysicalSection } from "./PhysicalSection";
@@ -73,7 +71,7 @@ export function PropertiesSection() {
 }
 
 /** Champs désactivés dans l'onglet d'une session en lecture seule (O-05 §4.3). */
-function ReadOnly({ children }: { children: ReactNode }) {
+export function ReadOnly({ children }: { children: ReactNode }) {
   const readOnly = useSessionReadOnly(useDocumentHandle());
   if (!readOnly) return <>{children}</>;
   return (
@@ -100,23 +98,23 @@ export function ModelSection() {
 
 type Report = (message: string | null) => string | null;
 
-/** Bascule de la vue avancée (annotations physiques, override O-29). */
-function AdvancedToggle() {
-  const advanced = useUiStore((s) => s.advanced);
-  const setAdvanced = useUiStore((s) => s.setAdvanced);
+/** Renvoi vers la section Rubriques, où elles s'éditent (O-50). */
+function AttributesLink({ count }: { count: number }) {
   return (
-    <div className="border-b border-neutral-200 px-3 py-1.5 dark:border-neutral-700">
-      <Checkbox label={t("physical.toggle")} checked={advanced} onChange={setAdvanced} />
-    </div>
+    <button
+      type="button"
+      className="flex items-center gap-0.5 self-start text-sm text-blue-600 hover:underline dark:text-blue-400"
+      onClick={() => revealSection("attributes")}
+    >
+      {t("attributes.link", { n: count })} <ChevronRight size={14} />
+    </button>
   );
 }
 
 function EntityPanel({ doc, entity, report }: { doc: ModelDocument; entity: Entity; report: Report }) {
   const handle = useDocumentHandle();
-  const advanced = useUiStore((s) => s.advanced);
   return (
     <>
-      <AdvancedToggle />
       <Section title={t("inspector.entity")}>
         <Field label={t("inspector.name")}>
           <CommitInput value={entity.name} onCommit={(name) => report(cmd.renameNode(handle, entity.id, name))} />
@@ -133,36 +131,18 @@ function EntityPanel({ doc, entity, report }: { doc: ModelDocument; entity: Enti
           checked={entity.fictive}
           onChange={(fictive) => cmd.updateEntity(handle, entity.id, { fictive })}
         />
-        {advanced && (
+        <AttributesLink count={entity.attributes.length} />
+      </Section>
+      {!entity.fictive && <ForeignKeysSection tableOf={entity.id} />}
+      {!entity.fictive && (
+        <PhysicalSection doc={doc} node={entity}>
           <Checkbox
             label={t("physical.caseSensitive")}
             checked={Boolean(entity.caseSensitive)}
             onChange={(on) => cmd.updatePhysical(handle, entity.id, (n) => void (n.caseSensitive = on || undefined))}
           />
-        )}
-      </Section>
-      <Section
-        title={t("inspector.attributes")}
-        actions={
-          <button
-            type="button"
-            className="flex items-center gap-1 text-xs text-blue-600 hover:underline dark:text-blue-400"
-            onClick={() => report(cmd.addAutoIdentifier(handle, entity.id))}
-          >
-            <KeyRound size={12} /> {t("inspector.autoDiscriminant")}
-          </button>
-        }
-      >
-        <AttributesEditor
-          attributes={entity.attributes}
-          allowIdentifier
-          advanced={advanced}
-          dialect={doc.settings.dbms}
-          onChange={(attributes) => report(cmd.setAttributes(handle, entity.id, attributes))}
-        />
-      </Section>
-      {!entity.fictive && <ForeignKeysSection tableOf={entity.id} />}
-      {advanced && !entity.fictive && <PhysicalSection doc={doc} node={entity} />}
+        </PhysicalSection>
+      )}
       <CommentSection value={entity.comment} onCommit={(comment) => cmd.updateEntity(handle, entity.id, { comment })} />
     </>
   );
@@ -172,11 +152,9 @@ function AssociationPanel({ doc, association, report }: { doc: ModelDocument; as
   const handle = useDocumentHandle();
   const links = doc.links.filter((l) => l.associationId === association.id);
   const entityName = (link: Link) => doc.entities.find((e) => e.id === link.entityId)?.name ?? "?";
-  const advanced = useUiStore((s) => s.advanced);
 
   return (
     <>
-      <AdvancedToggle />
       <Section title={t("inspector.association")}>
         <Field label={t("inspector.name")}>
           <CommitInput value={association.name} onCommit={(name) => report(cmd.renameNode(handle, association.id, name))} />
@@ -188,6 +166,7 @@ function AssociationPanel({ doc, association, report }: { doc: ModelDocument; as
             onCommit={(logicalName) => report(cmd.updateAssociation(handle, association.id, { logicalName: logicalName.trim() || undefined }))}
           />
         </Field>
+        <AttributesLink count={association.attributes.length} />
       </Section>
       <Section title={t("inspector.legs", { n: links.length })}>
         {links.length === 0 && <p className="text-sm text-neutral-500">{t("inspector.noLegs")}</p>}
@@ -198,17 +177,8 @@ function AssociationPanel({ doc, association, report }: { doc: ModelDocument; as
           </div>
         ))}
       </Section>
-      <Section title={t("inspector.attributes")}>
-        <AttributesEditor
-          attributes={association.attributes}
-          allowIdentifier={false}
-          advanced={advanced}
-          dialect={doc.settings.dbms}
-          onChange={(attributes) => report(cmd.setAttributes(handle, association.id, attributes))}
-        />
-      </Section>
       <ForeignKeysSection linkIds={links.map((l) => l.id)} />
-      {advanced && <PhysicalSection doc={doc} node={association} />}
+      <PhysicalSection doc={doc} node={association} />
       <CommentSection value={association.comment} onCommit={(comment) => report(cmd.updateAssociation(handle, association.id, { comment }))} />
     </>
   );
@@ -277,7 +247,7 @@ function LinkPanel({ doc, link, report }: { doc: ModelDocument; link: Link; repo
           onChange={(relativeId) => cmd.updateLink(handle, link.id, { relativeId })}
         />
       </Section>
-      <Section title={t("inspector.cascades")}>
+      <Section title={t("inspector.advanced")} collapsible="link.advanced">
         {(["onDelete", "onUpdate"] as const).map((event) => (
           <Field key={event} label={event === "onDelete" ? "ON DELETE" : "ON UPDATE"}>
             <Select

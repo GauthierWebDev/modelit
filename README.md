@@ -70,8 +70,11 @@ ne sont pas concernées.
   (onglet Script LDD) et en commentaire en tête de celui-ci, une ligne par perte identique. Options
   du script (FK en ALTER TABLE, index, ordre des colonnes, noms des contraintes, non-signés, ENUM,
   SET, collations, DATE Oracle, chaîne vide Oracle, fidélité stricte des plages, types spatiaux, collation SQL Server supposée, schéma dbo) : paramètres du modèle, section « Script SQL ».
-- **Vue avancée** (case en haut de l'inspecteur) : DEFAULT, CHECK, type d'origine, casse, index et
-  identifiants alternatifs de l'objet sélectionné.
+- **Section Rubriques** : liste compacte des rubriques de l'objet sélectionné (Entrée pour enchaîner
+  les saisies, Alt + ↑ / ↓ ou glisser pour réordonner, Suppr pour supprimer) et détail de la rubrique
+  choisie.
+- **Blocs « Avancé »** (repliables, dans les Propriétés et le détail d'une rubrique) : DEFAULT, CHECK,
+  type d'origine, casse, index et identifiants alternatifs.
 - **⌘/Ctrl + E** : exporter l'image (SVG, PNG, JPG, WEBP ; fond transparent ou uni).
 - **⌘/Ctrl + ,** : options générales (thème, langue FR / EN, lissage des cassures, réglages des
   nouveaux modèles, sauvegarde automatique).

@@ -1,17 +1,18 @@
 import type { Association, Attribute, CheckConstraint, Entity, KeyMember, ModelDocument } from "@core/index";
 import { Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import * as cmd from "@/app/commands";
 import { useDocumentHandle } from "@/app/document/DocumentContext";
 import { t } from "@/i18n";
 import { Checkbox, CommitInput, Field, IconButton, Section } from "@/ui/common/controls";
 
 /**
- * Vue avancée (override O-29) : annotations physiques d'une entité ou d'une association, que le
- * MCD n'affiche pas — nom de clé primaire, contraintes CHECK de table, identifiants alternatifs
- * (UNIQUE), index. Le générateur les réapplique quand le SGBD cible le permet.
+ * Bloc « Avancé » repliable (overrides O-29, O-50) : annotations physiques d'une entité ou d'une
+ * association, que le MCD n'affiche pas — nom de clé primaire, contraintes CHECK de table,
+ * identifiants alternatifs (UNIQUE), index. Le générateur les réapplique quand le SGBD cible le
+ * permet. `children` : réglages placés en tête (casse significative de l'entité).
  */
-export function PhysicalSection({ doc, node }: { doc: ModelDocument; node: Entity | Association }) {
+export function PhysicalSection({ doc, node, children }: { doc: ModelDocument; node: Entity | Association; children?: ReactNode }) {
   const handle = useDocumentHandle();
   const isEntity = doc.entities.some((e) => e.id === node.id);
   const memberName = (member: KeyMember) => {
@@ -22,7 +23,8 @@ export function PhysicalSection({ doc, node }: { doc: ModelDocument; node: Entit
   const edit = (recipe: (n: Entity | Association) => void) => cmd.updatePhysical(handle, node.id, recipe);
 
   return (
-    <Section title={t("physical.title")}>
+    <Section title={t("inspector.advanced")} collapsible="node.advanced">
+      {children}
       <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("physical.help")}</p>
       {isEntity && (
         <Field label={t("physical.primaryKeyName")}>

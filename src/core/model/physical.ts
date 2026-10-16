@@ -5,7 +5,7 @@ import type { Id } from "./document";
  * Annotations physiques (override O-29) : ce que le MCD ne sait pas exprimer mais qu'un script
  * SQL contient (contraintes CHECK, index, noms de contraintes, types et défauts d'origine…).
  * Le MCD affiché les ignore ; le générateur les réapplique quand le SGBD cible le permet et
- * signale toute perte dans son rapport. Elles sont visibles et modifiables dans la vue avancée.
+ * signale toute perte dans son rapport. Elles sont visibles et modifiables dans les blocs « Avancé » (O-50).
  */
 
 /** Dialecte d'une expression ou d'un type d'origine ; `generic` = inconnu / SQL standard. */
