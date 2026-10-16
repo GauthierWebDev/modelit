@@ -235,6 +235,7 @@ function attributeColumns(ctx: Context, owner: Entity | Association, table: stri
   }
   return owner.attributes.map((a) => ({
     name: columnName(ctx, a, table, owner),
+    attributeId: a.id,
     type: a.type,
     notNull: a.notNull,
     unique: a.unique,

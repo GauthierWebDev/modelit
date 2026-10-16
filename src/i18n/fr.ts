@@ -487,6 +487,8 @@ export const fr = {
   "history.editInheritance": "Modifier l'héritage",
   "history.createLink": "Créer un lien",
   "history.renameForeignKey": "Renommer la clé étrangère",
+  "history.renameTable": "Renommer la table",
+  "history.renameColumn": "Renommer la colonne",
   "history.straighten": "Supprimer la cassure",
   "history.removeBend": "Supprimer un point de cassure",
   "history.autoLayout": "Placement automatique",

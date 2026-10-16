@@ -474,6 +474,8 @@ export const en: Record<MessageKey, string> = {
   "history.editInheritance": "Edit the inheritance",
   "history.createLink": "Create a link",
   "history.renameForeignKey": "Rename the foreign key",
+  "history.renameTable": "Rename the table",
+  "history.renameColumn": "Rename the column",
   "history.straighten": "Remove the bends",
   "history.removeBend": "Remove a bend",
   "history.autoLayout": "Automatic layout",

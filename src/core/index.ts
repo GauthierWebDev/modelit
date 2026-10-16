@@ -22,6 +22,7 @@ export * from "./validation/rules";
 export * from "./mld/logical";
 export * from "./mld/transform";
 export * from "./mld/text";
+export * from "./mld/rename";
 export * from "./ddl/generate";
 export { detectDialect } from "./reverse/dialect";
 export * from "./io/modelFile";

@@ -19,6 +19,7 @@ export interface SurfaceHandlers {
   onPointerUp?: (e: PointerEvent<SVGSVGElement>, point: Point) => void;
   onPointerCancel?: () => void;
   onContextMenu?: (e: MouseEvent<SVGSVGElement>) => void;
+  onDoubleClick?: (e: MouseEvent<SVGSVGElement>, point: Point) => void;
 }
 
 export function CanvasSurface({
@@ -112,6 +113,7 @@ export function CanvasSurface({
       }}
       onPointerLeave={() => shared && reportCursor(doc, null)}
       onContextMenu={handlers.onContextMenu}
+      onDoubleClick={(e) => handlers.onDoubleClick?.(e, modelPoint(e))}
     >
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">

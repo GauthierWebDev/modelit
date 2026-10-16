@@ -66,6 +66,13 @@ function AttributesPanel({ doc, owner, isEntity, report }: { doc: ModelDocument;
     edit(toEdit);
     useUiStore.getState().editAttribute(null);
   }, [toEdit, attributes]);
+  // Colonne renommée dans le MLD / MPD (O-56) : la rubrique est choisie, le focus reste sur le canevas.
+  const toShow = useUiStore((s) => s.attributeToShow);
+  useEffect(() => {
+    if (!toShow || !attributes.some((a) => a.id === toShow)) return;
+    setSelected(toShow);
+    useUiStore.getState().showAttribute(null);
+  }, [toShow, attributes]);
   const rows = useRef<(HTMLDivElement | null)[]>([]);
   const index = attributes.findIndex((a) => a.id === selected);
   const current = index >= 0 ? attributes[index]! : null;
