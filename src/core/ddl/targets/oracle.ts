@@ -1,5 +1,12 @@
 import { isAtLeast } from "../../dbms/versions";
-import { type Dialect, standard } from "./dialect";
+import { type Dialect, reservedWords, standard } from "./dialect";
+
+/** Mots réservés propres au SGBD (les mots communs sont ajoutés par `reservedWords`). */
+const RESERVED =
+  reservedWords(`access audit char cluster comment compress connect current date decimal exclusive file float identified
+immediate increment index initial integer level lock long maxextents minus mlslabel mode modify noaudit nocompress nowait
+number offline online option pctfree prior public raw rename resource revoke row rowid rownum rows session share size
+smallint start successful synonym sysdate trigger uid validate varchar varchar2 view whenever`);
 
 export function oracle(version: string | undefined): Dialect {
   return {
@@ -48,5 +55,28 @@ export function oracle(version: string | undefined): Dialect {
       prefix: (ref, n) => `substr(${ref}, 1, ${n})`,
     },
     comments: "statement",
+    // 128 octets depuis 12.2 ; 30 avant (11g, 12c 12.1) et par prudence en générique.
+    identifiers: {
+      quotes: ['"', '"'],
+      folding: "upper",
+      reserved: RESERVED,
+      maxLength: isAtLeast("oracle", version, "18c") ? 128 : 30,
+    },
+    // ON DELETE CASCADE / SET NULL uniquement ; aucun ON UPDATE.
+    actions: { delete: ["cascade", "set null"], update: [], implicit: ["no action"] },
+    expressions: {
+      booleanLiterals: isAtLeast("oracle", version, "23ai"),
+      dates: {
+        current_date: "CURRENT_DATE",
+        current_time: null,
+        current_timestamp: "CURRENT_TIMESTAMP",
+        localtimestamp: "LOCALTIMESTAMP",
+        localtimestamp_seconds: "SYSDATE",
+        utc_timestamp: "SYS_EXTRACT_UTC(SYSTIMESTAMP)",
+      },
+      functions: { current_user: "USER", uuid: "SYS_GUID()", uuid_sequential: "SYS_GUID()" },
+    },
+    // Comparaison binaire : comportement par défaut (NLS_COMP = BINARY).
+    collations: { ...standard.collations, binary: "" },
   };
 }

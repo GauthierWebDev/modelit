@@ -24,5 +24,16 @@ const DIALECTS: Record<Dbms, (version: string | undefined) => Dialect> = {
   access,
 };
 
+/** Un dialecte par SGBD et version : construit une fois, jamais modifié. */
+const built = new Map<string, Dialect>();
+
 /** Règles du script pour la cible, à sa version. */
-export const dialectOf = (target: Target): Dialect => DIALECTS[target.dbms](target.version);
+export function dialectOf(target: Pick<Target, "dbms" | "version">): Dialect {
+  const key = JSON.stringify([target.dbms, target.version]);
+  let dialect = built.get(key);
+  if (!dialect) {
+    dialect = DIALECTS[target.dbms](target.version);
+    built.set(key, dialect);
+  }
+  return dialect;
+}
