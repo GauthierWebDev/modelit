@@ -8,7 +8,7 @@ import type { ViewMode } from "@/app/document/documentView";
 import { useCollabStore } from "@/app/collab/session";
 import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { useUiStore, type Tool } from "@/app/uiStore";
-import { chooseTool, showView } from "@/app/viewCommands";
+import { chooseTool, showView, toolAvailable } from "@/app/viewCommands";
 import { t, type MessageKey } from "@/i18n";
 import { mainCommand } from "@/ui/windows/mainCommands";
 import { IconButton } from "@/ui/common/controls";
@@ -123,7 +123,7 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
             key={x.id}
             tooltip={t("tool.tooltip", { label: t(x.label), key: x.key })}
             active={tool === x.id}
-            disabled={(view !== "mcd" || readOnly) && x.id !== "select"}
+            disabled={(!toolAvailable(x.id, view) || readOnly) && x.id !== "select"}
             onClick={() => chooseTool(doc, x.id)}
           >
             {x.icon}

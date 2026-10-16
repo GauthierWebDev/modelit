@@ -1,10 +1,12 @@
 import type { Id, Issue, Point, RelationLabelMode } from "@core/index";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { addEntity, connectNodes } from "@/app/commands";
+import { useUiStore } from "@/app/uiStore";
 import { useIssuesByTarget, useLogicalModel } from "@/app/derived";
 import { t } from "@/i18n";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { revealSection } from "@/app/dock/actions";
-import { CanvasSurface, hitId } from "./CanvasSurface";
+import { CanvasSurface, hitId, hitIdAt } from "./CanvasSurface";
 import { FONT_FAMILY, FONT_SIZE, PAD_X, ROW_HEIGHT, snap, TITLE_HEIGHT, TITLE_WEIGHT } from "./geometry";
 import {
   columnStyle,
@@ -23,6 +25,10 @@ import { ErrorBadge } from "./shapes";
  * Cliquer sur une table sélectionne l'objet du MCD d'origine (édité dans l'inspecteur).
  * Glisser dans le vide déplace la vue.
  *
+ * Outils Entité et Lien (override O-54) : créer une entité, relier deux tables (association
+ * 0,n / 0,n, d'où une table de correspondance) ou une table de correspondance à une table
+ * d'entité (nouvelle patte), comme dans le MCD.
+ *
  * Traits entre tables (override O-25) : sans flèche par défaut ; libellé facultatif (nom de la
  * clé étrangère, ou texte libre saisi sur la patte / le lien d'héritage). Cliquer sur un trait
  * sélectionne la patte ou le lien d'héritage d'origine.
@@ -40,6 +46,31 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
   const selected = new Set(selection);
   const grid = doc.settings.grid.enabled ? doc.settings.grid.size : null;
   const drag = useRef<{ id: Id; start: Point; origin: Point } | null>(null);
+  const tool = useUiStore((s) => s.tool);
+  const setTool = useUiStore((s) => s.setTool);
+  const notify = useUiStore((s) => s.notify);
+  /** Lien en cours (O-54) ; `pending` : premier clic fait, en attente du second. */
+  const [link, setLink] = useState<{ fromId: Id; start: Point; current: Point; pending: boolean } | null>(null);
+  useEffect(() => {
+    if (tool !== "link") setLink(null);
+  }, [tool]);
+  const tableOf = (id: Id | null) => (id ? layouts.find((l) => l.sourceId === id) : undefined);
+
+  function connect(fromId: Id, toId: Id | null) {
+    setLink(null);
+    const a = tableOf(fromId);
+    const b = tableOf(toId);
+    if (!a || !b || !toId) return;
+    // L'association (invisible ici) se place entre les deux tables, ou à droite d'une réflexive.
+    const position =
+      fromId === toId
+        ? { x: snap(a.x + a.width + 60, grid), y: snap(a.y, grid) }
+        : { x: snap((a.x + a.width / 2 + b.x + b.width / 2) / 2 - 40, grid), y: snap((a.y + a.height / 2 + b.y + b.height / 2) / 2 - 20, grid) };
+    const result = connectNodes(docHandle, fromId, toId, { associationPosition: position });
+    if (!result) return;
+    if ("error" in result) notify({ kind: "error", text: result.error });
+    else select([result.created]);
+  }
   const { relationArrows: arrows, relationLabels: labelMode } = doc.settings.display;
   const labels = useMemo(
     () => new Map([...doc.links, ...doc.inheritanceLinks].map((l) => [l.id, l.relationLabel?.trim() ?? ""])),
@@ -50,8 +81,24 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
     <CanvasSurface
       grid={grid}
       panOnEmpty
+      className={tool === "select" ? "" : "cursor-crosshair"}
       onPointerDown={(e, point) => {
         const hit = hitId(e);
+        const table = tableOf(hit)?.sourceId ?? null;
+        if (tool === "entity") {
+          if (!hit) {
+            select([addEntity(docHandle, { x: snap(point.x, grid), y: snap(point.y, grid) })]);
+            setTool("select");
+          }
+          return true;
+        }
+        if (tool === "link") {
+          if (link?.pending) {
+            if (table) connect(link.fromId, table);
+            else setLink(null);
+          } else if (table) setLink({ fromId: table, start: point, current: point, pending: false });
+          return true;
+        }
         select(hit ? [hit] : []);
         if (hit && (e.target as Element).closest("[data-badge]")) {
           revealSection("issues");
@@ -65,14 +112,28 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
         return true;
       }}
       onPointerMove={(_, point) => {
+        if (link) setLink({ ...link, current: point });
         const d = drag.current;
         if (!d) return;
         const position = { x: snap(d.origin.x + point.x - d.start.x, grid), y: snap(d.origin.y + point.y - d.start.y, grid) };
         docHandle.store.getState().preview((draft) => void (draft.layout.positions[d.id] = position));
       }}
-      onPointerUp={() => {
+      onPointerUp={(e, point) => {
+        if (link && !link.pending) {
+          // Glisser : relier à la table sous le pointeur ; simple clic : attendre le second clic.
+          const dragged = Math.hypot(point.x - link.start.x, point.y - link.start.y) > 4;
+          if (dragged) connect(link.fromId, tableOf(hitIdAt(e))?.sourceId ?? null);
+          else setLink({ ...link, pending: true });
+        }
         if (drag.current) docHandle.store.getState().commit("history.moveTable");
         drag.current = null;
+      }}
+      onContextMenu={(e) => {
+        // Outil de création : abandon et retour à la sélection (override O-16).
+        if (tool === "select") return;
+        e.preventDefault();
+        setLink(null);
+        setTool("select");
       }}
       onPointerCancel={() => {
         if (drag.current) docHandle.store.getState().cancel();
@@ -96,8 +157,20 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
         );
       })}
       {layouts.map((l) => (
-        <TableShape key={l.sourceId} layout={l} mode={mode} selected={selected.has(l.sourceId)} issues={issues.get(l.sourceId)} />
+        <TableShape key={l.sourceId} layout={l} mode={mode} selected={selected.has(l.sourceId) || link?.fromId === l.sourceId} issues={issues.get(l.sourceId)} />
       ))}
+      {link && tableOf(link.fromId) && (
+        <line
+          x1={tableOf(link.fromId)!.x + tableOf(link.fromId)!.width / 2}
+          y1={tableOf(link.fromId)!.y + tableOf(link.fromId)!.height / 2}
+          x2={link.current.x}
+          y2={link.current.y}
+          stroke="var(--mcd-selection)"
+          strokeDasharray="4 3"
+          pointerEvents="none"
+          data-ui-only=""
+        />
+      )}
       {/* Libellés des traits, au-dessus des tables pour rester lisibles. */}
       {references.map((r) => {
         const label = relationLabel(r, labelMode, labels);
