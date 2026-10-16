@@ -67,7 +67,8 @@ met pas à jour automatiquement : seules les releases le font.
   la clé étrangère ; vide = nom par défaut).
 - **Disposition** (plusieurs objets sélectionnés, section Propriétés ou clic droit) : aligner (gauche,
   centre, droite, haut, milieu, bas) et répartir. **Flèches** : déplacer la sélection d'un pas de
-  grille (Maj : dix pas). Maj + clic sélectionne aussi plusieurs tables dans le MLD / MPD.
+  grille (Maj : dix pas). Dans le MLD / MPD aussi, Maj + clic ou un rectangle tracé dans le vide sélectionnent plusieurs
+  tables (la vue se déplace à la molette, au pavé tactile ou au bouton du milieu).
 - **⋯** à côté de l'entité ou de l'association sélectionnée : actions rapides (ajouter une rubrique,
   copier, dupliquer, supprimer).
 - Cliquer dans le vide pour créer une entité ou une association.
