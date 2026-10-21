@@ -173,7 +173,7 @@ export const NodeShape = memo(function NodeShape({
             >
               {mark.label}
             </text>
-            {alternate && (
+            {alternate ? (
               <>
                 {/* Identifiant alternatif : souligné en pointillé, étiquette AI (O-36). */}
                 <line
@@ -208,11 +208,11 @@ export const NodeShape = memo(function NodeShape({
                   {alternate.prefix ? " ⚠" : ""}
                 </text>
               </>
-            )}
+            ) : null}
           </g>
         );
       })}
-      {referencedKey && (
+      {referencedKey ? (
         <text
           x={x + width / 2}
           y={y + height + 11}
@@ -226,7 +226,7 @@ export const NodeShape = memo(function NodeShape({
         >
           → {referencedKey.attributes.join(", ")}
         </text>
-      )}
+      ) : null}
       <ErrorBadge x={x + width} y={y} issues={issues} />
     </g>
   );
@@ -270,7 +270,7 @@ export const LinkShape = memo(function LinkShape({ geometry, selected }: LinkSha
       >
         {text}
       </text>
-      {role && (
+      {role ? (
         /* Rôle de la patte (réflexives : parrain, originale…) (O-36). */
         <text
           x={rolePoint.x}
@@ -286,7 +286,7 @@ export const LinkShape = memo(function LinkShape({ geometry, selected }: LinkSha
         >
           {role}
         </text>
-      )}
+      ) : null}
     </g>
   );
 });

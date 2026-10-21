@@ -68,9 +68,9 @@ export function DialogHost() {
     >
       <div id={descriptionId}>
         <p className="whitespace-pre-line text-sm">{request.message}</p>
-        {request.detail && (
+        {request.detail ? (
           <p className="mt-2 whitespace-pre-line text-sm text-neutral-600 dark:text-neutral-300">{request.detail}</p>
-        )}
+        ) : null}
       </div>
     </Modal>
   );

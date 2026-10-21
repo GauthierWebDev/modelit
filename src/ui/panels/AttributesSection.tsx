@@ -172,7 +172,7 @@ function AttributesPanel({
     <>
       <div className="flex items-center justify-between gap-2 border-b border-neutral-200 px-3 py-2 dark:border-neutral-700">
         <h3 className="min-w-0 truncate text-sm font-semibold">{owner.name}</h3>
-        {isEntity && (
+        {isEntity ? (
           <button
             type="button"
             className="flex flex-none items-center gap-1 text-xs text-blue-600 hover:underline dark:text-blue-400"
@@ -180,7 +180,7 @@ function AttributesPanel({
           >
             <KeyRound size={12} /> {t("inspector.autoDiscriminant")}
           </button>
-        )}
+        ) : null}
       </div>
       <div role="listbox" aria-label={t("inspector.attributes")} className="flex flex-col py-1">
         {attributes.length === 0 && <p className="px-3 py-1 text-sm text-neutral-500">{t("attributes.empty")}</p>}
@@ -218,14 +218,14 @@ function AttributesPanel({
               >
                 {typeSummary(a.type)}
               </span>
-              {isEntity && (
+              {isEntity ? (
                 <Pill
                   label="ID"
                   tooltip={t("attribute.identifier")}
                   on={a.identifier}
                   onToggle={() => update(a.id, { identifier: !a.identifier })}
                 />
-              )}
+              ) : null}
               <Pill
                 label="NN"
                 tooltip="NOT NULL"
@@ -303,13 +303,13 @@ function AttributeDetail({
         <TypePicker value={a.type} onChange={(type) => update({ type, sourceType: undefined })} />
       </Field>
       <div className="flex flex-wrap gap-x-3">
-        {isEntity && (
+        {isEntity ? (
           <Checkbox
             label={t("attribute.identifier")}
             checked={a.identifier}
             onChange={(identifier) => update({ identifier })}
           />
-        )}
+        ) : null}
         <Checkbox label="NOT NULL" checked={a.notNull} onChange={(notNull) => update({ notNull })} />
         <Checkbox label="UNIQUE" checked={a.unique} onChange={(unique) => update({ unique })} />
       </div>

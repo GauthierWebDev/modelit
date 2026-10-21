@@ -101,11 +101,11 @@ export function Modal({
           {title}
         </h2>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">{children}</div>
-        {footer && (
+        {footer ? (
           <div className="flex items-center gap-2 border-t border-neutral-200 px-4 py-3 dark:border-neutral-700">
             {footer}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

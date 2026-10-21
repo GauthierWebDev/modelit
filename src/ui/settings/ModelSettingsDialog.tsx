@@ -75,12 +75,12 @@ export function ModelSettingsDialog() {
 function Group({ title, children, aside }: { title?: string; children: ReactNode; aside?: ReactNode }) {
   return (
     <section className="border-b border-neutral-200 py-3 first:pt-0 last:border-b-0 dark:border-neutral-700">
-      {title && (
+      {title ? (
         <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:text-neutral-400">
           {title}
           {aside}
         </h3>
-      )}
+      ) : null}
       <div className="flex flex-col gap-2">{children}</div>
     </section>
   );
@@ -304,7 +304,7 @@ function SourceGroup({ id, present, children }: { id: "all" | SqlDialect; presen
           </span>
         )}
       </span>
-      {open && <div className="mt-2 flex flex-col gap-2 pl-4">{children}</div>}
+      {open ? <div className="mt-2 flex flex-col gap-2 pl-4">{children}</div> : null}
     </section>
   );
 }

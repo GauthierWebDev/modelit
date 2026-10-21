@@ -27,7 +27,7 @@ export function McpOptions() {
         onChange={(on) => setMcp(on && !token ? { enabled: on, token: newToken() } : { enabled: on })}
       />
       <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("mcp.help")}</p>
-      {enabled && (
+      {enabled ? (
         <>
           <Field label={t("mcp.port")}>
             <NumberInput min={1024} value={port} onCommit={(v) => v && v <= 65535 && setMcp({ port: Math.round(v) })} />
@@ -60,7 +60,7 @@ export function McpOptions() {
             </button>
           </div>
         </>
-      )}
+      ) : null}
     </>
   );
 }

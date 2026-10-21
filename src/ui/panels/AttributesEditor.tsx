@@ -42,7 +42,7 @@ export function AdvancedFields({
           <Plus size={12} /> CHECK
         </button>
       )}
-      {a.sourceType && (
+      {a.sourceType ? (
         <div className="flex items-center gap-1 text-xs text-neutral-500 dark:text-neutral-400">
           <span className="min-w-0 flex-1 truncate">
             {t("physical.sourceType", { type: a.sourceType.sql, dialect: a.sourceType.dialect })}
@@ -51,25 +51,25 @@ export function AdvancedFields({
             <Trash2 size={12} />
           </IconButton>
         </div>
-      )}
-      {a.domain && (
+      ) : null}
+      {a.domain ? (
         <p className="text-xs text-neutral-500 dark:text-neutral-400">
           {t(a.domain.kind === "enum" ? "physical.domainEnum" : "physical.domainSet", {
             values: a.domain.values.join(", "),
           })}
         </p>
-      )}
-      {a.generated && (
+      ) : null}
+      {a.generated ? (
         <p className="font-mono text-xs text-neutral-500 dark:text-neutral-400">
           {t("physical.generated", {
             expression: a.generated.expression,
             mode: a.generated.stored ? "STORED" : "VIRTUAL",
           })}
         </p>
-      )}
-      {a.onUpdate && (
+      ) : null}
+      {a.onUpdate ? (
         <p className="font-mono text-xs text-neutral-500 dark:text-neutral-400">ON UPDATE {a.onUpdate.expression}</p>
-      )}
+      ) : null}
       <Checkbox
         label={t("physical.unsigned")}
         checked={Boolean(a.unsigned)}

@@ -72,7 +72,7 @@ export function CommitInput({
           }
         }}
       />
-      {error && <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">{error}</p>}
+      {error ? <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">{error}</p> : null}
     </div>
   );
 }
@@ -188,9 +188,9 @@ export function Section({
         ) : (
           <h3 className={sectionTitle}>{title}</h3>
         )}
-        {open && actions}
+        {open ? actions : null}
       </div>
-      {open && <div className="flex flex-col gap-2">{children}</div>}
+      {open ? <div className="flex flex-col gap-2">{children}</div> : null}
     </section>
   );
 }

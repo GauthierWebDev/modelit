@@ -116,7 +116,7 @@ export function ReverseDialog() {
         </select>
       </div>
       <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t("reverse.target")}</p>
-      {report && (
+      {report ? (
         <div role="status" className="mt-3 rounded border border-neutral-200 p-2 text-sm dark:border-neutral-700">
           <p>
             {report.tables === 0
@@ -143,7 +143,7 @@ export function ReverseDialog() {
             </>
           )}
         </div>
-      )}
+      ) : null}
     </Modal>
   );
 }

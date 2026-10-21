@@ -95,7 +95,7 @@ function SqlView({ sql, losses }: { sql: string; losses: Loss[] }) {
           >
             {open ? "▾" : "▸"} {t("output.losses", { n: losses.length })}
           </button>
-          {open && (
+          {open ? (
             <ul className="mt-1 list-disc pl-5 text-xs text-neutral-700 dark:text-neutral-300">
               {/* Une ligne par perte, avec ses emplacements (O-37). */}
               {groupLosses(losses).map((g) => (
@@ -110,7 +110,7 @@ function SqlView({ sql, losses }: { sql: string; losses: Loss[] }) {
                 </li>
               ))}
             </ul>
-          )}
+          ) : null}
         </div>
       )}
       <pre>{sql}</pre>
@@ -141,7 +141,7 @@ function MldView() {
                     .join(" ") || undefined
                 }
               >
-                {c.foreign && "#"}
+                {c.foreign ? "#" : null}
                 {c.name}
               </span>
             </span>

@@ -94,7 +94,7 @@ function Changes() {
         <section key={entry.version}>
           <h3 className="flex items-baseline gap-2">
             <span className="font-semibold">{entry.version}</span>
-            {entry.date && <span className="text-xs text-neutral-500 dark:text-neutral-400">{entry.date}</span>}
+            {entry.date ? <span className="text-xs text-neutral-500 dark:text-neutral-400">{entry.date}</span> : null}
             {entry.version === APP_INFO.version && (
               <span className="rounded bg-blue-100 px-1.5 text-xs text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                 {t("about.installed")}
@@ -104,9 +104,9 @@ function Changes() {
           {entry.sections.map((section, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, jamais réordonnée
             <div key={i} className="mt-1.5">
-              {section.title && (
+              {section.title ? (
                 <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">{section.title}</p>
-              )}
+              ) : null}
               <ul className="ml-4 list-disc">
                 {section.items.map((item, j) => (
                   // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, jamais réordonnée

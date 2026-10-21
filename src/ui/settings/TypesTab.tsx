@@ -155,7 +155,7 @@ function TypeRow({ label, redefined, children }: { label: string; redefined: boo
           aria-hidden
         />
         {label}
-        {redefined && <span className="sr-only">({t("customDbms.redefined")})</span>}
+        {redefined ? <span className="sr-only">({t("customDbms.redefined")})</span> : null}
       </span>
       {children}
     </>
