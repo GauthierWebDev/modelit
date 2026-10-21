@@ -156,9 +156,6 @@ export function sequenceTrigger(
   };
 }
 
-// ---------------------------------------------------------------------------------------------
-// Colonnes
-
 /**
  * Valeur de séquence ou compteur (O-39) : une séquence non déclarée dans le script, ou nommée
  * table_colonne_seq (pg_dump, SERIAL), fait de la colonne un compteur. OWNED BY seul n'en fait pas un

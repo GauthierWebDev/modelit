@@ -73,9 +73,6 @@ export function columnList(tokens: Token[] | null): string[] {
     .filter((name): name is string => Boolean(name));
 }
 
-// ---------------------------------------------------------------------------------------------
-// Contraintes
-
 /**
  * Index sur expression (O-39) : motif Oracle d'unicité conditionnelle — chaque élément
  * `CASE WHEN cond THEN col END`, même condition — lu comme index partiel `(col…) WHERE cond` ;
@@ -228,6 +225,3 @@ export function tableConstraint(tokens: Token[], table: ParsedTable): boolean {
   // Ignorés : FULLTEXT / SPATIAL, EXCLUDE, LIKE, PERIOD, contraintes nommées inconnues…
   return Boolean(name) || isWord(c.peek(), "fulltext", "spatial", "exclude", "like", "period", "foreign", "primary");
 }
-
-// ---------------------------------------------------------------------------------------------
-// Séquences (O-39)

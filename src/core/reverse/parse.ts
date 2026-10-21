@@ -147,9 +147,6 @@ export interface ParsedSchema {
   warnings: string[];
 }
 
-// ---------------------------------------------------------------------------------------------
-// Outils
-
 export function parseSql(sql: string, dialect?: SqlDialect): ParsedSchema {
   const schema: ParsedSchema = {
     tables: [],
