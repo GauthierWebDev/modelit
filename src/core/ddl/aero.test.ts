@@ -352,7 +352,7 @@ describe("critères d'acceptation", () => {
       ).rejects.toThrow(/ck_aeroport_iata/);
       await pg.exec("INSERT INTO passager (nom) VALUES ('A');");
       const { rows } = await pg.query<{ num_client: number }>("SELECT num_client FROM passager;");
-      expect(rows[0]!.num_client).toBe(10000);
+      expect(rows[0]!.num_client).toBe(10_000);
       // IDENTITY(100, 10) → GENERATED ALWAYS : valeur fournie refusée.
       await pg.exec(
         "INSERT INTO vol (numero, depart, arrivee, heure_depart, heure_arrivee) VALUES ('AF1', 'CDG', 'ORY', now(), now() + interval '1 hour'), ('AF2', 'ORY', 'CDG', now(), now() + interval '2 hours');",

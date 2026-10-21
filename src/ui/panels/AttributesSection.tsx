@@ -441,10 +441,12 @@ export function typeSummary(type: DataType | undefined): string {
   switch (type.kind) {
     case "text": {
       const encoding = type.encoding === "ascii" ? "" : ` ${t(`type.${type.encoding}`)}`;
+      // biome-ignore lint/style/useExplicitLengthCheck: « size » est la taille du type texte (nombre facultatif), pas une collection
+      const size = type.size ? ` ${type.size}` : "";
       const length =
         type.length === "large"
           ? t("attributes.large")
-          : `${t(type.length === "variable" ? "attributes.variable" : "attributes.fixed")}${type.size ? ` ${type.size}` : ""}`;
+          : `${t(type.length === "variable" ? "attributes.variable" : "attributes.fixed")}${size}`;
       return `${t("type.text")}${encoding} ${length}`;
     }
     case "integer":

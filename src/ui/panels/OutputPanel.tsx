@@ -70,7 +70,7 @@ export function IssuesTitle() {
   const errors = issues.filter((i) => i.severity === "error").length;
   return (
     <span className={errors > 0 ? "text-red-600 dark:text-red-400" : undefined}>
-      {issues.length ? t("output.issuesCount", { n: issues.length }) : t("output.issues")}
+      {issues.length > 0 ? t("output.issuesCount", { n: issues.length }) : t("output.issues")}
     </span>
   );
 }
@@ -103,8 +103,7 @@ function SqlView({ sql, losses }: { sql: string; losses: Loss[] }) {
                   {g.message}
                   {g.places.length > 0 && (
                     <>
-                      {" — "}
-                      <span className="font-mono">{g.places.join(", ")}</span>
+                      —<span className="font-mono">{g.places.join(", ")}</span>
                     </>
                   )}
                 </li>

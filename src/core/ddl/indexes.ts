@@ -16,15 +16,15 @@ export function expressionIndex(ctx: Context, table: LogicalTable, key: LogicalK
   let items: string | null = keyColumns(ctx, table, key);
   if (key.expression) {
     const { expression, dialect } = key.expression;
-    items = !rules.expressions
-      ? null
-      : sameDialect(dialect, dbms)
+    items = rules.expressions
+      ? sameDialect(dialect, dbms)
         ? expression
         : translateGenerated(expression, dialect, {
             target: ctx.target,
             columnType: (n) => table.columns.find((c) => c.name.toLowerCase() === n.toLowerCase())?.type,
             caseSensitive,
-          });
+          })
+      : null;
     // Élément d'index : appel de fonction tel quel, autre expression entre parenthèses.
     if (items && !sameDialect(dialect, dbms) && !/^\w+\(.*\)$/s.test(items)) {
       items = /^\(.*\)$/s.test(items) ? items : `(${items})`;

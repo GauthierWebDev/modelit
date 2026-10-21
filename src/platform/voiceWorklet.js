@@ -41,17 +41,18 @@ class CaptureProcessor extends AudioWorkletProcessor {
 class PlayerProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.capacity = 48000; // 1 s
+    this.capacity = 48_000; // 1 s
     this.buffer = new Float32Array(this.capacity);
     this.read = 0;
     this.size = 0;
     this.playing = false;
     this.start = 2880; // 60 ms
-    this.max = 11520; // 240 ms
+    this.max = 11_520; // 240 ms
     this.port.onmessage = (event) => this.push(event.data);
   }
 
   push(samples) {
+    // biome-ignore lint/style/useForOf: boucle du fil audio temps réel, gardée en indices
     for (let i = 0; i < samples.length; i += 1) {
       if (this.size === this.capacity) {
         this.read = (this.read + 1) % this.capacity;

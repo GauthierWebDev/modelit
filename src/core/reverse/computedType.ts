@@ -157,7 +157,7 @@ export function inferComputedType(
         current.push(t);
       }
     }
-    if (current.length) {
+    if (current.length > 0) {
       list.push(current);
     }
     return list;

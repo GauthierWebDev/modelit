@@ -238,7 +238,7 @@ function FloatToolbar() {
 
   return (
     <div ref={ref} className="w-max p-1">
-      <Toolbar floating onGripDown={onGripDown} />
+      <Toolbar floating={true} onGripDown={onGripDown} />
     </div>
   );
 }

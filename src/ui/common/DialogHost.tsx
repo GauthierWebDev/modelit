@@ -43,7 +43,7 @@ export function DialogHost() {
       describedBy={descriptionId}
       width="w-[28rem]"
       layer="z-[60]"
-      icon={<Icon size={18} className={`flex-none ${className}`} aria-hidden />}
+      icon={<Icon size={18} className={`flex-none ${className}`} aria-hidden={true} />}
       footer={
         <>
           <div className="flex-1" />

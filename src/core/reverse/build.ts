@@ -114,7 +114,7 @@ export function reverseEngineer(
         warnings.push(MSG.reverseUnknownTable(table.name, fk.table));
         continue;
       }
-      const targetColumns = fk.referencedColumns.length ? fk.referencedColumns : target.primaryKey;
+      const targetColumns = fk.referencedColumns.length > 0 ? fk.referencedColumns : target.primaryKey;
       if (targetColumns.length !== fk.columns.length) {
         warnings.push(MSG.reverseColumnMismatch(table.name, fk.table));
         continue;
@@ -312,7 +312,7 @@ export function reverseEngineer(
         names[origin.id] = column;
       }
     });
-    return Object.keys(names).length ? names : undefined;
+    return Object.keys(names).length > 0 ? names : undefined;
   };
 
   /** Commentaires des colonnes de la clé étrangère (rubriques référencées → texte). */
@@ -325,7 +325,7 @@ export function reverseEngineer(
         comments[origin.id] = comment;
       }
     });
-    return Object.keys(comments).length ? comments : undefined;
+    return Object.keys(comments).length > 0 ? comments : undefined;
   };
 
   /**
@@ -339,8 +339,8 @@ export function reverseEngineer(
       .flatMap((o) => o.columns);
     const provided = new Set([...table.primaryKey, ...relativeColumns, ...before.flatMap((o) => o.columns)].map(key));
     const shared = fk.columns.filter((c) => provided.has(key(c)));
-    if (!shared.length || within(fk.columns, table.primaryKey)) {
-      return undefined;
+    if (shared.length === 0 || within(fk.columns, table.primaryKey)) {
+      return;
     }
     warnings.push(MSG.reverseSharedColumns(table.name, shared.join(", ")));
     return shared
@@ -542,7 +542,7 @@ export function reverseEngineer(
           names[origin.id] = column;
         }
       });
-      if (Object.keys(names).length) {
+      if (Object.keys(names).length > 0) {
         link.foreignKeyNames = names;
       }
       doc.inheritanceLinks.push(link);
@@ -567,13 +567,13 @@ export function reverseEngineer(
     if (step !== undefined) {
       node.autoIncrementStep = step;
     }
-    if (table.triggers.length) {
+    if (table.triggers.length > 0) {
       node.triggers = table.triggers.map((t) => ({ ...t, dialect }));
     }
     if (table.primaryKeyState) {
       node.primaryKeyState = table.primaryKeyState;
     }
-    if (table.storage.length) {
+    if (table.storage.length > 0) {
       node.storage = table.storage;
     }
     if (table.partition) {
@@ -587,7 +587,7 @@ export function reverseEngineer(
       .map((c) => c.sequence && schema.sequences.get(key(c.sequence.name)))
       .filter((s): s is NonNullable<typeof s> => Boolean(s))
       .map(({ ownedBy: _owned, ...definition }) => definition);
-    if (sequences.length) {
+    if (sequences.length > 0) {
       node.sequences = sequences;
     }
     const memberOf = (column: string): KeyMember | undefined => {
@@ -762,7 +762,7 @@ function placeBetween(doc: ModelDocument) {
   const { positions } = doc.layout;
   const center = (ids: Id[]) => {
     const points = ids.map((id) => positions[id]).filter((p) => p !== undefined);
-    if (!points.length) {
+    if (points.length === 0) {
       return { x: 0, y: 0 };
     }
     return {

@@ -37,7 +37,7 @@ export function extractFragment(doc: ModelDocument, ids: Id[]): ModelFragment | 
   const entities = doc.entities.filter((e) => chosen.has(e.id));
   const associations = doc.associations.filter((a) => chosen.has(a.id));
   const inheritances = doc.inheritances.filter((h) => chosen.has(h.id));
-  if (!entities.length && !associations.length && !inheritances.length) {
+  if (entities.length === 0 && associations.length === 0 && inheritances.length === 0) {
     return null;
   }
   // Un trait suit son association ou son héritage ; sélectionné seul, il est ignoré.
@@ -168,7 +168,7 @@ export function pasteFragment(doc: ModelDocument, fragment: ModelFragment, at?: 
 /** Décalage qui amène le coin supérieur gauche des objets du fragment en `at`. */
 function offsetTo(fragment: ModelFragment, at: Point): Point {
   const positions = Object.values(fragment.layout.positions);
-  if (!positions.length) {
+  if (positions.length === 0) {
     return at;
   }
   return { x: at.x - Math.min(...positions.map((p) => p.x)), y: at.y - Math.min(...positions.map((p) => p.y)) };
@@ -244,7 +244,7 @@ function withoutConstraintNames(node: Entity | Association) {
 
 /** Retire des clés et index les membres venus d'une patte abandonnée (et les clés vidées). */
 function withoutLinks(node: Entity | Association, dropped: Set<Id>) {
-  if (!dropped.size) {
+  if (dropped.size === 0) {
     return;
   }
   const keep = (m: KeyMember) => !("linkId" in m) || !dropped.has(m.linkId);

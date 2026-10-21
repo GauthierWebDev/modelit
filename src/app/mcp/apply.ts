@@ -88,7 +88,7 @@ function toAttribute(spec: AttributeSpec, dbms: Dbms): Attribute {
 /** Entité, association ou héritage désigné par identifiant, ou par nom (sans tenir compte de la casse). */
 function resolve(doc: ModelDocument, ref: string, kind?: "entity" | "association"): Id {
   const lower = ref.trim().toLowerCase();
-  const pools = [...(kind !== "association" ? [doc.entities] : []), ...(kind !== "entity" ? [doc.associations] : [])];
+  const pools = [...(kind === "association" ? [] : [doc.entities]), ...(kind === "entity" ? [] : [doc.associations])];
   for (const pool of pools) {
     const found = pool.find((x) => x.id === ref) ?? pool.find((x) => x.name.toLowerCase() === lower);
     if (found) {

@@ -89,7 +89,7 @@ function About() {
 }
 
 function Changes() {
-  if (!CHANGELOG.length) {
+  if (CHANGELOG.length === 0) {
     return <p className="text-sm text-neutral-500">{t("about.noChanges")}</p>;
   }
   return (
@@ -156,7 +156,7 @@ function Link({ url, children }: { url: string; children: ReactNode }) {
       onClick={() => void openExternal(url)}
     >
       {children}
-      <ExternalLink size={12} aria-hidden />
+      <ExternalLink size={12} aria-hidden={true} />
     </button>
   );
 }

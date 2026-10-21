@@ -147,8 +147,8 @@ describe("placement sur grille (override O-30)", { timeout: 30_000 }, () => {
 function randomModel(seed: number) {
   let state = seed;
   const r = () => {
-    state = (state * 1103515245 + 12345) % 2147483648;
-    return state / 2147483648;
+    state = (state * 1_103_515_245 + 12_345) % 2_147_483_648;
+    return state / 2_147_483_648;
   };
   const k = 5 + Math.floor(r() * 8);
   const nodes: GridNode[] = [];

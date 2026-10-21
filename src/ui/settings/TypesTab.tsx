@@ -85,11 +85,11 @@ export function TypesTab() {
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-300">
             <span className="flex-1">
-              {!saved
-                ? t("customDbms.notSaved")
-                : sameDefinition(saved, entry)
+              {saved
+                ? sameDefinition(saved, entry)
                   ? t("customDbms.saved")
-                  : t("customDbms.differs")}
+                  : t("customDbms.differs")
+                : t("customDbms.notSaved")}
             </span>
             {(!saved || !sameDefinition(saved, entry)) && (
               <button type="button" className={button} onClick={() => save(entry)}>
@@ -106,7 +106,7 @@ export function TypesTab() {
             <button
               type="button"
               className={button}
-              disabled={!Object.keys(custom.types).length}
+              disabled={Object.keys(custom.types).length === 0}
               onClick={() => cmd.resetCustomTypes(handle)}
             >
               {t("customDbms.resetAll")}
@@ -152,7 +152,7 @@ function TypeRow({ label, redefined, children }: { label: string; redefined: boo
       >
         <span
           className={`size-1.5 flex-none rounded-full ${redefined ? "bg-amber-500" : "bg-transparent"}`}
-          aria-hidden
+          aria-hidden={true}
         />
         {label}
         {redefined ? <span className="sr-only">({t("customDbms.redefined")})</span> : null}

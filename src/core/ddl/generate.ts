@@ -123,7 +123,7 @@ function script(ctx: Context, model: LogicalModel): string {
   }
   // Clauses de stockage : une ligne du rapport pour toutes les tables concernées (O-39).
   const storage = [...new Set(order.flatMap((t) => t.storage ?? []))];
-  if (storage.length) {
+  if (storage.length > 0) {
     for (const table of order) {
       if (table.storage?.length) {
         ctx.report.add("physical", table.name, MSG.lossStorage(storage.join(", ")));
@@ -145,8 +145,8 @@ function header(target: Target, losses: Loss[]): string {
   const label = `${DBMS_LIST.find((d) => d.id === target.dbms)?.label ?? target.dbms}${target.version && target.version !== GENERIC_VERSION ? ` ${target.version}` : ""}`;
   // SGBD personnalisé : toujours annoncé, pour qu'on sache que ce n'est plus le SGBD tel quel (O-59).
   const custom = target.custom ? [`-- ${MSG.customDbmsHeader(target.custom.name, label)}`, ""] : [];
-  if (!losses.length) {
-    return custom.length ? [...custom, ""].join("\n") : "";
+  if (losses.length === 0) {
+    return custom.length > 0 ? [...custom, ""].join("\n") : "";
   }
   const lines = groupLosses(losses).map((g) => `--   • ${formatLossGroup(g)}`);
   return [...custom, `-- ${MSG.lossHeader(target.custom?.name ?? label, losses.length)}`, ...lines, "", ""].join("\n");

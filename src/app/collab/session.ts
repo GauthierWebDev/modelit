@@ -42,7 +42,7 @@ export const setCollabTransport = (value: CollabTransport) => {
 
 /** Reconnexion d'un invité (O-05 §4.4) : essais pendant 30 s, toutes les 3 s. */
 export const RECONNECT_FOR = 30_000;
-const RECONNECT_EVERY = 3_000;
+const RECONNECT_EVERY = 3000;
 /** Présence : au plus 20 envois par seconde (O-05 §5). */
 const PRESENCE_EVERY = 50;
 /** Curseur masqué après 30 s sans mouvement (O-05 §5). */

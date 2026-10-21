@@ -122,7 +122,7 @@ export type Catalog = CatalogTable[];
 const stateText = (s?: ConstraintState) => {
   // Le dialecte ne sert qu'au vocabulaire du rapport (O-42).
   const entries = Object.entries(s ?? {}).filter(([k]) => k !== "dialect");
-  return entries.length ? JSON.stringify(Object.fromEntries(entries.sort())) : undefined;
+  return entries.length > 0 ? JSON.stringify(Object.fromEntries(entries.sort())) : undefined;
 };
 
 /** Nom effectif après repli de casse des identifiants non quotés. */
@@ -552,7 +552,7 @@ function tableCatalog(
     const unsigned = /\bunsigned\b/i.test(c.type) || (dialect === "sqlserver" && /^\s*tinyint\b/i.test(c.type));
     const domain = typeDomain(c, enumTypes) ?? domains.get(c.name.toLowerCase());
     const concept = domain ? undefined : sqlTypeToDataType(c.type, c.autoIncrement, dialect);
-    const defaultValue = c.default !== undefined ? canonicalDefault(c.default, concept) : undefined;
+    const defaultValue = c.default === undefined ? undefined : canonicalDefault(c.default, concept);
     // Entier à plage décimale : NUMBER(p) Oracle, et tout décimal d'échelle nulle (NUMERIC(20)) (O-39).
     const integral = concept?.kind === "decimal" && concept.scale === 0 && concept.precision !== undefined;
     const digits =
@@ -573,15 +573,15 @@ function tableCatalog(
     );
     const textual = !domain && concept?.kind === "text" && concept.encoding !== "binary";
     // Chaîne vide (O-39) : Oracle la lit comme NULL — refusée par NOT NULL, sinon NULL.
-    const emptyString = !textual
-      ? undefined
-      : dialect === "oracle"
+    const emptyString = textual
+      ? dialect === "oracle"
         ? c.notNull || inPk
           ? "rejected"
           : "null"
         : nonEmpty.has(c.name.toLowerCase())
           ? "rejected"
-          : "value";
+          : "value"
+      : undefined;
     // Valeurs toutes ASCII (CHECK IN) : un octet par caractère, octets et caractères se confondent (O-40).
     const lengthSemantics =
       !textual || concept?.kind !== "text" || concept.length === "large"
@@ -595,15 +595,15 @@ function tableCatalog(
       concept: conceptOf(concept, domain),
       autoIncrement: c.autoIncrement,
       notNull: c.notNull || (inPk && (dialect !== "sqlite" || rowid)),
-      ...(defaultValue !== undefined ? { default: defaultValue } : {}),
+      ...(defaultValue === undefined ? {} : { default: defaultValue }),
       ...(domain ? { domain } : {}),
       ...(range ? { range } : {}),
       affinity: sqliteAffinity(c.type),
       ...collationOf(c, table, database, concept, domain, dialect),
       ...(c.generated ? { generated: c.generated.stored ? "stored" : "virtual" } : {}),
       ...(c.onUpdate ? { onUpdate: c.onUpdate.toUpperCase() } : {}),
-      ...(c.identityStart !== undefined ? { identityStart: c.identityStart } : {}),
-      ...(c.identityIncrement !== undefined ? { identityIncrement: c.identityIncrement } : {}),
+      ...(c.identityStart === undefined ? {} : { identityStart: c.identityStart }),
+      ...(c.identityIncrement === undefined ? {} : { identityIncrement: c.identityIncrement }),
       ...(c.comment ? { comment: c.comment } : {}),
       ...(c.identity ? { identity: c.identity } : {}),
       ...(c.sequence
@@ -644,7 +644,7 @@ function tableCatalog(
   ];
   const foreignKeys = table.foreignKeys.map((fk) => {
     const target = tables.get(fk.table.toLowerCase());
-    const referenced = fk.referencedColumns.length ? fk.referencedColumns : (target?.primaryKey ?? []);
+    const referenced = fk.referencedColumns.length > 0 ? fk.referencedColumns : (target?.primaryKey ?? []);
     const refName = (n: string) => {
       const column = target?.columns.find((c) => c.name.toLowerCase() === n.toLowerCase());
       return effective(column?.name ?? n, column?.quoted ?? false, dialect);
@@ -676,9 +676,9 @@ function tableCatalog(
     ...(table.comment ? { comment: table.comment } : {}),
     triggers: table.triggers.map((t) => t.name.toLowerCase()).sort(byCodeUnit),
     ...(stateText(table.primaryKeyState) ? { primaryKeyState: stateText(table.primaryKeyState) } : {}),
-    ...(table.storage.length ? { storage: [...table.storage].sort() } : {}),
+    ...(table.storage.length > 0 ? { storage: [...table.storage].sort() } : {}),
     ...(table.partition ? { partition: compact(table.partition).toLowerCase() } : {}),
-    ...(sequencesOf(table, sequences).length ? { sequences: sequencesOf(table, sequences) } : {}),
+    ...(sequencesOf(table, sequences).length > 0 ? { sequences: sequencesOf(table, sequences) } : {}),
     ...(schemaName(table.schema) ? { schema: schemaName(table.schema) } : {}),
   };
 }
@@ -788,7 +788,7 @@ function referencesOf(catalog: Catalog, table: CatalogTable, column: string): { 
   const result: { table: string; column: string }[] = [];
   const queue: { table: CatalogTable; column: string }[] = [{ table, column }];
   const seen = new Set([`${table.name}.${column}`.toLowerCase()]);
-  while (queue.length) {
+  while (queue.length > 0) {
     const { table: t, column: c } = queue.shift()!;
     for (const fk of t.foreignKeys) {
       const index = fk.columns.findIndex((x) => x.toLowerCase() === c.toLowerCase());
@@ -903,7 +903,7 @@ export function diffCatalogs(
     }
     const push = (category: DifferenceCategory, detail: string, column?: string) => {
       const references = column && (category === "type" || category === "range") ? referencesOf(source, s, column) : [];
-      diffs.push({ category, table: s.name, column, detail, ...(references.length ? { references } : {}) });
+      diffs.push({ category, table: s.name, column, detail, ...(references.length > 0 ? { references } : {}) });
     };
     const tColumns = t.columns.filter((c) => s.columns.some((x) => name(x.name, c.name)));
     if (
@@ -1044,9 +1044,7 @@ export function diffCatalogs(
 
     for (const u of s.uniques) {
       const match = t.uniques.find((x) => sameKey(x, u));
-      if (!match) {
-        push("unique", `UNIQUE (${u.columns}) absent`);
-      } else {
+      if (match) {
         if (u.name && !name(u.name, match.name ?? "")) {
           push("name", `UNIQUE ${u.name} → ${match.name}`);
         }
@@ -1059,6 +1057,8 @@ export function diffCatalogs(
         if (u.state !== match.state) {
           push("state", `UNIQUE ${u.name ?? u.columns} ${u.state} → ${match.state}`);
         }
+      } else {
+        push("unique", `UNIQUE (${u.columns}) absent`);
       }
     }
     for (const u of t.uniques) {
@@ -1069,15 +1069,15 @@ export function diffCatalogs(
 
     for (const c of s.checks) {
       const match = t.checks.find((x) => x.expression === c.expression);
-      if (!match) {
-        push("check", `CHECK ${c.expression} absent ou modifié`);
-      } else {
+      if (match) {
         if (c.name && !name(c.name, match.name ?? "")) {
           push("name", `CHECK ${c.name} → ${match.name}`);
         }
         if (c.state !== match.state) {
           push("state", `CHECK ${c.name ?? c.expression} ${c.state} → ${match.state}`);
         }
+      } else {
+        push("check", `CHECK ${c.expression} absent ou modifié`);
       }
     }
     for (const c of t.checks) {
@@ -1088,15 +1088,15 @@ export function diffCatalogs(
 
     for (const i of s.indexes) {
       const match = t.indexes.find((x) => sameKey(x, i) && sameList(x.columns, i.columns));
-      if (!match) {
-        push("index", `index (${i.columns}) absent`);
-      } else {
+      if (match) {
         if (i.name && !name(i.name, match.name ?? "")) {
           push("name", `index ${i.name} → ${match.name}`);
         }
         if ((i.method ?? "") !== (match.method ?? "")) {
           push("index", `méthode ${i.method} → ${match.method}`);
         }
+      } else {
+        push("index", `index (${i.columns}) absent`);
       }
     }
     if (t.indexes.length !== s.indexes.length) {

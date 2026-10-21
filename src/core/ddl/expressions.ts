@@ -737,7 +737,7 @@ export function valueBounds(c: Condition, column: string): ValueBounds {
       const parts = c.items
         .map((item) => valueBounds(item, column))
         .filter((b): b is Exclude<ValueBounds, "none"> => b !== "none");
-      if (!parts.length) {
+      if (parts.length === 0) {
         return "none";
       }
       const lo = parts.some((b) => b.lo === null)
@@ -757,7 +757,7 @@ export function valueBounds(c: Condition, column: string): ValueBounds {
     }
     case "in": {
       const values = c.values.map(integer);
-      if (c.negated || !isColumn(c.operand) || !values.length || values.some((v) => v === null)) {
+      if (c.negated || !isColumn(c.operand) || values.length === 0 || values.some((v) => v === null)) {
         return free;
       }
       const list = values as bigint[];

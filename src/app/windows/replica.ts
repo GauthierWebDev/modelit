@@ -57,7 +57,7 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
     transactionStart: null,
     change(label, recipe) {
       const [next, patches] = produceWithPatches(get().doc, recipe);
-      if (!patches.length) {
+      if (patches.length === 0) {
         return;
       }
       set({ doc: next });
@@ -122,7 +122,7 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
         Object.assign(patch, { [key]: s[key] });
       }
     }
-    if (!Object.keys(patch).length) {
+    if (Object.keys(patch).length === 0) {
       return;
     }
     send({ type: "ui", patch });

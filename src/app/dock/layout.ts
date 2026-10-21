@@ -123,7 +123,7 @@ function detach(layout: DockLayout, section: SectionId): LastPlace | null {
         continue;
       }
       g.sections = g.sections.filter((s) => s !== section);
-      return g.sections.length ? { group: g.id } : { zone };
+      return g.sections.length > 0 ? { group: g.id } : { zone };
     }
   }
   for (const g of layout.floating) {
@@ -131,7 +131,7 @@ function detach(layout: DockLayout, section: SectionId): LastPlace | null {
       continue;
     }
     g.sections = g.sections.filter((s) => s !== section);
-    return g.sections.length ? { group: g.id } : { rect: g.rect };
+    return g.sections.length > 0 ? { group: g.id } : { rect: g.rect };
   }
   layout.hidden = layout.hidden.filter((s) => s !== section);
   return null;
@@ -362,7 +362,7 @@ export function sanitizeLayout(raw: unknown): DockLayout {
         seen.add(s);
         sections.push(s);
       }
-      if (!sections.length) {
+      if (sections.length === 0) {
         return null;
       }
       return {

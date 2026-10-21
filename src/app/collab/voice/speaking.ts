@@ -25,7 +25,7 @@ function publish(now = Date.now()) {
   if (ids.join() !== useSpeakingStore.getState().ids.join()) {
     useSpeakingStore.setState({ ids });
   }
-  if (!loud.size && timer !== undefined) {
+  if (loud.size === 0 && timer !== undefined) {
     clearInterval(timer);
     timer = undefined;
   }

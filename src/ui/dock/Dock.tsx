@@ -346,7 +346,7 @@ export function DockZone({ zone }: { zone: Zone }) {
   return (
     <div
       className={`flex flex-none ${vertical ? "flex-row" : "flex-col"}`}
-      style={vertical ? { width: groups.length ? size : 28 } : { height: groups.length ? size : 28 }}
+      style={vertical ? { width: groups.length > 0 ? size : 28 } : { height: groups.length > 0 ? size : 28 }}
     >
       {/* biome-ignore lint/a11y/useSemanticElements: séparateur redimensionnable (motif ARIA window splitter), pas une ligne */}
       <div
@@ -371,7 +371,7 @@ export function DockZone({ zone }: { zone: Zone }) {
             >
               <GroupView group={g} zone={zone} />
               <DropSlot zone={zone} index={i} />
-              {i === groups.length - 1 && <DropSlot zone={zone} index={groups.length} after />}
+              {i === groups.length - 1 && <DropSlot zone={zone} index={groups.length} after={true} />}
             </div>
           </div>
         ))}

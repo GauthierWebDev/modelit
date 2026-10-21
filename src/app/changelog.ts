@@ -68,7 +68,7 @@ export function parseChangelog(markdown: string): ChangelogEntry[] {
       entry.sections.push(section);
     }
     // Ligne de suite (indentée) : complète l'élément précédent.
-    if (!item && /^\s/.test(line) && section.items.length) {
+    if (!item && /^\s/.test(line) && section.items.length > 0) {
       section.items[section.items.length - 1] += ` ${text}`;
     } else {
       section.items.push(text);

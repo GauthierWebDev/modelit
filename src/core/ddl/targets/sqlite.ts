@@ -2,7 +2,7 @@ import { ALL_ACTIONS, type Dialect, reservedWords, standard } from "./dialect";
 
 /** Mots réservés propres au SGBD (les mots communs sont ajoutés par `reservedWords`). */
 const RESERVED = reservedWords(
-  `abort autoincrement commit deferrable escape except index isnull limit notnull raise transaction`,
+  "abort autoincrement commit deferrable escape except index isnull limit notnull raise transaction",
 );
 
 /** SQLite : affinités de types, clé primaire de compteur en ligne. */

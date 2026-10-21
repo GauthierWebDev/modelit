@@ -239,7 +239,7 @@ describe("session collaborative", () => {
     for (const seed of [1, 7, 42]) {
       let state = seed;
       const random = () => {
-        state = (state * 1103515245 + 12345) % 2 ** 31;
+        state = (state * 1_103_515_245 + 12_345) % 2 ** 31;
         return state / 2 ** 31;
       };
       const pick = <T>(list: T[]): T | undefined => list[Math.floor(random() * list.length)];

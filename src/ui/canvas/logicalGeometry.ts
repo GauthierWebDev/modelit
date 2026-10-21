@@ -108,7 +108,7 @@ function rowsOf(table: LogicalTable, mode: LogicalViewMode, doc: ModelDocument):
       label,
       indent,
       type: displayedSqlType(column, target),
-      constraints: constraints.length ? constraints.join(" ") : null,
+      constraints: constraints.length > 0 ? constraints.join(" ") : null,
     };
   });
 }

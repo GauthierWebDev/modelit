@@ -85,7 +85,7 @@ export function ExportDialog() {
     // biome-ignore lint/a11y/noStaticElementInteractions: fond de la boîte, un clic à l'extérieur la ferme
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: fond de la boîte, un clic à l'extérieur la ferme
     <div
-      data-ui-only
+      data-ui-only={true}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
       onMouseDown={() => setOpen(false)}
     >

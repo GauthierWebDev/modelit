@@ -409,7 +409,7 @@ function identityStart(ctx: Context, table: LogicalTable, column: LogicalColumn,
   }
   const counters = ctx.dialect.counters;
   if (/AS IDENTITY$/i.test(sql)) {
-    return `${sql} (${[start !== undefined ? `START WITH ${start}` : "", step !== undefined ? `INCREMENT BY ${step}` : ""].filter(Boolean).join(" ")})`;
+    return `${sql} (${[start === undefined ? "" : `START WITH ${start}`, step === undefined ? "" : `INCREMENT BY ${step}`].filter(Boolean).join(" ")})`;
   }
   const seeded = counters.seed?.(sql, start, step);
   if (seeded) {
@@ -478,7 +478,7 @@ export function freeTypeFallback(ctx: Context, sql: string): { sql: string; loss
   );
   if (interval && free.intervals) {
     const [, first, , last, fraction] = interval;
-    const emitted = `INTERVAL ${first!.toUpperCase()} TO ${last!.toUpperCase()}${fraction !== undefined ? `(${fraction})` : ""}`;
+    const emitted = `INTERVAL ${first!.toUpperCase()} TO ${last!.toUpperCase()}${fraction === undefined ? "" : `(${fraction})`}`;
     return { sql: emitted, lossy: false, loss: MSG.lossIntervalDays(sql.trim(), emitted) };
   }
   const known =

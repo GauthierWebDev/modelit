@@ -4,7 +4,7 @@ import { decodePacket, encodePacket, MAX_PAYLOAD } from "./packet";
 /** Paquets audio du vocal (O-48, D18). */
 describe("paquet audio", () => {
   it("aller-retour, identifiant accentué compris", () => {
-    const packet = { speaker: "hôte", seq: 65535, level: 200, payload: new Uint8Array([1, 2, 3]) };
+    const packet = { speaker: "hôte", seq: 65_535, level: 200, payload: new Uint8Array([1, 2, 3]) };
     expect(decodePacket(encodePacket(packet))).toEqual(packet);
   });
 

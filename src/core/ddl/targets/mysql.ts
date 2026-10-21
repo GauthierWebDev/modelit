@@ -42,13 +42,13 @@ function family(dbms: "mysql" | "mariadb", version: string | undefined): Dialect
       onUpdate: true,
       // Pas de défaut littéral sur TEXT / BLOB / JSON / GEOMETRY ; expression entre parenthèses depuis 8.0.13.
       defaultFor: (rendered, type) =>
-        !/^(\w*text|\w*blob|json|geometry)\b/i.test(type)
-          ? rendered
-          : mysql57
+        /^(\w*text|\w*blob|json|geometry)\b/i.test(type)
+          ? mysql57
             ? null
             : rendered.startsWith("(")
               ? rendered
-              : `(${rendered})`,
+              : `(${rendered})`
+          : rendered,
     },
     // CHECK ignoré par MySQL avant 8.0.16.
     constraints: { ...standard.constraints, enforcedChecks: !mysql57 },

@@ -249,7 +249,7 @@ export const bendsOf = (layout: DiagramLayout, id: Id): Point[] => layout.bends[
 
 /** Fixe les cassures d'un trait ; une liste vide retire l'entrée (trait droit). */
 export function setBends(layout: DiagramLayout, id: Id, bends: Point[]) {
-  if (bends.length) {
+  if (bends.length > 0) {
     layout.bends[id] = bends;
   } else {
     delete layout.bends[id];

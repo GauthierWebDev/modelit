@@ -137,7 +137,7 @@ export function DbmsTarget() {
           <div className="text-xs text-neutral-500 dark:text-neutral-400">
             {dbmsVersion === GENERIC_VERSION ? (
               t("target.generic")
-            ) : features.length ? (
+            ) : features.length > 0 ? (
               <>
                 {t("target.features")}
                 <ul className="mt-1 list-disc pl-4">

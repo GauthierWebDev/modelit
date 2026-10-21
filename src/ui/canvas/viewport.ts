@@ -122,7 +122,7 @@ export function clientToModel(doc: DocumentHandle, client: Point): Point {
 export function revealObjects(doc: DocumentHandle, ids: string[]) {
   const { viewport, setViewport } = doc.view.getState();
   const rects = objectRects(doc, ids);
-  if (!rects.length) {
+  if (rects.length === 0) {
     return;
   }
   const size = canvasSizeNow();

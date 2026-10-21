@@ -111,7 +111,7 @@ export function ToolbarHost() {
             position ? { left: position.x, top: position.y } : { left: "50%", top: 56, transform: "translateX(-50%)" }
           }
         >
-          <Toolbar floating onGripDown={onGripDown} />
+          <Toolbar floating={true} onGripDown={onGripDown} />
         </div>
       ) : null}
     </>

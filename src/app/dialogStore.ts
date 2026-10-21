@@ -78,7 +78,7 @@ export const showError = (message: string) =>
 
 /** Avertissements groupés en une seule boîte (ex. à l'ouverture d'un fichier). */
 export async function showWarnings(messages: string[]) {
-  if (!messages.length) {
+  if (messages.length === 0) {
     return;
   }
   await alertDialog({

@@ -259,7 +259,7 @@ export function startHost({
     }
     const relayed = { ...packet, speaker: peer };
     const targets = listeners(peer);
-    if (targets.length) {
+    if (targets.length > 0) {
       link.sendDatagram(targets, encodePacket(relayed));
     }
     if (host.audio) {
@@ -321,7 +321,7 @@ export function startHost({
         return;
       }
       const targets = listeners(host.id);
-      if (targets.length) {
+      if (targets.length > 0) {
         link.sendDatagram(targets, encodePacket({ ...packet, speaker: host.id }));
       }
     },

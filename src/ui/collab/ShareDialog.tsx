@@ -26,7 +26,7 @@ function LinkRow({ label, value }: { label: string; value: string }) {
       <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</span>
       <div className="flex gap-2">
         <input
-          readOnly
+          readOnly={true}
           aria-label={label}
           value={value}
           className={`${inputClass} flex-1 font-mono text-xs`}
@@ -112,15 +112,7 @@ export function ShareDialog() {
         {closeButton}
       </>
     );
-  } else if (!collabAvailable()) {
-    body = <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.unavailable")}</p>;
-    footer = (
-      <>
-        <div className="flex-1" />
-        {closeButton}
-      </>
-    );
-  } else {
+  } else if (collabAvailable()) {
     body = (
       <div className="flex flex-col gap-4">
         <section className="flex flex-col gap-2">
@@ -142,7 +134,7 @@ export function ShareDialog() {
           <div>
             <button
               type="button"
-              data-autofocus
+              data-autofocus={true}
               disabled={busy || tooShort}
               className={primary}
               onClick={() =>
@@ -178,6 +170,14 @@ export function ShareDialog() {
         </section>
       </div>
     );
+    footer = (
+      <>
+        <div className="flex-1" />
+        {closeButton}
+      </>
+    );
+  } else {
+    body = <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.unavailable")}</p>;
     footer = (
       <>
         <div className="flex-1" />

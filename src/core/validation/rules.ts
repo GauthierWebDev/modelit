@@ -29,7 +29,7 @@ export function checkAttributes(attributes: Attribute[]): Check {
   if (names.some((n) => !n)) {
     return MSG.emptyName;
   }
-  return new Set(names).size !== names.length ? MSG.duplicateAttributes : null;
+  return new Set(names).size === names.length ? null : MSG.duplicateAttributes;
 }
 
 /** Cardinalité saisie librement dans la boîte Lien. */

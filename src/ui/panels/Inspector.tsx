@@ -108,7 +108,7 @@ export function ReadOnly({ children }: { children: ReactNode }) {
         {t("collab.readOnlyNote")}
       </p>
       <fieldset
-        disabled
+        disabled={true}
         className="contents [&_:is(input,select,textarea,button)]:cursor-not-allowed [&_:is(input,select,textarea,button)]:opacity-50"
       >
         {children}

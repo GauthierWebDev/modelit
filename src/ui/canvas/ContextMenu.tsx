@@ -17,7 +17,7 @@ interface ContextMenuState {
 
 export const useContextMenu = create<ContextMenuState>()((set) => ({
   menu: null,
-  open: (x, y, actions) => set({ menu: actions.length ? { x, y, actions } : null }),
+  open: (x, y, actions) => set({ menu: actions.length > 0 ? { x, y, actions } : null }),
   close: () => set({ menu: null }),
 }));
 

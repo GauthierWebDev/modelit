@@ -56,7 +56,7 @@ export function Modal({
         close.current();
       } else if (e.key === "Tab" && box.current) {
         const items = [...box.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
-        if (!items.length) {
+        if (items.length === 0) {
           return;
         }
         const first = items[0]!;
@@ -84,7 +84,7 @@ export function Modal({
     // biome-ignore lint/a11y/noStaticElementInteractions: fond de la boîte, un clic à l'extérieur la ferme (Échap au clavier)
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: fond de la boîte, un clic à l'extérieur la ferme (Échap au clavier)
     <div
-      data-ui-only
+      data-ui-only={true}
       className={`fixed inset-0 ${layer} flex items-center justify-center bg-black/30`}
       onMouseDown={() => close.current()}
     >

@@ -241,7 +241,7 @@ export function renameForeignKey(doc: DocumentHandle, linkId: Id, attributeId: I
     } else {
       delete names[attributeId];
     }
-    link.foreignKeyNames = Object.keys(names).length ? names : undefined;
+    link.foreignKeyNames = Object.keys(names).length > 0 ? names : undefined;
   });
   return null;
 }
@@ -313,7 +313,7 @@ export function removeBend(doc: DocumentHandle, linkId: Id, index: number) {
  * extrémités bougent suivent leur décalage moyen ; les autres restent en place.
  */
 export function offsetNodes(doc: DocumentHandle, offsets: Map<Id, Point>, label: MessageKey) {
-  if (!offsets.size) {
+  if (offsets.size === 0) {
     return;
   }
   const model = current(doc);

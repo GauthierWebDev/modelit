@@ -79,7 +79,7 @@ export function InheritancePanel({ doc, inheritance }: { doc: ModelDocument; inh
         )}
       </Section>
       <Section title={t("inheritance.subtypes", { n: children.length })}>
-        {children.length < 1 && (
+        {children.length === 0 && (
           <p className="text-xs text-amber-700 dark:text-amber-400">{t("inheritance.needChild")}</p>
         )}
         {children.map((l) => (

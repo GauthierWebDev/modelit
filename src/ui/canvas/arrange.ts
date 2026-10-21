@@ -56,7 +56,7 @@ export function nudgeSelection(doc: DocumentHandle, dx: number, dy: number) {
       return; // un glisser est en cours
     }
     const ids = new Set(selectedBoxes(doc).map((b) => b.id));
-    if (!ids.size) {
+    if (ids.size === 0) {
       return;
     }
     const model = store.doc;

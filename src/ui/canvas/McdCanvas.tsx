@@ -242,7 +242,7 @@ export function McdCanvas() {
     const bendOrigins = new Map<Id, Point[]>();
     for (const l of diagramLinks(doc)) {
       const bends = bendsOf(doc.layout, l.id);
-      if (bends.length && origins.has(linkSourceId(l)) && origins.has(l.entityId)) {
+      if (bends.length > 0 && origins.has(linkSourceId(l)) && origins.has(l.entityId)) {
         bendOrigins.set(l.id, bends);
       }
     }

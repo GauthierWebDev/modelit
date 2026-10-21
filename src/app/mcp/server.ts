@@ -314,11 +314,11 @@ export async function handleMcpMessage(
     message.jsonrpc !== "2.0" ||
     typeof message.method !== "string"
   ) {
-    return { jsonrpc: "2.0", id: null, error: { code: -32600, message: "Invalid request" } };
+    return { jsonrpc: "2.0", id: null, error: { code: -32_600, message: "Invalid request" } };
   }
   const id = message.id ?? null;
   if (methodHeader && methodHeader !== message.method) {
-    return { jsonrpc: "2.0", id, error: { code: -32600, message: "Mcp-Method header does not match the body" } };
+    return { jsonrpc: "2.0", id, error: { code: -32_600, message: "Mcp-Method header does not match the body" } };
   }
   hooks.onActivity?.();
   if (message.id === undefined) {
@@ -351,6 +351,6 @@ export async function handleMcpMessage(
       }
     }
     default:
-      return { jsonrpc: "2.0", id, error: { code: -32601, message: `Method not found: ${message.method}` } };
+      return { jsonrpc: "2.0", id, error: { code: -32_601, message: `Method not found: ${message.method}` } };
   }
 }

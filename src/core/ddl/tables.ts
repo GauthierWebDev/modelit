@@ -107,7 +107,7 @@ export function createTable(
 function comments(ctx: Context, table: LogicalTable) {
   const name = tableName(ctx, table);
   const commented = table.columns.filter((c) => c.comment);
-  if (!table.comment && !commented.length) {
+  if (!table.comment && commented.length === 0) {
     return;
   }
   if (ctx.dialect.comments === "inline") {

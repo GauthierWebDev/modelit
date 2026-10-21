@@ -53,7 +53,7 @@ export function RemoteCursors({ viewport }: { viewport: Viewport }) {
   // Rafraîchissement régulier : un curseur immobile depuis 30 s disparaît.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 5_000);
+    const timer = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(timer);
   }, []);
 

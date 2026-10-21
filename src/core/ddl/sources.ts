@@ -63,7 +63,7 @@ const oracle: SourceRule = (ctx, table, column, _sql, type, checks) => {
   if (!notNull) {
     loss("domain", rejected ? MSG.lossEmptyStringRejected() : MSG.lossEmptyStringNull());
   } else if (rejected) {
-    return;
+    // Obligatoire et déjà rejetée par un CHECK existant : rien à ajouter ni à signaler.
   } else if (ctx.options.emptyStrings === "check") {
     checks.push(`${columnRef(ctx, table, column.name)} <> ''`);
   } else {

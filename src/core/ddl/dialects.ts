@@ -72,9 +72,9 @@ export function fitName(name: string, max: number): string {
   if (new TextEncoder().encode(name).length <= max) {
     return name;
   }
-  let hash = 2166136261;
+  let hash = 2_166_136_261;
   for (const c of name) {
-    hash = Math.imul(hash ^ c.codePointAt(0)!, 16777619) >>> 0;
+    hash = Math.imul(hash ^ c.codePointAt(0)!, 16_777_619) >>> 0;
   }
   const suffix = `_${hash.toString(16).padStart(8, "0")}`;
   let head = name;

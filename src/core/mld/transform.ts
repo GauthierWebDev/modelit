@@ -729,7 +729,7 @@ function checkAtomicity(ctx: Context, owner: Entity | Association) {
       const holder = link && ctx.doc.links.find((l) => l.associationId === link.associationId && l.id !== link.id);
       return holder?.cardinality.min === 0;
     });
-    if (optional.length) {
+    if (optional.length > 0) {
       const names = optional.map((m) =>
         "attributeId" in m
           ? owner.attributes.find((a) => a.id === m.attributeId)!.name
@@ -796,7 +796,7 @@ function checkInheritances(ctx: Context) {
     if (!parentId) {
       ctx.issues.push({ severity: "error", message: MSG.inheritanceNeedsParent, target });
     }
-    if (children.length < 1) {
+    if (children.length === 0) {
       ctx.issues.push({ severity: "error", message: MSG.inheritanceNeedsChild, target });
     }
     if (!parentId) {

@@ -65,7 +65,7 @@ function PasswordPrompt() {
         </p>
         <input
           type="password"
-          data-autofocus
+          data-autofocus={true}
           aria-label={t("collab.passwordTitle")}
           value={value}
           onChange={(e) => setValue(e.target.value)}

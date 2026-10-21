@@ -18,8 +18,8 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
   const args = [...(/\(([^)]*)\)/.exec(lower)?.[1] ?? "").replace(/-\s+/g, "-").matchAll(/-?\d+|max/g)].map(
     (m) => m[0],
   );
-  const n = args[0] === "max" ? undefined : args[0] !== undefined ? Number(args[0]) : undefined;
-  const scale = args[1] !== undefined ? Number(args[1]) : undefined;
+  const n = args[0] === "max" ? undefined : args[0] === undefined ? undefined : Number(args[0]);
+  const scale = args[1] === undefined ? undefined : Number(args[1]);
   // Nom du type sans arguments ni modificateurs MySQL.
   const base = lower
     .replace(/\([^)]*\)/g, " ")

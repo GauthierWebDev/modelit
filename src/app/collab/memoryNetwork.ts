@@ -131,7 +131,7 @@ export function memoryNetwork() {
     };
   };
   const flush = () => {
-    while (queue.length) {
+    while (queue.length > 0) {
       queue.shift()!();
     }
   };
@@ -140,9 +140,9 @@ export function memoryNetwork() {
     for (let i = 0; i < 50; i += 1) {
       flush();
       await new Promise((r) => setTimeout(r, 0));
-      if (!queue.length) {
+      if (queue.length === 0) {
         await new Promise((r) => setTimeout(r, 20));
-        if (!queue.length) {
+        if (queue.length === 0) {
           return;
         }
       }

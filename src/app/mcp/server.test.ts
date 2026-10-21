@@ -70,9 +70,9 @@ describe("serveur MCP", () => {
 
   it("notification : pas de réponse ; méthode inconnue : erreur JSON-RPC ; en-tête Mcp-Method incohérent : refusé", async () => {
     expect(await handleMcpMessage({ jsonrpc: "2.0", method: "notifications/initialized" })).toBeNull();
-    expect((await call("resources/list"))!.error?.code).toBe(-32601);
+    expect((await call("resources/list"))!.error?.code).toBe(-32_601);
     const mismatch = await handleMcpMessage({ jsonrpc: "2.0", id: 1, method: "tools/list" }, {}, "tools/call");
-    expect(mismatch!.error?.code).toBe(-32600);
+    expect(mismatch!.error?.code).toBe(-32_600);
   });
 
   it("apply_changes : crée le modèle en une seule entrée d'annulation", async () => {

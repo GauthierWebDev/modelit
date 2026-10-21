@@ -325,8 +325,8 @@ describe("inter-dialectes (critère 3) : toute différence avec la source figure
     const differences = diffCatalogs(catalogOf(SOURCE, "sqlite"), catalogOf(sql, dbms), true);
     expect(uncovered(differences, losses)).toEqual([]);
     // Le rapport est aussi en tête du script.
-    if (losses.length) {
-      expect(sql.startsWith(`-- `)).toBe(true);
+    if (losses.length > 0) {
+      expect(sql.startsWith("-- ")).toBe(true);
     }
   });
 });

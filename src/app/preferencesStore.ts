@@ -118,7 +118,7 @@ const initial: Preferences = {
   disclosures: {},
   modelSettingsTab: "naming",
   customDbms: [],
-  mcp: { enabled: false, port: 47321, token: "" },
+  mcp: { enabled: false, port: 47_321, token: "" },
   identity: newIdentity(),
 };
 

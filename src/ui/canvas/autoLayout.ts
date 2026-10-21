@@ -82,7 +82,7 @@ export async function autoLayoutTables(handle: DocumentHandle) {
     if (reflexive) {
       // Seconde patte : contourne l'entité et l'association ; la première reste droite.
       if (link.id !== legs[1]!.id) {
-        if (bendsOf(doc.layout, link.id).length) {
+        if (bendsOf(doc.layout, link.id).length > 0) {
           bends.set(link.id, []);
         }
         continue;

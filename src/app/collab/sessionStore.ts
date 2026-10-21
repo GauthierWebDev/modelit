@@ -48,7 +48,7 @@ export function createSessionStore(
   return createStore<SessionDocumentState>()((set, get) => {
     const record = (label: MessageKey, before: ModelDocument, after: ModelDocument) => {
       const redo = diff(before, after);
-      if (!redo.length) {
+      if (redo.length === 0) {
         return;
       }
       const undo = diff(after, before);

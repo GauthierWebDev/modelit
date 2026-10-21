@@ -55,7 +55,7 @@ const MIGRATIONS: Record<number, (model: RawModel) => RawModel> = {
           return link;
         }
         const { bends: points, ...rest } = link;
-        if (typeof rest.id === "string" && Array.isArray(points) && points.length) {
+        if (typeof rest.id === "string" && Array.isArray(points) && points.length > 0) {
           bends[rest.id] = points;
         }
         return rest;

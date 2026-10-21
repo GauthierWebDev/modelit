@@ -58,7 +58,7 @@ async function writeIndex() {
   const ids = documents()
     .map((d) => d.id)
     .filter((id) => stored.has(id));
-  if (ids.length) {
+  if (ids.length > 0) {
     await store.set(INDEX_KEY, JSON.stringify(ids));
   } else {
     await store.remove(INDEX_KEY);
@@ -165,7 +165,7 @@ function syncTracked() {
     }
   }
   // L'ordre des onglets a pu changer.
-  if (stored.size) {
+  if (stored.size > 0) {
     void writeIndex().catch(reportError);
   }
 }

@@ -124,7 +124,7 @@ export async function startVoice({
     output: (chunk) => {
       const payload = new Uint8Array(chunk.byteLength);
       chunk.copyTo(payload);
-      const frameSeq = seq & 0xffff;
+      const frameSeq = seq & 0xff_ff;
       seq += 1;
       onFrame({ seq: frameSeq, level: levels.shift() ?? 0, payload });
     },
@@ -209,8 +209,8 @@ export async function startVoice({
       const player = playerOf(speaker);
       // Paquet en retard (arrivé après un plus récent) : ignoré. Numéros sur 16 bits, qui bouclent.
       if (player.last >= 0) {
-        const delta = (frame.seq - player.last + 0x10000) & 0xffff;
-        if (delta === 0 || delta > 0x8000) {
+        const delta = (frame.seq - player.last + 0x1_00_00) & 0xff_ff;
+        if (delta === 0 || delta > 0x80_00) {
           return;
         }
       }

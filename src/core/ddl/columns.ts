@@ -71,7 +71,9 @@ export function columnLine(
     const label = c.check.name ?? `CHECK (${c.check.expression})`;
     const where = placement(ctx, table, "check", label, c.check.state);
     const name = c.check.name ? `CONSTRAINT ${q(ctx, constraintName(ctx, table, c.check.name, "CK", [c.name])!)} ` : "";
-    if (expression !== null) {
+    if (expression === null) {
+      after.push(`-- ${MSG.untranslatedCheck(`${table.name}.${c.name}`, c.check.expression)}`);
+    } else {
       const active = where === "inline";
       const definition = `${name}CHECK (${yearRange && active ? `(${expression}) AND ${yearRange}` : expression})${stateClause(ctx, table, "check", label, c.check.state)}`;
       const line = place(
@@ -87,8 +89,6 @@ export function columnLine(
         parts.push(line);
       }
       merged = Boolean(yearRange) && active;
-    } else {
-      after.push(`-- ${MSG.untranslatedCheck(`${table.name}.${c.name}`, c.check.expression)}`);
     }
   }
   if (yearRange && !merged) {

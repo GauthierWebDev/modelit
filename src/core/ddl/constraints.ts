@@ -104,16 +104,18 @@ function actions(
       continue;
     }
     // SQL Server refuse les chemins de cascade multiples ou cycliques.
-    if (sqlServerGraph && ["cascade", "set null", "set default"].includes(action)) {
-      if (!sqlServerGraph.accept(event, fk.referencedTable, table.name)) {
-        ctx.report.add(
-          "action",
-          table.name,
-          MSG.lossCascadePath(event.toUpperCase(), action.toUpperCase()),
-          fk.columns.join(", "),
-        );
-        action = "no action";
-      }
+    if (
+      sqlServerGraph &&
+      ["cascade", "set null", "set default"].includes(action) &&
+      !sqlServerGraph.accept(event, fk.referencedTable, table.name)
+    ) {
+      ctx.report.add(
+        "action",
+        table.name,
+        MSG.lossCascadePath(event.toUpperCase(), action.toUpperCase()),
+        fk.columns.join(", "),
+      );
+      action = "no action";
     }
     const result = referentialAction(ctx.target, event, action);
     if (result.kind === "emit") {
@@ -130,7 +132,7 @@ function actions(
       );
     }
   }
-  return parts.length ? ` ${parts.join(" ")}` : "";
+  return parts.length > 0 ? ` ${parts.join(" ")}` : "";
 }
 
 export function foreignKey(

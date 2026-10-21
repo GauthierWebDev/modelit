@@ -234,7 +234,7 @@ function splitCommas(tokens: Token[]): Token[][] {
       current.push(t);
     }
   }
-  if (current.length) {
+  if (current.length > 0) {
     parts.push(current);
   }
   return parts;
@@ -332,7 +332,7 @@ function keyItems(tokens: Token[]): { columns: string[]; prefixes: (number | nul
         .filter(isName)
         .filter((t) => !isWord(t, "coalesce"))
         .map((t) => t.value);
-      if (!names.length) {
+      if (names.length === 0) {
         return null;
       }
       fulltext = true;
@@ -516,7 +516,7 @@ function expressionItems(tokens: Token[], tableColumns: string[]): Omit<ParsedKe
   const expression = joinRaw(tokens);
   const cited = tokens.filter((t, k) => isName(t) && !isPunct(tokens[k + 1], "(")).map((t) => t.value);
   const columns = tableColumns.filter((name) => cited.some((c) => c.toLowerCase() === name.toLowerCase()));
-  return columns.length ? { columns, expression } : null;
+  return columns.length > 0 ? { columns, expression } : null;
 }
 
 /** `[USING m] (éléments) [USING m]` d'un index ou d'une contrainte UNIQUE. */
@@ -902,7 +902,7 @@ function columnDefinition(tokens: Token[], table: ParsedTable): ParsedColumn | n
       const expression: Token[] = [];
       while (!c.done()) {
         const t = c.peek()!;
-        if (t.type === "word" && AFTER_TYPE.has(t.value.toLowerCase()) && !isWord(t, "null") && expression.length) {
+        if (t.type === "word" && AFTER_TYPE.has(t.value.toLowerCase()) && !isWord(t, "null") && expression.length > 0) {
           break;
         }
         if (isPunct(t, "(")) {
@@ -1026,10 +1026,10 @@ function generatedColumn(c: Cursor, column: ParsedColumn) {
     groups === 1 &&
     isPunct(tokens[0], "(") &&
     isPunct(tokens.at(-1), ")") &&
-    tokens.filter((t) => t.type === "punct" && t.value === "(").length >= 1 &&
+    tokens.filter((t) => t.type === "punct" && t.value === "(").length > 0 &&
     tokens.length >= 2 &&
     wrapsAll(tokens);
-  const expression = tokens.length ? (wrapped ? tokens.slice(1, -1) : tokens) : null;
+  const expression = tokens.length > 0 ? (wrapped ? tokens.slice(1, -1) : tokens) : null;
   let stored = false;
   while (isWord(c.peek(), "stored", "virtual", "persisted")) {
     stored = !isWord(c.next(), "virtual") || stored;
@@ -1123,7 +1123,7 @@ function createTable(c: Cursor, schema: ParsedSchema): void {
     storage: [],
   };
   for (const element of splitCommas(body)) {
-    if (!element.length || tableConstraint(element, table)) {
+    if (element.length === 0 || tableConstraint(element, table)) {
       continue;
     }
     const column = columnDefinition(element, table);
@@ -1237,7 +1237,7 @@ function alterTable(c: Cursor, schema: ParsedSchema, statement: Token[]): void {
       ].filter((x) => all || x.name?.toLowerCase() === target);
       for (const x of states) {
         const { disabled: _d, ...rest } = x.state ?? {};
-        x.state = toggle ? { ...rest, disabled: true } : Object.keys(rest).length ? rest : undefined;
+        x.state = toggle ? { ...rest, disabled: true } : Object.keys(rest).length > 0 ? rest : undefined;
         if (!x.state) {
           delete x.state;
         }
@@ -1541,10 +1541,10 @@ function extendedProperty(c: Cursor, schema: ParsedSchema): void {
       : undefined;
   if (column) {
     column.comment = parameters.get("value");
-  } else if (!level2) {
-    table.comment = parameters.get("value");
-  } else {
+  } else if (level2) {
     schema.ignored += 1;
+  } else {
+    table.comment = parameters.get("value");
   }
 }
 

@@ -41,7 +41,7 @@ export function McpBridge() {
       try {
         message = JSON.parse(request.body);
       } catch {
-        return respond(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }));
+        return respond(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32_700, message: "Parse error" } }));
       }
       void handleMcpMessage(
         message,
@@ -59,7 +59,7 @@ export function McpBridge() {
             JSON.stringify({
               jsonrpc: "2.0",
               id,
-              error: { code: -32603, message: e instanceof Error ? e.message : String(e) },
+              error: { code: -32_603, message: e instanceof Error ? e.message : String(e) },
             }),
           );
         });

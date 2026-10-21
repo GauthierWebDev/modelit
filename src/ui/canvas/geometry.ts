@@ -143,7 +143,7 @@ export function attributeMarks(
     }
     const ids = key.members.map((m) => ("attributeId" in m ? m.attributeId : null));
     const local = ids.filter((id): id is string => id !== null);
-    if (!local.length) {
+    if (local.length === 0) {
       continue;
     }
     if (ids.length === 1 && local.length === 1 && !key.prefixes?.[0] && !key.expression) {
@@ -242,8 +242,8 @@ export function clipToRect(r: Rect, toward: Point): Point {
     return c;
   }
   const scale = Math.min(
-    dx !== 0 ? r.width / 2 / Math.abs(dx) : Infinity,
-    dy !== 0 ? r.height / 2 / Math.abs(dy) : Infinity,
+    dx === 0 ? Infinity : r.width / 2 / Math.abs(dx),
+    dy === 0 ? Infinity : r.height / 2 / Math.abs(dy),
   );
   return { x: c.x + dx * scale, y: c.y + dy * scale };
 }

@@ -13,7 +13,7 @@ import { CommitInput, IconButton } from "@/ui/common/controls";
 export function CustomDbmsLibrary() {
   const library = usePreferencesStore((s) => s.customDbms);
   const { renameCustomDbms, duplicateCustomDbms, deleteCustomDbms } = usePreferencesStore();
-  if (!library.length) {
+  if (library.length === 0) {
     return <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("customDbms.libraryEmpty")}</p>;
   }
   return (

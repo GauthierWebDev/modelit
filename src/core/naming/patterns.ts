@@ -86,7 +86,7 @@ export function parsePattern(input: string, kind: PatternKind, index = INDEX): P
     }
     return `<${variable}>`;
   });
-  return unknown.length ? { ok: false, unknown } : { ok: true, pattern };
+  return unknown.length > 0 ? { ok: false, unknown } : { ok: true, pattern };
 }
 
 /** Schéma canonique affiché dans une langue. */

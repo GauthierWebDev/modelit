@@ -87,7 +87,7 @@ const WORK_BUDGET = 2e7;
 const WEIGHT = { through: 150, crossing: 60, angle: 20, length: 1 };
 /** En dessous de cet angle, deux traits issus d'un même objet sont jugés confondus. */
 /** cos(20°), en littéral : pas de trigonométrie à l'exécution (voir `quantize`). */
-const COS_MIN_ANGLE = 0.9396926207859084;
+const COS_MIN_ANGLE = 0.939_692_620_785_908_4;
 
 /**
  * Reproductibilité : le moteur JavaScript peut calculer certaines fonctions (trigonométrie,
@@ -194,11 +194,11 @@ function shuffle<T>(items: T[], rnd: () => number): T[] {
 function random(seed: number) {
   let a = seed >>> 0;
   return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
+    a = (a + 0x6d_2b_79_f5) >>> 0;
     let t = a;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
 }
 
@@ -791,6 +791,7 @@ function initialCells(pb: Problem, rnd: () => number, shuffled: boolean): number
     }
     const queue = [s];
     seen[s] = 1;
+    // biome-ignore lint/style/useForOf: file de parcours en largeur, agrandie pendant la boucle (chemin critique du placement)
     for (let head = 0; head < queue.length; head += 1) {
       const v = queue[head]!;
       order.push(v);
@@ -1089,7 +1090,7 @@ export function gridLayoutChunk(
 
   for (let i = 0; i < RUNS_PER_CHUNK; i += 1) {
     const run = chunk * RUNS_PER_CHUNK + i;
-    const rnd = random(0x5eed + run * 7919);
+    const rnd = random(0x5e_ed + run * 7919);
     // Départs alternés : par forces (déplie le graphe), puis en largeur depuis l'objet le plus relié.
     const start = run % 2 === 0 ? forceCells(pb, rnd) : initialCells(pb, rnd, run > 1);
     // 1. Recherche en géométrie régulière (coût incrémental).

@@ -298,7 +298,7 @@ export function splitStatements(tokens: Token[]): Token[][] {
   let current: Token[] = [];
   for (const token of tokens) {
     if (token.type === "end") {
-      if (current.length) {
+      if (current.length > 0) {
         statements.push(current);
       }
       current = [];
@@ -306,7 +306,7 @@ export function splitStatements(tokens: Token[]): Token[][] {
       current.push(token);
     }
   }
-  if (current.length) {
+  if (current.length > 0) {
     statements.push(current);
   }
   return statements;
