@@ -99,42 +99,57 @@ export function entityKey(ctx: Context, entityId: Id, visiting = new Set<Id>()):
   // Sous-type : la clé est celle du surtype, à l'identique (clé primaire et étrangère).
   const inheritance = ctx.parents.get(entityId);
   if (inheritance) {
-    const parent = ctx.entities.get(inheritance.parentId)!;
-    const parentKey = entityKey(ctx, parent.id, visiting);
-    visiting.delete(entityId);
-    if (entity.attributes.some((a) => a.identifier)) {
-      ctx.issues.push({
-        severity: "warning",
-        message: MSG.subtypeKeyConceptual(entity.name),
-        logicalMessage: MSG.subtypeKeyLogical(tableName(ctx, entity)),
-        target: { kind: "entity", id: entityId },
-      });
-    }
-    const referencedTable = tableName(ctx, parent);
-    const childLink = ctx.doc.inheritanceLinks.find((l) => l.id === inheritance.linkId);
-    const key = parentKey.map((k) => ({
-      // Nom propre à l'entité spécialisée (ex. adherent_premium.adherent_id → adherent.id) (O-36).
-      name: childLink?.foreignKeyNames?.[k.originId]?.trim() || k.name,
-      type: foreignKeyDataType(k.type),
-      sourceType: foreignSourceType(k),
-      unsigned: k.unsigned,
-      originId: k.originId,
-      via: {
-        groupId: inheritance.linkId,
-        onDelete: childLink?.onDelete,
-        onUpdate: childLink?.onUpdate,
-        constraintName: childLink?.foreignKeyConstraintName,
-        state: childLink?.foreignKeyState,
-        referencedTable,
-        referencedColumn: k.name,
-        fictive: parent.fictive,
-        defaultName: k.name,
-      },
-    }));
-    ctx.keys.set(entityId, key);
-    return key;
+    return subtypeKey(ctx, entity, inheritance, visiting);
   }
+  return ownKey(ctx, entity, visiting);
+}
 
+function subtypeKey(
+  ctx: Context,
+  entity: Entity,
+  inheritance: NonNullable<ReturnType<Context["parents"]["get"]>>,
+  visiting: Set<Id>,
+): KeyColumn[] {
+  const entityId = entity.id;
+  const parent = ctx.entities.get(inheritance.parentId)!;
+  const parentKey = entityKey(ctx, parent.id, visiting);
+  visiting.delete(entityId);
+  if (entity.attributes.some((a) => a.identifier)) {
+    ctx.issues.push({
+      severity: "warning",
+      message: MSG.subtypeKeyConceptual(entity.name),
+      logicalMessage: MSG.subtypeKeyLogical(tableName(ctx, entity)),
+      target: { kind: "entity", id: entityId },
+    });
+  }
+  const referencedTable = tableName(ctx, parent);
+  const childLink = ctx.doc.inheritanceLinks.find((l) => l.id === inheritance.linkId);
+  const key = parentKey.map((k) => ({
+    // Nom propre à l'entité spécialisée (ex. adherent_premium.adherent_id → adherent.id) (O-36).
+    name: childLink?.foreignKeyNames?.[k.originId]?.trim() || k.name,
+    type: foreignKeyDataType(k.type),
+    sourceType: foreignSourceType(k),
+    unsigned: k.unsigned,
+    originId: k.originId,
+    via: {
+      groupId: inheritance.linkId,
+      onDelete: childLink?.onDelete,
+      onUpdate: childLink?.onUpdate,
+      constraintName: childLink?.foreignKeyConstraintName,
+      state: childLink?.foreignKeyState,
+      referencedTable,
+      referencedColumn: k.name,
+      fictive: parent.fictive,
+      defaultName: k.name,
+    },
+  }));
+  ctx.keys.set(entityId, key);
+  return key;
+}
+
+/** Identifiant propre, précédé des clés reçues par identification relative. */
+function ownKey(ctx: Context, entity: Entity, visiting: Set<Id>): KeyColumn[] {
+  const entityId = entity.id;
   const table = tableName(ctx, entity);
   const own: KeyColumn[] = byKeyOrder(entity.attributes.filter((a) => a.identifier)).map((a) => ({
     name: columnName(ctx, a, table, entity),

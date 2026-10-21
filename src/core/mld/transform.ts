@@ -1,4 +1,4 @@
-import type { Id, Link, ModelDocument } from "../model/document";
+import type { Association, Id, Link, ModelDocument } from "../model/document";
 import { MSG } from "../validation/messages";
 import { generatesTable, linksOf } from "../validation/rules";
 import type { LogicalModel, LogicalTable } from "./logical";
@@ -49,34 +49,7 @@ export function toLogicalModel(doc: ModelDocument): LogicalModel {
   }
 
   for (const association of doc.associations) {
-    const links = linksOf(doc, association.id).filter((l) => ctx.entities.has(l.entityId));
-    if (!checkAssociationModel(ctx, association, links)) {
-      continue;
-    }
-
-    if (generatesTable(links) || links.length > 2) {
-      if (!generatesTable(links)) {
-        ctx.issues.push({
-          severity: "warning",
-          message: MSG.naryWithFunctionalLeg,
-          target: { kind: "association", id: association.id },
-        });
-      }
-      tables.set(association.id, associationTable(ctx, association, links));
-      continue;
-    }
-
-    const { child, parent } = dependentSide(links as [Link, Link]);
-    const childTable = tables.get(child.entityId);
-    if (!childTable || child.relativeId) {
-      continue; // entité fictive, ou FK déjà dans la clé
-    }
-    addReference(ctx, childTable, parent, child, {
-      notNull: child.cardinality.min >= 1,
-      inPrimaryKey: false,
-      // 1:1 : la patte référencée est de cardinalité max 1.
-      unique: parent.cardinality.max === 1,
-    });
+    associationTables(ctx, association, tables);
   }
 
   const result = [...tables.values()];
@@ -91,4 +64,36 @@ export function toLogicalModel(doc: ModelDocument): LogicalModel {
   }
   checkTables(ctx, result);
   return { tables: result, issues: ctx.issues };
+}
+
+/** Association : table de correspondance, ou clé étrangère côté dépendant. */
+function associationTables(ctx: Context, association: Association, tables: Map<Id, LogicalTable>) {
+  const links = linksOf(ctx.doc, association.id).filter((l) => ctx.entities.has(l.entityId));
+  if (!checkAssociationModel(ctx, association, links)) {
+    return;
+  }
+
+  if (generatesTable(links) || links.length > 2) {
+    if (!generatesTable(links)) {
+      ctx.issues.push({
+        severity: "warning",
+        message: MSG.naryWithFunctionalLeg,
+        target: { kind: "association", id: association.id },
+      });
+    }
+    tables.set(association.id, associationTable(ctx, association, links));
+    return;
+  }
+
+  const { child, parent } = dependentSide(links as [Link, Link]);
+  const childTable = tables.get(child.entityId);
+  if (!childTable || child.relativeId) {
+    return; // entité fictive, ou FK déjà dans la clé
+  }
+  addReference(ctx, childTable, parent, child, {
+    notNull: child.cardinality.min >= 1,
+    inPrimaryKey: false,
+    // 1:1 : la patte référencée est de cardinalité max 1.
+    unique: parent.cardinality.max === 1,
+  });
 }
