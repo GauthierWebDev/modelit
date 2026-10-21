@@ -18,6 +18,7 @@ import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { CanvasSurface, hitId, hitIdAt } from "./CanvasSurface";
+import { logicalRenameTarget } from "./canvasRules";
 import {
   FONT_FAMILY,
   FONT_SIZE,
@@ -29,7 +30,7 @@ import {
   TITLE_HEIGHT,
   TITLE_WEIGHT,
 } from "./geometry";
-import { columnTarget, InlineRename, type RenameTarget } from "./InlineRename";
+import { InlineRename, type RenameTarget } from "./InlineRename";
 import {
   columnStyle,
   KEY_BAR_X,
@@ -113,27 +114,6 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
     () => new Map([...doc.links, ...doc.inheritanceLinks].map((l) => [l.id, l.relationLabel?.trim() ?? ""])),
     [doc.links, doc.inheritanceLinks],
   );
-
-  /** Titre ou colonne sous le point (O-56) : cible du renommage. */
-  function renameTargetAt(point: Point): RenameTarget | null {
-    const layout = layouts.findLast(
-      (l) => point.x >= l.x && point.x <= l.x + l.width && point.y >= l.y && point.y <= l.y + l.height,
-    );
-    if (!layout) return null;
-    const dy = point.y - layout.y;
-    if (dy < TITLE_HEIGHT) return { sourceId: layout.sourceId, column: null };
-    const row = layout.rows.find((r) => dy >= r.y && dy < r.y + ROW_HEIGHT);
-    if (!row) return null;
-    // MPD : le type d'une colonne propre, hors compteur (O-59) ; ailleurs sur la ligne, son nom.
-    const dx = point.x - layout.x;
-    if (mode === "mpd" && dx >= layout.typeX - 4 && dx < layout.constraintsX - 4) {
-      const { attributeId, origin, type } = row.column;
-      return attributeId && !origin && type?.kind !== "counter"
-        ? { sourceId: layout.sourceId, column: { attributeId }, part: "type" }
-        : null;
-    }
-    return columnTarget(layout.sourceId, row.column);
-  }
 
   return (
     <>
@@ -238,7 +218,7 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
         }}
         onDoubleClick={(_, point) => {
           if (tool !== "select" || readOnly) return;
-          const target = renameTargetAt(point);
+          const target = logicalRenameTarget(layouts, mode, point);
           if (!target) return;
           select([target.sourceId]);
           setRenaming(target);
