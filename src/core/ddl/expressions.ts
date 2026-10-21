@@ -1,6 +1,7 @@
 import { tokenize } from "../reverse/tokenize";
 import type { DateFunction, SpecialFunction } from "./dialects";
-import { KEYWORDS, operand, orExpression, Reader } from "./expressionParser";
+import { KEYWORDS, operand, Reader } from "./expressionOperands";
+import { orExpression } from "./expressionParser";
 
 /**
  * Expressions SQL simples des CHECK et des DEFAULT (override O-29) : lues sous forme structurée
