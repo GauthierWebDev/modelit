@@ -39,7 +39,7 @@ export function dropItem(item: DragItem, target: DropTarget) {
   }
 }
 
-export type { DragItem };
+export type { DragItem } from "@/app/dock/layout";
 
 interface DragState {
   item: DragItem | null;

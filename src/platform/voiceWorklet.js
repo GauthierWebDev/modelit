@@ -1,3 +1,4 @@
+// biome-ignore-all lint/style/noExcessiveClassesPerFile: un module de worklet audio se charge en un seul fichier
 // Worklets du vocal (O-48, D18), exécutés dans le fil audio. JavaScript simple : un AudioWorklet
 // est chargé par URL (CSP `script-src 'self'`), sans passer par la compilation TypeScript.
 

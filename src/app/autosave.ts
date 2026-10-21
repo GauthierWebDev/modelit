@@ -179,6 +179,7 @@ export async function readCopies(from: LocalStore): Promise<{ keys: string[]; co
   if (index) {
     keys.push(INDEX_KEY);
     for (const id of JSON.parse(index) as string[]) {
+      // biome-ignore lint/performance/noAwaitInLoops: lecture séquentielle de l'index, dans l'ordre des onglets
       const raw = await from.get(entryKey(id));
       keys.push(entryKey(id));
       if (raw) {
@@ -227,6 +228,7 @@ async function offerRecovery() {
         );
         track(restored);
         // Nouvelle copie sous l'identifiant du document rouvert, avant d'effacer l'ancienne.
+        // biome-ignore lint/performance/noAwaitInLoops: rouverture dans l'ordre des onglets, chaque copie réécrite avant la suivante
         await write(restored);
       }
     }
@@ -234,6 +236,7 @@ async function offerRecovery() {
     // Copie illisible : elle est abandonnée.
   }
   for (const key of keys) {
+    // biome-ignore lint/performance/noAwaitInLoops: effacement une clé à la fois, un échec n'arrête pas les suivantes
     await store.remove(key).catch(() => undefined);
   }
 }

@@ -4,8 +4,8 @@ import { dialectOf } from "./targets";
 import type { CollationResult } from "./targets/dialect";
 import { PG_COLLATIONS } from "./targets/postgresql";
 
-export type { CollationResult };
-export { PG_COLLATIONS };
+export type { CollationResult } from "./targets/dialect";
+export { PG_COLLATIONS } from "./targets/postgresql";
 
 /**
  * Traduction des collations de colonne (overrides O-35, O-37).

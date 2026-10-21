@@ -1,3 +1,4 @@
+// biome-ignore-all lint/style/noExcessiveClassesPerFile: problème et état de la recherche, couplés sur le chemin critique
 // biome-ignore-all lint/suspicious/noBitwiseOperators: générateur pseudo-aléatoire et grille en entiers (O-34)
 import type { Point } from "../model/document";
 
@@ -241,11 +242,12 @@ class Problem {
   readonly mcdW: Float64Array;
   readonly mcdH: Float64Array;
 
-  constructor(
-    readonly nodes: GridNode[],
-    edges: GridEdge[],
-    readonly options: GridOptions,
-  ) {
+  readonly nodes: GridNode[];
+  readonly options: GridOptions;
+
+  constructor(nodes: GridNode[], edges: GridEdge[], options: GridOptions) {
+    this.nodes = nodes;
+    this.options = options;
     const n = nodes.length;
     this.n = n;
     // Géométrie de recherche : cellules de taille moyenne, plus proches de l'affichage final
@@ -342,12 +344,13 @@ class State {
   private readonly tmpW: Float64Array;
   private readonly tmpH: Float64Array;
 
-  constructor(
-    readonly pb: Problem,
-    cellOf: ArrayLike<number>,
-    /** Géométrie exacte (affichage final) plutôt que régulière. */
-    readonly exact: boolean,
-  ) {
+  readonly pb: Problem;
+  /** Géométrie exacte (affichage final) plutôt que régulière. */
+  readonly exact: boolean;
+
+  constructor(pb: Problem, cellOf: ArrayLike<number>, exact: boolean) {
+    this.pb = pb;
+    this.exact = exact;
     this.cellOf = Int32Array.from(cellOf);
     this.nodeAt = new Int32Array(pb.cells).fill(-1);
     this.cellOf.forEach((c, v) => {

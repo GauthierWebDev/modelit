@@ -139,6 +139,7 @@ export function memoryNetwork() {
   const settle = async () => {
     for (let i = 0; i < 50; i += 1) {
       flush();
+      // biome-ignore lint/performance/noAwaitInLoops: un tour de boucle d'événements par passe, séquentiel par nature
       await new Promise((r) => setTimeout(r, 0));
       if (queue.length === 0) {
         await new Promise((r) => setTimeout(r, 20));

@@ -87,8 +87,8 @@ export function deserializeModel(text: string): LoadResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
-  } catch {
-    throw new ModelFileError(MSG.fileUnreadable);
+  } catch (e) {
+    throw new ModelFileError(MSG.fileUnreadable, { cause: e });
   }
   if (!isRecord(parsed) || parsed.format !== FILE_FORMAT || typeof parsed.version !== "number") {
     throw new ModelFileError(MSG.fileNotModel);

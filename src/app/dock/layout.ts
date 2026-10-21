@@ -174,7 +174,12 @@ export function moveSection(layout: DockLayout, section: SectionId, target: Drop
 }
 
 /** Déplace un groupe entier (glisser la poignée, O-46). */
-export function moveGroup(layout: DockLayout, id: string, target: Exclude<DropTarget, { kind: "group" }>): DockLayout {
+export function moveGroup(
+  layout: DockLayout,
+  id: string,
+  requested: Exclude<DropTarget, { kind: "group" }>,
+): DockLayout {
+  let target = requested;
   const next = clone(layout);
   const found = findGroup(next, id);
   if (!found) {

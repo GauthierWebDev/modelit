@@ -191,6 +191,7 @@ async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<M
           const chunk = next;
           next += 1;
           busy.add(worker);
+          // biome-ignore lint/performance/noAwaitInLoops: un fil traite ses lots l'un après l'autre ; les fils tournent en parallèle
           results.push(await runChunk(worker, nodes, edges, chunk));
           busy.delete(worker);
           // Décision certaine : inutile d'attendre les lots en cours ailleurs.

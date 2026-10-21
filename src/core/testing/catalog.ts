@@ -690,7 +690,8 @@ const schemaName = (schema?: string) =>
   schema && !["dbo", "public"].includes(schema.toLowerCase()) ? schema.toLowerCase() : undefined;
 
 /** Expression sans ses parenthèses englobantes : ((lower(email))) ≡ lower(email) (MySQL). */
-function unwrap(text: string): string {
+function unwrap(source: string): string {
+  let text = source;
   while (text.startsWith("(") && text.endsWith(")")) {
     let depth = 0;
     const inner = [...text.slice(1, -1)].every((ch) => {

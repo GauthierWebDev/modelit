@@ -87,8 +87,11 @@ const SPECIAL_FUNCTIONS: Record<string, { fn: SpecialFunction; call: boolean }> 
 };
 
 class Reader {
+  readonly tokens: Token[];
   i = 0;
-  constructor(readonly tokens: Token[]) {}
+  constructor(tokens: Token[]) {
+    this.tokens = tokens;
+  }
   peek(o = 0) {
     return this.tokens[this.i + o];
   }

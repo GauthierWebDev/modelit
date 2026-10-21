@@ -290,7 +290,7 @@ export function applyChanges(target: DocumentHandle, operations: Operation[]): A
         summary.push(applyOne(scratch, operation, created, placed));
       } catch (e) {
         if (e instanceof Refused) {
-          throw new Refused(`operation ${i + 1} (${operation.op}): ${e.message}`);
+          throw new Refused(`operation ${i + 1} (${operation.op}): ${e.message}`, { cause: e });
         }
         throw e;
       }

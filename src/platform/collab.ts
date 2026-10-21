@@ -138,6 +138,7 @@ export async function onOpenLink(handler: (url: string) => void): Promise<() => 
     };
   }
   const { getCurrent, onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
+  // biome-ignore lint/performance/noAwaitInLoops: attendu une seule fois (liens de départ), pas à chaque tour
   for (const url of (await getCurrent()) ?? []) {
     handler(url);
   }

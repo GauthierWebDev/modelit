@@ -647,7 +647,8 @@ function tableConstraint(tokens: Token[], table: ParsedTable): boolean {
 // Séquences (O-39)
 
 /** Nom de la séquence d'un DEFAULT : nextval('s'), s.NEXTVAL (Oracle), NEXT VALUE FOR s ; sinon `undefined`. */
-export function sequenceOfDefault(text: string): string | undefined {
+export function sequenceOfDefault(source: string): string | undefined {
+  let text = source;
   // (NEXT VALUE FOR s) : parenthèses englobantes (SQL Server) (O-41).
   while (/^\(.*\)$/s.test(text.trim())) {
     text = text.trim().slice(1, -1);
