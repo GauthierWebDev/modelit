@@ -64,7 +64,9 @@ describe("copier / coller", () => {
     expect(legs.map((l) => l.entityId).sort(byCodeUnit)).toEqual([idOf(doc, "CLIENT"), idOf(doc, "COMMANDE")].sort());
     expect(legs.find((l) => l.entityId === idOf(doc, "COMMANDE"))!.cardinality).toEqual({ min: 1, max: 1 });
   });
+});
 
+describe("copier / coller", () => {
   it("dans un autre document : pattes vers une entité absente abandonnées, positions gardées", () => {
     const source = shop();
     source.layout.positions[idOf(source, "PASSER")] = { x: 300, y: 120 };
@@ -104,7 +106,9 @@ describe("copier / coller", () => {
     expect(doc.inheritanceLinks.filter((l) => l.inheritanceId === copy.id)).toHaveLength(3);
     expect(extractFragment(doc, [doc.links[0]?.id ?? "aucun"])).toBeNull();
   });
+});
 
+describe("copier / coller", () => {
   it("noms de contraintes retirés de la copie (script sans doublon)", () => {
     const doc = shop();
     const client = doc.entities.find((e) => e.name === "CLIENT")!;

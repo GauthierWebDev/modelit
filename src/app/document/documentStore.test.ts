@@ -48,7 +48,9 @@ describe("store de document", () => {
     expect(typology(store)).toBe("b");
     expect(store.getState().past).toHaveLength(1);
   });
+});
 
+describe("store de document", () => {
   it("historique limité à 200 entrées", () => {
     const store = createDocumentStore(emptyDocument());
     for (let i = 0; i < 205; i += 1) {

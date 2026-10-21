@@ -57,7 +57,9 @@ describe("passage MCD → MLD", () => {
     );
     expect(logical.tables.find((t) => t.name === "R")!.primaryKey).toEqual(["a", "b", "c"]);
   });
+});
 
+describe("passage MCD → MLD", () => {
   it("identifiant relatif → clé étrangère dans la clé primaire", () => {
     expect(
       mld(
@@ -106,7 +108,9 @@ describe("passage MCD → MLD", () => {
     const logical = toLogicalModel(model().entity("A", ["a*"]).association("R", ["A 0,n"]).build());
     expect(logical.issues.map((i) => i.message)).toContain(MSG.associationNeedsTwoLegs);
   });
+});
 
+describe("passage MCD → MLD", () => {
   it("association réflexive n-n : la seconde clé étrangère est suffixée (override O-13)", () => {
     const logical = toLogicalModel(
       model().entity("EMPLOYE", ["id*"]).association("ENCADRER", ["EMPLOYE 0,n", "EMPLOYE 0,n"]).build(),

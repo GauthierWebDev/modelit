@@ -138,7 +138,9 @@ describe("menu contextuel d'un objet (O-53)", () => {
     const doc = setup();
     expect(ids(menuOn(doc, model_(doc).inheritances[0]!.id))).toEqual(["copy", "cut", "duplicate", "delete"]);
   });
+});
 
+describe("menu contextuel d'un objet (O-53)", () => {
   it("patte : cardinalités (case), identifiant relatif (case), supprimer", () => {
     const doc = setup();
     const link = model_(doc).links.find((l) => l.cardinality.max === 1)!;

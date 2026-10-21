@@ -68,7 +68,9 @@ describe("disposition des sections", () => {
     layout = moveGroup(layout, first, { kind: "zone", zone: "right", index: 2 });
     expect(shape(layout).right).toEqual(["issues", "properties", "attributes"]);
   });
+});
 
+describe("disposition des sections", () => {
   it("fermer un groupe masque ses sections ; les réafficher les rend à leur place", () => {
     let layout = moveGroup(defaultLayout(), "bottom", { kind: "float", rect });
     layout = closeGroup(layout, "bottom");
@@ -117,7 +119,9 @@ describe("disposition des sections", () => {
     expect(fixed.floating[0]!.rect.x).toBeLessThan(1280);
     expect(fixed.toolbar.position).toBeNull();
   });
+});
 
+describe("disposition des sections", () => {
   it("disposition relue abîmée : réparée", () => {
     expect(shape(sanitizeLayout(null))).toEqual(shape(defaultLayout()));
     const repaired = sanitizeLayout({
@@ -139,7 +143,9 @@ describe("disposition des sections", () => {
     });
     expect(repaired.zones.right.groups[0]!.active).toBe("properties");
   });
+});
 
+describe("disposition des sections", () => {
   it("disposition d'une version sans Rubriques : ajoutée sous le groupe des Propriétés (O-50)", () => {
     const old = {
       zones: {
@@ -167,7 +173,9 @@ describe("disposition des sections", () => {
       floating: ["properties"],
     });
   });
+});
 
+describe("disposition des sections", () => {
   it("disposition d'une version avec la section Modèle : retirée, groupe vide compris (O-55)", () => {
     const old = {
       zones: {

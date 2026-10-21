@@ -42,13 +42,11 @@ describe("MCD de la médiathèque (O-36)", () => {
       referencedColumns: ["id"],
     });
   });
-
   it("2. noms : contrainte, puis colonne, sauf s'ils se réduisent à une table reliée ou à son abréviation (O-37)", () => {
     expect(doc.associations.map((a) => a.name).sort(byCodeUnit)).toEqual(
       ["favori", "reco", "vo", "parrain", "emprunt_Exemplaire", "emprunt_adherent", "Exemplaire_oeuvre"].sort(),
     );
   });
-
   it("3. rôles des réflexives : occurrence référencée, sur la patte 0,n ; patte 0,1 sans rôle (O-37)", () => {
     expect(legs("parrain")).toEqual(
       expect.arrayContaining([
@@ -63,7 +61,9 @@ describe("MCD de la médiathèque (O-36)", () => {
       ]),
     );
   });
+});
 
+describe("MCD de la médiathèque (O-36)", () => {
   it("4. identifiants alternatifs : isbn, num_carte, code_barre, email(100) sur préfixe ; vo → isbn", () => {
     const attr = (e: string, a: string) => entity(e).attributes.find((x) => x.name === a)!;
     expect(attr("oeuvre", "isbn").unique).toBe(true);
@@ -76,14 +76,12 @@ describe("MCD de la médiathèque (O-36)", () => {
     const vo = doc.links.find((l) => l.associationId === association("vo")!.id && l.referencedAttributes);
     expect(vo?.referencedAttributes).toEqual([attr("oeuvre", "isbn").id]);
   });
-
   it("5. données calculées : prix_ttc, date_retour_prevue", () => {
     expect(entity("oeuvre").attributes.find((a) => a.name === "prix_ttc")!.generated).toMatchObject({ stored: true });
     expect(entity("emprunt").attributes.find((a) => a.name === "date_retour_prevue")!.generated).toMatchObject({
       stored: false,
     });
   });
-
   it("6. avertissements : REFERENCES en ligne (parrain), SET (centres_interet), JSON (details), préfixe", () => {
     const warnings = toLogicalModel(doc).issues.filter((i) => i.severity === "warning");
     const on = (id: string) => warnings.filter((w) => w.target?.id === id).map((w) => w.message);
@@ -94,7 +92,9 @@ describe("MCD de la médiathèque (O-36)", () => {
     expect(on(entity("emprunt").id)).toEqual([expect.stringContaining("details")]);
     expect(toLogicalModel(doc).issues.filter((i) => i.severity === "error")).toEqual([]);
   });
+});
 
+describe("MCD de la médiathèque (O-36)", () => {
   it("laboratoire : rôles mentor et precedente sur les pattes 0,n ; « labo » écarté (abréviation de Laboratoire)", () => {
     const labo = reverseEngineer(readFileSync("fixtures/labo_sqlite.sql", "utf8"), emptyDocument()).doc;
     const names = labo.associations.map((a) => a.name);

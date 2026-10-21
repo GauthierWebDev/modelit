@@ -31,7 +31,9 @@ describe("format de fichier natif", () => {
     expect(doc.settings.grid.size).toBeGreaterThan(0);
     expect(doc.entities).toEqual([]);
   });
+});
 
+describe("format de fichier natif", () => {
   it("v2 → v3 : positions et cassures sorties des objets vers layout (J-01, phase 3)", () => {
     // Forme écrite par la v0.1.0.
     const v2 = {
@@ -79,7 +81,9 @@ describe("format de fichier natif", () => {
     }
     expect(JSON.parse(serializeModel(doc)).version).toBe(3);
   });
+});
 
+describe("format de fichier natif", () => {
   it("fichier sans layout : géométrie vide, objets à l'origine", () => {
     const text = JSON.stringify({ format: FILE_FORMAT, version: CURRENT_VERSION, model: { entities: [] } });
     expect(deserializeModel(text).doc.layout).toEqual({ positions: {}, bends: {} });

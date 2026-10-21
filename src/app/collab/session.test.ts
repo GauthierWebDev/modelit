@@ -94,7 +94,9 @@ describe("session collaborative", () => {
     converged();
     expect(names(host.store)).toEqual(["PAR_CLAIRE"]); // la dernière reçue l'emporte
   });
+});
 
+describe("session collaborative", () => {
   it("rubriques différentes d'une même entité modifiées en même temps : les deux sont gardées", () => {
     const { h, net, host, converged } = session();
     const id = cmd.addEntity(h.alice, { x: 0, y: 0 });
@@ -138,7 +140,9 @@ describe("session collaborative", () => {
     converged();
     expect(names(host.store).length).toBe(2);
   });
+});
 
+describe("session collaborative", () => {
   it("lecteur : aucune modification locale, et une modification forgée est refusée par l'hôte", () => {
     const { net, host, join } = session();
     const reader = join("david", "read-secret");
@@ -164,7 +168,9 @@ describe("session collaborative", () => {
     net.flush();
     expect(host.store.getState().doc.entities).toEqual([]);
   });
+});
 
+describe("session collaborative", () => {
   it("IA d'un invité : refusée tant que l'hôte ne l'autorise pas", () => {
     const { h, net, host, bob, converged } = session();
     h.bob.store
@@ -205,7 +211,9 @@ describe("session collaborative", () => {
     expect(doc.entities[0]!.name).toBe("RENOMME_PAR_BOB");
     expect(doc.layout.positions[id]).toEqual({ x: 100, y: 100 });
   });
+});
 
+describe("session collaborative", () => {
   it("fin : l'hôte arrête, les invités l'apprennent et gardent leur copie", () => {
     const { h, net, host, bob } = session();
     cmd.addEntity(h.alice, { x: 0, y: 0 });
@@ -234,7 +242,9 @@ describe("session collaborative", () => {
     cmd.addEntity(handle(david.store), { x: 0, y: 0 });
     expect(david.store.getState().doc.entities).toHaveLength(0);
   });
+});
 
+describe("session collaborative", () => {
   it("200 actions mêlées, livraisons irrégulières : tous convergent (graine fixe)", () => {
     for (const seed of [1, 7, 42]) {
       let state = seed;
