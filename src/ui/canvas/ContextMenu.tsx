@@ -1,5 +1,5 @@
 import { Check } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { tip } from "@/ui/common/Tooltip";
 import type { Action } from "./objectActions";
@@ -44,6 +44,33 @@ export function ContextMenuLayer() {
   const menu = useContextMenu((s) => s.menu);
   const close = useContextMenu((s) => s.close);
   const ref = useRef<HTMLDivElement>(null);
+  const position = useMenuPosition(menu, ref);
+  useMenuDismiss(menu, close, ref);
+
+  if (!menu) {
+    return null;
+  }
+  return (
+    <div
+      ref={ref}
+      role="menu"
+      style={{
+        left: position?.left ?? menu.x,
+        top: position?.top ?? menu.y,
+        visibility: position ? "visible" : "hidden",
+      }}
+      className="fixed z-50 min-w-52 rounded border border-neutral-200 bg-white py-1 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {menu.actions.map((action, i) => menuEntry(action, i, close))}
+    </div>
+  );
+}
+
+type Menu = ContextMenuState["menu"];
+
+/** Position ramenée dans la fenêtre (mesurée avant d'afficher le menu). */
+function useMenuPosition(menu: Menu, ref: RefObject<HTMLDivElement | null>) {
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
 
   useLayoutEffect(() => {
@@ -55,8 +82,12 @@ export function ContextMenuLayer() {
       left: Math.max(4, Math.min(menu.x, window.innerWidth - width - 4)),
       top: Math.max(4, Math.min(menu.y, window.innerHeight - height - 4)),
     });
-  }, [menu]);
+  }, [menu, ref]);
+  return position;
+}
 
+/** Échap, un clic ailleurs, la molette ou la perte du focus ferment le menu. */
+function useMenuDismiss(menu: Menu, close: () => void, ref: RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     if (!menu) {
       return;
@@ -80,72 +111,55 @@ export function ContextMenuLayer() {
       window.removeEventListener("wheel", close);
       window.removeEventListener("blur", close);
     };
-  }, [menu, close]);
+  }, [menu, close, ref]);
+}
 
-  if (!menu) {
-    return null;
-  }
-  return (
-    <div
-      ref={ref}
-      role="menu"
-      style={{
-        left: position?.left ?? menu.x,
-        top: position?.top ?? menu.y,
-        visibility: position ? "visible" : "hidden",
-      }}
-      className="fixed z-50 min-w-52 rounded border border-neutral-200 bg-white py-1 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      {menu.actions.map((action, i) =>
-        action.kind === "separator" ? (
-          // biome-ignore lint/suspicious/noArrayIndexKey: séparateur sans identité propre
-          <hr key={`sep-${i}`} className="my-1 border-t border-neutral-200 dark:border-neutral-700" />
-        ) : action.kind === "row" ? (
-          // biome-ignore lint/a11y/useSemanticElements: groupe de boutons d'un menu (motif ARIA menu), pas un formulaire
-          <div key={action.id} role="group" className="flex gap-0.5 px-2 py-0.5">
-            {action.items.map((item) => (
-              <span key={item.id} className="inline-flex" {...tip(item.label)}>
-                <button
-                  type="button"
-                  role="menuitem"
-                  aria-label={item.label}
-                  disabled={item.disabled}
-                  onClick={() => {
-                    close();
-                    item.run();
-                  }}
-                  className="flex size-7 items-center justify-center rounded text-neutral-600 hover:bg-neutral-100 disabled:opacity-35 disabled:hover:bg-transparent dark:text-neutral-300 dark:hover:bg-neutral-700"
-                >
-                  {item.icon}
-                </button>
-              </span>
-            ))}
-          </div>
-        ) : (
-          // biome-ignore lint/a11y/useAriaPropsSupportedByRole: rôle menuitemcheckbox quand l'action est cochable
+/** Élément du menu : séparateur, rangée de boutons, ou action (cochable). */
+function menuEntry(action: Action, i: number, close: () => void) {
+  return action.kind === "separator" ? (
+    <hr key={`sep-${i}`} className="my-1 border-t border-neutral-200 dark:border-neutral-700" />
+  ) : action.kind === "row" ? (
+    // biome-ignore lint/a11y/useSemanticElements: groupe de boutons d'un menu (motif ARIA menu), pas un formulaire
+    <div key={action.id} role="group" className="flex gap-0.5 px-2 py-0.5">
+      {action.items.map((item) => (
+        <span key={item.id} className="inline-flex" {...tip(item.label)}>
           <button
-            key={action.id}
             type="button"
-            role={action.checked === undefined ? "menuitem" : "menuitemcheckbox"}
-            aria-checked={action.checked}
-            disabled={action.disabled}
+            role="menuitem"
+            aria-label={item.label}
+            disabled={item.disabled}
             onClick={() => {
               close();
-              action.run();
+              item.run();
             }}
-            className="flex w-full items-center gap-2 px-3 py-1 text-left whitespace-nowrap hover:bg-neutral-100 disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-neutral-700"
+            className="flex size-7 items-center justify-center rounded text-neutral-600 hover:bg-neutral-100 disabled:opacity-35 disabled:hover:bg-transparent dark:text-neutral-300 dark:hover:bg-neutral-700"
           >
-            <span className="flex w-3.5 flex-none justify-center text-neutral-500 dark:text-neutral-400">
-              {action.checked ? <Check size={14} /> : action.icon}
-            </span>
-            <span className="flex-1">{action.label}</span>
-            {action.shortcut ? (
-              <span className="pl-6 text-xs text-neutral-400 dark:text-neutral-500">{action.shortcut}</span>
-            ) : null}
+            {item.icon}
           </button>
-        ),
-      )}
+        </span>
+      ))}
     </div>
+  ) : (
+    // biome-ignore lint/a11y/useAriaPropsSupportedByRole: rôle menuitemcheckbox quand l'action est cochable
+    <button
+      key={action.id}
+      type="button"
+      role={action.checked === undefined ? "menuitem" : "menuitemcheckbox"}
+      aria-checked={action.checked}
+      disabled={action.disabled}
+      onClick={() => {
+        close();
+        action.run();
+      }}
+      className="flex w-full items-center gap-2 px-3 py-1 text-left whitespace-nowrap hover:bg-neutral-100 disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-neutral-700"
+    >
+      <span className="flex w-3.5 flex-none justify-center text-neutral-500 dark:text-neutral-400">
+        {action.checked ? <Check size={14} /> : action.icon}
+      </span>
+      <span className="flex-1">{action.label}</span>
+      {action.shortcut ? (
+        <span className="pl-6 text-xs text-neutral-400 dark:text-neutral-500">{action.shortcut}</span>
+      ) : null}
+    </button>
   );
 }
