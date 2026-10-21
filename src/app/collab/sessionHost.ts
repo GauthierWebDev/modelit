@@ -1,14 +1,15 @@
 import { t } from "@/i18n";
 import { confirmDialog } from "../dialogStore";
 import { createDocumentStore } from "../document/documentStore";
+import type { DocumentHandle } from "../document/handle";
 import { documentName } from "../fileCommands";
 import { activeDocument, replaceDocument, useWorkspaceStore } from "../workspace";
-import { startHost } from "./host";
+import { type HostSession, startHost } from "./host";
 import { buildLink, newSecret } from "./link";
 import { MIN_PASSWORD_LENGTH, verifier } from "./password";
 import { MAX_DOCUMENT_BYTES } from "./protocol";
 import { forgetSentPresence } from "./sessionPresence";
-import { fail, live, me, trackChat, trackPresence, useCollabStore } from "./sessionState";
+import { type CollabTransport, fail, live, me, trackChat, trackPresence, useCollabStore } from "./sessionState";
 
 /** Partage l'onglet actif (O-05 §4.1). */
 export async function shareActiveTab({
@@ -31,60 +32,76 @@ export async function shareActiveTab({
   useCollabStore.setState({ mode: "starting", error: null });
   forgetSentPresence();
   try {
-    const started = await live.transport.startHost();
-    const secrets = { editor: newSecret(), reader: newSecret() };
-    const original = tab.store.getState();
-    const session = startHost({
-      link: started.link,
-      doc: original.doc,
-      secrets,
-      me: { id: "host", ...me() },
-      aiAllowed,
-      title: documentName(tab),
-      ...(password ? { password: await verifier(password) } : {}),
-    });
-    // L'onglet garde son fichier et son état « modifié » ; son historique devient personnel.
-    session.store.setState({
-      filePath: original.filePath,
-      savedDoc: original.savedDoc === original.doc ? original.doc : original.savedDoc,
-    });
-    replaceDocument(tab.id, { id: tab.id, store: session.store, view: tab.view });
-    const sync = () => {
-      const s = session.state.getState();
-      useCollabStore.setState({
-        participants: s.participants,
-        aiAllowed: s.aiAllowed,
-        presence: trackPresence(s.presence),
-        ...trackChat(s.chat, "host"),
-      });
-    };
-    const offState = session.state.subscribe(sync);
-    // Onglet fermé : fin du partage.
-    const offTabs = useWorkspaceStore.subscribe((s) => {
-      if (!s.documents.some((d) => d.id === tab.id)) {
-        void stopSharing();
-      }
-    });
-    live.host = {
-      session,
-      stop: started.stop,
-      off: () => {
-        offState();
-        offTabs();
-      },
-    };
-    useCollabStore.setState({
-      mode: "host",
-      you: "host",
-      tabId: tab.id,
-      links: { edit: buildLink(started.addr, secrets.editor), read: buildLink(started.addr, secrets.reader) },
-    });
-    sync();
+    await startSharing(live.transport, tab, password, aiAllowed);
     return true;
   } catch (e) {
     useCollabStore.setState({ mode: "idle", error: t("collab.startFailed", { error: String(e) }) });
     return false;
   }
+}
+
+/** Démarre l'écoute et l'hôte ; l'onglet passe sur le document de la session. */
+async function startSharing(
+  transport: CollabTransport,
+  tab: DocumentHandle,
+  password: string | undefined,
+  aiAllowed: boolean,
+) {
+  const started = await transport.startHost();
+  const secrets = { editor: newSecret(), reader: newSecret() };
+  const original = tab.store.getState();
+  const session = startHost({
+    link: started.link,
+    doc: original.doc,
+    secrets,
+    me: { id: "host", ...me() },
+    aiAllowed,
+    title: documentName(tab),
+    ...(password ? { password: await verifier(password) } : {}),
+  });
+  // L'onglet garde son fichier et son état « modifié » ; son historique devient personnel.
+  session.store.setState({
+    filePath: original.filePath,
+    savedDoc: original.savedDoc === original.doc ? original.doc : original.savedDoc,
+  });
+  replaceDocument(tab.id, { id: tab.id, store: session.store, view: tab.view });
+  const sync = followHostSession(session, tab, started.stop);
+  useCollabStore.setState({
+    mode: "host",
+    you: "host",
+    tabId: tab.id,
+    links: { edit: buildLink(started.addr, secrets.editor), read: buildLink(started.addr, secrets.reader) },
+  });
+  sync();
+}
+
+/** État de l'hôte reflété dans l'interface ; fin du partage si l'onglet est fermé. Renvoie la synchronisation. */
+function followHostSession(session: HostSession, tab: DocumentHandle, stop: () => Promise<void>) {
+  const sync = () => {
+    const s = session.state.getState();
+    useCollabStore.setState({
+      participants: s.participants,
+      aiAllowed: s.aiAllowed,
+      presence: trackPresence(s.presence),
+      ...trackChat(s.chat, "host"),
+    });
+  };
+  const offState = session.state.subscribe(sync);
+  // Onglet fermé : fin du partage.
+  const offTabs = useWorkspaceStore.subscribe((s) => {
+    if (!s.documents.some((d) => d.id === tab.id)) {
+      void stopSharing();
+    }
+  });
+  live.host = {
+    session,
+    stop,
+    off: () => {
+      offState();
+      offTabs();
+    },
+  };
+  return sync;
 }
 
 /** Arrête le partage pour tous (O-05 §4.4) ; l'onglet redevient un document ordinaire. */
