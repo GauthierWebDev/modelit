@@ -1,5 +1,6 @@
 import type { ConstraintState, ReferentialAction, SequenceDefinition, SqlDialect } from "../model/physical";
 import { Cursor, isPunct, isWord, joinRaw } from "./cursor";
+import { alterTable } from "./parseAlter";
 import { createIndex } from "./parseIndexes";
 import { alterSequence, createSequence, resolveSequences } from "./parseSequences";
 import {
@@ -10,7 +11,7 @@ import {
   createType,
   extendedProperty,
 } from "./parseStatements";
-import { alterTable, createTable } from "./parseTables";
+import { createTable } from "./parseTables";
 import { splitStatements, tokenize } from "./tokenize";
 
 /**
