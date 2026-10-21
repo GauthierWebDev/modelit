@@ -46,47 +46,16 @@ function combine(op: string, a: Inferred, b: Inferred): Inferred {
   }
   const numeric = (t: DataType) => ["integer", "decimal", "real", "money", "boolean"].includes(t.kind);
   if (op === "+" && (a.kind === "text" || b.kind === "text")) {
-    if (a.kind !== "text" || b.kind !== "text") {
-      return undefined;
-    }
-    const unicode = a.encoding === "unicode" || b.encoding === "unicode";
-    const large = a.length === "large" || b.length === "large" || a.size === undefined || b.size === undefined;
-    return large
-      ? { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "large" }
-      : { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "variable", size: a.size! + b.size! };
+    return concatenated(a, b);
   }
   if (!(numeric(a) && numeric(b))) {
     return undefined;
   }
   if (a.kind === "real" || b.kind === "real") {
-    return {
-      kind: "real",
-      precision:
-        a.kind === "real" && a.precision === "double"
-          ? "double"
-          : b.kind === "real" && b.precision === "double"
-            ? "double"
-            : "single",
-    };
+    return realResult(a, b);
   }
   if (a.kind === "decimal" || b.kind === "decimal") {
-    const x = asDecimal(a)!;
-    const y = asDecimal(b)!;
-    switch (op) {
-      case "+":
-      case "-": {
-        const s = Math.max(x.s, y.s);
-        return capped(Math.max(x.p - x.s, y.p - y.s) + s + 1, s);
-      }
-      case "*":
-        return capped(x.p + y.p + 1, x.s + y.s);
-      case "/": {
-        const s = Math.max(6, x.s + y.p + 1);
-        return capped(x.p - x.s + y.s + s, s);
-      }
-      default:
-        return undefined;
-    }
+    return decimalResult(op, asDecimal(a)!, asDecimal(b)!);
   }
   if (a.kind === "money" || b.kind === "money") {
     return { kind: "money" };
@@ -95,22 +64,41 @@ function combine(op: string, a: Inferred, b: Inferred): Inferred {
   return { kind: "integer", bits: Math.max(bits(a), bits(b), 32) as 32 | 64 };
 }
 
-class Reader {
-  readonly tokens: Token[];
-  i = 0;
-  constructor(tokens: Token[]) {
-    this.tokens = tokens;
+/** Réel double si l'un des deux l'est, sinon simple. */
+function realResult(a: DataType, b: DataType): DataType {
+  const double = (a.kind === "real" && a.precision === "double") || (b.kind === "real" && b.precision === "double");
+  return { kind: "real", precision: double ? "double" : "single" };
+}
+
+/** Concaténation de textes (+). */
+function concatenated(a: DataType, b: DataType): Inferred {
+  if (a.kind !== "text" || b.kind !== "text") {
+    return undefined;
   }
-  peek(o = 0) {
-    return this.tokens[this.i + o];
-  }
-  next() {
-    const token = this.tokens[this.i];
-    this.i += 1;
-    return token;
-  }
-  punct(v: string) {
-    return this.peek()?.type === "punct" && this.peek()!.value === v;
+  const unicode = a.encoding === "unicode" || b.encoding === "unicode";
+  const encoding = unicode ? "unicode" : "ascii";
+  const large = a.length === "large" || b.length === "large" || a.size === undefined || b.size === undefined;
+  return large
+    ? { kind: "text", encoding, length: "large" }
+    : { kind: "text", encoding, length: "variable", size: a.size! + b.size! };
+}
+
+/** Précision et échelle d'une opération sur des décimaux, comme SQL Server. */
+function decimalResult(op: string, x: { p: number; s: number }, y: { p: number; s: number }): Inferred {
+  switch (op) {
+    case "+":
+    case "-": {
+      const s = Math.max(x.s, y.s);
+      return capped(Math.max(x.p - x.s, y.p - y.s) + s + 1, s);
+    }
+    case "*":
+      return capped(x.p + y.p + 1, x.s + y.s);
+    case "/": {
+      const s = Math.max(6, x.s + y.p + 1);
+      return capped(x.p - x.s + y.s + s, s);
+    }
+    default:
+      return undefined;
   }
 }
 
@@ -119,29 +107,102 @@ export function inferComputedType(
   columnType: (name: string) => DataType | undefined,
   dialect?: SqlDialect,
 ): DataType | undefined {
-  const r = new Reader(tokenize(expression, { dialect }).filter((t) => t.type !== "end"));
-  const sum = (): Inferred => {
-    let left = product();
-    while (r.punct("+") || r.punct("-")) {
-      left = combine(r.next()!.value, left, product());
+  const inference = new Inference(
+    tokenize(expression, { dialect }).filter((t) => t.type !== "end"),
+    columnType,
+    dialect,
+  );
+  try {
+    const type = inference.sum();
+    return inference.i === inference.tokens.length ? type : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Analyse descendante de l'expression : somme → produit → facteur. */
+class Inference {
+  readonly tokens: Token[];
+  i = 0;
+  private readonly columnType: (name: string) => DataType | undefined;
+  private readonly dialect: SqlDialect | undefined;
+
+  constructor(tokens: Token[], columnType: (name: string) => DataType | undefined, dialect: SqlDialect | undefined) {
+    this.tokens = tokens;
+    this.columnType = columnType;
+    this.dialect = dialect;
+  }
+
+  private peek(o = 0) {
+    return this.tokens[this.i + o];
+  }
+
+  private next() {
+    const token = this.tokens[this.i];
+    this.i += 1;
+    return token;
+  }
+
+  private punct(v: string) {
+    return this.peek()?.type === "punct" && this.peek()!.value === v;
+  }
+
+  sum(): Inferred {
+    let left = this.product();
+    while (this.punct("+") || this.punct("-")) {
+      left = combine(this.next()!.value, left, this.product());
     }
     return left;
-  };
-  const product = (): Inferred => {
-    let left = factor();
-    while (r.punct("*") || r.punct("/") || r.punct("%")) {
-      const op = r.next()!.value;
-      left = op === "%" ? combine("*", left, factor()) && left : combine(op, left, factor());
+  }
+
+  private product(): Inferred {
+    let left = this.factor();
+    while (this.punct("*") || this.punct("/") || this.punct("%")) {
+      const op = this.next()!.value;
+      left = op === "%" ? combine("*", left, this.factor()) && left : combine(op, left, this.factor());
     }
     return left;
-  };
-  const args = (): Token[][] => {
+  }
+
+  private factor(): Inferred {
+    const t = this.next();
+    if (!t) {
+      return undefined;
+    }
+    if (t.type === "number" || t.type === "string") {
+      return literal(t);
+    }
+    if (t.type === "punct" && t.value === "(") {
+      const inner = this.sum();
+      if (!this.punct(")")) {
+        return undefined;
+      }
+      this.next();
+      return inner;
+    }
+    if (t.type === "punct" && t.value === "-") {
+      return this.factor();
+    }
+    if (t.type === "quoted") {
+      return this.columnType(t.value);
+    }
+    if (t.type !== "word") {
+      return undefined;
+    }
+    if (!this.punct("(")) {
+      return this.columnType(t.value);
+    }
+    return this.call(t.value.toLowerCase(), this.args());
+  }
+
+  /** Arguments d'un appel, séparés par les virgules de premier niveau. */
+  private args(): Token[][] {
     const list: Token[][] = [];
     let depth = 0;
     let current: Token[] = [];
-    r.next(); // (
-    while (r.peek()) {
-      const t = r.next()!;
+    this.next(); // (
+    while (this.peek()) {
+      const t = this.next()!;
       if (t.type === "punct" && t.value === "(") {
         depth += 1;
       }
@@ -164,51 +225,14 @@ export function inferComputedType(
       list.push(current);
     }
     return list;
-  };
-  const sub = (tokens: Token[]) => inferComputedType(tokens.map((t) => t.raw).join(" "), columnType, dialect);
-  const factor = (): Inferred => {
-    const t = r.next();
-    if (!t) {
-      return undefined;
-    }
-    if (t.type === "number") {
-      if (!t.value.includes(".")) {
-        return { kind: "integer", bits: 32 };
-      }
-      const [whole, fraction] = t.value.split(".");
-      const digits = (whole!.replace(/^0+/, "") + fraction!).length || 1;
-      return { kind: "decimal", precision: Math.max(digits, fraction!.length), scale: fraction!.length };
-    }
-    if (t.type === "string") {
-      return {
-        kind: "text",
-        encoding: /^N'/i.test(t.raw) ? "unicode" : "ascii",
-        length: "variable",
-        size: Math.max(1, t.value.length),
-      };
-    }
-    if (t.type === "punct" && t.value === "(") {
-      const inner = sum();
-      if (!r.punct(")")) {
-        return undefined;
-      }
-      r.next();
-      return inner;
-    }
-    if (t.type === "punct" && t.value === "-") {
-      return factor();
-    }
-    if (t.type === "quoted") {
-      return columnType(t.value);
-    }
-    if (t.type !== "word") {
-      return undefined;
-    }
-    const name = t.value.toLowerCase();
-    if (!r.punct("(")) {
-      return columnType(t.value);
-    }
-    const list = args();
+  }
+
+  private sub(tokens: Token[]) {
+    return inferComputedType(tokens.map((t) => t.raw).join(" "), this.columnType, this.dialect);
+  }
+
+  /** Type du résultat d'une fonction. */
+  private call(name: string, list: Token[][]): Inferred {
     switch (name) {
       case "datediff":
       case "len":
@@ -229,7 +253,7 @@ export function inferComputedType(
       case "trim":
       case "isnull":
       case "coalesce":
-        return list[0] ? sub(list[0]) : undefined;
+        return list[0] ? this.sub(list[0]) : undefined;
       case "cast": {
         const as = list[0]?.findIndex((x) => x.type === "word" && x.value.toLowerCase() === "as") ?? -1;
         return as > 0
@@ -239,20 +263,32 @@ export function inferComputedType(
                 .map((x) => x.raw)
                 .join(""),
               false,
-              dialect,
+              this.dialect,
             )
           : undefined;
       }
       case "convert":
-        return list[0] ? sqlTypeToDataType(list[0].map((x) => x.raw).join(""), false, dialect) : undefined;
+        return list[0] ? sqlTypeToDataType(list[0].map((x) => x.raw).join(""), false, this.dialect) : undefined;
       default:
         return undefined;
     }
-  };
-  try {
-    const type = sum();
-    return r.i === r.tokens.length ? type : undefined;
-  } catch {
-    return undefined;
   }
+}
+
+/** Nombre (entier ou décimal) ou chaîne littérale. */
+function literal(t: Token): Inferred {
+  if (t.type === "number") {
+    if (!t.value.includes(".")) {
+      return { kind: "integer", bits: 32 };
+    }
+    const [whole, fraction] = t.value.split(".");
+    const digits = (whole!.replace(/^0+/, "") + fraction!).length || 1;
+    return { kind: "decimal", precision: Math.max(digits, fraction!.length), scale: fraction!.length };
+  }
+  return {
+    kind: "text",
+    encoding: /^N'/i.test(t.raw) ? "unicode" : "ascii",
+    length: "variable",
+    size: Math.max(1, t.value.length),
+  };
 }
