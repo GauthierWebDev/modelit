@@ -1,7 +1,8 @@
 import type { Point } from "../model/document";
 import { quantize, random } from "./gridGeometry";
 import { Problem } from "./gridProblem";
-import { fittedCorners, forceCells, improve, improveCompound, initialCells, perfect } from "./gridSearch";
+import { improve, improveCompound, perfect } from "./gridSearch";
+import { fittedCorners, forceCells, initialCells } from "./gridStart";
 import { State } from "./gridState";
 
 /**
