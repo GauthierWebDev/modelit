@@ -13,6 +13,33 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
   if (!text) {
     return autoIncrement ? { kind: "counter" } : undefined;
   }
+  const t = typeParts(text, dialect);
+  return (
+    counterOf(t, autoIncrement) ??
+    textOf(t) ??
+    binaryOf(t) ??
+    integerOf(t) ??
+    decimalOf(t) ??
+    realOf(t) ??
+    dateOf(t) ??
+    dateTimeOf(t) ??
+    otherOf(t) ?? { kind: "free", sql: text }
+  );
+}
+
+/** Parties d'un type SQL : nom sans arguments ni modificateurs, arguments, dialecte. */
+interface TypeParts {
+  text: string;
+  base: string;
+  /** Premier argument (longueur, précision), `undefined` s'il manque ou vaut MAX. */
+  n: number | undefined;
+  scale: number | undefined;
+  /** Longueur MAX (SQL Server). */
+  large: boolean;
+  dialect: SqlDialect | undefined;
+}
+
+function typeParts(text: string, dialect: SqlDialect | undefined): TypeParts {
   const lower = text.toLowerCase();
   // Arguments, échelle négative comprise (Oracle NUMBER(12,-3)) (O-39).
   const args = [...(/\(([^)]*)\)/.exec(lower)?.[1] ?? "").replace(/-\s+/g, "-").matchAll(/-?\d+|max/g)].map(
@@ -28,17 +55,27 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
     .replace(/\s+/g, " ")
     .trim();
   const large = args[0] === "max";
+  return { text, base, n, scale, large, dialect };
+}
 
+/** Compteurs (auto-incrément, SERIAL…). */
+function counterOf(t: TypeParts, autoIncrement: boolean): DataType | undefined {
+  const { base, n } = t;
   // Compteurs (64 bits : BIGSERIAL, BIGINT AUTO_INCREMENT / IDENTITY, NUMBER(10+) ou NUMBER IDENTITY…)
   const wide = /^(bigserial|serial8|bigint|int8)$/.test(base) || (base === "number" && (n === undefined || n > 9));
   if (autoIncrement || /^(small|big)?serial\d?$/.test(base) || ["counter", "autoincrement"].includes(base)) {
     return wide ? { kind: "counter", bits: 64 } : { kind: "counter" };
   }
+  return undefined;
+}
 
-  // Texte
+/** Texte. */
+function textOf(t: TypeParts): DataType | undefined {
+  const { base, n, large } = t;
   const unicode = /^(n|national\b)/.test(base) || /\bunicode\b/.test(base);
+  const encoding = unicode ? "unicode" : "ascii";
   if (/^(n?clob|n?text|ntext|longtext|mediumtext|tinytext|long|long varchar|memo|citext)$/.test(base)) {
-    return { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "large" };
+    return { kind: "text", encoding, length: "large" };
   }
   if (
     /^(n?varchar2?|character varying|char varying|national character varying|national char varying|varchar_ignorecase|string)$/.test(
@@ -46,14 +83,18 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
     )
   ) {
     return large
-      ? { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "large" }
-      : { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "variable", size: n };
+      ? { kind: "text", encoding, length: "large" }
+      : { kind: "text", encoding, length: "variable", size: n };
   }
   if (/^(n?char|character|nchar|national character|national char|bpchar)$/.test(base)) {
-    return { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "fixed", size: n ?? 1 };
+    return { kind: "text", encoding, length: "fixed", size: n ?? 1 };
   }
+  return undefined;
+}
 
-  // Binaire
+/** Binaire. */
+function binaryOf(t: TypeParts): DataType | undefined {
+  const { base, n, large } = t;
   if (/^(blob|longblob|mediumblob|tinyblob|bytea|image|long raw)$/.test(base) || (base === "varbinary" && large)) {
     return { kind: "text", encoding: "binary", length: "large" };
   }
@@ -68,8 +109,12 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
       ? { kind: "text", encoding: "binary", length: "fixed", size: n }
       : { kind: "boolean" };
   }
+  return undefined;
+}
 
-  // Entiers
+/** Entiers. */
+function integerOf(t: TypeParts): DataType | undefined {
+  const { base, n, scale } = t;
   // TINYINT(1) : booléen par convention MySQL.
   if (/^(tinyint|int1|byte)$/.test(base)) {
     return base === "tinyint" && n === 1 ? { kind: "boolean" } : { kind: "integer", bits: 8 };
@@ -85,12 +130,21 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
   }
   // Oracle NUMBER(p) / NUMBER(p,0) (O-39) : p ≤ 4 → 16 bits, ≤ 9 → 32, ≤ 18 → 64, au-delà décimal.
   if (base === "number" && n !== undefined && (scale === undefined || scale === 0)) {
-    if (n <= 18) {
-      return { kind: "integer", bits: n <= 4 ? 16 : n <= 9 ? 32 : 64 };
-    }
-    return { kind: "decimal", precision: n, scale: 0 };
+    return numberInteger(n);
   }
+  return undefined;
+}
 
+function numberInteger(n: number): DataType {
+  if (n <= 18) {
+    return { kind: "integer", bits: n <= 4 ? 16 : n <= 9 ? 32 : 64 };
+  }
+  return { kind: "decimal", precision: n, scale: 0 };
+}
+
+/** Décimaux et monétaire. */
+function decimalOf(t: TypeParts): DataType | undefined {
+  const { base, n, scale } = t;
   // Décimaux, réels, monétaire. NUMBER / NUMERIC sans précision : décimal libre, jamais un flottant (O-39).
   if (/^(decimal|numeric|dec|number|fixed)$/.test(base)) {
     if ((base === "number" || base === "numeric") && n === undefined) {
@@ -105,6 +159,12 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
   if (/^(money|currency)$/.test(base)) {
     return { kind: "money" };
   }
+  return undefined;
+}
+
+/** Réels. */
+function realOf(t: TypeParts): DataType | undefined {
+  const { base, n, dialect } = t;
   if (base === "real" && dialect === "sqlite") {
     return { kind: "real", precision: "double" };
   }
@@ -120,7 +180,12 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
   if (/^(double|double precision|float8|binary_double)$/.test(base)) {
     return { kind: "real", precision: "double" };
   }
+  return undefined;
+}
 
+/** Dates, années, versions de ligne, heures. */
+function dateOf(t: TypeParts): DataType | undefined {
+  const { base, dialect } = t;
   // Dates et heures. Oracle DATE : date et heure à la seconde (O-39).
   if (base === "date" && dialect === "oracle") {
     return { kind: "datetime", withTimeZone: false, precision: 0 };
@@ -143,6 +208,12 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
   if (/^(time|timetz|time with time zone)$/.test(base)) {
     return { kind: "time" };
   }
+  return undefined;
+}
+
+/** Horodatages. */
+function dateTimeOf(t: TypeParts): DataType | undefined {
+  const { base, n, dialect } = t;
   // Précision des fractions de seconde, si elle est écrite et diffère du défaut (6) (O-39).
   const fraction = n !== undefined && n !== 6 ? { precision: n } : {};
   if (/^(timestamptz|timestamp with time zone|timestamp with local time zone|datetimeoffset)$/.test(base)) {
@@ -158,8 +229,12 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
   if (/^(datetime|smalldatetime|bigdatetime)$/.test(base)) {
     return { kind: "datetime", withTimeZone: false, ...(base === "datetime" && n !== undefined ? fraction : {}) };
   }
+  return undefined;
+}
 
-  // Autres
+/** Booléens, XML, types spatiaux. */
+function otherOf(t: TypeParts): DataType | undefined {
+  const { base } = t;
   if (/^(boolean|bool|logical|yesno)$/.test(base)) {
     return { kind: "boolean" };
   }
@@ -176,8 +251,7 @@ export function sqlTypeToDataType(sqlType: string, autoIncrement = false, dialec
   ) {
     return { kind: "geometry" };
   }
-
-  return { kind: "free", sql: text };
+  return undefined;
 }
 
 /**
