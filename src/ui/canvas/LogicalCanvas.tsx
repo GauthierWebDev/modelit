@@ -18,7 +18,7 @@ import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { CanvasSurface, hitId, hitIdAt } from "./CanvasSurface";
-import { logicalRenameTarget } from "./canvasRules";
+import { logicalRenameTarget, placeNewAssociation } from "./canvasRules";
 import {
   FONT_FAMILY,
   FONT_SIZE,
@@ -96,15 +96,8 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
     const a = tableOf(fromId);
     const b = tableOf(toId);
     if (!a || !b || !toId) return;
-    // L'association (invisible ici) se place entre les deux tables, ou à droite d'une réflexive.
-    const position =
-      fromId === toId
-        ? { x: snap(a.x + a.width + 60, grid), y: snap(a.y, grid) }
-        : {
-            x: snap((a.x + a.width / 2 + b.x + b.width / 2) / 2 - 40, grid),
-            y: snap((a.y + a.height / 2 + b.y + b.height / 2) / 2 - 20, grid),
-          };
-    const result = connectNodes(docHandle, fromId, toId, { associationPosition: position });
+    // L'association (invisible ici) se place comme depuis le MCD (O-60).
+    const result = connectNodes(docHandle, fromId, toId, placeNewAssociation(doc, fromId, toId, grid));
     if (!result) return;
     if ("error" in result) notify({ kind: "error", text: result.error });
     else select([result.created]);
