@@ -25,7 +25,7 @@ import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { CanvasSurface, hitId, hitIdAt } from "./CanvasSurface";
-import { associationPosition, mcdRenameTarget, reflexivePlacement } from "./canvasRules";
+import { mcdRenameTarget, placeNewAssociation } from "./canvasRules";
 import {
   associationNamesByLink,
   center,
@@ -129,14 +129,7 @@ export function McdCanvas() {
     if (!a || !b || !toId) return;
     const isEntity = doc.entities.some((e) => e.id === fromId);
     if (fromId === toId && !isEntity) return;
-    const result = connectNodes(
-      docHandle,
-      fromId,
-      toId,
-      fromId === toId
-        ? reflexivePlacement(doc, layouts, a, grid)
-        : { associationPosition: associationPosition(doc, a, b, grid) },
-    );
+    const result = connectNodes(docHandle, fromId, toId, placeNewAssociation(doc, fromId, toId, grid));
     if (!result) return;
     if ("error" in result) notify({ kind: "error", text: result.error });
     else select([result.created]);
