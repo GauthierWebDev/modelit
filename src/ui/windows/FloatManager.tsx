@@ -104,29 +104,50 @@ function onMoved(message: Extract<ToMain, { type: "moved" }>) {
   const { float, rect, pointer, final } = message;
   const layout = usePreferencesStore.getState().dock;
   if (!pointer) {
-    if (float.kind === "toolbar" && layout.toolbar.floating) {
-      updateDock((l) => setToolbar(l, { position: { x: rect.x, y: rect.y } }));
-    }
-    if (float.kind === "group" && findGroup(layout, float.id)) {
-      updateDock((l) => setFloatingRect(l, float.id, rect));
-    }
+    savedGeometry(float, rect, layout);
     return;
   }
   const p = toClient(pointer);
   if (float.kind === "toolbar") {
-    const over =
-      p.y > -TOOLBAR_BAND_ABOVE && p.y < TOOLBAR_BAND && p.x >= -ZONE_MARGIN && p.x <= inner.width + ZONE_MARGIN;
-    if (useToolbarBand.getState().over !== (over && !final)) {
-      useToolbarBand.setState({ over: over && !final });
-    }
-    if (final) {
-      updateDock((l) =>
-        setToolbar(l, over ? { floating: false } : { floating: true, position: { x: rect.x, y: rect.y } }),
-      );
-    }
+    toolbarMoved(p, rect, final);
     return;
   }
-  const item: DragItem = { kind: "group", group: float.id };
+  groupMoved(float.id, { p, rect, final }, layout);
+}
+
+type Moved = Extract<ToMain, { type: "moved" }>;
+
+/** Fenêtre déplacée autrement que par sa poignée : géométrie enregistrée. */
+function savedGeometry(float: Moved["float"], rect: Moved["rect"], layout: DockLayout) {
+  if (float.kind === "toolbar" && layout.toolbar.floating) {
+    updateDock((l) => setToolbar(l, { position: { x: rect.x, y: rect.y } }));
+  }
+  if (float.kind === "group" && findGroup(layout, float.id)) {
+    updateDock((l) => setFloatingRect(l, float.id, rect));
+  }
+}
+
+/** Barre d'outils flottante : bande d'ancrage allumée pendant le glisser, ancrée ou placée au relâchement. */
+function toolbarMoved(p: { x: number; y: number }, rect: Moved["rect"], final: Moved["final"]) {
+  const over =
+    p.y > -TOOLBAR_BAND_ABOVE && p.y < TOOLBAR_BAND && p.x >= -ZONE_MARGIN && p.x <= inner.width + ZONE_MARGIN;
+  if (useToolbarBand.getState().over !== (over && !final)) {
+    useToolbarBand.setState({ over: over && !final });
+  }
+  if (final) {
+    updateDock((l) =>
+      setToolbar(l, over ? { floating: false } : { floating: true, position: { x: rect.x, y: rect.y } }),
+    );
+  }
+}
+
+/** Groupe flottant : zone d'ancrage allumée pendant le glisser, ancré ou placé au relâchement. */
+function groupMoved(
+  id: string,
+  { p, rect, final }: { p: { x: number; y: number }; rect: Moved["rect"]; final: Moved["final"] },
+  layout: DockLayout,
+) {
+  const item: DragItem = { kind: "group", group: id };
   const target = insideMain(p) ? targetAt(p.x, p.y, item) : null;
   const docking = target?.kind === "zone" ? target : null;
   if (!final) {
@@ -140,10 +161,10 @@ function onMoved(message: Extract<ToMain, { type: "moved" }>) {
   }
   useDragStore.setState({ item: null, pointer: null, target: null });
   if (docking) {
-    return updateDock((l) => moveGroup(l, float.id, docking));
+    return updateDock((l) => moveGroup(l, id, docking));
   }
-  if (findGroup(layout, float.id)) {
-    updateDock((l) => setFloatingRect(l, float.id, rect));
+  if (findGroup(layout, id)) {
+    updateDock((l) => setFloatingRect(l, id, rect));
   }
 }
 
