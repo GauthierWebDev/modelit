@@ -36,7 +36,9 @@ export interface CollabTransport {
 
 let transport: CollabTransport | null = null;
 /** Transport utilisé (iroh dans l'application, mémoire dans les tests). */
-export const setCollabTransport = (value: CollabTransport) => (transport = value);
+export const setCollabTransport = (value: CollabTransport) => {
+  transport = value;
+};
 
 /** Reconnexion d'un invité (O-05 §4.4) : essais pendant 30 s, toutes les 3 s. */
 export const RECONNECT_FOR = 30_000;

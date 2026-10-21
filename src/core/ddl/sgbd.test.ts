@@ -7,6 +7,7 @@ import { emptyDocument } from "../model/factory";
 import { reverseEngineer } from "../reverse/build";
 import { parseSql } from "../reverse/parse";
 import { catalogOf } from "../testing/catalog";
+import { byCodeUnit } from "../testing/order";
 import { generateDdl } from "./generate";
 
 /**
@@ -105,7 +106,7 @@ function observed(constraints: string[][], actions: string[][]): Observed {
         ([table, columns, del, upd]) =>
           `${table!.toLowerCase()}(${columns!.toLowerCase()}) ${action(del!)} ${action(upd!)}`,
       )
-      .sort(),
+      .sort(byCodeUnit),
   };
 }
 

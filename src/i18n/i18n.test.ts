@@ -2,11 +2,12 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { MSG, setMessagesLocale } from "@core/index";
+import { byCodeUnit } from "@core/testing/order";
 import { describe, expect, it } from "vitest";
 import { en } from "./en";
 import { fr } from "./fr";
 
-const params = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+const params = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1] ?? "").sort(byCodeUnit);
 
 describe("traductions (override O-23)", () => {
   it("chaque texte anglais a les mêmes paramètres que le français", () => {

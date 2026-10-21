@@ -1,4 +1,5 @@
 import { emptyDocument } from "@core/index";
+import { byCodeUnit } from "@core/testing/order";
 import { describe, expect, it } from "vitest";
 import * as cmd from "../commands";
 import { createDocumentViewStore } from "../document/documentView";
@@ -28,7 +29,7 @@ const names = (store: SessionStore) =>
   store
     .getState()
     .doc.entities.map((e) => e.name)
-    .sort();
+    .sort(byCodeUnit);
 
 function session() {
   const net = network();

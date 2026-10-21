@@ -20,7 +20,8 @@
       "semicolons": "always",
       "trailingCommas": "all",
       "arrowParentheses": "always"
-    }
+    },
+    "globals": ["__APP_INFO__"]
   },
   "css": {
     "parser": {
@@ -35,7 +36,17 @@
         "noNonNullAssertion": "off"
       },
       "suspicious": {
-        "noLeakedRender": "error"
+        "noLeakedRender": "error",
+        "useArraySortCompare": "error",
+        "noReturnAssign": "error",
+        "noEqualsToNull": "error",
+        "useAwait": "error",
+        "noNestedPromises": "error",
+        "noUnnecessaryConditions": "off"
+      },
+      "correctness": {
+        "noUndeclaredVariables": "error",
+        "noUnresolvedImports": "off"
       }
     }
   },
@@ -46,5 +57,13 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/platform/voiceWorklet.js"],
+      "javascript": {
+        "globals": ["AudioWorkletProcessor", "registerProcessor", "sampleRate", "currentTime"]
+      }
+    }
+  ]
 }

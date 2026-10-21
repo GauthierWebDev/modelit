@@ -12,9 +12,13 @@ import { tableLayouts } from "./logicalGeometry";
 
 let observedSize = { width: 800, height: 600 };
 let canvasElement: Element | null = null;
-export const setCanvasSize = (size: { width: number; height: number }) => (observedSize = size);
+export const setCanvasSize = (size: { width: number; height: number }) => {
+  observedSize = size;
+};
 /** Élément du canevas affiché, mesuré directement au moment de zoomer ou de cadrer. */
-export const setCanvasElement = (element: Element | null) => (canvasElement = element);
+export const setCanvasElement = (element: Element | null) => {
+  canvasElement = element;
+};
 
 /**
  * Taille réelle du canevas. La valeur relevée par ResizeObserver peut manquer (moteur qui ne la

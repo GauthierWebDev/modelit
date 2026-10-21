@@ -37,6 +37,8 @@ export function runMainCommand(command: MainCommand) {
 let relay: ((command: MainCommand) => void) | null = null;
 
 /** Fenêtre flottante : ses commandes partent vers la principale. */
-export const setMainCommandRelay = (f: typeof relay) => (relay = f);
+export const setMainCommandRelay = (f: typeof relay) => {
+  relay = f;
+};
 
 export const mainCommand = (command: MainCommand) => (relay ? relay(command) : runMainCommand(command));

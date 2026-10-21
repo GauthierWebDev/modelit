@@ -14,7 +14,7 @@ import { IconButton } from "@/ui/common/controls";
 function OutputBody({ copyText, children }: { copyText?: string | null; children: ReactNode }) {
   return (
     <div className="relative h-full overflow-auto p-3 font-mono text-[13px] leading-5 select-text">
-      {copyText != null && (
+      {typeof copyText === "string" && (
         <div className="absolute top-1 right-1">
           <IconButton tooltip={t("output.copy")} onClick={() => void navigator.clipboard.writeText(copyText)}>
             <Copy size={14} />

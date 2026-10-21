@@ -36,7 +36,7 @@ export function ReverseDialog() {
     }
   }
 
-  async function generate() {
+  function generate() {
     const result = reverseEngineer(sql, newModelDocument(), dialect === "auto" ? detectDialect(sql) : dialect);
     setReport(result.report);
     if (result.report.tables === 0) return;
@@ -73,7 +73,7 @@ export function ReverseDialog() {
             type="button"
             disabled={!sql.trim()}
             className="rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            onClick={() => void generate()}
+            onClick={() => generate()}
           >
             {t("reverse.run")}
           </button>

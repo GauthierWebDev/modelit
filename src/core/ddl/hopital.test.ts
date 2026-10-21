@@ -7,6 +7,7 @@ import { emptyDocument } from "../model/factory";
 import type { DdlOptions } from "../model/settings";
 import { reverseEngineer } from "../reverse/build";
 import { catalogOf, type Difference, diffCatalogs } from "../testing/catalog";
+import { byCodeUnit } from "../testing/order";
 import { generateDdl, type Loss } from "./generate";
 
 /**
@@ -399,7 +400,7 @@ describe("itération 9 — finitions (O-40)", () => {
     const widened = losses
       .filter((l) => /plage de valeurs élargie|NUMBER → BIGINT|BYTE|NLS_LENGTH/.test(l.message))
       .map((l) => `${l.table}.${l.column}`);
-    expect(widened.sort()).toEqual(
+    expect(widened.sort(byCodeUnit)).toEqual(
       [
         "Patient.nir",
         "Patient.nom",

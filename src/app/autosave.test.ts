@@ -4,8 +4,9 @@ import { type AutosaveEntry, readCopies } from "./autosave";
 
 const memoryStore = (data: Record<string, string>): LocalStore => ({
   get: async (key) => data[key] ?? null,
-  set: async (key, value) => {
+  set: (key, value) => {
     data[key] = value;
+    return Promise.resolve();
   },
   remove: async (key) => void delete data[key],
 });

@@ -1,5 +1,6 @@
 import { displayedSqlType, type ModelDocument, targetOf, toLogicalModel } from "@core/index";
 import { model } from "@core/testing/builder";
+import { byCodeUnit } from "@core/testing/order";
 import { describe, expect, it } from "vitest";
 import { BOLD_WEIGHT, ROW_HEIGHT, TITLE_HEIGHT } from "./geometry";
 import { columnStyle, KEY_INDENT, referenceGeometries, type TableLayout, tableLayouts } from "./logicalGeometry";
@@ -131,7 +132,12 @@ describe("traits des clés étrangères", () => {
     const pairs = refs.map(
       (r) => `${layouts.find((l) => l.sourceId === r.sourceId)!.table.name}->${r.fk.referencedTable}`,
     );
-    expect(pairs.sort()).toEqual(["COMMANDE->CLIENT", "CONTENIR->COMMANDE", "CONTENIR->PRODUIT", "EMPLOYE->EMPLOYE"]);
+    expect(pairs.sort(byCodeUnit)).toEqual([
+      "COMMANDE->CLIENT",
+      "CONTENIR->COMMANDE",
+      "CONTENIR->PRODUIT",
+      "EMPLOYE->EMPLOYE",
+    ]);
     expect(new Set(refs.map((r) => r.key)).size).toBe(refs.length);
   });
 
