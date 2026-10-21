@@ -54,7 +54,11 @@ export function aliasIndex(
     }
   }
   const index = new Map<string, PatternVariable>();
-  for (const [alias, variables] of owners) if (variables.size === 1) index.set(alias, [...variables][0]!);
+  for (const [alias, variables] of owners) {
+    if (variables.size === 1) {
+      index.set(alias, [...variables][0]!);
+    }
+  }
   return index;
 }
 
@@ -69,7 +73,9 @@ export type ParsedPattern =
 /** Schéma saisi (alias de toute langue) → schéma canonique, en vérifiant les variables permises. */
 export function parsePattern(input: string, kind: PatternKind, index = INDEX): ParsedPattern {
   const text = input.trim();
-  if (!text) return { ok: false, empty: true };
+  if (!text) {
+    return { ok: false, empty: true };
+  }
   const allowed = PATTERN_VARIABLES[kind];
   const unknown: string[] = [];
   const pattern = text.replace(VARIABLE, (match, alias: string) => {

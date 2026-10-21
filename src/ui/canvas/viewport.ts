@@ -47,8 +47,9 @@ export function zoomTo(
   setViewport({ zoom, x: anchor.x - modelX * zoom, y: anchor.y - modelY * zoom });
   // Le zoom peut avoir été borné : recaler sur la valeur effective.
   const effective = doc.view.getState().viewport.zoom;
-  if (effective !== zoom)
+  if (effective !== zoom) {
     setViewport({ zoom: effective, x: anchor.x - modelX * effective, y: anchor.y - modelY * effective });
+  }
 }
 
 export const zoomBy = (doc: DocumentHandle, factor: number, anchor?: Point) =>
@@ -56,7 +57,9 @@ export const zoomBy = (doc: DocumentHandle, factor: number, anchor?: Point) =>
 
 /** Emprise de la vue : objets, et en MCD les cassures des liens (boucles des réflexives, qui débordent). */
 function rectsOf(doc: ModelDocument, view: ViewMode): Rect[] {
-  if (view !== "mcd") return tableLayouts(logicalModelOf(doc), doc, view);
+  if (view !== "mcd") {
+    return tableLayouts(logicalModelOf(doc), doc, view);
+  }
   const bends = Object.values(doc.layout.bends).flatMap((points) =>
     points.map((b) => ({ x: b.x, y: b.y, width: 0, height: 0 })),
   );
@@ -71,7 +74,9 @@ export function fitToWindow(doc: DocumentHandle, maxZoom?: number) {
 /** Cadre les rectangles donnés, sans dépasser le zoom `maxZoom`. */
 export function fitToRects(doc: DocumentHandle, layouts: Rect[], maxZoom = 1.5) {
   const { setViewport } = doc.view.getState();
-  if (layouts.length === 0) return setViewport({ x: 40, y: 40, zoom: 1 });
+  if (layouts.length === 0) {
+    return setViewport({ x: 40, y: 40, zoom: 1 });
+  }
   const canvasSize = canvasSizeNow();
   const minX = Math.min(...layouts.map((l) => l.x));
   const minY = Math.min(...layouts.map((l) => l.y));
@@ -117,7 +122,9 @@ export function clientToModel(doc: DocumentHandle, client: Point): Point {
 export function revealObjects(doc: DocumentHandle, ids: string[]) {
   const { viewport, setViewport } = doc.view.getState();
   const rects = objectRects(doc, ids);
-  if (!rects.length) return;
+  if (!rects.length) {
+    return;
+  }
   const size = canvasSizeNow();
   const minX = Math.min(...rects.map((r) => r.x));
   const minY = Math.min(...rects.map((r) => r.y));
@@ -129,6 +136,8 @@ export function revealObjects(doc: DocumentHandle, ids: string[]) {
     minY * z + viewport.y >= 0 &&
     maxX * z + viewport.x <= size.width &&
     maxY * z + viewport.y <= size.height;
-  if (visible) return;
+  if (visible) {
+    return;
+  }
   setViewport({ zoom: z, x: size.width / 2 - ((minX + maxX) / 2) * z, y: size.height / 2 - ((minY + maxY) / 2) * z });
 }

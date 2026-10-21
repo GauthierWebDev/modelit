@@ -22,7 +22,9 @@ const issues = toLogicalModel(doc).issues.map((i) => i.message);
 
 function generate(dbms: Dbms = "postgresql", version: string | undefined = "18", options: Partial<DdlOptions> = {}) {
   const result = generateDdl(toLogicalModel(doc), { dbms, version }, options);
-  if (!result.ok) throw new Error(result.error);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
   return result;
 }
 

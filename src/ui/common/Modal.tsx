@@ -47,14 +47,18 @@ export function Modal({
       box.current?.querySelector<HTMLElement>("[data-autofocus]") ?? box.current?.querySelector<HTMLElement>(FOCUSABLE);
     (target ?? box.current)?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (stack.at(-1) !== id) return;
+      if (stack.at(-1) !== id) {
+        return;
+      }
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
         close.current();
       } else if (e.key === "Tab" && box.current) {
         const items = [...box.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
-        if (!items.length) return;
+        if (!items.length) {
+          return;
+        }
         const first = items[0]!;
         const last = items.at(-1)!;
         if (e.shiftKey && document.activeElement === first) {
@@ -70,7 +74,9 @@ export function Modal({
     return () => {
       window.removeEventListener("keydown", onKey, true);
       stack.splice(stack.indexOf(id), 1);
-      if (previous?.isConnected) previous.focus();
+      if (previous?.isConnected) {
+        previous.focus();
+      }
     };
   }, [id]);
 

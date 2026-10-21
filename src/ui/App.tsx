@@ -81,16 +81,22 @@ function Workbench() {
     () =>
       onCloseRequested(async () => {
         const ok = await confirmLoseAllChanges();
-        if (ok) await endSessionOnExit();
+        if (ok) {
+          await endSessionOnExit();
+        }
         // Les fenêtres flottantes se ferment avec la principale (O-45, O-46).
-        if (ok && nativeWindows()) await closeAllFloats();
+        if (ok && nativeWindows()) {
+          await closeAllFloats();
+        }
         return ok;
       }, anyDocumentDirty),
     [],
   );
 
   useEffect(() => {
-    if (!status) return;
+    if (!status) {
+      return;
+    }
     const timer = setTimeout(() => notify(null), 3000);
     return () => clearTimeout(timer);
   }, [status, notify]);

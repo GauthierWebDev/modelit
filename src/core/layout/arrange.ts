@@ -21,7 +21,9 @@ export const ALIGNMENTS: Alignment[] = ["left", "center", "right", "top", "middl
 /** Aligne sur l'emprise de la sélection : bord extrême, ou centre de l'emprise. */
 export function alignBoxes(boxes: Box[], alignment: Alignment): Map<string, Point> {
   const offsets = new Map<string, Point>();
-  if (boxes.length < 2) return offsets;
+  if (boxes.length < 2) {
+    return offsets;
+  }
   const left = Math.min(...boxes.map((b) => b.x));
   const right = Math.max(...boxes.map((b) => b.x + b.width));
   const top = Math.min(...boxes.map((b) => b.y));
@@ -43,7 +45,9 @@ export function alignBoxes(boxes: Box[], alignment: Alignment): Map<string, Poin
           : alignment === "middle"
             ? (top + bottom) / 2 - b.y - b.height / 2
             : 0;
-    if (dx || dy) offsets.set(b.id, { x: dx, y: dy });
+    if (dx || dy) {
+      offsets.set(b.id, { x: dx, y: dy });
+    }
   }
   return offsets;
 }
@@ -54,7 +58,9 @@ export function alignBoxes(boxes: Box[], alignment: Alignment): Map<string, Poin
  */
 export function distributeBoxes(boxes: Box[], axis: DistributeAxis): Map<string, Point> {
   const offsets = new Map<string, Point>();
-  if (boxes.length < 3) return offsets;
+  if (boxes.length < 3) {
+    return offsets;
+  }
   const start = (b: Box) => (axis === "horizontal" ? b.x : b.y);
   const size = (b: Box) => (axis === "horizontal" ? b.width : b.height);
   const sorted = [...boxes].sort((a, b) => start(a) - start(b) || start(a) + size(a) - start(b) - size(b));
@@ -66,7 +72,9 @@ export function distributeBoxes(boxes: Box[], axis: DistributeAxis): Map<string,
   let cursor = start(first) + size(first) + gap;
   for (const b of sorted.slice(1, -1)) {
     const delta = cursor - start(b);
-    if (delta) offsets.set(b.id, axis === "horizontal" ? { x: delta, y: 0 } : { x: 0, y: delta });
+    if (delta) {
+      offsets.set(b.id, axis === "horizontal" ? { x: delta, y: 0 } : { x: 0, y: delta });
+    }
     cursor += size(b) + gap;
   }
   return offsets;

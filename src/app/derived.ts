@@ -36,7 +36,9 @@ const logicalCache = new WeakMap<object, { source: Semantic; locale: string; res
 export function logicalModelOf(doc: ModelDocument): LogicalModel {
   const locale = getLocale();
   const hit = logicalCache.get(doc.entities);
-  if (hit && hit.locale === locale && sameSemantic(hit.source, doc)) return hit.result;
+  if (hit && hit.locale === locale && sameSemantic(hit.source, doc)) {
+    return hit.result;
+  }
   const result = toLogicalModel(doc);
   logicalCache.set(doc.entities, { source: doc, locale, result });
   return result;
@@ -47,7 +49,9 @@ const ddlCache = new WeakMap<LogicalModel, { settings: ModelDocument["settings"]
 export function ddlOf(doc: ModelDocument): DdlResult {
   const logical = logicalModelOf(doc);
   const hit = ddlCache.get(logical);
-  if (hit && hit.settings === doc.settings) return hit.result;
+  if (hit && hit.settings === doc.settings) {
+    return hit.result;
+  }
   const result = generateDdl(logical, targetOf(doc.settings), doc.settings.ddl);
   ddlCache.set(logical, { settings: doc.settings, result });
   return result;
@@ -58,10 +62,14 @@ const issuesCache = new WeakMap<LogicalModel, Map<Id, Issue[]>>();
 /** Problèmes regroupés par objet (pastilles d'erreur, override O-15). */
 export function issuesByTargetOf(model: LogicalModel): Map<Id, Issue[]> {
   const hit = issuesCache.get(model);
-  if (hit) return hit;
+  if (hit) {
+    return hit;
+  }
   const map = new Map<Id, Issue[]>();
   for (const issue of model.issues) {
-    if (issue.target) map.set(issue.target.id, [...(map.get(issue.target.id) ?? []), issue]);
+    if (issue.target) {
+      map.set(issue.target.id, [...(map.get(issue.target.id) ?? []), issue]);
+    }
   }
   issuesCache.set(model, map);
   return map;

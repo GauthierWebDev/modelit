@@ -84,7 +84,9 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
   /** Lien en cours (O-54) ; `pending` : premier clic fait, en attente du second. */
   const [link, setLink] = useState<{ fromId: Id; start: Point; current: Point; pending: boolean } | null>(null);
   useEffect(() => {
-    if (tool !== "link") setLink(null);
+    if (tool !== "link") {
+      setLink(null);
+    }
   }, [tool]);
   const readOnly = useSessionReadOnly(docHandle);
   const [renaming, setRenaming] = useState<RenameTarget | null>(null);
@@ -95,12 +97,19 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
     setLink(null);
     const a = tableOf(fromId);
     const b = tableOf(toId);
-    if (!a || !b || !toId) return;
+    if (!a || !b || !toId) {
+      return;
+    }
     // L'association (invisible ici) se place comme depuis le MCD (O-60).
     const result = connectNodes(docHandle, fromId, toId, placeNewAssociation(doc, fromId, toId, grid));
-    if (!result) return;
-    if ("error" in result) notify({ kind: "error", text: result.error });
-    else select([result.created]);
+    if (!result) {
+      return;
+    }
+    if ("error" in result) {
+      notify({ kind: "error", text: result.error });
+    } else {
+      select([result.created]);
+    }
   }
   const { relationArrows: arrows, relationLabels: labelMode } = doc.settings.display;
   const labels = useMemo(
@@ -125,15 +134,22 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
           }
           if (tool === "link") {
             if (link?.pending) {
-              if (table) connect(link.fromId, table);
-              else setLink(null);
-            } else if (table) setLink({ fromId: table, start: point, current: point, pending: false });
+              if (table) {
+                connect(link.fromId, table);
+              } else {
+                setLink(null);
+              }
+            } else if (table) {
+              setLink({ fromId: table, start: point, current: point, pending: false });
+            }
             return true;
           }
           // Vide : rectangle de sélection ; avec Maj, ajouté à la sélection (O-57, comme dans le MCD).
           if (!hit) {
             const base = e.shiftKey ? selection : [];
-            if (!e.shiftKey) select([]);
+            if (!e.shiftKey) {
+              select([]);
+            }
             setMarquee({ start: point, current: point, base });
             return true;
           }
@@ -143,24 +159,35 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
             return true;
           }
           const ids = hit && selected.has(hit) ? selection : hit ? [hit] : [];
-          if (!(hit && selected.has(hit))) select(ids);
+          if (!(hit && selected.has(hit))) {
+            select(ids);
+          }
           if (hit && (e.target as Element).closest("[data-badge]")) {
             revealSection("issues");
             return true;
           }
-          if (!hit) return false;
-          if (!tableOf(hit)) return true; // trait entre tables : sélection seule
+          if (!hit) {
+            return false;
+          }
+          if (!tableOf(hit)) {
+            return true; // trait entre tables : sélection seule
+          }
           const moved = new Set(ids.filter((id) => tableOf(id)));
           const origins = new Map([...moved].map((id) => [id, positionOf(doc.layout, id)]));
           const bends = new Map<Id, Point[]>();
-          for (const l of diagramLinks(doc))
-            if (moved.has(linkSourceId(l)) && moved.has(l.entityId)) bends.set(l.id, bendsOf(doc.layout, l.id));
+          for (const l of diagramLinks(doc)) {
+            if (moved.has(linkSourceId(l)) && moved.has(l.entityId)) {
+              bends.set(l.id, bendsOf(doc.layout, l.id));
+            }
+          }
           docHandle.store.getState().begin();
           drag.current = { start: point, origins, bends };
           return true;
         }}
         onPointerMove={(_, point) => {
-          if (link) setLink({ ...link, current: point });
+          if (link) {
+            setLink({ ...link, current: point });
+          }
           if (marquee) {
             const rect = normalizeRect(marquee.start, point);
             const inside = layouts.filter((l) => intersects(rect, l)).map((l) => l.sourceId);
@@ -169,50 +196,66 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
             return;
           }
           const d = drag.current;
-          if (!d) return;
+          if (!d) {
+            return;
+          }
           const dx = point.x - d.start.x;
           const dy = point.y - d.start.y;
           docHandle.store.getState().preview((draft) => {
-            for (const [id, o] of d.origins)
+            for (const [id, o] of d.origins) {
               draft.layout.positions[id] = { x: snap(o.x + dx, grid), y: snap(o.y + dy, grid) };
-            for (const [id, points] of d.bends)
+            }
+            for (const [id, points] of d.bends) {
               setBends(
                 draft.layout,
                 id,
                 points.map((b) => ({ x: snap(b.x + dx, grid), y: snap(b.y + dy, grid) })),
               );
+            }
           });
         }}
         onPointerUp={(e, point) => {
           if (link && !link.pending) {
             // Glisser : relier à la table sous le pointeur ; simple clic : attendre le second clic.
             const dragged = Math.hypot(point.x - link.start.x, point.y - link.start.y) > 4;
-            if (dragged) connect(link.fromId, tableOf(hitIdAt(e))?.sourceId ?? null);
-            else setLink({ ...link, pending: true });
+            if (dragged) {
+              connect(link.fromId, tableOf(hitIdAt(e))?.sourceId ?? null);
+            } else {
+              setLink({ ...link, pending: true });
+            }
           }
-          if (drag.current)
+          if (drag.current) {
             docHandle.store
               .getState()
               .commit(drag.current.origins.size > 1 ? "history.moveSelection" : "history.moveTable");
+          }
           drag.current = null;
           setMarquee(null);
         }}
         onContextMenu={(e) => {
           // Outil de création : abandon et retour à la sélection (override O-16) ; sinon, menu (O-53).
-          if (tool === "select") return openCanvasMenu(docHandle, e, hitIdAt(e));
+          if (tool === "select") {
+            return openCanvasMenu(docHandle, e, hitIdAt(e));
+          }
           e.preventDefault();
           setLink(null);
           setTool("select");
         }}
         onPointerCancel={() => {
-          if (drag.current) docHandle.store.getState().cancel();
+          if (drag.current) {
+            docHandle.store.getState().cancel();
+          }
           drag.current = null;
           setMarquee(null);
         }}
         onDoubleClick={(_, point) => {
-          if (tool !== "select" || readOnly) return;
+          if (tool !== "select" || readOnly) {
+            return;
+          }
           const target = logicalRenameTarget(layouts, mode, point);
-          if (!target) return;
+          if (!target) {
+            return;
+          }
           select([target.sourceId]);
           setRenaming(target);
         }}
@@ -257,7 +300,9 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
         {/* Libellés des traits, au-dessus des tables pour rester lisibles. */}
         {references.map((r) => {
           const label = relationLabel(r, labelMode, labels);
-          if (!label) return null;
+          if (!label) {
+            return null;
+          }
           const active = selected.has(r.relationId) || selected.has(r.sourceId);
           return (
             <text
@@ -395,7 +440,11 @@ function TableShape({
 
 /** Libellé d'un trait selon le réglage « Texte sur les liens » (override O-25). */
 function relationLabel(r: ReferenceGeometry, mode: RelationLabelMode, texts: Map<Id, string>): string {
-  if (mode === "foreignKey") return r.fk.columns.join(", ");
-  if (mode === "text") return texts.get(r.relationId) ?? "";
+  if (mode === "foreignKey") {
+    return r.fk.columns.join(", ");
+  }
+  if (mode === "text") {
+    return texts.get(r.relationId) ?? "";
+  }
   return "";
 }

@@ -92,7 +92,9 @@ function rowsOf(table: LogicalTable, mode: LogicalViewMode, doc: ModelDocument):
     const unique = uniqueColumns.has(column.name);
     const indent = composite && primaryKey ? KEY_INDENT : 0;
     const label = `${column.foreign ? "#" : ""}${column.name}`;
-    if (mode === "mld") return { column, primaryKey, unique, label, indent, type: null, constraints: null };
+    if (mode === "mld") {
+      return { column, primaryKey, unique, label, indent, type: null, constraints: null };
+    }
     const constraints = [
       // Une colonne de clé primaire est NOT NULL de fait : le MPD le montre.
       column.notNull || primaryKey ? "NOT NULL" : null,
@@ -157,7 +159,9 @@ export function referenceGeometries(layouts: TableLayout[]): ReferenceGeometry[]
   for (const from of layouts) {
     from.table.foreignKeys.forEach((fk, i) => {
       const to = byName.get(fk.referencedTable);
-      if (!to) return;
+      if (!to) {
+        return;
+      }
       const key = `${from.table.name}->${to.table.name}`;
       const index = counts.get(key) ?? 0;
       counts.set(key, index + 1);

@@ -14,7 +14,9 @@ class CaptureProcessor extends AudioWorkletProcessor {
 
   process(inputs) {
     const input = inputs[0]?.[0];
-    if (!input) return true;
+    if (!input) {
+      return true;
+    }
     let offset = 0;
     while (offset < input.length) {
       const n = Math.min(FRAME - this.filled, input.length - offset);
@@ -67,7 +69,9 @@ class PlayerProcessor extends AudioWorkletProcessor {
 
   process(_inputs, outputs) {
     const output = outputs[0][0];
-    if (!this.playing && this.size >= this.start) this.playing = true;
+    if (!this.playing && this.size >= this.start) {
+      this.playing = true;
+    }
     for (let i = 0; i < output.length; i++) {
       if (this.playing && this.size > 0) {
         output[i] = this.buffer[this.read];
@@ -78,7 +82,9 @@ class PlayerProcessor extends AudioWorkletProcessor {
         this.playing = false;
       }
     }
-    for (let c = 1; c < outputs[0].length; c++) outputs[0][c].set(output);
+    for (let c = 1; c < outputs[0].length; c++) {
+      outputs[0][c].set(output);
+    }
     return true;
   }
 }

@@ -27,7 +27,9 @@ describe("worklets du vocal", () => {
     const capture = new (processors.get("modelit-capture")!)();
     const frames: Float32Array[] = [];
     capture.port.postMessage = (f) => frames.push(f);
-    for (let i = 0; i < 16; i++) capture.process([[block(i)]], []); // 16 × 128 = 2048 échantillons
+    for (let i = 0; i < 16; i++) {
+      capture.process([[block(i)]], []); // 16 × 128 = 2048 échantillons
+    }
     expect(frames.map((f) => f.length)).toEqual([960, 960]);
     expect(frames[1]![0]).toBe(7); // 960 = 7 × 128 + 64 : la 2ᵉ trame commence au milieu du 8ᵉ bloc
   });
@@ -54,7 +56,9 @@ describe("worklets du vocal", () => {
   it("lecture : un manque produit du silence, puis la réserve se reconstitue", () => {
     const { push, pull } = player();
     push(block(0.5, 2880));
-    for (let i = 0; i < 22; i++) pull(); // 22 × 128 = 2816 : il reste 64 échantillons
+    for (let i = 0; i < 22; i++) {
+      pull(); // 22 × 128 = 2816 : il reste 64 échantillons
+    }
     const last = pull();
     expect(last.slice(0, 64).every((x) => x === 0.5)).toBe(true);
     expect(last.slice(64).every((x) => x === 0)).toBe(true);
@@ -68,7 +72,9 @@ describe("worklets du vocal", () => {
     push(block(0.75, 4800)); // + 100 ms → 300 ms : on revient à 60 ms, les plus récents
     expect(pull().every((x) => x === 0.75)).toBe(true);
     let played = 128;
-    while (pull().some((x) => x !== 0)) played += 128;
+    while (pull().some((x) => x !== 0)) {
+      played += 128;
+    }
     expect(played).toBeLessThanOrEqual(2880 + 128);
   });
 });

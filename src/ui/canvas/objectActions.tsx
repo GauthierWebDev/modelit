@@ -111,7 +111,9 @@ function addAttributeAction(doc: DocumentHandle, ownerId: Id): Action {
     icon: <ListPlus size={14} />,
     run: () => {
       const id = cmd.addAttribute(doc, ownerId);
-      if (!id) return;
+      if (!id) {
+        return;
+      }
       revealSection("attributes");
       useUiStore.getState().editAttribute(id);
     },
@@ -187,7 +189,9 @@ export function openCanvasMenu(
 ) {
   e.preventDefault();
   const { selection, select } = doc.view.getState();
-  if (id && !selection.includes(id)) select([id]);
+  if (id && !selection.includes(id)) {
+    select([id]);
+  }
   const point = clientToModel(doc, { x: e.clientX, y: e.clientY });
   useContextMenu.getState().open(e.clientX, e.clientY, contextActions(doc, id, point));
 }
@@ -198,7 +202,9 @@ export function contextActions(doc: DocumentHandle, id: Id | null, point: Point)
   const { view, selection } = doc.view.getState();
   const readOnly = selectReadOnlyTab(useCollabStore.getState()) === doc.id;
   const actions = buildContextActions(doc, id, point, model, view, selection);
-  if (!readOnly) return actions;
+  if (!readOnly) {
+    return actions;
+  }
   const allowed = actions.filter((a) => a.kind === "separator" || (a.kind === "item" && READ_ONLY_ALLOWED.has(a.id)));
   // Pas de séparateur en tête, en fin, ni doublé.
   return allowed.filter(
@@ -318,9 +324,12 @@ function buildContextActions(
       },
     ];
   }
-  if (model.associations.some((a) => a.id === id))
+  if (model.associations.some((a) => a.id === id)) {
     return [...editingActions(doc, 1), SEPARATOR, addAttributeAction(doc, id)];
-  if (model.inheritances.some((h) => h.id === id)) return editingActions(doc, 1);
+  }
+  if (model.inheritances.some((h) => h.id === id)) {
+    return editingActions(doc, 1);
+  }
 
   const link = model.links.find((l) => l.id === id);
   if (link) {

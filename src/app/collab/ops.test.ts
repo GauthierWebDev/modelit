@@ -12,7 +12,9 @@ function sample() {
   const commande = cmd.addEntity(doc, { x: 400, y: 0 });
   cmd.renameNode(doc, commande, "COMMANDE");
   const result = cmd.connectNodes(doc, client, commande, { associationPosition: { x: 200, y: 0 } });
-  if (!result || !("created" in result)) throw new Error("association");
+  if (!result || !("created" in result)) {
+    throw new Error("association");
+  }
   cmd.addAutoIdentifier(doc, client);
   return { doc, client, commande, association: result.created };
 }

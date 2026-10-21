@@ -132,12 +132,16 @@ function Chat() {
   // Section affichée : les messages sont lus ; la liste suit le dernier message.
   // biome-ignore lint/correctness/useExhaustiveDependencies: défiler à chaque nouveau message
   useEffect(() => {
-    if (unread) act({ kind: "read" });
+    if (unread) {
+      act({ kind: "read" });
+    }
     list.current?.scrollTo({ top: list.current.scrollHeight });
   }, [chat.length, unread]);
 
   const send = () => {
-    if (!text.trim()) return;
+    if (!text.trim()) {
+      return;
+    }
     act({ kind: "chat", text });
     setText("");
   };

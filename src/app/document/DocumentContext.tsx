@@ -13,7 +13,9 @@ export function DocumentProvider({ handle, children }: { handle: DocumentHandle;
 
 export function useDocumentHandle(): DocumentHandle {
   const handle = useContext(DocumentContext);
-  if (!handle) throw new Error("useDocumentHandle() hors d'un <DocumentProvider>");
+  if (!handle) {
+    throw new Error("useDocumentHandle() hors d'un <DocumentProvider>");
+  }
   return handle;
 }
 

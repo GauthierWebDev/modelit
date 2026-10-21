@@ -40,7 +40,9 @@ export function check(ctx: Context, table: LogicalTable, constraint: CheckConstr
       return null;
     }
   }
-  if (!enforcesCheck(ctx.target)) ctx.report.add("check", table.name, MSG.lossCheckNotEnforced(expression), column);
+  if (!enforcesCheck(ctx.target)) {
+    ctx.report.add("check", table.name, MSG.lossCheckNotEnforced(expression), column);
+  }
   return expression;
 }
 
@@ -52,7 +54,9 @@ export function renderStructured(
   dialect?: SqlDialect,
 ): string | null {
   const condition = parseCondition(expression);
-  if (!condition) return null;
+  if (!condition) {
+    return null;
+  }
   const caseSensitive = (name: string) => Boolean(table.columns.find((c) => c.name === name)?.caseSensitive);
   const translated =
     dialect === "sqlserver"
@@ -79,8 +83,12 @@ function sqlServerLikes(ctx: Context, c: Condition, table: LogicalTable): Condit
     }
     case "like": {
       const regex = c.pattern.kind === "string" ? likeToRegex(c.pattern.value) : null;
-      if (!regex) return c;
-      if (!ctx.dialect.constraints.regex) return null;
+      if (!regex) {
+        return c;
+      }
+      if (!ctx.dialect.constraints.regex) {
+        return null;
+      }
       const column =
         c.operand.kind === "column"
           ? table.columns.find((col) => col.name.toLowerCase() === (c.operand as { name: string }).name.toLowerCase())
@@ -133,9 +141,15 @@ function familyOf(ctx: Context, table: LogicalTable, name: string): TypeFamily |
   const { dbms } = ctx.target;
   const column = table.columns.find((c) => c.name.toLowerCase() === name.toLowerCase());
   const type = column?.type;
-  if (!type) return undefined;
-  if (column.domain) return "text";
-  if (column.sourceType && sameDialect(column.sourceType.dialect, dbms)) return undefined;
+  if (!type) {
+    return undefined;
+  }
+  if (column.domain) {
+    return "text";
+  }
+  if (column.sourceType && sameDialect(column.sourceType.dialect, dbms)) {
+    return undefined;
+  }
   switch (type.kind) {
     case "integer":
     case "decimal":

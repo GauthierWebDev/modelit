@@ -61,7 +61,9 @@ export function ShareDialog() {
   const [password, setPassword] = useState("");
   const [allowAi, setAllowAi] = useState(false);
   const [link, setLink] = useState("");
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
 
   const close = () => setOpen(false);
   const busy = mode === "starting" || mode === "joining";

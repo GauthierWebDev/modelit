@@ -9,7 +9,9 @@ import type { SequenceRules } from "./targets/dialect";
 export function countSequenceUsers(ctx: Context, tables: LogicalTable[]) {
   const users = ctx.used.sequenceUsers;
   for (const c of tables.flatMap((t) => t.columns)) {
-    if (c.sequence) users.set(c.sequence.name.toLowerCase(), (users.get(c.sequence.name.toLowerCase()) ?? 0) + 1);
+    if (c.sequence) {
+      users.set(c.sequence.name.toLowerCase(), (users.get(c.sequence.name.toLowerCase()) ?? 0) + 1);
+    }
   }
 }
 
@@ -40,13 +42,17 @@ export function sequenceDefault(ctx: Context, table: LogicalTable, column: Logic
       `ALTER SEQUENCE ${name} OWNED BY ${tableName(ctx, table)}.${q(ctx, column.name, column.caseSensitive)};`,
     );
   }
-  if (sequence.trigger) ctx.report.add("default", table.name, MSG.lossSequenceTrigger(sequence.trigger), column.name);
+  if (sequence.trigger) {
+    ctx.report.add("default", table.name, MSG.lossSequenceTrigger(sequence.trigger), column.name);
+  }
   return `DEFAULT ${rules.next(name)}`;
 }
 
 /** CREATE SEQUENCE en tête de script, une fois par séquence. */
 function declareSequence(ctx: Context, rules: SequenceRules, s: SequenceDefinition, table: LogicalTable) {
-  if (ctx.used.sequences.has(s.name.toLowerCase())) return;
+  if (ctx.used.sequences.has(s.name.toLowerCase())) {
+    return;
+  }
   ctx.used.sequences.add(s.name.toLowerCase());
   const parts = [`CREATE SEQUENCE ${qualifiedName(ctx, s.schema, s.name)}`];
   declareSchema(ctx, s.schema, table);
@@ -56,15 +62,29 @@ function declareSequence(ctx: Context, rules: SequenceRules, s: SequenceDefiniti
       s.type
     ];
     const emitted = type && rules.valueType(type);
-    if (emitted) parts.push(`AS ${emitted}`);
-    else ctx.report.add("default", table.name, MSG.lossSequenceType(s.type.toUpperCase()));
+    if (emitted) {
+      parts.push(`AS ${emitted}`);
+    } else {
+      ctx.report.add("default", table.name, MSG.lossSequenceType(s.type.toUpperCase()));
+    }
   }
-  if (s.start !== undefined) parts.push(`START WITH ${s.start}`);
-  if (s.increment !== undefined) parts.push(`INCREMENT BY ${s.increment}`);
-  if (s.min !== undefined) parts.push(`MINVALUE ${s.min}`);
-  if (s.max !== undefined) parts.push(`MAXVALUE ${s.max}`);
-  if (s.cache !== undefined)
+  if (s.start !== undefined) {
+    parts.push(`START WITH ${s.start}`);
+  }
+  if (s.increment !== undefined) {
+    parts.push(`INCREMENT BY ${s.increment}`);
+  }
+  if (s.min !== undefined) {
+    parts.push(`MINVALUE ${s.min}`);
+  }
+  if (s.max !== undefined) {
+    parts.push(`MAXVALUE ${s.max}`);
+  }
+  if (s.cache !== undefined) {
     parts.push(s.cache <= 1 && rules.noCache ? rules.noCache : `CACHE ${Math.max(1, s.cache)}`);
-  if (s.cycle !== undefined) parts.push(s.cycle ? "CYCLE" : rules.noCycle);
+  }
+  if (s.cycle !== undefined) {
+    parts.push(s.cycle ? "CYCLE" : rules.noCycle);
+  }
   ctx.script.preamble.push(`${parts.join(" ")};`);
 }

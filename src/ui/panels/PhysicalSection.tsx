@@ -24,7 +24,9 @@ export function PhysicalSection({
   const handle = useDocumentHandle();
   const isEntity = doc.entities.some((e) => e.id === node.id);
   const memberName = (member: KeyMember) => {
-    if ("attributeId" in member) return node.attributes.find((a) => a.id === member.attributeId)?.name ?? "?";
+    if ("attributeId" in member) {
+      return node.attributes.find((a) => a.id === member.attributeId)?.name ?? "?";
+    }
     const origin = [...doc.entities, ...doc.associations]
       .flatMap((n) => n.attributes)
       .find((a) => a.id === member.originId);
@@ -58,8 +60,11 @@ export function PhysicalSection({
           check={check}
           onChange={(next) =>
             edit((n) => {
-              if (next) n.checks![i] = next;
-              else n.checks!.splice(i, 1);
+              if (next) {
+                n.checks![i] = next;
+              } else {
+                n.checks!.splice(i, 1);
+              }
             })
           }
         />
@@ -221,7 +226,9 @@ function MembersPicker({
 }) {
   const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState<string[]>([]);
-  if (!open) return <AddButton label={label} onClick={() => setOpen(true)} />;
+  if (!open) {
+    return <AddButton label={label} onClick={() => setOpen(true)} />;
+  }
   return (
     <div className="flex flex-col gap-1 rounded border border-dashed border-neutral-300 p-1.5 dark:border-neutral-600">
       {attributes.map((a) => (

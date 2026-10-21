@@ -62,14 +62,26 @@ function term(r: Reader): Node {
 
 function factor(r: Reader): Node {
   const t = r.next();
-  if (!t) throw new Error("fin");
-  if (t.type === "number") return { kind: "number", value: t.value };
-  if (t.type === "string") return { kind: "string", value: t.value };
-  if (t.type === "quoted") return { kind: "column", name: t.value, quoted: true };
-  if (t.type === "punct" && t.value === "-") return { kind: "negate", arg: factor(r) };
+  if (!t) {
+    throw new Error("fin");
+  }
+  if (t.type === "number") {
+    return { kind: "number", value: t.value };
+  }
+  if (t.type === "string") {
+    return { kind: "string", value: t.value };
+  }
+  if (t.type === "quoted") {
+    return { kind: "column", name: t.value, quoted: true };
+  }
+  if (t.type === "punct" && t.value === "-") {
+    return { kind: "negate", arg: factor(r) };
+  }
   if (t.type === "punct" && t.value === "(") {
     const inner = expression(r);
-    if (!r.punct(")")) throw new Error("parenthèse");
+    if (!r.punct(")")) {
+      throw new Error("parenthèse");
+    }
     r.next();
     return inner;
   }
@@ -78,8 +90,9 @@ function factor(r: Reader): Node {
     if (lower === "interval") {
       const amount = r.next();
       const unit = r.next();
-      if (amount?.type !== "number" || unit?.type !== "word" || !UNITS.has(unit.value.toLowerCase()))
+      if (amount?.type !== "number" || unit?.type !== "word" || !UNITS.has(unit.value.toLowerCase())) {
         throw new Error("intervalle");
+      }
       return { kind: "interval", amount: amount.value, unit: unit.value.toLowerCase() };
     }
     if (r.punct("(")) {
@@ -87,12 +100,19 @@ function factor(r: Reader): Node {
       const args: Node[] = [];
       while (!r.punct(")")) {
         args.push(expression(r));
-        if (r.punct(",")) r.next();
-        else if (!r.punct(")")) throw new Error("arguments");
+        if (r.punct(",")) {
+          r.next();
+        } else if (!r.punct(")")) {
+          throw new Error("arguments");
+        }
       }
       r.next();
-      if (lower === "date" && args.length === 1) return { kind: "date", arg: args[0]! };
-      if (!FUNCTIONS.has(lower)) throw new Error(`fonction ${lower}`);
+      if (lower === "date" && args.length === 1) {
+        return { kind: "date", arg: args[0]! };
+      }
+      if (!FUNCTIONS.has(lower)) {
+        throw new Error(`fonction ${lower}`);
+      }
       return { kind: "call", name: lower, args };
     }
     return { kind: "column", name: t.value, quoted: false };
@@ -120,18 +140,23 @@ export function translateGenerated(text: string, source: SqlDialect, context: Tr
     source !== "sqlserver" &&
     source !== "generic" &&
     source !== context.target.dbms
-  )
+  ) {
     return null;
+  }
   let tree: Node;
   try {
     const r = new Reader(tokenize(text).filter((t) => t.type !== "end"));
     tree = expression(r);
-    if (r.i !== r.tokens.length) return null;
+    if (r.i !== r.tokens.length) {
+      return null;
+    }
   } catch {
     return null;
   }
   // Oracle : date ± nombre ajoute des jours, ce que PostgreSQL et les autres refusent (O-39).
-  if (source === "oracle" && addsDaysToDate(tree, context)) return null;
+  if (source === "oracle" && addsDaysToDate(tree, context)) {
+    return null;
+  }
   try {
     return render(tree, context);
   } catch {
@@ -140,10 +165,11 @@ export function translateGenerated(text: string, source: SqlDialect, context: Tr
 }
 
 function addsDaysToDate(n: Node, ctx: TranslationContext): boolean {
-  if (n.kind !== "binary")
+  if (n.kind !== "binary") {
     return n.kind === "call" || n.kind === "negate"
       ? (n.kind === "call" ? n.args : [n.arg]).some((a) => addsDaysToDate(a, ctx))
       : false;
+  }
   const temporal = (x: Node) =>
     x.kind === "column" && ["date", "datetime"].includes(ctx.columnType(x.name)?.kind ?? "");
   const numeric = (x: Node) =>
@@ -152,8 +178,9 @@ function addsDaysToDate(n: Node, ctx: TranslationContext): boolean {
   if (
     (n.op === "+" || n.op === "-") &&
     ((temporal(n.left) && numeric(n.right)) || (numeric(n.left) && temporal(n.right)))
-  )
+  ) {
     return true;
+  }
   return addsDaysToDate(n.left, ctx) || addsDaysToDate(n.right, ctx);
 }
 
@@ -172,7 +199,9 @@ function render(n: Node, ctx: TranslationContext): string {
     case "call":
       return `${n.name.toUpperCase()}(${n.args.map((a) => render(a, ctx)).join(", ")})`;
     case "date": {
-      if (!pg) throw new Error("DATE");
+      if (!pg) {
+        throw new Error("DATE");
+      }
       // timestamptz → date dépend du fuseau de session : interdit dans une colonne calculée.
       if (
         n.arg.kind === "column" &&
@@ -185,14 +214,18 @@ function render(n: Node, ctx: TranslationContext): string {
       return n.arg.kind === "column" ? `${inner}::date` : `(${inner})::date`;
     }
     case "interval":
-      if (!pg) throw new Error("INTERVAL");
+      if (!pg) {
+        throw new Error("INTERVAL");
+      }
       return `INTERVAL '${n.amount} ${n.unit}'`;
     case "binary": {
       // date ± INTERVAL n DAY → date ± n (reste une date) ; sinon intervalle PostgreSQL.
       if (pg && isDate(n.left) && n.right.kind === "interval" && n.right.unit === "day") {
         return `(${render(n.left, ctx)} ${n.op} ${n.right.amount})`;
       }
-      if (n.right.kind === "interval" && !pg) throw new Error("INTERVAL");
+      if (n.right.kind === "interval" && !pg) {
+        throw new Error("INTERVAL");
+      }
       return `(${render(n.left, ctx)} ${n.op} ${render(n.right, ctx)})`;
     }
   }

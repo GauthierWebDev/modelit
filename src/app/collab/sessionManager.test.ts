@@ -48,7 +48,9 @@ describe("gestionnaire de session", () => {
 
   afterEach(async () => {
     await stopSharing();
-    if (useCollabStore.getState().mode === "guest") await leaveSession();
+    if (useCollabStore.getState().mode === "guest") {
+      await leaveSession();
+    }
   });
 
   describe("côté hôte", () => {
@@ -119,7 +121,9 @@ describe("gestionnaire de session", () => {
       const seen: number[] = [];
       bob.state.subscribe((s) => {
         const x = s.presence.host?.cursor?.x;
-        if (x !== undefined && x !== seen.at(-1)) seen.push(x);
+        if (x !== undefined && x !== seen.at(-1)) {
+          seen.push(x);
+        }
       });
       vi.useFakeTimers();
       try {

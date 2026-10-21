@@ -113,7 +113,9 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
         } else if (sql.startsWith("*/", j)) {
           nesting--;
           j += 2;
-        } else j++;
+        } else {
+          j++;
+        }
       }
       i = nesting > 0 ? sql.length : j;
       continue;
@@ -260,13 +262,18 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
     // Mots
     if (isWordStart(c)) {
       let j = i + 1;
-      while (j < sql.length && isWordPart(sql[j]!)) j++;
+      while (j < sql.length && isWordPart(sql[j]!)) {
+        j++;
+      }
       const word = sql.slice(i, j).toLowerCase();
-      if (delimiter === ";" && (word === "begin" || word === "case") && inRoutine()) depth++;
-      else if (word === "end" && depth > 0) {
+      if (delimiter === ";" && (word === "begin" || word === "case") && inRoutine()) {
+        depth++;
+      } else if (word === "end" && depth > 0) {
         // END IF / END LOOP / END WHILE ferment un bloc non compté ; END [CASE] ferme BEGIN ou CASE.
         const following = /^\s+(\w+)/.exec(sql.slice(j))?.[1]?.toLowerCase();
-        if (!["if", "loop", "while", "repeat", "for"].includes(following ?? "")) depth--;
+        if (!["if", "loop", "while", "repeat", "for"].includes(following ?? "")) {
+          depth--;
+        }
       }
       push("word", sql.slice(i, j), sql.slice(i, j));
       i = j;
@@ -291,12 +298,16 @@ export function splitStatements(tokens: Token[]): Token[][] {
   let current: Token[] = [];
   for (const token of tokens) {
     if (token.type === "end") {
-      if (current.length) statements.push(current);
+      if (current.length) {
+        statements.push(current);
+      }
       current = [];
     } else {
       current.push(token);
     }
   }
-  if (current.length) statements.push(current);
+  if (current.length) {
+    statements.push(current);
+  }
   return statements;
 }

@@ -51,7 +51,9 @@ describe("store de document", () => {
 
   it("historique limité à 200 entrées", () => {
     const store = createDocumentStore(emptyDocument());
-    for (let i = 0; i < 205; i++) store.getState().change("history.typology", rename(`v${i}`));
+    for (let i = 0; i < 205; i++) {
+      store.getState().change("history.typology", rename(`v${i}`));
+    }
     expect(store.getState().past).toHaveLength(200);
   });
 

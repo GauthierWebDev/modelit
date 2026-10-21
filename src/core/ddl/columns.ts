@@ -25,24 +25,37 @@ export function columnLine(
   const { sql: type, checks } = typeOf(ctx, table, c, inlinePk);
   if (generated && !d.generated!.typed) {
     // Colonne calculée sans type déclaré (déduit de l'expression).
-    if (type) ctx.report.add("generated", table.name, MSG.lossGeneratedType(type), c.name);
+    if (type) {
+      ctx.report.add("generated", table.name, MSG.lossGeneratedType(type), c.name);
+    }
     parts.push(generated);
     return parts.join(" ");
   }
-  if (type) parts.push(type);
-  if (inlinePk) parts.push("PRIMARY KEY AUTOINCREMENT");
+  if (type) {
+    parts.push(type);
+  }
+  if (inlinePk) {
+    parts.push("PRIMARY KEY AUTOINCREMENT");
+  }
   if (generated) {
     parts.push(generated);
   } else {
     const defaultValue = defaultClause(ctx, table, c, type);
-    if (defaultValue) parts.push(defaultValue);
+    if (defaultValue) {
+      parts.push(defaultValue);
+    }
   }
   if (c.onUpdate) {
-    if (d.columns.onUpdate) parts.push(`ON UPDATE ${c.onUpdate.expression}`);
-    else ctx.report.add("onUpdate", table.name, MSG.lossOnUpdate(c.onUpdate.expression), c.name);
+    if (d.columns.onUpdate) {
+      parts.push(`ON UPDATE ${c.onUpdate.expression}`);
+    } else {
+      ctx.report.add("onUpdate", table.name, MSG.lossOnUpdate(c.onUpdate.expression), c.name);
+    }
   }
   const nullablePk = d.columns.primaryKeyNotNull && !inlinePk && table.primaryKey.includes(c.name);
-  if (c.notNull || nullablePk) parts.push("NOT NULL");
+  if (c.notNull || nullablePk) {
+    parts.push("NOT NULL");
+  }
   if (c.unique && !table.uniques.some((u) => u.columns.length === 1 && u.columns[0] === c.name)) {
     parts.push("UNIQUE");
     singleNullLoss(ctx, table, [c.name], `(${c.name})`);
@@ -70,27 +83,48 @@ export function columnLine(
         c.check.state,
         () => constraintName(ctx, table, undefined, "CK", [c.name], true)!,
       );
-      if (line) parts.push(line);
+      if (line) {
+        parts.push(line);
+      }
       merged = Boolean(yearRange) && active;
-    } else after.push(`-- ${MSG.untranslatedCheck(`${table.name}.${c.name}`, c.check.expression)}`);
+    } else {
+      after.push(`-- ${MSG.untranslatedCheck(`${table.name}.${c.name}`, c.check.expression)}`);
+    }
   }
-  if (yearRange && !merged) checks.push(yearRange);
-  for (const condition of checks) parts.push(`CHECK (${condition})`);
+  if (yearRange && !merged) {
+    checks.push(yearRange);
+  }
+  for (const condition of checks) {
+    parts.push(`CHECK (${condition})`);
+  }
   // NOT FOR REPLICATION, ROWGUIDCOL (SQL Server) : réémis vers SQL Server, abandonnés ailleurs (O-42).
   for (const option of c.sqlServerOptions ?? []) {
-    if (sameDialect("sqlserver", dbms)) parts.splice(option === "ROWGUIDCOL" ? 2 : parts.length, 0, option);
-    else ctx.report.add("physical", table.name, MSG.lossSqlServerOption(option), c.name);
+    if (sameDialect("sqlserver", dbms)) {
+      parts.splice(option === "ROWGUIDCOL" ? 2 : parts.length, 0, option);
+    } else {
+      ctx.report.add("physical", table.name, MSG.lossSqlServerOption(option), c.name);
+    }
   }
-  if (c.comment && d.comments === "inline") parts.push(`COMMENT ${sqlString(c.comment)}`);
-  if (c.complement?.trim()) parts.push(c.complement.trim());
+  if (c.comment && d.comments === "inline") {
+    parts.push(`COMMENT ${sqlString(c.comment)}`);
+  }
+  if (c.complement?.trim()) {
+    parts.push(c.complement.trim());
+  }
   return parts.join(" ");
 }
 
 function defaultClause(ctx: Context, table: LogicalTable, column: LogicalColumn, type: string | null): string | null {
-  if (column.sequence) return sequenceDefault(ctx, table, column);
+  if (column.sequence) {
+    return sequenceDefault(ctx, table, column);
+  }
   const value = column.defaultValue;
-  if (!value) return null;
-  if (sameDialect(value.dialect, ctx.target.dbms)) return `DEFAULT ${value.expression}`;
+  if (!value) {
+    return null;
+  }
+  if (sameDialect(value.dialect, ctx.target.dbms)) {
+    return `DEFAULT ${value.expression}`;
+  }
   const parsed = parseDefault(value.expression);
   let rendered = parsed && renderOperand(parsed, ctx.target);
   // SYSDATE dans une colonne devenue DATE (option) : date du jour (O-39).
@@ -122,8 +156,12 @@ function defaultClause(ctx: Context, table: LogicalTable, column: LogicalColumn,
     rendered = `ARRAY[${parsed.value.split(",").filter(Boolean).map(sqlString).join(", ")}]::text[]`;
   }
   // Défaut que le type de la colonne n'admet pas tel quel (MySQL : TEXT, BLOB…).
-  if (rendered && ctx.dialect.columns.defaultFor) rendered = ctx.dialect.columns.defaultFor(rendered, type ?? "");
-  if (rendered) return `DEFAULT ${rendered}`;
+  if (rendered && ctx.dialect.columns.defaultFor) {
+    rendered = ctx.dialect.columns.defaultFor(rendered, type ?? "");
+  }
+  if (rendered) {
+    return `DEFAULT ${rendered}`;
+  }
   // Colonne NOT NULL : un INSERT sans valeur échouera — entrée P0 explicite (O-42).
   const required = column.notNull || table.primaryKey.includes(column.name);
   const message = required ? MSG.lossDefaultNotNull(value.expression) : MSG.lossDefault(value.expression);

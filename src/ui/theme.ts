@@ -16,7 +16,9 @@ export function useApplyTheme() {
     };
     apply();
     void setNativeTheme(theme === "system" ? null : theme);
-    if (theme !== "system") return;
+    if (theme !== "system") {
+      return;
+    }
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
   }, [theme]);

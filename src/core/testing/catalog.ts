@@ -127,9 +127,15 @@ const stateText = (s?: ConstraintState) => {
 
 /** Nom effectif après repli de casse des identifiants non quotés. */
 function effective(name: string, quoted: boolean, dialect: SqlDialect) {
-  if (quoted) return name;
-  if (dialect === "postgresql") return name.toLowerCase();
-  if (dialect === "oracle" || dialect === "db2") return name.toUpperCase();
+  if (quoted) {
+    return name;
+  }
+  if (dialect === "postgresql") {
+    return name.toLowerCase();
+  }
+  if (dialect === "oracle" || dialect === "db2") {
+    return name.toUpperCase();
+  }
   return name;
 }
 
@@ -140,9 +146,13 @@ const compact = (text: string) =>
     .trim();
 
 function canonicalOperand(o: Operand): unknown {
-  if (o.kind === "length") return { kind: "length", arg: canonicalOperand(o.arg) };
+  if (o.kind === "length") {
+    return { kind: "length", arg: canonicalOperand(o.arg) };
+  }
   // Booléen ≡ 0 / 1 (BIT SQL Server, TINYINT(1) MySQL comparés à 0 / 1) (O-41).
-  if (o.kind === "boolean") return { kind: "number", value: o.value ? "1" : "0" };
+  if (o.kind === "boolean") {
+    return { kind: "number", value: o.value ? "1" : "0" };
+  }
   return o.kind === "column" ? { kind: "column", name: o.name.toLowerCase() } : o;
 }
 
@@ -212,20 +222,23 @@ export function canonicalCheck(expression: string, context: CanonicalContext = {
 /** Forme canonique d'une valeur par défaut ; `undefined` pour DEFAULT NULL (aucun défaut). */
 export function canonicalDefault(expression: string, concept?: DataType): string | undefined {
   const value = parseDefault(expression);
-  if (value?.kind === "null") return undefined;
+  if (value?.kind === "null") {
+    return undefined;
+  }
   // Dans une colonne sans fuseau, l'horodatage courant y est converti en heure locale (O-39).
   if (
     value?.kind === "date" &&
     (value.fn === "localtimestamp" || value.fn === "localtimestamp_seconds") &&
     !(concept?.kind === "datetime" && concept.withTimeZone)
-  )
+  ) {
     return JSON.stringify({ kind: "date", fn: "current_timestamp" });
+  }
   if (value?.kind === "number" && concept?.kind === "boolean" && (value.value === "0" || value.value === "1")) {
     return JSON.stringify({ kind: "boolean", value: value.value === "1" });
   }
   // ARRAY['a', 'b']::text[] (SET en tableau) ≡ 'a,b'
   const array = /^ARRAY\s*\[(.*)\]\s*(::\s*text\s*\[\s*\])?$/i.exec(expression.trim());
-  if (array)
+  if (array) {
     return JSON.stringify({
       kind: "string",
       value: tokenize(array[1]!)
@@ -233,6 +246,7 @@ export function canonicalDefault(expression: string, concept?: DataType): string
         .map((t) => t.value)
         .join(","),
     });
+  }
   return value ? JSON.stringify(value) : compact(expression);
 }
 
@@ -241,11 +255,12 @@ const byText = <T>(list: T[]) => [...list].sort((a, b) => JSON.stringify(a).loca
 /** Domaine d'une colonne d'après son type (ENUM / SET MySQL, type énuméré PostgreSQL). */
 function typeDomain(column: ParsedColumn, enumTypes: Map<string, string[]>): string | undefined {
   const match = /^\s*(enum|set)\s*\(/i.exec(column.type);
-  if (match)
+  if (match) {
     return `${match[1]!.toLowerCase()}:${tokenize(column.type)
       .filter((t) => t.type === "string")
       .map((t) => t.value)
       .join("|")}`;
+  }
   const named = enumTypes.get(column.type.trim().replace(/^"|"$/g, "").toLowerCase());
   return named ? `enum:${named.join("|")}` : undefined;
 }
@@ -257,9 +272,11 @@ function typeDomain(column: ParsedColumn, enumTypes: Map<string, string[]>): str
 function domainCheck(
   check: NamedExpression,
 ): { column: string; domain?: string; nonNegative?: boolean; nonEmpty?: boolean } | null {
-  if (check.name) return null;
+  if (check.name) {
+    return null;
+  }
   const set = /^\s*"?([\w$]+)"?\s*<@\s*ARRAY\s*\[(.*)\]\s*(::\s*text\s*\[\s*\])?\s*$/is.exec(check.expression);
-  if (set)
+  if (set) {
     return {
       column: set[1]!,
       domain: `set:${tokenize(set[2]!)
@@ -267,6 +284,7 @@ function domainCheck(
         .map((t) => t.value)
         .join("|")}`,
     };
+  }
   const condition = parseCondition(check.expression);
   if (
     condition?.kind === "in" &&
@@ -309,7 +327,9 @@ function rangeOf(
   bounds?: [bigint | null, bigint | null],
   digits?: [bigint, bigint],
 ): string | undefined {
-  if (!concept) return undefined;
+  if (!concept) {
+    return undefined;
+  }
   const bits =
     concept.kind === "integer" ? concept.bits : concept.kind === "counter" ? (concept.bits ?? 32) : undefined;
   if (bits !== undefined) {
@@ -318,35 +338,51 @@ function rangeOf(
     let min = unsigned || nonNegative ? 0n : digits ? digits[0] : -(2n ** BigInt(bits - 1));
     // Bornes explicites (CHECK … BETWEEN, YEAR) : intersection avec la plage du type.
     if (bounds) {
-      if (bounds[0] !== null && bounds[0] > min) min = bounds[0];
-      if (bounds[1] !== null && bounds[1] < max) max = bounds[1];
+      if (bounds[0] !== null && bounds[0] > min) {
+        min = bounds[0];
+      }
+      if (bounds[1] !== null && bounds[1] < max) {
+        max = bounds[1];
+      }
     }
     return `[${min}, ${max}]`;
   }
-  if (concept.kind === "decimal" || concept.kind === "real" || concept.kind === "money")
+  if (concept.kind === "decimal" || concept.kind === "real" || concept.kind === "money") {
     return unsigned || nonNegative ? "≥ 0" : "ℝ";
+  }
   return undefined;
 }
 
 /** Type conceptuel, à la collation, au jeu de caractères et à la largeur des entiers près (comparée par la plage). */
 function conceptOf(t: DataType | undefined, domain: string | undefined): string {
-  if (domain) return JSON.stringify({ kind: "domain" });
-  if (!t) return "null";
-  if (t.kind === "text")
+  if (domain) {
+    return JSON.stringify({ kind: "domain" });
+  }
+  if (!t) {
+    return "null";
+  }
+  if (t.kind === "text") {
     return JSON.stringify({ ...t, collation: undefined, encoding: t.encoding === "binary" ? "binary" : "char" });
+  }
   // Entiers, et décimaux d'échelle nulle (NUMBER(20), NUMERIC(20)) : comparés par leur plage (O-39).
   if (
     t.kind === "integer" ||
     t.kind === "counter" ||
     (t.kind === "decimal" && t.scale === 0 && t.precision !== undefined)
-  )
+  ) {
     return JSON.stringify({ kind: "integer" });
+  }
   // MONEY ≡ DECIMAL(19,4) (O-42).
-  if (t.kind === "money") return JSON.stringify({ kind: "decimal", precision: 19, scale: 4 });
-  if (t.kind === "free" && /^jsonb?$/i.test(t.sql.trim())) return JSON.stringify({ kind: "free", sql: "json" });
+  if (t.kind === "money") {
+    return JSON.stringify({ kind: "decimal", precision: 19, scale: 4 });
+  }
+  if (t.kind === "free" && /^jsonb?$/i.test(t.sql.trim())) {
+    return JSON.stringify({ kind: "free", sql: "json" });
+  }
   // UNIQUEIDENTIFIER (SQL Server) ≡ UUID (O-41).
-  if (t.kind === "free" && /^(uuid|uniqueidentifier)$/i.test(t.sql.trim()))
+  if (t.kind === "free" && /^(uuid|uniqueidentifier)$/i.test(t.sql.trim())) {
     return JSON.stringify({ kind: "free", sql: "uuid" });
+  }
   return JSON.stringify(t);
 }
 
@@ -360,7 +396,9 @@ function collationOf(
   dialect: SqlDialect,
 ): { collation?: string; defaultCollation?: string } {
   const textual = Boolean(domain) || (concept?.kind === "text" && concept.encoding !== "binary");
-  if (!textual) return {};
+  if (!textual) {
+    return {};
+  }
   const name = c.collation ?? table.collation ?? database.collation;
   const klass = name ? collationClass(name, database.collations) : undefined;
   return {
@@ -427,16 +465,29 @@ function tableCatalog(
   const ascii = new Set<string>();
   for (const check of activeChecks) {
     const condition = parseCondition(check.expression);
-    if (!condition) continue;
+    if (!condition) {
+      continue;
+    }
     for (const column of table.columns) {
       const b = valueBounds(condition, column.name);
-      if (b !== "none" && (b.lo !== null || b.hi !== null)) bound(column.name, b.lo, b.hi);
-      if (excludesEmptyString(condition, column.name)) nonEmpty.add(column.name.toLowerCase());
-      if (asciiDomain(condition, column.name)) ascii.add(column.name.toLowerCase());
+      if (b !== "none" && (b.lo !== null || b.hi !== null)) {
+        bound(column.name, b.lo, b.hi);
+      }
+      if (excludesEmptyString(condition, column.name)) {
+        nonEmpty.add(column.name.toLowerCase());
+      }
+      if (asciiDomain(condition, column.name)) {
+        ascii.add(column.name.toLowerCase());
+      }
     }
   }
-  if (dialect === "mysql" || dialect === "mariadb")
-    for (const c of table.columns) if (/^year\b/i.test(c.type)) bound(c.name, 1901n, 2155n);
+  if (dialect === "mysql" || dialect === "mariadb") {
+    for (const c of table.columns) {
+      if (/^year\b/i.test(c.type)) {
+        bound(c.name, 1901n, 2155n);
+      }
+    }
+  }
   const numericBetween = (c: Condition) =>
     c.kind === "between" &&
     !c.negated &&
@@ -450,9 +501,13 @@ function tableCatalog(
   for (const check of allChecks) {
     const condition = parseCondition(check.expression);
     // Tout CHECK qui exclut les négatifs d'une colonne (ex. niveau BETWEEN 1 AND 3) borne sa plage.
-    if (condition && !check.state?.disabled)
-      for (const column of table.columns)
-        if (impliesNonNegative(condition, column.name)) nonNegative.add(column.name.toLowerCase());
+    if (condition && !check.state?.disabled) {
+      for (const column of table.columns) {
+        if (impliesNonNegative(condition, column.name)) {
+          nonNegative.add(column.name.toLowerCase());
+        }
+      }
+    }
     const special = check.state ? null : domainCheck(check);
     if (special?.domain) {
       domains.set(special.column.toLowerCase(), special.domain);
@@ -462,7 +517,9 @@ function tableCatalog(
       nonNegative.add(special.column.toLowerCase());
       continue;
     }
-    if (special?.nonEmpty) continue;
+    if (special?.nonEmpty) {
+      continue;
+    }
     // BETWEEN anonyme seul, ou conjoint d'un AND (ex. ck_annee fusionné avec la plage de YEAR) : une plage.
     const alone = !check.name && condition ? numericBetween(condition) : null;
     if (alone) {
@@ -472,7 +529,9 @@ function tableCatalog(
     if (condition?.kind === "and") {
       const rest = condition.items.filter((item) => {
         const b = numericBetween(item);
-        if (b) bound(b.column, b.lo, b.hi);
+        if (b) {
+          bound(b.column, b.lo, b.hi);
+        }
         return !b;
       });
       if (rest.length !== condition.items.length) {
@@ -636,7 +695,9 @@ function unwrap(text: string): string {
       depth += ch === "(" ? 1 : ch === ")" ? -1 : 0;
       return depth >= 0;
     });
-    if (!inner || depth !== 0) break;
+    if (!inner || depth !== 0) {
+      break;
+    }
     text = text.slice(1, -1);
   }
   return text;
@@ -664,9 +725,15 @@ function sequencesOf(table: ParsedTable, sequences: Map<string, SequenceDefiniti
 
 /** Longueur d'un texte en octets, en caractères, ou selon NLS_LENGTH_SEMANTICS (Oracle) (O-39). */
 function lengthSemanticsOf(type: string, dialect: SqlDialect): "byte" | "char" | "nls" {
-  if (dialect !== "oracle") return "char";
-  if (/\bbyte\s*\)/i.test(type)) return "byte";
-  if (/\bchar\s*\)/i.test(type) || /^\s*n(var)?char/i.test(type)) return "char";
+  if (dialect !== "oracle") {
+    return "char";
+  }
+  if (/\bbyte\s*\)/i.test(type)) {
+    return "byte";
+  }
+  if (/\bchar\s*\)/i.test(type) || /^\s*n(var)?char/i.test(type)) {
+    return "char";
+  }
   return "nls";
 }
 
@@ -705,7 +772,9 @@ function propagateForeignRanges(catalog: Catalog) {
           );
           const own = parse(column?.range);
           const ref = parse(referenced?.range);
-          if (!column || !own || !ref || own[0]! >= ref[0]!) return;
+          if (!column || !own || !ref || own[0]! >= ref[0]!) {
+            return;
+          }
           column.range = `[${ref[0]}, ${own[1]}]`;
           changed = true;
         });
@@ -724,10 +793,14 @@ function referencesOf(catalog: Catalog, table: CatalogTable, column: string): { 
     for (const fk of t.foreignKeys) {
       const index = fk.columns.findIndex((x) => x.toLowerCase() === c.toLowerCase());
       const next = index >= 0 ? catalog.find((x) => x.name.toLowerCase() === fk.table.toLowerCase()) : undefined;
-      if (!next) continue;
+      if (!next) {
+        continue;
+      }
       const referenced = fk.referencedColumns[index]!;
       const key = `${next.name}.${referenced}`.toLowerCase();
-      if (seen.has(key)) continue;
+      if (seen.has(key)) {
+        continue;
+      }
       seen.add(key);
       result.push({ table: next.name, column: referenced });
       queue.push({ table: next, column: referenced });
@@ -738,8 +811,12 @@ function referencesOf(catalog: Catalog, table: CatalogTable, column: string): { 
 
 /** Plage cible acceptable : même borne basse, borne haute au moins aussi grande (type élargi). */
 function rangeCovers(source?: string, target?: string): boolean {
-  if (source === target) return true;
-  if (!source?.startsWith("[") || !target?.startsWith("[")) return false;
+  if (source === target) {
+    return true;
+  }
+  if (!source?.startsWith("[") || !target?.startsWith("[")) {
+    return false;
+  }
   const [smin, smax] = source
     .slice(1, -1)
     .split(", ")
@@ -834,8 +911,9 @@ export function diffCatalogs(
         s.columns.map((c) => c.name),
         tColumns.map((c) => c.name),
       )
-    )
+    ) {
       push("columnOrder", "ordre des colonnes");
+    }
     for (const c of s.columns) {
       const d = t.columns.find((x) => name(x.name, c.name));
       if (!d) {
@@ -851,48 +929,89 @@ export function diffCatalogs(
           : crossDialect
             ? c.concept === d.concept
             : c.type === d.type);
-      if (!typeOk) push("type", `${c.type} → ${d.type}`, c.name);
-      if (c.autoIncrement !== d.autoIncrement && !(crossDialect && /serial|identity/i.test(d.type)))
+      if (!typeOk) {
+        push("type", `${c.type} → ${d.type}`, c.name);
+      }
+      if (c.autoIncrement !== d.autoIncrement && !(crossDialect && /serial|identity/i.test(d.type))) {
         push("autoIncrement", `${c.autoIncrement} → ${d.autoIncrement}`, c.name);
-      if (c.notNull !== d.notNull) push("notNull", `${c.notNull} → ${d.notNull}`, c.name);
-      if (c.default !== d.default) push("default", `${c.default} → ${d.default}`, c.name);
-      if (c.domain !== d.domain) push("domain", `${c.domain} → ${d.domain}`, c.name);
-      if (crossDialect && !affinityOnly && !typeless && !rangeCovers(c.range, d.range))
+      }
+      if (c.notNull !== d.notNull) {
+        push("notNull", `${c.notNull} → ${d.notNull}`, c.name);
+      }
+      if (c.default !== d.default) {
+        push("default", `${c.default} → ${d.default}`, c.name);
+      }
+      if (c.domain !== d.domain) {
+        push("domain", `${c.domain} → ${d.domain}`, c.name);
+      }
+      if (crossDialect && !affinityOnly && !typeless && !rangeCovers(c.range, d.range)) {
         push("range", `${c.range} → ${d.range}`, c.name);
+      }
       // Collation : comparée quand la source en a une effective (sinon : celle de l'installation, inconnue).
-      if (c.collation && c.collation !== (d.collation ?? d.defaultCollation))
+      if (c.collation && c.collation !== (d.collation ?? d.defaultCollation)) {
         push("collation", `${c.collation} → ${d.collation ?? d.defaultCollation}`, c.name);
-      if (c.generated !== d.generated) push("generated", `${c.generated} → ${d.generated}`, c.name);
-      if (c.onUpdate !== d.onUpdate) push("onUpdate", `${c.onUpdate} → ${d.onUpdate}`, c.name);
-      if (c.identityStart !== d.identityStart)
+      }
+      if (c.generated !== d.generated) {
+        push("generated", `${c.generated} → ${d.generated}`, c.name);
+      }
+      if (c.onUpdate !== d.onUpdate) {
+        push("onUpdate", `${c.onUpdate} → ${d.onUpdate}`, c.name);
+      }
+      if (c.identityStart !== d.identityStart) {
         push("autoIncrement", `début ${c.identityStart} → ${d.identityStart}`, c.name);
-      if (c.identityIncrement !== d.identityIncrement)
+      }
+      if (c.identityIncrement !== d.identityIncrement) {
         push("autoIncrement", `pas ${c.identityIncrement} → ${d.identityIncrement}`, c.name);
-      if ((c.comment ?? "") !== (d.comment ?? "")) push("comment", `${c.comment} → ${d.comment}`, c.name);
-      if (c.identity !== d.identity)
+      }
+      if ((c.comment ?? "") !== (d.comment ?? "")) {
+        push("comment", `${c.comment} → ${d.comment}`, c.name);
+      }
+      if (c.identity !== d.identity) {
         push("autoIncrement", `identité ${c.identity ?? "by default"} → ${d.identity ?? "by default"}`, c.name);
-      if (c.sequence !== d.sequence) push("sequence", `séquence ${c.sequence} → ${d.sequence}`, c.name);
-      if (c.emptyString && d.emptyString && c.emptyString !== d.emptyString)
+      }
+      if (c.sequence !== d.sequence) {
+        push("sequence", `séquence ${c.sequence} → ${d.sequence}`, c.name);
+      }
+      if (c.emptyString && d.emptyString && c.emptyString !== d.emptyString) {
         push("emptyString", `'' ${c.emptyString} → ${d.emptyString}`, c.name);
-      if (c.lengthSemantics && d.lengthSemantics && c.lengthSemantics !== d.lengthSemantics)
+      }
+      if (c.lengthSemantics && d.lengthSemantics && c.lengthSemantics !== d.lengthSemantics) {
         push("type", `longueur ${c.lengthSemantics} → ${d.lengthSemantics}`, c.name);
+      }
     }
-    if (s.primaryKeyState !== t.primaryKeyState) push("state", `PK ${s.primaryKeyState} → ${t.primaryKeyState}`);
-    if (s.schema !== t.schema) push("name", `schéma ${s.schema} → ${t.schema}`);
-    if (JSON.stringify(s.storage ?? []) !== JSON.stringify(t.storage ?? []))
+    if (s.primaryKeyState !== t.primaryKeyState) {
+      push("state", `PK ${s.primaryKeyState} → ${t.primaryKeyState}`);
+    }
+    if (s.schema !== t.schema) {
+      push("name", `schéma ${s.schema} → ${t.schema}`);
+    }
+    if (JSON.stringify(s.storage ?? []) !== JSON.stringify(t.storage ?? [])) {
       push("physical", `stockage ${s.storage} → ${t.storage}`);
-    if ((s.partition ?? "") !== (t.partition ?? ""))
+    }
+    if ((s.partition ?? "") !== (t.partition ?? "")) {
       push("physical", `partitionnement ${s.partition} → ${t.partition}`);
-    if (JSON.stringify(s.sequences ?? []) !== JSON.stringify(t.sequences ?? []))
+    }
+    if (JSON.stringify(s.sequences ?? []) !== JSON.stringify(t.sequences ?? [])) {
       push("sequence", `séquences ${s.sequences} → ${t.sequences}`);
-    for (const c of t.columns) if (!s.columns.some((x) => name(x.name, c.name))) push("column", "en trop", c.name);
-    if ((s.comment ?? "") !== (t.comment ?? "")) push("comment", "commentaire de table");
-    for (const trigger of s.triggers)
-      if (!t.triggers.includes(trigger)) push("trigger", `déclencheur ${trigger} absent`);
-    if (!sameList(s.primaryKey.columns, t.primaryKey.columns))
+    }
+    for (const c of t.columns) {
+      if (!s.columns.some((x) => name(x.name, c.name))) {
+        push("column", "en trop", c.name);
+      }
+    }
+    if ((s.comment ?? "") !== (t.comment ?? "")) {
+      push("comment", "commentaire de table");
+    }
+    for (const trigger of s.triggers) {
+      if (!t.triggers.includes(trigger)) {
+        push("trigger", `déclencheur ${trigger} absent`);
+      }
+    }
+    if (!sameList(s.primaryKey.columns, t.primaryKey.columns)) {
       push("primaryKey", `${s.primaryKey.columns} → ${t.primaryKey.columns}`);
-    else if (s.primaryKey.name && !name(s.primaryKey.name, t.primaryKey.name ?? ""))
+    } else if (s.primaryKey.name && !name(s.primaryKey.name, t.primaryKey.name ?? "")) {
       push("name", `PK ${s.primaryKey.name} → ${t.primaryKey.name}`);
+    }
 
     for (const fk of s.foreignKeys) {
       const match = t.foreignKeys.find(
@@ -906,49 +1025,88 @@ export function diffCatalogs(
         continue;
       }
       const columns = fk.columns.join(", ");
-      if (match.onDelete !== fk.onDelete) push("action", `ON DELETE ${fk.onDelete} → ${match.onDelete}`, columns);
-      if (match.onUpdate !== fk.onUpdate) push("action", `ON UPDATE ${fk.onUpdate} → ${match.onUpdate}`, columns);
-      if (fk.name && !name(fk.name, match.name ?? "")) push("name", `FK ${fk.name} → ${match.name}`);
-      if (fk.state !== match.state) push("state", `FK ${fk.name ?? columns} ${fk.state} → ${match.state}`);
+      if (match.onDelete !== fk.onDelete) {
+        push("action", `ON DELETE ${fk.onDelete} → ${match.onDelete}`, columns);
+      }
+      if (match.onUpdate !== fk.onUpdate) {
+        push("action", `ON UPDATE ${fk.onUpdate} → ${match.onUpdate}`, columns);
+      }
+      if (fk.name && !name(fk.name, match.name ?? "")) {
+        push("name", `FK ${fk.name} → ${match.name}`);
+      }
+      if (fk.state !== match.state) {
+        push("state", `FK ${fk.name ?? columns} ${fk.state} → ${match.state}`);
+      }
     }
-    if (t.foreignKeys.length !== s.foreignKeys.length)
+    if (t.foreignKeys.length !== s.foreignKeys.length) {
       push("foreignKey", `${s.foreignKeys.length} → ${t.foreignKeys.length} clés étrangères`);
+    }
 
     for (const u of s.uniques) {
       const match = t.uniques.find((x) => sameKey(x, u));
-      if (!match) push("unique", `UNIQUE (${u.columns}) absent`);
-      else {
-        if (u.name && !name(u.name, match.name ?? "")) push("name", `UNIQUE ${u.name} → ${match.name}`);
-        if ((u.method ?? "") !== (match.method ?? "")) push("index", `méthode ${u.method} → ${match.method}`);
-        if (u.nulls !== match.nulls) push("unique", `UNIQUE ${u.name ?? u.columns} NULL ${u.nulls} → ${match.nulls}`);
-        if (u.state !== match.state) push("state", `UNIQUE ${u.name ?? u.columns} ${u.state} → ${match.state}`);
+      if (!match) {
+        push("unique", `UNIQUE (${u.columns}) absent`);
+      } else {
+        if (u.name && !name(u.name, match.name ?? "")) {
+          push("name", `UNIQUE ${u.name} → ${match.name}`);
+        }
+        if ((u.method ?? "") !== (match.method ?? "")) {
+          push("index", `méthode ${u.method} → ${match.method}`);
+        }
+        if (u.nulls !== match.nulls) {
+          push("unique", `UNIQUE ${u.name ?? u.columns} NULL ${u.nulls} → ${match.nulls}`);
+        }
+        if (u.state !== match.state) {
+          push("state", `UNIQUE ${u.name ?? u.columns} ${u.state} → ${match.state}`);
+        }
       }
     }
-    for (const u of t.uniques)
-      if (!s.uniques.some((x) => sameKey(x, u))) push("unique", `UNIQUE (${u.columns}) en trop`);
+    for (const u of t.uniques) {
+      if (!s.uniques.some((x) => sameKey(x, u))) {
+        push("unique", `UNIQUE (${u.columns}) en trop`);
+      }
+    }
 
     for (const c of s.checks) {
       const match = t.checks.find((x) => x.expression === c.expression);
-      if (!match) push("check", `CHECK ${c.expression} absent ou modifié`);
-      else {
-        if (c.name && !name(c.name, match.name ?? "")) push("name", `CHECK ${c.name} → ${match.name}`);
-        if (c.state !== match.state) push("state", `CHECK ${c.name ?? c.expression} ${c.state} → ${match.state}`);
+      if (!match) {
+        push("check", `CHECK ${c.expression} absent ou modifié`);
+      } else {
+        if (c.name && !name(c.name, match.name ?? "")) {
+          push("name", `CHECK ${c.name} → ${match.name}`);
+        }
+        if (c.state !== match.state) {
+          push("state", `CHECK ${c.name ?? c.expression} ${c.state} → ${match.state}`);
+        }
       }
     }
-    for (const c of t.checks)
-      if (!s.checks.some((x) => x.expression === c.expression)) push("check", `CHECK ${c.expression} en trop`);
+    for (const c of t.checks) {
+      if (!s.checks.some((x) => x.expression === c.expression)) {
+        push("check", `CHECK ${c.expression} en trop`);
+      }
+    }
 
     for (const i of s.indexes) {
       const match = t.indexes.find((x) => sameKey(x, i) && sameList(x.columns, i.columns));
-      if (!match) push("index", `index (${i.columns}) absent`);
-      else {
-        if (i.name && !name(i.name, match.name ?? "")) push("name", `index ${i.name} → ${match.name}`);
-        if ((i.method ?? "") !== (match.method ?? "")) push("index", `méthode ${i.method} → ${match.method}`);
+      if (!match) {
+        push("index", `index (${i.columns}) absent`);
+      } else {
+        if (i.name && !name(i.name, match.name ?? "")) {
+          push("name", `index ${i.name} → ${match.name}`);
+        }
+        if ((i.method ?? "") !== (match.method ?? "")) {
+          push("index", `méthode ${i.method} → ${match.method}`);
+        }
       }
     }
-    if (t.indexes.length !== s.indexes.length) push("index", `${s.indexes.length} → ${t.indexes.length} index`);
+    if (t.indexes.length !== s.indexes.length) {
+      push("index", `${s.indexes.length} → ${t.indexes.length} index`);
+    }
   }
-  for (const t of target)
-    if (!source.some((s) => name(s.name, t.name))) diffs.push({ category: "table", table: t.name, detail: "en trop" });
+  for (const t of target) {
+    if (!source.some((s) => name(s.name, t.name))) {
+      diffs.push({ category: "table", table: t.name, detail: "en trop" });
+    }
+  }
   return diffs;
 }

@@ -120,7 +120,9 @@ function SqlView({ sql, losses }: { sql: string; losses: Loss[] }) {
 
 function MldView() {
   const lines = mldLines(useLogicalModel());
-  if (lines.length === 0) return <p className="font-sans text-neutral-500">{t("output.mldEmpty")}</p>;
+  if (lines.length === 0) {
+    return <p className="font-sans text-neutral-500">{t("output.mldEmpty")}</p>;
+  }
   return (
     <div>
       {lines.map((line) => (
@@ -158,7 +160,9 @@ function IssuesView() {
   const { issues } = useLogicalModel();
   const select = useDocumentView((s) => s.select);
   const layer = useDocumentView((s) => (s.view === "mcd" ? "conceptual" : "logical"));
-  if (issues.length === 0) return <p className="font-sans text-neutral-500">{t("output.noIssues")}</p>;
+  if (issues.length === 0) {
+    return <p className="font-sans text-neutral-500">{t("output.noIssues")}</p>;
+  }
   return (
     <ul className="font-sans text-sm">
       {issues.map((issue, i) => (

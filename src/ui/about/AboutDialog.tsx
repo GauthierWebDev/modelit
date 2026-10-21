@@ -13,7 +13,9 @@ import { Modal } from "@/ui/common/Modal";
 export function AboutDialog() {
   const tab = useUiStore((s) => s.about);
   const setAbout = useUiStore((s) => s.setAbout);
-  if (!tab) return null;
+  if (!tab) {
+    return null;
+  }
 
   const tabs: { id: AboutTab; label: string }[] = [
     { id: "about", label: t("about.tab.about") },
@@ -87,7 +89,9 @@ function About() {
 }
 
 function Changes() {
-  if (!CHANGELOG.length) return <p className="text-sm text-neutral-500">{t("about.noChanges")}</p>;
+  if (!CHANGELOG.length) {
+    return <p className="text-sm text-neutral-500">{t("about.noChanges")}</p>;
+  }
   return (
     <div className="flex max-h-[24rem] flex-col gap-4 overflow-auto pr-1 text-sm select-text">
       {CHANGELOG.map((entry) => (

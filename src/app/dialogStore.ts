@@ -64,7 +64,9 @@ export async function alertDialog(options: {
 /** Clôt une boîte (réponse de l'utilisateur) et passe à la suivante. */
 export function settleDialog(id: number, ok: boolean) {
   const request = useDialogStore.getState().queue.find((r) => r.id === id);
-  if (!request) return;
+  if (!request) {
+    return;
+  }
   useDialogStore.setState((s) => ({ queue: s.queue.filter((r) => r.id !== id) }));
   request.resolve(ok);
 }
@@ -75,7 +77,9 @@ export const showError = (message: string) =>
 
 /** Avertissements groupés en une seule boîte (ex. à l'ouverture d'un fichier). */
 export async function showWarnings(messages: string[]) {
-  if (!messages.length) return;
+  if (!messages.length) {
+    return;
+  }
   await alertDialog({
     title: t("common.warning"),
     tone: "warning",

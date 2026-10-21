@@ -23,7 +23,9 @@ export function ReverseDialog() {
   const [report, setReport] = useState<ReverseReport | null>(null);
   /** Dialecte du script : détecté automatiquement, ou imposé (override O-29). */
   const [dialect, setDialect] = useState<SqlDialect | "auto">("auto");
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
 
   async function importFile() {
     try {
@@ -40,7 +42,9 @@ export function ReverseDialog() {
   function generate() {
     const result = reverseEngineer(sql, newModelDocument(), dialect === "auto" ? detectDialect(sql) : dialect);
     setReport(result.report);
-    if (result.report.tables === 0) return;
+    if (result.report.tables === 0) {
+      return;
+    }
     // Nouvel onglet (override O-44) : le document affiché n'est plus remplacé.
     const doc = openInTab((d) => d.store.getState().load(result.doc, null, true));
     showView(doc, "mcd");

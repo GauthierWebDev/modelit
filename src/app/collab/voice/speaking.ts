@@ -16,9 +16,15 @@ const loud = new Map<string, number>();
 let timer: ReturnType<typeof setInterval> | undefined;
 
 function publish(now = Date.now()) {
-  for (const [id, at] of loud) if (now - at > HOLD_MS) loud.delete(id);
+  for (const [id, at] of loud) {
+    if (now - at > HOLD_MS) {
+      loud.delete(id);
+    }
+  }
   const ids = [...loud.keys()].sort();
-  if (ids.join() !== useSpeakingStore.getState().ids.join()) useSpeakingStore.setState({ ids });
+  if (ids.join() !== useSpeakingStore.getState().ids.join()) {
+    useSpeakingStore.setState({ ids });
+  }
   if (!loud.size && timer !== undefined) {
     clearInterval(timer);
     timer = undefined;
@@ -26,15 +32,22 @@ function publish(now = Date.now()) {
 }
 
 export function noteLevel(id: string, level: number, now = Date.now()) {
-  if (level < SPEAKING_LEVEL) return;
+  if (level < SPEAKING_LEVEL) {
+    return;
+  }
   const isNew = !loud.has(id);
   loud.set(id, now);
-  if (isNew) publish(now);
+  if (isNew) {
+    publish(now);
+  }
   timer ??= setInterval(publish, 100);
 }
 
 export function clearSpeaking(id?: string) {
-  if (id) loud.delete(id);
-  else loud.clear();
+  if (id) {
+    loud.delete(id);
+  } else {
+    loud.clear();
+  }
   publish();
 }

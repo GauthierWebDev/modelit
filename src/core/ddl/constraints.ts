@@ -20,7 +20,9 @@ export function stateClause(
   label: string,
   state?: ConstraintState,
 ): string {
-  if (!state?.deferrable || state.disabled) return "";
+  if (!state?.deferrable || state.disabled) {
+    return "";
+  }
   if (!ctx.dialect.constraints.deferrable(kind)) {
     ctx.report.add(
       kind === "check" ? "check" : kind === "foreign" ? "action" : "index",
@@ -48,8 +50,12 @@ export function placement(
     ctx.report.add(category, table.name, MSG.lossDisabled(label, state.dialect));
     return "comment";
   }
-  if (!state?.notValidated) return "inline";
-  if (ctx.dialect.constraints.notValidated(kind)) return "after";
+  if (!state?.notValidated) {
+    return "inline";
+  }
+  if (ctx.dialect.constraints.notValidated(kind)) {
+    return "after";
+  }
   ctx.report.add(category, table.name, MSG.lossNotValidated(label, state.dialect));
   return "inline";
 }
@@ -70,9 +76,12 @@ export function place(
   state: ConstraintState | undefined,
   required: () => string,
 ): string | null {
-  if (where === "inline") return definition;
-  if (where === "comment") after.push(`-- ${definition} -- ${MSG.disabledComment(state?.dialect)}`);
-  else {
+  if (where === "inline") {
+    return definition;
+  }
+  if (where === "comment") {
+    after.push(`-- ${definition} -- ${MSG.disabledComment(state?.dialect)}`);
+  } else {
     const named = definition.startsWith("CONSTRAINT ") ? definition : `CONSTRAINT ${q(ctx, required())} ${definition}`;
     ctx.script.notValidated.push(`ALTER TABLE ${tableName(ctx, table)} ADD ${named}${notValidatedSuffix(ctx)};`);
   }
@@ -91,7 +100,9 @@ function actions(
   const parts: string[] = [];
   for (const event of ["delete", "update"] as const) {
     let action = event === "delete" ? fk.onDelete : fk.onUpdate;
-    if (!action) continue;
+    if (!action) {
+      continue;
+    }
     // SQL Server refuse les chemins de cascade multiples ou cycliques.
     if (sqlServerGraph && ["cascade", "set null", "set default"].includes(action)) {
       if (!sqlServerGraph.accept(event, fk.referencedTable, table.name)) {
@@ -105,9 +116,12 @@ function actions(
       }
     }
     const result = referentialAction(ctx.target, event, action);
-    if (result.kind === "emit") parts.push(result.sql);
-    else if (result.kind === "degraded") {
-      if (result.sql) parts.push(result.sql);
+    if (result.kind === "emit") {
+      parts.push(result.sql);
+    } else if (result.kind === "degraded") {
+      if (result.sql) {
+        parts.push(result.sql);
+      }
       ctx.report.add(
         "action",
         table.name,
@@ -150,16 +164,25 @@ export class CascadeGraph {
   };
 
   private reaches(event: "delete" | "update", from: string, to: string, seen = new Set<string>()): boolean {
-    if (from === to) return true;
-    if (seen.has(from)) return false;
+    if (from === to) {
+      return true;
+    }
+    if (seen.has(from)) {
+      return false;
+    }
     seen.add(from);
-    for (const next of this.edges[event].get(from) ?? []) if (this.reaches(event, next, to, seen)) return true;
+    for (const next of this.edges[event].get(from) ?? []) {
+      if (this.reaches(event, next, to, seen)) {
+        return true;
+      }
+    }
     return false;
   }
 
   accept(event: "delete" | "update", referenced: string, child: string): boolean {
-    if (referenced === child || this.reaches(event, referenced, child) || this.reaches(event, child, referenced))
+    if (referenced === child || this.reaches(event, referenced, child) || this.reaches(event, child, referenced)) {
       return false;
+    }
     const targets = this.edges[event].get(referenced) ?? new Set<string>();
     targets.add(child);
     this.edges[event].set(referenced, targets);
@@ -205,7 +228,9 @@ export function uniqueLine(ctx: Context, table: LogicalTable, unique: LogicalKey
   const method = d.uniques.methods && unique.method ? ` USING ${unique.method.toUpperCase()}` : "";
   const equalNulls = unique.nulls === "not distinct" || unique.nulls === "oracle";
   const nulls = equalNulls ? nullsClause(ctx, table, unique) : "";
-  if (!equalNulls) singleNullLoss(ctx, table, unique.columns, unique.name ?? label);
+  if (!equalNulls) {
+    singleNullLoss(ctx, table, unique.columns, unique.name ?? label);
+  }
   // Dans une clé composée, les NULL y sont égaux entre eux (Oracle) (O-39).
   if (
     !equalNulls &&
@@ -218,8 +243,9 @@ export function uniqueLine(ctx: Context, table: LogicalTable, unique: LogicalKey
   // INCLUDE sur une contrainte UNIQUE (O-42).
   const covering = unique.include?.length && d.uniques.include ? include(ctx, table, unique) : "";
   // Sinon, include() a déjà signalé la perte s'il y en a une.
-  if (unique.include?.length && !d.uniques.include)
+  if (unique.include?.length && !d.uniques.include) {
     ctx.report.add("index", table.name, MSG.lossInclude(unique.name ?? label));
+  }
   const state = stateClause(ctx, table, "unique", unique.name ?? label, unique.state);
   const definition = `${name ? `CONSTRAINT ${q(ctx, name)} ` : ""}UNIQUE${nulls}(${columns})${covering}${method}${state}`;
   return place(
@@ -247,23 +273,33 @@ function nullsClause(ctx: Context, table: LogicalTable, unique: LogicalKey): str
   const label = unique.name ?? describeKey(unique);
   const allNullable = unique.columns.every((c) => nullable(table, c));
   if (equal === "composite") {
-    if (unique.nulls === "not distinct" && allNullable)
+    if (unique.nulls === "not distinct" && allNullable) {
       ctx.report.add("index", table.name, MSG.lossNullsAllNull(label));
+    }
     return "";
   }
   // Seulement si les NULL deviennent égaux ici : sans NULLS NOT DISTINCT, les lignes entièrement
   // NULL restent admises en double, comme dans Oracle.
   const equalized = equal === "native" || (equal !== null && equal.clause !== null);
-  if (unique.nulls === "oracle" && allNullable && equalized)
+  if (unique.nulls === "oracle" && allNullable && equalized) {
     ctx.report.add("index", table.name, MSG.lossNullsAllNull(label));
-  if (equal === "native") return "";
-  if (equal?.clause) return equal.clause;
+  }
+  if (equal === "native") {
+    return "";
+  }
+  if (equal?.clause) {
+    return equal.clause;
+  }
   ctx.report.add("index", table.name, MSG.lossNullsNotDistinct(label));
   return "";
 }
 
 /** Une contrainte UNIQUE n'y admet qu'un seul NULL, contrairement aux autres SGBD (SQL Server) (O-39). */
 export function singleNullLoss(ctx: Context, table: LogicalTable, columns: string[], label: string) {
-  if (!ctx.dialect.uniques.singleNull) return;
-  if (columns.some((name) => nullable(table, name))) ctx.report.add("index", table.name, MSG.lossSqlServerNulls(label));
+  if (!ctx.dialect.uniques.singleNull) {
+    return;
+  }
+  if (columns.some((name) => nullable(table, name))) {
+    ctx.report.add("index", table.name, MSG.lossSqlServerNulls(label));
+  }
 }

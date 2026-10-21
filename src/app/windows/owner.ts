@@ -81,14 +81,20 @@ export function startOwner(
   const broadcast = (force = false) => {
     const doc = activeDocument();
     // Pendant un glisser-déposer, une seule diffusion, à la fin de l'opération.
-    if (doc.store.getState().transactionStart) return;
+    if (doc.store.getState().transactionStart) {
+      return;
+    }
     const next = snapshot();
-    if (!force && last && same(last, next)) return;
+    if (!force && last && same(last, next)) {
+      return;
+    }
     last = next;
     channel.send({ type: "state", state: next });
   };
   const request = () => {
-    if (pending) return;
+    if (pending) {
+      return;
+    }
     pending = true;
     schedule(() => {
       pending = false;
@@ -113,8 +119,11 @@ export function startOwner(
   };
   watchActive();
   const offWorkspace = useWorkspaceStore.subscribe((s, p) => {
-    if (s.activeId !== p.activeId || s.documents !== p.documents) watchActive();
-    else request();
+    if (s.activeId !== p.activeId || s.documents !== p.documents) {
+      watchActive();
+    } else {
+      request();
+    }
   });
   const offUi = useUiStore.subscribe(request);
   const offDialogs = useDialogStore.subscribe(request);
@@ -126,18 +135,26 @@ export function startOwner(
       case "hello":
         return broadcast(true);
       case "change":
-        if (message.documentId !== doc.id) return;
+        if (message.documentId !== doc.id) {
+          return;
+        }
         return doc.store
           .getState()
           .change(message.label, (draft) => void applyPatches(draft as Draft<ModelDocument>, message.patches));
       case "undo":
-        if (message.documentId === doc.id) doc.store.getState().undo();
+        if (message.documentId === doc.id) {
+          doc.store.getState().undo();
+        }
         return;
       case "redo":
-        if (message.documentId === doc.id) doc.store.getState().redo();
+        if (message.documentId === doc.id) {
+          doc.store.getState().redo();
+        }
         return;
       case "view":
-        if (message.documentId === doc.id) doc.view.setState(message.patch);
+        if (message.documentId === doc.id) {
+          doc.view.setState(message.patch);
+        }
         return;
       case "ui":
         return useUiStore.setState(message.patch);

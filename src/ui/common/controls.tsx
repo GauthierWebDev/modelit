@@ -58,14 +58,18 @@ export function CommitInput({
         // biome-ignore lint/a11y/noAutofocus: demandé explicitement par l'appelant (saisie qui vient de s'ouvrir)
         autoFocus={autoFocus}
         ref={(input) => {
-          if (!input || !pendingSelect.current || input !== document.activeElement) return;
+          if (!input || !pendingSelect.current || input !== document.activeElement) {
+            return;
+          }
           pendingSelect.current = false;
           input.select();
         }}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && commit()) onEnter?.();
+          if (e.key === "Enter" && commit()) {
+            onEnter?.();
+          }
           if (e.key === "Escape") {
             setDraft(value);
             setError(null);
@@ -93,9 +97,13 @@ export function NumberInput({
       className={className}
       value={value === undefined ? "" : String(value)}
       onCommit={(v) => {
-        if (v.trim() === "") return onCommit(undefined);
+        if (v.trim() === "") {
+          return onCommit(undefined);
+        }
         const n = Number(v);
-        if (!Number.isInteger(n) || (min !== undefined && n < min)) return t("common.integerExpected");
+        if (!Number.isInteger(n) || (min !== undefined && n < min)) {
+          return t("common.integerExpected");
+        }
         onCommit(n);
       }}
     />
@@ -230,7 +238,9 @@ function DisclosureToggle({
       aria-expanded={open}
       onClick={toggle}
       onKeyDown={(e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
+        if (e.key !== "Enter" && e.key !== " ") {
+          return;
+        }
         e.preventDefault();
         toggle();
       }}
@@ -244,7 +254,9 @@ function DisclosureToggle({
 }
 
 export function ErrorBanner({ message, onClose }: { message: string | null; onClose: () => void }) {
-  if (!message) return null;
+  if (!message) {
+    return null;
+  }
   return (
     <div className="mx-3 mt-3 flex items-start gap-2 rounded border border-red-300 bg-red-50 px-2 py-1.5 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
       <span className="flex-1">{message}</span>

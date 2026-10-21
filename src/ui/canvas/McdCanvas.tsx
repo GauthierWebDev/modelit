@@ -99,9 +99,13 @@ export function McdCanvas() {
   const referencedKeys = useMemo(() => {
     const map = new Map<string, { entity: string; attributes: string[] }>();
     for (const link of doc.links) {
-      if (!link.referencedAttributes?.length) continue;
+      if (!link.referencedAttributes?.length) {
+        continue;
+      }
       const entity = doc.entities.find((e) => e.id === link.entityId);
-      if (!entity) continue;
+      if (!entity) {
+        continue;
+      }
       const attributes = link.referencedAttributes.map((id) => entity.attributes.find((x) => x.id === id)?.name ?? "?");
       map.set(link.associationId, { entity: entity.name, attributes });
     }
@@ -113,7 +117,11 @@ export function McdCanvas() {
   );
   const functional = useMemo(() => {
     const ids = new Set<Id>();
-    for (const l of doc.links) if (l.cardinality.max === 1) ids.add(l.associationId);
+    for (const l of doc.links) {
+      if (l.cardinality.max === 1) {
+        ids.add(l.associationId);
+      }
+    }
     return ids;
   }, [doc.links]);
   const grid = doc.settings.grid.enabled ? doc.settings.grid.size : null;
@@ -126,13 +134,22 @@ export function McdCanvas() {
     setGesture(null);
     const a = layouts.get(fromId);
     const b = toId ? layouts.get(toId) : undefined;
-    if (!a || !b || !toId) return;
+    if (!a || !b || !toId) {
+      return;
+    }
     const isEntity = doc.entities.some((e) => e.id === fromId);
-    if (fromId === toId && !isEntity) return;
+    if (fromId === toId && !isEntity) {
+      return;
+    }
     const result = connectNodes(docHandle, fromId, toId, placeNewAssociation(doc, fromId, toId, grid));
-    if (!result) return;
-    if ("error" in result) notify({ kind: "error", text: result.error });
-    else select([result.created]);
+    if (!result) {
+      return;
+    }
+    if ("error" in result) {
+      notify({ kind: "error", text: result.error });
+    } else {
+      select([result.created]);
+    }
   }
 
   function onPointerDown(e: PointerEvent<SVGSVGElement>, point: Point): boolean {
@@ -169,7 +186,9 @@ export function McdCanvas() {
     }
 
     if (tool === "entity" || tool === "association" || tool === "inheritance") {
-      if (hit) return true;
+      if (hit) {
+        return true;
+      }
       const position = { x: snap(point.x, grid), y: snap(point.y, grid) };
       if (tool === "inheritance") {
         // Le triangle est centré sur le clic.
@@ -187,8 +206,11 @@ export function McdCanvas() {
 
     if (tool === "link") {
       if (gesture?.type === "link" && gesture.pending) {
-        if (hit && layouts.has(hit)) connect(gesture.fromId, hit);
-        else setGesture(null);
+        if (hit && layouts.has(hit)) {
+          connect(gesture.fromId, hit);
+        } else {
+          setGesture(null);
+        }
       } else if (hit && layouts.has(hit)) {
         setGesture({ type: "link", fromId: hit, start: point, current: point, pending: false });
       }
@@ -197,7 +219,9 @@ export function McdCanvas() {
 
     if (!hit) {
       const base = e.shiftKey ? selection : [];
-      if (!e.shiftKey) select([]);
+      if (!e.shiftKey) {
+        select([]);
+      }
       setGesture({ type: "marquee", start: point, current: point, base });
       return true;
     }
@@ -206,13 +230,21 @@ export function McdCanvas() {
       return true;
     }
     const ids = selected.has(hit) ? selection : [hit];
-    if (!selected.has(hit)) select(ids);
+    if (!selected.has(hit)) {
+      select(ids);
+    }
     const origins = new Map<Id, Point>();
-    for (const n of diagramNodes(doc)) if (ids.includes(n.id)) origins.set(n.id, positionOf(doc.layout, n.id));
+    for (const n of diagramNodes(doc)) {
+      if (ids.includes(n.id)) {
+        origins.set(n.id, positionOf(doc.layout, n.id));
+      }
+    }
     const bendOrigins = new Map<Id, Point[]>();
     for (const l of diagramLinks(doc)) {
       const bends = bendsOf(doc.layout, l.id);
-      if (bends.length && origins.has(linkSourceId(l)) && origins.has(l.entityId)) bendOrigins.set(l.id, bends);
+      if (bends.length && origins.has(linkSourceId(l)) && origins.has(l.entityId)) {
+        bendOrigins.set(l.id, bends);
+      }
     }
     if (origins.size > 0) {
       docHandle.store.getState().begin();
@@ -222,7 +254,9 @@ export function McdCanvas() {
   }
 
   function onPointerMove(_: PointerEvent<SVGSVGElement>, point: Point) {
-    if (!gesture) return;
+    if (!gesture) {
+      return;
+    }
     switch (gesture.type) {
       case "move": {
         const dx = point.x - gesture.start.x;
@@ -246,7 +280,9 @@ export function McdCanvas() {
       case "bend": {
         docHandle.store.getState().preview((d) => {
           const bends = d.layout.bends[gesture.linkId];
-          if (bends?.[gesture.index]) bends[gesture.index] = { x: snap(point.x, grid), y: snap(point.y, grid) };
+          if (bends?.[gesture.index]) {
+            bends[gesture.index] = { x: snap(point.x, grid), y: snap(point.y, grid) };
+          }
         });
         break;
       }
@@ -264,16 +300,22 @@ export function McdCanvas() {
   }
 
   function onPointerUp(e: PointerEvent<SVGSVGElement>, point: Point) {
-    if (!gesture) return;
+    if (!gesture) {
+      return;
+    }
     if (gesture.type === "move") {
       docHandle.store.getState().commit(gesture.origins.size > 1 ? "history.moveSelection" : "history.move");
     } else if (gesture.type === "bend") {
       docHandle.store.getState().commit(gesture.created ? "history.createBend" : "history.moveBend");
     } else if (gesture.type === "link") {
-      if (gesture.pending) return;
+      if (gesture.pending) {
+        return;
+      }
       const dragged = Math.hypot(point.x - gesture.start.x, point.y - gesture.start.y) > DRAG_THRESHOLD;
       // Simple clic : on attend le second clic. Glisser : on relie à l'objet sous le pointeur.
-      if (!dragged) return setGesture({ ...gesture, pending: true });
+      if (!dragged) {
+        return setGesture({ ...gesture, pending: true });
+      }
       return connect(gesture.fromId, hitIdAt(e));
     }
     setGesture(null);
@@ -292,9 +334,13 @@ export function McdCanvas() {
         grid={grid}
         className={tool === "select" ? "" : "cursor-crosshair"}
         onDoubleClick={(_, point) => {
-          if (tool !== "select" || readOnly) return;
+          if (tool !== "select" || readOnly) {
+            return;
+          }
           const target = mcdRenameTarget(doc, layouts, point);
-          if (!target) return;
+          if (!target) {
+            return;
+          }
           select([target.nodeId]);
           setRenaming(target);
         }}
@@ -302,7 +348,9 @@ export function McdCanvas() {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={() => {
-          if (gesture?.type === "move" || gesture?.type === "bend") docHandle.store.getState().cancel();
+          if (gesture?.type === "move" || gesture?.type === "bend") {
+            docHandle.store.getState().cancel();
+          }
           setGesture(null);
         }}
         onContextMenu={(e) => {
@@ -318,7 +366,9 @@ export function McdCanvas() {
           const under = document.elementFromPoint(e.clientX, e.clientY);
           const handle = under?.closest<SVGElement>("[data-handle=bend]");
           const linkId = hitIdAt(e);
-          if (!handle || !linkId) return openCanvasMenu(docHandle, e, linkId);
+          if (!handle || !linkId) {
+            return openCanvasMenu(docHandle, e, linkId);
+          }
           e.preventDefault();
           removeBend(docHandle, linkId, Number(handle.dataset.index));
         }}
@@ -439,9 +489,13 @@ function McdRename({
   const row = target.attributeId ? l?.rows.find((r) => r.attribute.id === target.attributeId) : undefined;
   const missing = !node || !l || (target.attributeId !== null && !row);
   useEffect(() => {
-    if (missing) onClose();
+    if (missing) {
+      onClose();
+    }
   }, [missing, onClose]);
-  if (missing) return null;
+  if (missing) {
+    return null;
+  }
   const box = row
     ? { x: l.x + PAD_X - 3, y: l.y + row.y, width: l.width - PAD_X - 2 + 3, height: ROW_HEIGHT }
     : { x: l.x + 2, y: l.y + 2, width: l.width - 4, height: TITLE_HEIGHT - 4 };
@@ -452,9 +506,13 @@ function McdRename({
       title={!row}
       onClose={onClose}
       commit={(value) => {
-        if (!row) return renameNode(docHandle, node.id, value);
+        if (!row) {
+          return renameNode(docHandle, node.id, value);
+        }
         const error = renameAttribute(docHandle, node.id, row.attribute.id, value);
-        if (!error) useUiStore.getState().showAttribute(row.attribute.id);
+        if (!error) {
+          useUiStore.getState().showAttribute(row.attribute.id);
+        }
         return error;
       }}
     />

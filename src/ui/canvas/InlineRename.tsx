@@ -21,8 +21,12 @@ export interface RenameTarget {
 
 /** Cible d'une colonne, si elle se renomme (rubrique, ou clé étrangère issue d'une patte). */
 export function columnTarget(sourceId: Id, column: LogicalColumn): RenameTarget | null {
-  if (column.origin) return { sourceId, column: { linkId: column.origin.linkId, originId: column.origin.attributeId } };
-  if (column.attributeId) return { sourceId, column: { attributeId: column.attributeId } };
+  if (column.origin) {
+    return { sourceId, column: { linkId: column.origin.linkId, originId: column.origin.attributeId } };
+  }
+  if (column.attributeId) {
+    return { sourceId, column: { attributeId: column.attributeId } };
+  }
   return null;
 }
 
@@ -70,7 +74,9 @@ export function InlineEditor({
 
   const accept = (): boolean => {
     const error = commit(input.current!.value);
-    if (error) useUiStore.getState().notify({ kind: "error", text: error });
+    if (error) {
+      useUiStore.getState().notify({ kind: "error", text: error });
+    }
     return !error;
   };
   const close = () => {
@@ -83,7 +89,9 @@ export function InlineEditor({
     e.stopPropagation();
     if (e.key === "Enter") {
       e.preventDefault();
-      if (accept()) close();
+      if (accept()) {
+        close();
+      }
     } else if (e.key === "Escape") {
       e.preventDefault();
       close();
@@ -99,7 +107,9 @@ export function InlineEditor({
       aria-label={value}
       onKeyDown={onKeyDown}
       onBlur={() => {
-        if (done.current) return;
+        if (done.current) {
+          return;
+        }
         accept();
         close();
       }}
@@ -136,9 +146,13 @@ export function InlineRename({
   const row = target.column && layout?.rows.find((r) => matches(target.column!, r.column));
   const missing = !layout || (target.column !== null && !row);
   useEffect(() => {
-    if (missing) onClose();
+    if (missing) {
+      onClose();
+    }
   }, [missing, onClose]);
-  if (missing) return null;
+  if (missing) {
+    return null;
+  }
 
   if (target.part === "type" && row?.column.attributeId) {
     const attributeId = row.column.attributeId;
@@ -161,7 +175,9 @@ export function InlineRename({
         onClose={onClose}
         commit={(value) => {
           const error = setColumnSqlType(doc, layout.sourceId, attributeId, value);
-          if (!error) useUiStore.getState().showAttribute(attributeId);
+          if (!error) {
+            useUiStore.getState().showAttribute(attributeId);
+          }
           return error;
         }}
       />
@@ -187,7 +203,9 @@ export function InlineRename({
       onClose={onClose}
       commit={(value) => {
         const error = renameLogical(doc, logical, layout.table, row?.column ?? null, value);
-        if (!error && row?.column.attributeId) useUiStore.getState().showAttribute(row.column.attributeId);
+        if (!error && row?.column.attributeId) {
+          useUiStore.getState().showAttribute(row.column.attributeId);
+        }
         return error;
       }}
     />

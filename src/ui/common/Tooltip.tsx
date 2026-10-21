@@ -37,13 +37,19 @@ export function TooltipLayer({ outside = false }: { outside?: boolean }) {
     };
     const onOver = (e: PointerEvent) => {
       const target = (e.target as Element | null)?.closest?.("[data-tooltip]") ?? null;
-      if (target === current.current) return;
+      if (target === current.current) {
+        return;
+      }
       hide();
-      if (!target) return;
+      if (!target) {
+        return;
+      }
       current.current = target;
       timer.current = window.setTimeout(() => {
         const text = target.getAttribute("data-tooltip");
-        if (text && target.isConnected) setShown({ text, anchor: target.getBoundingClientRect() });
+        if (text && target.isConnected) {
+          setShown({ text, anchor: target.getBoundingClientRect() });
+        }
       }, DELAY);
     };
     document.addEventListener("pointerover", onOver);
@@ -63,18 +69,26 @@ export function TooltipLayer({ outside = false }: { outside?: boolean }) {
 
   // Placement sous l'élément (au-dessus s'il manque de place), sans sortir de la fenêtre.
   useEffect(() => {
-    if (!shown || !bubble.current) return setPosition(null);
+    if (!shown || !bubble.current) {
+      return setPosition(null);
+    }
     const { width, height } = bubble.current.getBoundingClientRect();
     const { anchor } = shown;
     let top = anchor.bottom + GAP;
     const centered = anchor.left + anchor.width / 2 - width / 2;
-    if (outside) return setPosition({ left: Math.max(GAP, centered), top });
-    if (top + height > window.innerHeight - GAP) top = anchor.top - GAP - height;
+    if (outside) {
+      return setPosition({ left: Math.max(GAP, centered), top });
+    }
+    if (top + height > window.innerHeight - GAP) {
+      top = anchor.top - GAP - height;
+    }
     const left = Math.min(Math.max(GAP, centered), window.innerWidth - width - GAP);
     setPosition({ left, top: Math.max(GAP, top) });
   }, [shown, outside]);
 
-  if (!shown) return null;
+  if (!shown) {
+    return null;
+  }
   return (
     <div
       ref={bubble}

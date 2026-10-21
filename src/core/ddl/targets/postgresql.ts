@@ -86,7 +86,9 @@ export function postgresql(version: string | undefined): Dialect {
       binary: 'COLLATE "C"',
       insensitive: (klass) => {
         // Collation ICU non déterministe (PostgreSQL 12+) ; LIKE dessus seulement à partir de 18.
-        if (!since("12")) return { kind: "dropped" };
+        if (!since("12")) {
+          return { kind: "dropped" };
+        }
         const { name, locale } = PG_COLLATIONS[klass];
         return {
           kind: "emit",

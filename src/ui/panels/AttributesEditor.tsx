@@ -26,7 +26,9 @@ export function AdvancedFields({
           placeholder={t("physical.none")}
           onCommit={(value) => {
             const expression = value.trim();
-            if (expression === (a.defaultValue?.expression ?? "")) return;
+            if (expression === (a.defaultValue?.expression ?? "")) {
+              return;
+            }
             update({ defaultValue: expression ? { expression, dialect } : undefined });
           }}
         />

@@ -29,7 +29,9 @@ export function ToolbarHost() {
   const lastClick = useRef(0);
 
   function onGripDown(e: PointerEvent<HTMLElement>) {
-    if (e.button !== 0) return;
+    if (e.button !== 0) {
+      return;
+    }
     e.preventDefault();
     const now = Date.now();
     // Double-clic sur la poignée : ancrer / détacher.
@@ -47,7 +49,9 @@ export function ToolbarHost() {
     };
     let current: { position: { x: number; y: number } | null; overBand: boolean } | null = null;
     const move = (ev: globalThis.PointerEvent) => {
-      if (!state.floating && ev.clientY - state.start.y < DETACH_DISTANCE) return;
+      if (!state.floating && ev.clientY - state.start.y < DETACH_DISTANCE) {
+        return;
+      }
       if (!state.floating) {
         state.floating = true;
         state.offset = { x: 16, y: 16 };
@@ -62,7 +66,9 @@ export function ToolbarHost() {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       setDrag(null);
-      if (!current) return;
+      if (!current) {
+        return;
+      }
       const { position, overBand } = current;
       if (nativeWindows()) {
         // La barre devient une fenêtre native, à la même place à l'écran.

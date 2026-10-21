@@ -37,18 +37,24 @@ export function extractFragment(doc: ModelDocument, ids: Id[]): ModelFragment | 
   const entities = doc.entities.filter((e) => chosen.has(e.id));
   const associations = doc.associations.filter((a) => chosen.has(a.id));
   const inheritances = doc.inheritances.filter((h) => chosen.has(h.id));
-  if (!entities.length && !associations.length && !inheritances.length) return null;
+  if (!entities.length && !associations.length && !inheritances.length) {
+    return null;
+  }
   // Un trait suit son association ou son héritage ; sélectionné seul, il est ignoré.
   const links = doc.links.filter((l) => chosen.has(l.associationId));
   const inheritanceLinks = doc.inheritanceLinks.filter((l) => chosen.has(l.inheritanceId));
   const layout: DiagramLayout = { positions: {}, bends: {} };
   for (const node of [...entities, ...associations, ...inheritances]) {
     const position = doc.layout.positions[node.id];
-    if (position) layout.positions[node.id] = position;
+    if (position) {
+      layout.positions[node.id] = position;
+    }
   }
   for (const link of [...links, ...inheritanceLinks]) {
     const bends = doc.layout.bends[link.id];
-    if (bends?.length) layout.bends[link.id] = bends;
+    if (bends?.length) {
+      layout.bends[link.id] = bends;
+    }
   }
   return structuredClone({
     format: FRAGMENT_FORMAT,
@@ -66,9 +72,13 @@ export function extractFragment(doc: ModelDocument, ids: Id[]): ModelFragment | 
 export function parseFragment(text: string): ModelFragment | null {
   try {
     const data = JSON.parse(text) as Partial<ModelFragment>;
-    if (data?.format !== FRAGMENT_FORMAT || data.version !== 1) return null;
+    if (data?.format !== FRAGMENT_FORMAT || data.version !== 1) {
+      return null;
+    }
     const lists = [data.entities, data.associations, data.inheritances, data.links, data.inheritanceLinks];
-    if (!lists.every(Array.isArray) || !data.layout?.positions || !data.layout.bends) return null;
+    if (!lists.every(Array.isArray) || !data.layout?.positions || !data.layout.bends) {
+      return null;
+    }
     return data as ModelFragment;
   } catch {
     return null;
@@ -85,9 +95,15 @@ export function pasteFragment(doc: ModelDocument, fragment: ModelFragment, at?: 
   const ids = new Map<Id, Id>();
   for (const node of [...fragment.entities, ...fragment.associations, ...fragment.inheritances]) {
     ids.set(node.id, newId());
-    if ("attributes" in node) for (const a of node.attributes) ids.set(a.id, newId());
+    if ("attributes" in node) {
+      for (const a of node.attributes) {
+        ids.set(a.id, newId());
+      }
+    }
   }
-  for (const link of [...fragment.links, ...fragment.inheritanceLinks]) ids.set(link.id, newId());
+  for (const link of [...fragment.links, ...fragment.inheritanceLinks]) {
+    ids.set(link.id, newId());
+  }
   const copy = remapIds(structuredClone(fragment), ids);
 
   // Noms libres : « Client » → « Client_2 », « Client_3 »…
@@ -96,10 +112,16 @@ export function pasteFragment(doc: ModelDocument, fragment: ModelFragment, at?: 
   const logicalNames = new Set(
     [...doc.entities, ...doc.associations].map((n) => n.logicalName).filter((n): n is string => Boolean(n)),
   );
-  for (const e of copy.entities) e.name = freeName(e.name, entityNames);
-  for (const a of copy.associations) a.name = freeName(a.name, associationNames);
+  for (const e of copy.entities) {
+    e.name = freeName(e.name, entityNames);
+  }
+  for (const a of copy.associations) {
+    a.name = freeName(a.name, associationNames);
+  }
   for (const n of [...copy.entities, ...copy.associations]) {
-    if (n.logicalName) n.logicalName = freeName(n.logicalName, logicalNames);
+    if (n.logicalName) {
+      n.logicalName = freeName(n.logicalName, logicalNames);
+    }
     withoutConstraintNames(n);
   }
 
@@ -114,18 +136,26 @@ export function pasteFragment(doc: ModelDocument, fragment: ModelFragment, at?: 
       .map((l) => l.id)
       .filter((id) => !links.some((l) => l.id === id) && !inheritanceLinks.some((l) => l.id === id)),
   );
-  for (const link of links) delete link.foreignKeyConstraintName;
-  for (const h of copy.inheritances) {
-    if (h.parentId && !inheritanceLinks.some((l) => l.inheritanceId === h.id && l.entityId === h.parentId))
-      h.parentId = undefined;
+  for (const link of links) {
+    delete link.foreignKeyConstraintName;
   }
-  for (const n of [...copy.entities, ...copy.associations]) withoutLinks(n, dropped);
+  for (const h of copy.inheritances) {
+    if (h.parentId && !inheritanceLinks.some((l) => l.inheritanceId === h.id && l.entityId === h.parentId)) {
+      h.parentId = undefined;
+    }
+  }
+  for (const n of [...copy.entities, ...copy.associations]) {
+    withoutLinks(n, dropped);
+  }
 
   const offset = at ? offsetTo(fragment, at) : pasteOffset(doc, fragment);
-  for (const [id, p] of Object.entries(copy.layout.positions))
+  for (const [id, p] of Object.entries(copy.layout.positions)) {
     doc.layout.positions[id] = { x: p.x + offset.x, y: p.y + offset.y };
+  }
   for (const [id, bends] of Object.entries(copy.layout.bends)) {
-    if (!dropped.has(id)) doc.layout.bends[id] = bends.map((p) => ({ x: p.x + offset.x, y: p.y + offset.y }));
+    if (!dropped.has(id)) {
+      doc.layout.bends[id] = bends.map((p) => ({ x: p.x + offset.x, y: p.y + offset.y }));
+    }
   }
   doc.entities.push(...copy.entities);
   doc.associations.push(...copy.associations);
@@ -138,7 +168,9 @@ export function pasteFragment(doc: ModelDocument, fragment: ModelFragment, at?: 
 /** Décalage qui amène le coin supérieur gauche des objets du fragment en `at`. */
 function offsetTo(fragment: ModelFragment, at: Point): Point {
   const positions = Object.values(fragment.layout.positions);
-  if (!positions.length) return at;
+  if (!positions.length) {
+    return at;
+  }
   return { x: at.x - Math.min(...positions.map((p) => p.x)), y: at.y - Math.min(...positions.map((p) => p.y)) };
 }
 
@@ -146,12 +178,16 @@ function offsetTo(fragment: ModelFragment, at: Point): Point {
 function pasteOffset(doc: ModelDocument, fragment: ModelFragment): Point {
   const nodes = [...fragment.entities, ...fragment.associations, ...fragment.inheritances];
   const present = new Set([...doc.entities, ...doc.associations, ...doc.inheritances].map((n) => n.id));
-  if (!nodes.some((n) => present.has(n.id))) return { x: 0, y: 0 };
+  if (!nodes.some((n) => present.has(n.id))) {
+    return { x: 0, y: 0 };
+  }
   const step = 2 * doc.settings.grid.size;
   const anchor = fragment.layout.positions[nodes[0]!.id] ?? { x: 0, y: 0 };
   const occupied = (p: Point) => Object.values(doc.layout.positions).some((q) => q.x === p.x && q.y === p.y);
   let k = 1;
-  while (occupied({ x: anchor.x + k * step, y: anchor.y + k * step })) k++;
+  while (occupied({ x: anchor.x + k * step, y: anchor.y + k * step })) {
+    k++;
+  }
   return { x: k * step, y: k * step };
 }
 
@@ -162,7 +198,9 @@ export function freeName(name: string, taken: Set<string>): string {
     const suffixed = /^(.*)_(\d+)$/.exec(name);
     const base = suffixed && taken.has(suffixed[1]!) ? suffixed[1]! : name;
     let n = 2;
-    while (taken.has(`${base}_${n}`)) n++;
+    while (taken.has(`${base}_${n}`)) {
+      n++;
+    }
     result = `${base}_${n}`;
   }
   taken.add(result);
@@ -171,8 +209,12 @@ export function freeName(name: string, taken: Set<string>): string {
 
 /** Remplace partout (clés et valeurs) les identifiants de `ids` ; ce sont des UUID, sans ambiguïté. */
 function remapIds<T>(value: T, ids: Map<Id, Id>): T {
-  if (typeof value === "string") return (ids.get(value) ?? value) as T;
-  if (Array.isArray(value)) return value.map((v) => remapIds(v, ids)) as T;
+  if (typeof value === "string") {
+    return (ids.get(value) ?? value) as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => remapIds(v, ids)) as T;
+  }
   if (value && typeof value === "object") {
     return Object.fromEntries(Object.entries(value).map(([k, v]) => [ids.get(k) ?? k, remapIds(v, ids)])) as T;
   }
@@ -187,16 +229,24 @@ function withoutConstraintNames(node: Entity | Association) {
   delete node.primaryKeyName;
   delete node.triggers;
   delete node.sequences;
-  for (const list of [node.alternateKeys, node.indexes, node.checks]) for (const item of list ?? []) delete item.name;
+  for (const list of [node.alternateKeys, node.indexes, node.checks]) {
+    for (const item of list ?? []) {
+      delete item.name;
+    }
+  }
   for (const a of node.attributes) {
     delete a.sequence;
-    if (a.check) delete a.check.name;
+    if (a.check) {
+      delete a.check.name;
+    }
   }
 }
 
 /** Retire des clés et index les membres venus d'une patte abandonnée (et les clés vidées). */
 function withoutLinks(node: Entity | Association, dropped: Set<Id>) {
-  if (!dropped.size) return;
+  if (!dropped.size) {
+    return;
+  }
   const keep = (m: KeyMember) => !("linkId" in m) || !dropped.has(m.linkId);
   const prune = <K extends { members: KeyMember[]; prefixes?: (number | null)[]; include?: KeyMember[] }>(
     key: K,
@@ -207,6 +257,10 @@ function withoutLinks(node: Entity | Association, dropped: Set<Id>) {
     ...(key.prefixes && { prefixes: key.prefixes.filter((_, i) => keep(key.members[i]!)) }),
     ...(key.include && { include: key.include.filter(keep) }),
   });
-  if (node.alternateKeys) node.alternateKeys = node.alternateKeys.map(prune).filter((k) => k.members.length);
-  if (node.indexes) node.indexes = node.indexes.map(prune).filter((k) => k.members.length);
+  if (node.alternateKeys) {
+    node.alternateKeys = node.alternateKeys.map(prune).filter((k) => k.members.length);
+  }
+  if (node.indexes) {
+    node.indexes = node.indexes.map(prune).filter((k) => k.members.length);
+  }
 }

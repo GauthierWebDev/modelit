@@ -22,8 +22,12 @@ export function ForeignKeysSection({ tableOf, linkIds }: { tableOf?: Id; linkIds
   const rows: { table: string; column: LogicalColumn; referenced: string | undefined }[] = [];
   for (const table of logical.tables) {
     table.columns.forEach((column) => {
-      if (!column.origin) return;
-      if (table.source.id !== tableOf && !linkIds?.includes(column.origin.linkId)) return;
+      if (!column.origin) {
+        return;
+      }
+      if (table.source.id !== tableOf && !linkIds?.includes(column.origin.linkId)) {
+        return;
+      }
       const fk = table.foreignKeys.find((f) => f.columns.includes(column.name));
       const referenced = fk && `${fk.referencedTable}.${fk.referencedColumns[fk.columns.indexOf(column.name)]}`;
       rows.push({ table: table.name, column, referenced });
@@ -91,7 +95,9 @@ export function ForeignKeysSection({ tableOf, linkIds }: { tableOf?: Id; linkIds
 export function describeLinkage(doc: ModelDocument, linkId: Id): string {
   const reference = doc.links.find((l) => l.id === linkId);
   const association = reference && doc.associations.find((a) => a.id === reference.associationId);
-  if (!reference || !association) return "?";
+  if (!reference || !association) {
+    return "?";
+  }
   const entity = (id: Id) => doc.entities.find((e) => e.id === id)?.name ?? "?";
   const others = linksOf(doc, association.id).filter((l) => l.id !== reference.id);
   const tail = others.map((l) => `(${formatCardinality(l.cardinality)}) ${entity(l.entityId)}`).join(", ");

@@ -26,7 +26,9 @@ const primary = {
 export function DialogHost() {
   const request = useDialogStore((s) => s.queue[0]);
   const descriptionId = useId();
-  if (!request) return null;
+  if (!request) {
+    return null;
+  }
   const { icon: Icon, className } = ICONS[request.tone];
   const cancel = () => settleDialog(request.id, false);
   const ok = () => settleDialog(request.id, true);

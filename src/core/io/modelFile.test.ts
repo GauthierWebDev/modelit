@@ -71,9 +71,12 @@ describe("format de fichier natif", () => {
       positions: { e1: { x: 10, y: 20 }, a1: { x: 200, y: 20 }, h1: { x: 5, y: 300 } },
       bends: { l1: [{ x: 100, y: 0 }], il1: [{ x: 7, y: 8 }] },
     });
-    for (const node of [...doc.entities, ...doc.associations, ...doc.inheritances])
+    for (const node of [...doc.entities, ...doc.associations, ...doc.inheritances]) {
       expect(node).not.toHaveProperty("position");
-    for (const link of [...doc.links, ...doc.inheritanceLinks]) expect(link).not.toHaveProperty("bends");
+    }
+    for (const link of [...doc.links, ...doc.inheritanceLinks]) {
+      expect(link).not.toHaveProperty("bends");
+    }
     expect(JSON.parse(serializeModel(doc)).version).toBe(3);
   });
 

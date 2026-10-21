@@ -75,11 +75,17 @@ export function PropertiesSection() {
     const link = doc.links.find((l) => l.id === id);
     const inheritance = doc.inheritances.find((h) => h.id === id);
     const inheritanceLink = doc.inheritanceLinks.find((l) => l.id === id);
-    if (entity) content = <EntityPanel key={id} doc={doc} entity={entity} report={report} />;
-    else if (association) content = <AssociationPanel key={id} doc={doc} association={association} report={report} />;
-    else if (link) content = <LinkPanel key={id} doc={doc} link={link} report={report} />;
-    else if (inheritance) content = <InheritancePanel key={id} doc={doc} inheritance={inheritance} />;
-    else if (inheritanceLink) content = <InheritanceLinkPanel key={id} doc={doc} link={inheritanceLink} />;
+    if (entity) {
+      content = <EntityPanel key={id} doc={doc} entity={entity} report={report} />;
+    } else if (association) {
+      content = <AssociationPanel key={id} doc={doc} association={association} report={report} />;
+    } else if (link) {
+      content = <LinkPanel key={id} doc={doc} link={link} report={report} />;
+    } else if (inheritance) {
+      content = <InheritancePanel key={id} doc={doc} inheritance={inheritance} />;
+    } else if (inheritanceLink) {
+      content = <InheritanceLinkPanel key={id} doc={doc} link={inheritanceLink} />;
+    }
   }
 
   return (
@@ -93,7 +99,9 @@ export function PropertiesSection() {
 /** Champs désactivés dans l'onglet d'une session en lecture seule (O-05 §4.3). */
 export function ReadOnly({ children }: { children: ReactNode }) {
   const readOnly = useSessionReadOnly(useDocumentHandle());
-  if (!readOnly) return <>{children}</>;
+  if (!readOnly) {
+    return <>{children}</>;
+  }
   return (
     <>
       <p className="mx-3 mt-3 rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
@@ -113,7 +121,9 @@ export function ReadOnly({ children }: { children: ReactNode }) {
 function ArrangeSection() {
   const handle = useDocumentHandle();
   useDocumentView((s) => s.view);
-  if (useSessionReadOnly(handle)) return null;
+  if (useSessionReadOnly(handle)) {
+    return null;
+  }
   return (
     <Section title={t("arrange.title")}>
       <div className="flex flex-wrap gap-0.5">

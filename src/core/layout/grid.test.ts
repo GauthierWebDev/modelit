@@ -153,7 +153,7 @@ function randomModel(seed: number) {
   const k = 5 + Math.floor(r() * 8);
   const nodes: GridNode[] = [];
   const edges: GridEdge[] = [];
-  for (let i = 0; i < k; i++)
+  for (let i = 0; i < k; i++) {
     nodes.push({
       id: `e${i}`,
       width: 330 + r() * 240,
@@ -161,6 +161,7 @@ function randomModel(seed: number) {
       mcdWidth: 110 + r() * 30,
       mcdHeight: 60 + r() * 90,
     });
+  }
   const associations = Math.round(k * (1 + r() * 0.8));
   for (let j = 0; j < associations; j++) {
     const id = `a${j}`;
@@ -168,12 +169,19 @@ function randomModel(seed: number) {
     const a = Math.floor(r() * k);
     let b = Math.floor(r() * k);
     const kind = r();
-    if (kind < 0.1) b = a;
-    else while (b === a) b = Math.floor(r() * k);
+    if (kind < 0.1) {
+      b = a;
+    } else {
+      while (b === a) {
+        b = Math.floor(r() * k);
+      }
+    }
     edges.push({ a: id, b: `e${a}` }, { a: id, b: `e${b}` });
     if (kind > 0.9) {
       let c = Math.floor(r() * k);
-      while (c === a || c === b) c = Math.floor(r() * k);
+      while (c === a || c === b) {
+        c = Math.floor(r() * k);
+      }
       edges.push({ a: id, b: `e${c}` });
     }
   }

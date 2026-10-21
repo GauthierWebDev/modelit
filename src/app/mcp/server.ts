@@ -228,12 +228,15 @@ const WRITE_TOOLS = new Set(["apply_changes", "reverse_engineer", "auto_layout"]
 async function callTool(name: string, args: Record<string, unknown>, hooks: McpHooks) {
   const doc = activeDocument();
   const model = doc.store.getState().doc;
-  if (WRITE_TOOLS.has(name) && busy())
+  if (WRITE_TOOLS.has(name) && busy()) {
     return failure("ModelIt is busy (a dialog is open or a drag is in progress): try again in a moment.");
+  }
   // Session collaborative rejointe : lecteur, IA interdite par l'hôte (O-05 §8). Un nouvel onglet
   // (rétroconception) n'est pas concerné.
   const refusal = name === "reverse_engineer" ? null : WRITE_TOOLS.has(name) ? aiWriteRefusal(doc.id) : null;
-  if (refusal) return failure(refusal);
+  if (refusal) {
+    return failure(refusal);
+  }
   switch (name) {
     case "list_documents": {
       const { documents, activeId } = useWorkspaceStore.getState();
@@ -264,7 +267,9 @@ async function callTool(name: string, args: Record<string, unknown>, hooks: McpH
       );
     case "apply_changes": {
       const result = applyChanges(doc, (args.operations ?? []) as Operation[]);
-      if (!result.ok) return failure(`Nothing was applied. ${result.error}`);
+      if (!result.ok) {
+        return failure(`Nothing was applied. ${result.error}`);
+      }
       hooks.onApplied?.(result.summary.join(" ; "));
       return text({
         document: documentName(doc),
@@ -276,7 +281,9 @@ async function callTool(name: string, args: Record<string, unknown>, hooks: McpH
     case "reverse_engineer": {
       const sql = String(args.sql ?? "");
       const result = reverseEngineer(sql, newModelDocument(), detectDialect(sql) as SqlDialect);
-      if (result.report.tables === 0) return failure("No table found in the script.");
+      if (result.report.tables === 0) {
+        return failure("No table found in the script.");
+      }
       const opened = openInTab((d) => d.store.getState().load(result.doc, null, true));
       await hooks.autoLayout?.();
       hooks.onApplied?.(`reverse engineering: ${result.report.tables} table(s)`);
@@ -310,10 +317,13 @@ export async function handleMcpMessage(
     return { jsonrpc: "2.0", id: null, error: { code: -32600, message: "Invalid request" } };
   }
   const id = message.id ?? null;
-  if (methodHeader && methodHeader !== message.method)
+  if (methodHeader && methodHeader !== message.method) {
     return { jsonrpc: "2.0", id, error: { code: -32600, message: "Mcp-Method header does not match the body" } };
+  }
   hooks.onActivity?.();
-  if (message.id === undefined) return null; // notification (ex. notifications/initialized)
+  if (message.id === undefined) {
+    return null; // notification (ex. notifications/initialized)
+  }
   const ok = (result: unknown): Response => ({ jsonrpc: "2.0", id, result });
   switch (message.method) {
     case "initialize": {

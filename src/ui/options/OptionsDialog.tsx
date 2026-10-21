@@ -25,7 +25,9 @@ export function OptionsDialog() {
   const open = useUiStore((s) => s.optionsOpen);
   const setOpen = useUiStore((s) => s.setOptionsOpen);
   const prefs = usePreferencesStore();
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
 
   const defaults = prefs.defaults;
   const setDbms = (dbms: Dbms) => prefs.setDefaults({ dbms, dbmsVersion: resolveVersion(dbms, undefined) });
@@ -154,7 +156,9 @@ export function OptionsDialog() {
                 value={String(prefs.autosaveDelay)}
                 onCommit={(text) => {
                   const minutes = Number(text.replace(",", "."));
-                  if (!Number.isFinite(minutes) || minutes < 0) return t("common.positiveNumberExpected");
+                  if (!Number.isFinite(minutes) || minutes < 0) {
+                    return t("common.positiveNumberExpected");
+                  }
                   prefs.setAutosaveDelay(minutes);
                 }}
               />

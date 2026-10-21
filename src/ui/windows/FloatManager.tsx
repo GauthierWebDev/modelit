@@ -78,12 +78,17 @@ async function reconcile(layout: DockLayout) {
   for (const [label, { url, rect, resizable, focusable }] of wanted) {
     // La barre s'ajuste elle-même à son contenu : seule sa position est imposée après l'ouverture.
     const key = JSON.stringify(label === toolbarLabel ? { x: rect.x, y: rect.y } : rect);
-    if (!open.has(label)) await openFloat(label, url, rect, { resizable, focusable });
-    else if (applied.get(label) !== key && label !== toolbarLabel) await placeFloat(label, rect);
+    if (!open.has(label)) {
+      await openFloat(label, url, rect, { resizable, focusable });
+    } else if (applied.get(label) !== key && label !== toolbarLabel) {
+      await placeFloat(label, rect);
+    }
     applied.set(label, key);
   }
   for (const label of open) {
-    if (wanted.has(label)) continue;
+    if (wanted.has(label)) {
+      continue;
+    }
     applied.delete(label);
     await closeFloat(label);
   }
@@ -104,20 +109,26 @@ function onMoved(message: Extract<ToMain, { type: "moved" }>) {
   const { float, rect, pointer, final } = message;
   const layout = usePreferencesStore.getState().dock;
   if (!pointer) {
-    if (float.kind === "toolbar" && layout.toolbar.floating)
+    if (float.kind === "toolbar" && layout.toolbar.floating) {
       updateDock((l) => setToolbar(l, { position: { x: rect.x, y: rect.y } }));
-    if (float.kind === "group" && findGroup(layout, float.id)) updateDock((l) => setFloatingRect(l, float.id, rect));
+    }
+    if (float.kind === "group" && findGroup(layout, float.id)) {
+      updateDock((l) => setFloatingRect(l, float.id, rect));
+    }
     return;
   }
   const p = toClient(pointer);
   if (float.kind === "toolbar") {
     const over =
       p.y > -TOOLBAR_BAND_ABOVE && p.y < TOOLBAR_BAND && p.x >= -ZONE_MARGIN && p.x <= inner.width + ZONE_MARGIN;
-    if (useToolbarBand.getState().over !== (over && !final)) useToolbarBand.setState({ over: over && !final });
-    if (final)
+    if (useToolbarBand.getState().over !== (over && !final)) {
+      useToolbarBand.setState({ over: over && !final });
+    }
+    if (final) {
       updateDock((l) =>
         setToolbar(l, over ? { floating: false } : { floating: true, position: { x: rect.x, y: rect.y } }),
       );
+    }
     return;
   }
   const item: DragItem = { kind: "group", group: float.id };
@@ -127,12 +138,18 @@ function onMoved(message: Extract<ToMain, { type: "moved" }>) {
     // Mis à jour seulement quand la cible change : pas de clignotement des zones.
     const current = useDragStore.getState();
     const same = current.item !== null && JSON.stringify(current.target) === JSON.stringify(docking);
-    if (!same) useDragStore.setState({ item, pointer: null, target: docking });
+    if (!same) {
+      useDragStore.setState({ item, pointer: null, target: docking });
+    }
     return;
   }
   useDragStore.setState({ item: null, pointer: null, target: null });
-  if (docking) return updateDock((l) => moveGroup(l, float.id, docking));
-  if (findGroup(layout, float.id)) updateDock((l) => setFloatingRect(l, float.id, rect));
+  if (docking) {
+    return updateDock((l) => moveGroup(l, float.id, docking));
+  }
+  if (findGroup(layout, float.id)) {
+    updateDock((l) => setFloatingRect(l, float.id, rect));
+  }
 }
 
 /** Glisser commencé dans une fenêtre flottante : la cible est décidée ici. */
@@ -146,7 +163,9 @@ export function FloatManager() {
   const layout = usePreferencesStore((s) => s.dock);
 
   useEffect(() => {
-    if (!nativeWindows()) return;
+    if (!nativeWindows()) {
+      return;
+    }
     const offs: (() => void)[] = [];
     let disposed = false;
     void (async () => {
@@ -156,7 +175,9 @@ export function FloatManager() {
       };
       await refresh();
       const channel = await ownerChannel<ToReplica, ToMain>();
-      if (disposed) return;
+      if (disposed) {
+        return;
+      }
       offs.push(
         startOwner(channel, runMainCommand, {
           onDrop,
@@ -170,12 +191,16 @@ export function FloatManager() {
     })();
     return () => {
       disposed = true;
-      for (const off of offs) off();
+      for (const off of offs) {
+        off();
+      }
     };
   }, []);
 
   useEffect(() => {
-    if (nativeWindows()) void reconcile(layout);
+    if (nativeWindows()) {
+      void reconcile(layout);
+    }
   }, [layout]);
 
   return null;

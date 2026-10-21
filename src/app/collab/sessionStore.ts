@@ -48,7 +48,9 @@ export function createSessionStore(
   return createStore<SessionDocumentState>()((set, get) => {
     const record = (label: MessageKey, before: ModelDocument, after: ModelDocument) => {
       const redo = diff(before, after);
-      if (!redo.length) return;
+      if (!redo.length) {
+        return;
+      }
       const undo = diff(after, before);
       const past = [...(get().past as SessionEntry[]), { doc: after, label, undo, redo }].slice(-HISTORY_LIMIT);
       set({ past, future: [] });
@@ -69,48 +71,66 @@ export function createSessionStore(
       transactionStart: null,
 
       change(label, recipe) {
-        if (!canEdit()) return;
+        if (!canEdit()) {
+          return;
+        }
         const { doc, transactionStart } = get();
-        if (transactionStart) throw new Error("change() appelé pendant une transaction");
+        if (transactionStart) {
+          throw new Error("change() appelé pendant une transaction");
+        }
         const next = produce(doc, recipe);
-        if (next === doc) return;
+        if (next === doc) {
+          return;
+        }
         set({ doc: next });
         record(label, doc, next);
       },
 
       begin() {
-        if (!canEdit() || get().transactionStart) return;
+        if (!canEdit() || get().transactionStart) {
+          return;
+        }
         set({ transactionStart: get().doc });
       },
 
       preview(recipe) {
-        if (!get().transactionStart) return;
+        if (!get().transactionStart) {
+          return;
+        }
         set({ doc: produce(get().doc, recipe) });
       },
 
       commit(label) {
         const { doc, transactionStart } = get();
-        if (!transactionStart) return;
+        if (!transactionStart) {
+          return;
+        }
         set({ transactionStart: null });
         record(label, transactionStart, doc);
       },
 
       cancel() {
         const { transactionStart } = get();
-        if (transactionStart) set({ doc: transactionStart, transactionStart: null });
+        if (transactionStart) {
+          set({ doc: transactionStart, transactionStart: null });
+        }
       },
 
       undo() {
         const past = get().past as SessionEntry[];
         const entry = past.at(-1);
-        if (!entry || get().transactionStart || !canEdit()) return;
+        if (!entry || get().transactionStart || !canEdit()) {
+          return;
+        }
         set({ past: past.slice(0, -1), future: [entry, ...(get().future as SessionEntry[])] });
         replay(entry.label, entry.undo);
       },
 
       redo() {
         const [entry, ...rest] = get().future as SessionEntry[];
-        if (!entry || get().transactionStart || !canEdit()) return;
+        if (!entry || get().transactionStart || !canEdit()) {
+          return;
+        }
         set({ future: rest, past: [...(get().past as SessionEntry[]), entry].slice(-HISTORY_LIMIT) });
         replay(entry.label, entry.redo);
       },

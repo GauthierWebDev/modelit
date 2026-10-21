@@ -20,7 +20,9 @@ const V1 = readFileSync("fixtures/mediatheque_pg_v1.sql", "utf8");
 function generate(dbms: Dbms = "postgresql", version: string | undefined = "18", options: Partial<DdlOptions> = {}) {
   const { doc } = reverseEngineer(SOURCE, emptyDocument());
   const result = generateDdl(toLogicalModel(doc), { dbms, version }, options);
-  if (!result.ok) throw new Error(result.error);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
   return result;
 }
 
@@ -128,7 +130,9 @@ describe("critères d'acceptation", () => {
     for (const l of losses) {
       const create = table(sql, l.table);
       expect(create, l.message).toBeDefined();
-      if (l.column && !/,/.test(l.column)) expect(create).toMatch(new RegExp(`\\b${l.column}\\b`));
+      if (l.column && !/,/.test(l.column)) {
+        expect(create).toMatch(new RegExp(`\\b${l.column}\\b`));
+      }
     }
   });
 });
@@ -151,7 +155,9 @@ describe("P0 — le script s'exécute", () => {
       dbms: "postgresql",
       version: "18",
     });
-    if (!result.ok) throw new Error(result.error);
+    if (!result.ok) {
+      throw new Error(result.error);
+    }
     expect(table(result.sql, "oeuvre")).toContain("isbn CHAR(13) COLLATE merise_ai_ci NOT NULL");
     expect(result.losses).toContainEqual(
       expect.objectContaining({
@@ -169,7 +175,9 @@ describe("P0 — le script s'exécute", () => {
       dbms: "mysql",
       version: "8.4",
     });
-    if (!result.ok) throw new Error(result.error);
+    if (!result.ok) {
+      throw new Error(result.error);
+    }
     expect(result.sql).not.toMatch(/COLLATE/);
     expect(result.losses).toContainEqual(expect.objectContaining({ category: "collation", column: "nom" }));
   });
@@ -214,7 +222,9 @@ describe("P0 — le script s'exécute", () => {
       dbms: "postgresql",
       version: "18",
     });
-    if (!result.ok) throw new Error(result.error);
+    if (!result.ok) {
+      throw new Error(result.error);
+    }
     expect(table(result.sql, "oeuvre")).toContain("annee SMALLINT CHECK (annee BETWEEN 1901 AND 2155)");
   });
 
@@ -224,7 +234,9 @@ describe("P0 — le script s'exécute", () => {
       dbms: "postgresql",
       version: "18",
     });
-    if (!result.ok) throw new Error(result.error);
+    if (!result.ok) {
+      throw new Error(result.error);
+    }
     expect(result.losses).toContainEqual(
       expect.objectContaining({ category: "check", table: "oeuvre", message: expect.stringContaining("incompatible") }),
     );
@@ -348,7 +360,9 @@ describe("P2 — équivalents PostgreSQL", () => {
       dbms: "postgresql",
       version: "18",
     });
-    if (!result.ok) throw new Error(result.error);
+    if (!result.ok) {
+      throw new Error(result.error);
+    }
     expect(table(result.sql, "oeuvre")).toMatch(/prix_ttc NUMERIC\(8,2\),/);
     expect(result.losses).toContainEqual(expect.objectContaining({ category: "generated", column: "prix_ttc" }));
   });

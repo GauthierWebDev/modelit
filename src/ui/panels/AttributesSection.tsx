@@ -82,7 +82,9 @@ function AttributesPanel({
   // Rubrique ajoutée hors de la section (« ⋯ », menu contextuel, O-53) : la choisir et la nommer.
   const toEdit = useUiStore((s) => s.attributeToEdit);
   useEffect(() => {
-    if (!toEdit || !attributes.some((a) => a.id === toEdit)) return;
+    if (!toEdit || !attributes.some((a) => a.id === toEdit)) {
+      return;
+    }
     setSelected(toEdit);
     edit(toEdit);
     useUiStore.getState().editAttribute(null);
@@ -90,7 +92,9 @@ function AttributesPanel({
   // Colonne renommée dans le MLD / MPD (O-56) : la rubrique est choisie, le focus reste sur le canevas.
   const toShow = useUiStore((s) => s.attributeToShow);
   useEffect(() => {
-    if (!toShow || !attributes.some((a) => a.id === toShow)) return;
+    if (!toShow || !attributes.some((a) => a.id === toShow)) {
+      return;
+    }
     setSelected(toShow);
     useUiStore.getState().showAttribute(null);
   }, [toShow, attributes]);
@@ -110,25 +114,35 @@ function AttributesPanel({
   const update = (attributeId: Id, patch: Partial<Attribute>) =>
     apply(latest().map((a) => (a.id === attributeId ? { ...a, ...patch } : a)));
   const move = (from: number, to: number) => {
-    if (from === to || to < 0 || to >= attributes.length) return;
+    if (from === to || to < 0 || to >= attributes.length) {
+      return;
+    }
     const next = [...latest()];
     const [item] = next.splice(from, 1);
     next.splice(to, 0, item!);
     apply(next);
   };
   const remove = (i: number) => {
-    if (apply(latest().filter((_, j) => j !== i))) return;
+    if (apply(latest().filter((_, j) => j !== i))) {
+      return;
+    }
     const next = attributes[i + 1] ? i : i - 1;
     setSelected(attributes[i + 1]?.id ?? attributes[i - 1]?.id ?? null);
-    if (next >= 0) focusRow(next);
+    if (next >= 0) {
+      focusRow(next);
+    }
   };
   const add = () => {
     const list = latest();
     const taken = new Set(list.map((a) => a.name));
     let n = list.length + 1;
-    while (taken.has(t("attribute.defaultName", { n }))) n++;
+    while (taken.has(t("attribute.defaultName", { n }))) {
+      n++;
+    }
     const created = createAttribute(t("attribute.defaultName", { n }));
-    if (apply([...list, created])) return;
+    if (apply([...list, created])) {
+      return;
+    }
     setSelected(created.id);
     edit(created.id);
   };
@@ -137,7 +151,9 @@ function AttributesPanel({
 
   const onRowKey = (e: KeyboardEvent, i: number) => {
     // Touches d'une bascule ou de la corbeille de la ligne : elles gardent leur effet.
-    if (e.target !== e.currentTarget) return;
+    if (e.target !== e.currentTarget) {
+      return;
+    }
     const a = attributes[i]!;
     let handled = true;
     if (readOnly && (e.altKey || e.key === "Delete" || e.key === "Backspace")) {
@@ -159,7 +175,9 @@ function AttributesPanel({
     } else if (e.key === "Enter") {
       setSelected(a.id);
       edit(a.id);
-    } else handled = false;
+    } else {
+      handled = false;
+    }
     if (handled) {
       e.preventDefault();
       e.stopPropagation();
@@ -354,7 +372,9 @@ function Pill({ label, tooltip, on, onToggle }: { label: string; tooltip: string
 
 /** Pastille d'une rubrique en erreur (nom en double) ou en avertissement (sans type) (O-15). */
 function Badge({ attribute, duplicate }: { attribute: Attribute; duplicate: boolean }) {
-  if (!duplicate && attribute.type) return null;
+  if (!duplicate && attribute.type) {
+    return null;
+  }
   const message = duplicate ? t("attributes.duplicate") : t("attributes.untyped");
   return (
     <span
@@ -375,7 +395,9 @@ const DropLine = () => <div className="mx-2 h-0.5 rounded bg-blue-500" />;
 function useRowDrag(rows: { current: (HTMLDivElement | null)[] }, move: (from: number, to: number) => void) {
   const [state, setState] = useState<{ from: number; target: number } | null>(null);
   const start = (e: PointerEvent<HTMLElement>, from: number) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0) {
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     // Le focus quitte un éventuel champ : ⌘Z annule ensuite le déplacement, pas la saisie.
@@ -398,7 +420,9 @@ function useRowDrag(rows: { current: (HTMLDivElement | null)[] }, move: (from: n
       setState(null);
       // Insertion avant la ligne `target` : au-delà de la ligne d'origine, l'index se décale d'un cran.
       const to = target > from ? target - 1 : target;
-      if (to !== from) move(from, to);
+      if (to !== from) {
+        move(from, to);
+      }
     };
     handle.addEventListener("pointermove", onMove);
     handle.addEventListener("pointerup", onUp);
@@ -411,7 +435,9 @@ function useRowDrag(rows: { current: (HTMLDivElement | null)[] }, move: (from: n
 
 /** Résumé court du type d'une rubrique (« Texte var. 50 », « Entier 64 bits »…). */
 export function typeSummary(type: DataType | undefined): string {
-  if (!type) return t("attributes.untypedShort");
+  if (!type) {
+    return t("attributes.untypedShort");
+  }
   switch (type.kind) {
     case "text": {
       const encoding = type.encoding === "ascii" ? "" : ` ${t(`type.${type.encoding}`)}`;

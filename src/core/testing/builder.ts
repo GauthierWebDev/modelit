@@ -42,9 +42,13 @@ export function model() {
       doc.associations.push({ ...a, ...patch });
       for (const leg of legs) {
         const m = /^(\S+) (\d+),(\d+|n)(\(R\))?$/.exec(leg);
-        if (!m) throw new Error(`Patte invalide : ${leg}`);
+        if (!m) {
+          throw new Error(`Patte invalide : ${leg}`);
+        }
         const entity = doc.entities.find((e) => e.name === m[1]);
-        if (!entity) throw new Error(`Entité inconnue : ${m[1]}`);
+        if (!entity) {
+          throw new Error(`Entité inconnue : ${m[1]}`);
+        }
         const link = createLink(a.id, entity.id);
         const max: CardinalityMax = m[3] === "n" ? "n" : Number(m[3]);
         link.cardinality = { min: Number(m[2]), max };
@@ -57,20 +61,27 @@ export function model() {
     inherit(parent: string | null, children: string[], constraint: InheritanceConstraint = "none") {
       const id = (name: string) => {
         const e = doc.entities.find((x) => x.name === name);
-        if (!e) throw new Error(`Entité inconnue : ${name}`);
+        if (!e) {
+          throw new Error(`Entité inconnue : ${name}`);
+        }
         return e.id;
       };
       const h = createInheritance();
       h.constraint = constraint;
-      if (parent) h.parentId = id(parent);
+      if (parent) {
+        h.parentId = id(parent);
+      }
       doc.inheritances.push(h);
-      for (const name of [...(parent ? [parent] : []), ...children])
+      for (const name of [...(parent ? [parent] : []), ...children]) {
         doc.inheritanceLinks.push(createInheritanceLink(h.id, id(name)));
+      }
       return api;
     },
     typed(entity: string, attribute: string, type: DataType) {
       const attr = doc.entities.find((e) => e.name === entity)?.attributes.find((a) => a.name === attribute);
-      if (!attr) throw new Error(`Rubrique inconnue : ${entity}.${attribute}`);
+      if (!attr) {
+        throw new Error(`Rubrique inconnue : ${entity}.${attribute}`);
+      }
       attr.type = type;
       return api;
     },

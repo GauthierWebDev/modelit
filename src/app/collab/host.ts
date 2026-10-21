@@ -105,8 +105,14 @@ export function startHost({
   const presence = new Map<string, Presence>();
   const relayPresence = (id: string, value: Presence) => {
     presence.set(id, value);
-    if (id !== host.id) state.setState((s) => ({ presence: { ...s.presence, [id]: value } }));
-    for (const peer of guests.keys()) if (peer !== id) link.send(peer, { type: "presence", id, presence: value });
+    if (id !== host.id) {
+      state.setState((s) => ({ presence: { ...s.presence, [id]: value } }));
+    }
+    for (const peer of guests.keys()) {
+      if (peer !== id) {
+        link.send(peer, { type: "presence", id, presence: value });
+      }
+    }
   };
   const forget = (id: string) => {
     presence.delete(id);
@@ -116,7 +122,9 @@ export function startHost({
     });
   };
   const broadcast = (message: ToGuest) => {
-    for (const peer of guests.keys()) link.send(peer, message);
+    for (const peer of guests.keys()) {
+      link.send(peer, message);
+    }
   };
   const publishParticipants = () => {
     const participants = everyone();
@@ -149,7 +157,9 @@ export function startHost({
     }
     if (password) {
       const pending = challenges.get(peer);
-      if (!pending || !message.proof) return challenge(peer, pending?.attemptsLeft ?? MAX_ATTEMPTS);
+      if (!pending || !message.proof) {
+        return challenge(peer, pending?.attemptsLeft ?? MAX_ATTEMPTS);
+      }
       if (!(await password.verify(pending.nonce, message.proof))) {
         await wait(failureDelay(++failures));
         if (pending.attemptsLeft <= 1) {
@@ -175,7 +185,9 @@ export function startHost({
       chat,
       ...(title ? { title } : {}),
     });
-    for (const [id, value] of presence) link.send(peer, { type: "presence", id, presence: value });
+    for (const [id, value] of presence) {
+      link.send(peer, { type: "presence", id, presence: value });
+    }
     publishParticipants();
   };
 
@@ -186,31 +198,44 @@ export function startHost({
         void hello(peer, message);
         return;
       case "ops": {
-        if (!guest) return;
+        if (!guest) {
+          return;
+        }
         const snapshot = store.getState().doc;
-        if (guest.role !== "editor") return link.send(peer, { type: "rejected", reason: "read-only", doc: snapshot });
-        if (message.ai && !state.getState().aiAllowed)
+        if (guest.role !== "editor") {
+          return link.send(peer, { type: "rejected", reason: "read-only", doc: snapshot });
+        }
+        if (message.ai && !state.getState().aiAllowed) {
           return link.send(peer, { type: "rejected", reason: "ai-disabled", doc: snapshot });
+        }
         store.getState().applyRemote(message.ops);
         return broadcast({ type: "ops", ops: message.ops, author: peer });
       }
       case "identity": {
-        if (!guest) return;
+        if (!guest) {
+          return;
+        }
         guests.set(peer, { ...guest, name: message.name, color: message.color });
         return publishParticipants();
       }
       case "voice": {
-        if (!guest) return;
+        if (!guest) {
+          return;
+        }
         const { audio: _previous, ...rest } = guest;
         guests.set(peer, message.joined ? { ...rest, audio: { muted: message.muted } } : rest);
         return publishParticipants();
       }
       case "presence":
-        if (guest) relayPresence(peer, message.presence);
+        if (guest) {
+          relayPresence(peer, message.presence);
+        }
         return;
       case "chat":
         // Lecteurs compris : tout le monde est dans le chat (O-05 §6).
-        if (guest && message.text.trim()) post("text", guest, message.text);
+        if (guest && message.text.trim()) {
+          post("text", guest, message.text);
+        }
         return;
       case "leave":
         link.close(peer);
@@ -223,13 +248,23 @@ export function startHost({
   const listeners = (except: string) => [...guests.values()].filter((g) => g.audio && g.id !== except).map((g) => g.id);
   const offDatagram = link.onDatagram((peer, data) => {
     const guest = guests.get(peer);
-    if (!guest?.audio || guest.audio.muted) return;
+    if (!guest?.audio || guest.audio.muted) {
+      return;
+    }
     const packet = decodePacket(data);
-    if (!packet) return;
+    if (!packet) {
+      return;
+    }
     const relayed = { ...packet, speaker: peer };
     const targets = listeners(peer);
-    if (targets.length) link.sendDatagram(targets, encodePacket(relayed));
-    if (host.audio) for (const h of audioHandlers) h(relayed);
+    if (targets.length) {
+      link.sendDatagram(targets, encodePacket(relayed));
+    }
+    if (host.audio) {
+      for (const h of audioHandlers) {
+        h(relayed);
+      }
+    }
   });
 
   const offClose = link.onClose((peer) => {
@@ -255,11 +290,15 @@ export function startHost({
     },
     setPresence: (value) => relayPresence(host.id, value),
     sendChat: (text) => {
-      if (text.trim()) post("text", host, text);
+      if (text.trim()) {
+        post("text", host, text);
+      }
     },
     kick: (peer) => {
       const guest = guests.get(peer);
-      if (!guest) return;
+      if (!guest) {
+        return;
+      }
       link.send(peer, { type: "ended", reason: "kicked" });
       guests.delete(peer);
       post("kicked", guest);
@@ -268,14 +307,21 @@ export function startHost({
       publishParticipants();
     },
     setVoice: (joined, muted) => {
-      if (joined) host.audio = { muted };
-      else delete host.audio;
+      if (joined) {
+        host.audio = { muted };
+      } else {
+        delete host.audio;
+      }
       publishParticipants();
     },
     sendAudio: (packet) => {
-      if (!host.audio || host.audio.muted) return;
+      if (!host.audio || host.audio.muted) {
+        return;
+      }
       const targets = listeners(host.id);
-      if (targets.length) link.sendDatagram(targets, encodePacket({ ...packet, speaker: host.id }));
+      if (targets.length) {
+        link.sendDatagram(targets, encodePacket({ ...packet, speaker: host.id }));
+      }
     },
     onAudio: (handler) => {
       audioHandlers.add(handler);
@@ -283,7 +329,9 @@ export function startHost({
     },
     stop: () => {
       broadcast({ type: "ended", reason: "stopped" });
-      for (const peer of [...guests.keys()]) link.close(peer);
+      for (const peer of [...guests.keys()]) {
+        link.close(peer);
+      }
       guests.clear();
       offMessage();
       offClose();

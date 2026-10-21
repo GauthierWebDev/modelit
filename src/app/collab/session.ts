@@ -129,7 +129,9 @@ export const selectReadOnlyTab = (s: CollabState): string | null =>
 /** Messages reçus : compte ceux des autres arrivés depuis la dernière synchronisation. */
 function trackChat(next: ChatMessage[], you: string | null): Pick<CollabState, "chat" | "unread"> {
   const { chat, unread } = useCollabStore.getState();
-  if (next === chat) return { chat, unread };
+  if (next === chat) {
+    return { chat, unread };
+  }
   const last = chat.at(-1)?.id ?? 0;
   return { chat: next, unread: unread + next.filter((m) => m.id > last && m.author !== you).length };
 }
@@ -179,12 +181,16 @@ export async function shareActiveTab({
   password?: string;
   aiAllowed?: boolean;
 } = {}): Promise<boolean> {
-  if (!transport || useCollabStore.getState().mode !== "idle") return false;
-  if (password && password.length < MIN_PASSWORD_LENGTH)
+  if (!transport || useCollabStore.getState().mode !== "idle") {
+    return false;
+  }
+  if (password && password.length < MIN_PASSWORD_LENGTH) {
     return fail(t("collab.passwordTooShort", { n: MIN_PASSWORD_LENGTH }));
+  }
   const tab = activeDocument();
-  if (new TextEncoder().encode(JSON.stringify(tab.store.getState().doc)).length > MAX_DOCUMENT_BYTES)
+  if (new TextEncoder().encode(JSON.stringify(tab.store.getState().doc)).length > MAX_DOCUMENT_BYTES) {
     return fail(t("collab.tooLarge"));
+  }
   useCollabStore.setState({ mode: "starting", error: null });
   presenceSent = null;
   try {
@@ -218,7 +224,9 @@ export async function shareActiveTab({
     const offState = session.state.subscribe(sync);
     // Onglet fermé : fin du partage.
     const offTabs = useWorkspaceStore.subscribe((s) => {
-      if (!s.documents.some((d) => d.id === tab.id)) void stopSharing();
+      if (!s.documents.some((d) => d.id === tab.id)) {
+        void stopSharing();
+      }
     });
     host = {
       session,
@@ -244,7 +252,9 @@ export async function shareActiveTab({
 
 /** Arrête le partage pour tous (O-05 §4.4) ; l'onglet redevient un document ordinaire. */
 export async function stopSharing() {
-  if (!host) return;
+  if (!host) {
+    return;
+  }
   const { session, stop, off } = host;
   host = null;
   off();
@@ -276,14 +286,18 @@ export const kick = (peer: string) => host?.session.kick(peer);
 /** Exclusion demandée depuis la liste des participants : confirmée d'abord (O-05 §4.3). */
 async function confirmKick(peer: string) {
   const name = useCollabStore.getState().participants.find((p) => p.id === peer)?.name;
-  if (!name) return;
+  if (!name) {
+    return;
+  }
   const ok = await confirmDialog({
     title: t("collab.kickTitle"),
     message: t("collab.kickConfirm", { name }),
     okLabel: t("collab.kickOk"),
     cancelLabel: t("common.cancel"),
   });
-  if (ok) kick(peer);
+  if (ok) {
+    kick(peer);
+  }
 }
 
 // ——— Invité ———
@@ -291,9 +305,15 @@ async function confirmKick(peer: string) {
 /** Rejoint une session par un lien d'invitation (O-05 §4.2) ; la session s'ouvre dans un nouvel onglet. */
 export async function joinFromLink(url: string): Promise<boolean> {
   const parsed = parseLink(url);
-  if (!parsed) return fail(t("collab.invalidLink"));
-  if (!transport) return false;
-  if (useCollabStore.getState().mode !== "idle") return fail(t("collab.alreadyInSession"));
+  if (!parsed) {
+    return fail(t("collab.invalidLink"));
+  }
+  if (!transport) {
+    return false;
+  }
+  if (useCollabStore.getState().mode !== "idle") {
+    return fail(t("collab.alreadyInSession"));
+  }
   useCollabStore.setState({ mode: "joining", error: null });
   presenceSent = null;
   let link: GuestLink;
@@ -324,9 +344,15 @@ export async function joinFromLink(url: string): Promise<boolean> {
       opened = true;
       addTab(tab, title);
       useCollabStore.setState({ mode: "guest", tabId: tab.id });
-    } else if (opened) setTitle(tab.id, title);
-    if (s.status === "disconnected") reconnect();
-    if (s.status === "ended") void endGuestSession(s.ended);
+    } else if (opened) {
+      setTitle(tab.id, title);
+    }
+    if (s.status === "disconnected") {
+      reconnect();
+    }
+    if (s.status === "ended") {
+      void endGuestSession(s.ended);
+    }
   };
   const offState = session.state.subscribe(sync);
   guest = { session, addr: parsed.addr, off: offState };
@@ -336,11 +362,15 @@ export async function joinFromLink(url: string): Promise<boolean> {
 
 /** Connexion perdue : nouvelles tentatives pendant 30 s, puis fin de session (O-05 §4.4). */
 function reconnect() {
-  if (!guest || guest.retry !== undefined || !transport) return;
+  if (!guest || guest.retry !== undefined || !transport) {
+    return;
+  }
   const current = guest;
   const deadline = Date.now() + RECONNECT_FOR;
   const attempt = async () => {
-    if (guest !== current) return;
+    if (guest !== current) {
+      return;
+    }
     try {
       current.session.reconnect(await transport!.connect(current.addr));
       current.retry = undefined;
@@ -360,8 +390,9 @@ function reconnect() {
  * l'hôte », pas une perte de connexion) ; un invité la quitte (O-05 §4.4).
  */
 export async function endSessionOnExit() {
-  if (host) await stopSharing();
-  else if (guest) {
+  if (host) {
+    await stopSharing();
+  } else if (guest) {
     const { session, off, retry } = guest;
     guest = null;
     off();
@@ -384,7 +415,9 @@ export async function leaveSession() {
  * (D16), puis un message en donne la raison.
  */
 async function endGuestSession(reason: string | null) {
-  if (!guest) return;
+  if (!guest) {
+    return;
+  }
   const { session, off, retry } = guest;
   guest = null;
   off();
@@ -437,10 +470,18 @@ async function endGuestSession(reason: string | null) {
  */
 export function aiWriteRefusal(docId: string): string | null {
   const { mode, tabId, guest: state, aiAllowed } = useCollabStore.getState();
-  if (mode !== "guest" || tabId !== docId || !state) return null;
-  if (state.role === "reader") return "This is a read-only session: the document can be read, not changed.";
-  if (!aiAllowed) return "AI assistants are disabled by the session host. Reading is still allowed.";
-  if (state.status !== "connected") return "The session is reconnecting to its host: try again in a moment.";
+  if (mode !== "guest" || tabId !== docId || !state) {
+    return null;
+  }
+  if (state.role === "reader") {
+    return "This is a read-only session: the document can be read, not changed.";
+  }
+  if (!aiAllowed) {
+    return "AI assistants are disabled by the session host. Reading is still allowed.";
+  }
+  if (state.status !== "connected") {
+    return "The session is reconnecting to its host: try again in a moment.";
+  }
   return null;
 }
 
@@ -459,7 +500,9 @@ const samePresence = (a: Presence, b: Presence) =>
 
 function flushPresence() {
   presenceTimer = undefined;
-  if (!presenceNext) return;
+  if (!presenceNext) {
+    return;
+  }
   const value = presenceNext;
   presenceNext = null;
   presenceAt = Date.now();
@@ -473,16 +516,23 @@ function flushPresence() {
  * au plus 20 fois par seconde ; le dernier état part toujours.
  */
 export function reportPresence(value: Presence) {
-  if (!host && !guest) return;
+  if (!host && !guest) {
+    return;
+  }
   if (presenceSent && samePresence(presenceSent, value)) {
     presenceNext = null;
     return;
   }
   presenceNext = value;
-  if (presenceTimer !== undefined) return;
+  if (presenceTimer !== undefined) {
+    return;
+  }
   const wait = PRESENCE_EVERY - (Date.now() - presenceAt);
-  if (wait <= 0) flushPresence();
-  else presenceTimer = setTimeout(flushPresence, wait);
+  if (wait <= 0) {
+    flushPresence();
+  } else {
+    presenceTimer = setTimeout(flushPresence, wait);
+  }
 }
 
 /** Nom de l'onglet partagé, pour l'interface. */
@@ -566,7 +616,9 @@ export const sameCollabMirror = (a: CollabMirror, b: CollabMirror) =>
 
 export function applyCollabMirror(mirror: CollabMirror) {
   // Rien de changé : pas de nouvel état (il repartirait vers la principale par les abonnements).
-  if (JSON.stringify(mirror) === JSON.stringify(collabMirror())) return;
+  if (JSON.stringify(mirror) === JSON.stringify(collabMirror())) {
+    return;
+  }
   const { views, ...rest } = mirror;
   useCollabStore.setState({
     ...rest,
@@ -579,11 +631,17 @@ export function applyCollabMirror(mirror: CollabMirror) {
 /** Section « Session » (O-05 §7) : affichée au début d'une session, masquée à la fin. */
 useCollabStore.subscribe((s, p) => {
   // Fenêtre principale seulement (une flottante reçoit sa disposition de la principale).
-  if (!transport) return;
+  if (!transport) {
+    return;
+  }
   const active = (mode: CollabMode) => mode === "host" || mode === "guest";
-  if (active(s.mode) === active(p.mode)) return;
+  if (active(s.mode) === active(p.mode)) {
+    return;
+  }
   updateDock((layout) => {
-    if (!active(s.mode)) return hideSection(layout, "session");
+    if (!active(s.mode)) {
+      return hideSection(layout, "session");
+    }
     const shown = showSection(layout, "session");
     const found = groupOf(shown, "session");
     return found ? setActive(shown, found.group.id, "session") : shown;
@@ -592,7 +650,9 @@ useCollabStore.subscribe((s, p) => {
 
 /** Identité changée dans les options : visible tout de suite par les autres (O-05 §3). */
 usePreferencesStore.subscribe((s, p) => {
-  if (s.identity === p.identity) return;
+  if (s.identity === p.identity) {
+    return;
+  }
   const { name, color } = me();
   host?.session.setIdentity(name, color);
   guest?.session.setIdentity(name, color);

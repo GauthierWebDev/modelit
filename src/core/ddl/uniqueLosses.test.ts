@@ -27,7 +27,9 @@ function model(): LogicalModel {
 
 function losses(m: LogicalModel, dbms: Dbms, version: string) {
   const result = generateDdl(m, { dbms, version });
-  if (!result.ok) throw new Error(result.error);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
   return result.losses.map((l) => l.message);
 }
 

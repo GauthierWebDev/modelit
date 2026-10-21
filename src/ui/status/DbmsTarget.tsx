@@ -26,14 +26,20 @@ export function DbmsTarget() {
   const close = useCallback(() => {
     setOpen(false);
     // Rend le clavier au canevas : les raccourcis ne doivent pas viser une liste de la boîte.
-    if (ref.current?.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
+    if (ref.current?.contains(document.activeElement)) {
+      (document.activeElement as HTMLElement).blur();
+    }
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const onPointer = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && close();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape") {
+        return;
+      }
       // Échap ferme la boîte sans désélectionner ni changer d'outil sur le canevas.
       e.stopPropagation();
       close();
@@ -57,10 +63,14 @@ export function DbmsTarget() {
     ...(custom && !library.some((d) => d.id === custom.id) ? [{ id: custom.id, name: custom.name }] : []),
   ];
   const choose = (next: string) => {
-    if (!next.startsWith("custom:")) return setTargetDbms(doc, next as Dbms);
+    if (!next.startsWith("custom:")) {
+      return setTargetDbms(doc, next as Dbms);
+    }
     const id = next.slice("custom:".length);
     const entry = library.find((d) => d.id === id);
-    if (entry) applyCustomDbms(doc, entry);
+    if (entry) {
+      applyCustomDbms(doc, entry);
+    }
   };
 
   return (

@@ -31,7 +31,9 @@ export interface VoiceFrame {
 /** Niveau d'une trame : dBFS ramenés à 0–255 (−60 dB → 0, 0 dB → 255). */
 export function levelOf(samples: Float32Array): number {
   let sum = 0;
-  for (const s of samples) sum += s * s;
+  for (const s of samples) {
+    sum += s * s;
+  }
   const db = 10 * Math.log10(sum / samples.length + 1e-12);
   return Math.max(0, Math.min(255, Math.round(((db + 60) / 60) * 255)));
 }
@@ -43,14 +45,17 @@ export async function voiceSupport(): Promise<"ok" | "no-codec" | "no-media"> {
     typeof AudioWorkletNode === "undefined" ||
     typeof AudioEncoder === "undefined" ||
     typeof AudioDecoder === "undefined"
-  )
+  ) {
     return "no-codec";
+  }
   try {
     const [enc, dec] = await Promise.all([
       AudioEncoder.isConfigSupported(ENCODER_CONFIG),
       AudioDecoder.isConfigSupported(DECODER_CONFIG),
     ]);
-    if (!enc.supported || !dec.supported) return "no-codec";
+    if (!enc.supported || !dec.supported) {
+      return "no-codec";
+    }
   } catch {
     return "no-codec";
   }
@@ -89,14 +94,17 @@ export async function startVoice({
 }: StartOptions): Promise<{ engine: VoiceEngine; mic: boolean; micError?: string }> {
   const context = new AudioContext({ sampleRate: SAMPLE_RATE, latencyHint: "interactive" });
   await context.audioWorklet.addModule(new URL("./voiceWorklet.js", import.meta.url));
-  if (context.state === "suspended") await context.resume().catch(() => undefined);
+  if (context.state === "suspended") {
+    await context.resume().catch(() => undefined);
+  }
 
   // ——— Capture ———
   let stream: MediaStream | null = null;
   let source: AudioNode | null = null;
   let micError: string | undefined;
-  if (input) source = input(context);
-  else {
+  if (input) {
+    source = input(context);
+  } else {
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
@@ -134,9 +142,13 @@ export async function startVoice({
       const level = levelOf(samples);
       onLevel?.(muted ? 0 : level);
       const now = performance.now();
-      if (level >= GATE_LEVEL) openUntil = now + HANGOVER_MS;
+      if (level >= GATE_LEVEL) {
+        openUntil = now + HANGOVER_MS;
+      }
       // Silence ou micro coupé : rien n'est encodé ni envoyé.
-      if (muted || now > openUntil || encoder.state !== "configured") return;
+      if (muted || now > openUntil || encoder.state !== "configured") {
+        return;
+      }
       levels.push(level);
       const data = new AudioData({
         format: "f32",
@@ -158,7 +170,9 @@ export async function startVoice({
   const volumes = new Map<string, number>();
   const playerOf = (speaker: string) => {
     let player = players.get(speaker);
-    if (player) return player;
+    if (player) {
+      return player;
+    }
     const node = new AudioWorkletNode(context, "modelit-player", {
       numberOfInputs: 0,
       numberOfOutputs: 1,
@@ -185,39 +199,57 @@ export async function startVoice({
   const engine: VoiceEngine = {
     setMuted(value) {
       muted = value;
-      for (const t of stream?.getAudioTracks() ?? []) t.enabled = !value;
+      for (const t of stream?.getAudioTracks() ?? []) {
+        t.enabled = !value;
+      }
     },
     play(speaker, frame) {
       const player = playerOf(speaker);
       // Paquet en retard (arrivé après un plus récent) : ignoré. Numéros sur 16 bits, qui bouclent.
       if (player.last >= 0) {
         const delta = (frame.seq - player.last + 0x10000) & 0xffff;
-        if (delta === 0 || delta > 0x8000) return;
+        if (delta === 0 || delta > 0x8000) {
+          return;
+        }
       }
       player.last = frame.seq;
-      if (player.decoder.state !== "configured") return;
+      if (player.decoder.state !== "configured") {
+        return;
+      }
       player.decoder.decode(new EncodedAudioChunk({ type: "key", timestamp: frame.seq * 20_000, data: frame.payload }));
     },
     setVolume(speaker, gain) {
       const value = Math.max(0, Math.min(2, gain));
       volumes.set(speaker, value);
       const player = players.get(speaker);
-      if (player) player.gain.gain.setTargetAtTime(value, context.currentTime, 0.02);
+      if (player) {
+        player.gain.gain.setTargetAtTime(value, context.currentTime, 0.02);
+      }
     },
     forget(speaker) {
       const player = players.get(speaker);
-      if (!player) return;
+      if (!player) {
+        return;
+      }
       players.delete(speaker);
-      if (player.decoder.state !== "closed") player.decoder.close();
+      if (player.decoder.state !== "closed") {
+        player.decoder.close();
+      }
       player.node.disconnect();
       player.gain.disconnect();
     },
     stop() {
-      for (const speaker of [...players.keys()]) engine.forget(speaker);
+      for (const speaker of [...players.keys()]) {
+        engine.forget(speaker);
+      }
       capture?.disconnect();
       source?.disconnect();
-      for (const t of stream?.getTracks() ?? []) t.stop();
-      if (encoder.state !== "closed") encoder.close();
+      for (const t of stream?.getTracks() ?? []) {
+        t.stop();
+      }
+      if (encoder.state !== "closed") {
+        encoder.close();
+      }
       void context.close();
     },
   };

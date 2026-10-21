@@ -24,7 +24,9 @@ export function ModelSettingsDialog() {
   const setOpen = useUiStore((s) => s.setModelSettingsOpen);
   const stored = usePreferencesStore((s) => s.modelSettingsTab);
   const setTab = usePreferencesStore((s) => s.setModelSettingsTab);
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
   const tab = TABS.includes(stored) ? stored : "naming";
 
   return (
@@ -290,7 +292,9 @@ function SourceGroup({ id, present, children }: { id: "all" | SqlDialect; presen
         aria-expanded={open}
         onClick={() => setOpen(!open)}
         onKeyDown={(e) => {
-          if (e.key !== "Enter" && e.key !== " ") return;
+          if (e.key !== "Enter" && e.key !== " ") {
+            return;
+          }
           e.preventDefault();
           setOpen(!open);
         }}

@@ -53,7 +53,9 @@ export function nextFreeName(base: string, existing: Iterable<string>): string {
   const taken = new Set(existing);
   for (let i = 1; ; i++) {
     const candidate = `${base} ${i}`;
-    if (!taken.has(candidate)) return candidate;
+    if (!taken.has(candidate)) {
+      return candidate;
+    }
   }
 }
 

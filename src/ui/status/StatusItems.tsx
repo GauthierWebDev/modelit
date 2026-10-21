@@ -14,7 +14,9 @@ const item = "flex items-center gap-1 rounded px-1.5 hover:bg-neutral-200 dark:h
 /** Nombre d'objets sélectionnés ; rien sans sélection. */
 export function SelectionStatus() {
   const count = useDocumentView((s) => s.selection.length);
-  if (!count) return null;
+  if (!count) {
+    return null;
+  }
   return <span>{t("status.selected", { n: count })}</span>;
 }
 

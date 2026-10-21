@@ -246,7 +246,9 @@ function DropSlot({ zone, index, after }: { zone: Zone; index: number; after?: b
   const target = useDragStore((s) => s.target);
   const dragging = useDragStore((s) => s.item !== null);
   const active = target?.kind === "zone" && target.zone === zone && target.index === index;
-  if (!dragging) return null;
+  if (!dragging) {
+    return null;
+  }
   const position =
     zone === "right"
       ? after
@@ -324,7 +326,9 @@ export function DockZone({ zone }: { zone: Zone }) {
   const dragging = useDragStore((s) => s.item !== null);
   const { groups, size } = layout.zones[zone];
   const ref = useRef<HTMLDivElement>(null);
-  if (groups.length === 0 && !dragging) return null;
+  if (groups.length === 0 && !dragging) {
+    return null;
+  }
   const vertical = zone === "right";
 
   const resizeZone = (e: ReactPointerEvent) => {
@@ -424,7 +428,9 @@ function FloatingGroupView({ group }: { group: FloatingGroup }) {
 /** Groupes flottants dans la page (navigateur) ; dans l'application native, ce sont des fenêtres. */
 export function FloatingGroups() {
   const floating = useDock().floating;
-  if (nativeWindows()) return null;
+  if (nativeWindows()) {
+    return null;
+  }
   return (
     <>
       {floating.map((g) => (
@@ -440,7 +446,9 @@ export function DragGhost() {
   const pointer = useDragStore((s) => s.pointer);
   const target = useDragStore((s) => s.target);
   const layout = useDock();
-  if (!item || !pointer) return null;
+  if (!item || !pointer) {
+    return null;
+  }
   const sections =
     item.kind === "section"
       ? [item.section]

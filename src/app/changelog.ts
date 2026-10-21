@@ -27,7 +27,9 @@ export function parseChangelog(markdown: string): ChangelogEntry[] {
   let lines: string[] = [];
 
   const close = () => {
-    if (entry) entry.body = lines.join("\n").trim();
+    if (entry) {
+      entry.body = lines.join("\n").trim();
+    }
   };
 
   for (const line of markdown.split(/\r?\n/)) {
@@ -45,7 +47,9 @@ export function parseChangelog(markdown: string): ChangelogEntry[] {
       entry = null;
       continue;
     }
-    if (!entry) continue;
+    if (!entry) {
+      continue;
+    }
     lines.push(line);
 
     const subheading = /^###\s+(.+?)\s*$/.exec(line);
@@ -55,15 +59,20 @@ export function parseChangelog(markdown: string): ChangelogEntry[] {
     }
     const item = /^\s*[-*]\s+(.+)$/.exec(line);
     const text = item ? item[1]!.trim() : line.trim();
-    if (!text) continue;
+    if (!text) {
+      continue;
+    }
     let section = entry.sections.at(-1);
     if (!section) {
       section = { title: "", items: [] };
       entry.sections.push(section);
     }
     // Ligne de suite (indentée) : complète l'élément précédent.
-    if (!item && /^\s/.test(line) && section.items.length) section.items[section.items.length - 1] += ` ${text}`;
-    else section.items.push(text);
+    if (!item && /^\s/.test(line) && section.items.length) {
+      section.items[section.items.length - 1] += ` ${text}`;
+    } else {
+      section.items.push(text);
+    }
   }
   close();
   return entries;

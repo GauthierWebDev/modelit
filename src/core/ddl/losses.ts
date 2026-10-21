@@ -60,14 +60,17 @@ export function groupLosses(losses: Loss[]): LossGroup[] {
     const place = [l.table, l.column].filter(Boolean).join(".");
     const group = groups.find((g) => g.message === l.message && g.category === l.category && g.priority === l.priority);
     if (group) {
-      if (place && !group.places.includes(place)) group.places.push(place);
-    } else
+      if (place && !group.places.includes(place)) {
+        group.places.push(place);
+      }
+    } else {
       groups.push({
         category: l.category,
         message: l.message,
         ...(l.priority ? { priority: l.priority } : {}),
         places: place ? [place] : [],
       });
+    }
   }
   return groups;
 }

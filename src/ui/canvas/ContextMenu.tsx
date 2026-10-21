@@ -31,7 +31,9 @@ export function blockNativeContextMenu(): () => void {
     const editable =
       target instanceof HTMLElement &&
       (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
-    if (editable || window.getSelection()?.toString()) return;
+    if (editable || window.getSelection()?.toString()) {
+      return;
+    }
     e.preventDefault();
   };
   window.addEventListener("contextmenu", onContextMenu);
@@ -45,7 +47,9 @@ export function ContextMenuLayer() {
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
 
   useLayoutEffect(() => {
-    if (!menu || !ref.current) return setPosition(null);
+    if (!menu || !ref.current) {
+      return setPosition(null);
+    }
     const { width, height } = ref.current.getBoundingClientRect();
     setPosition({
       left: Math.max(4, Math.min(menu.x, window.innerWidth - width - 4)),
@@ -54,10 +58,14 @@ export function ContextMenuLayer() {
   }, [menu]);
 
   useEffect(() => {
-    if (!menu) return;
+    if (!menu) {
+      return;
+    }
     const onPointer = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && close();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape") {
+        return;
+      }
       // Échap ferme le menu sans désélectionner sur le canevas.
       e.stopPropagation();
       close();
@@ -74,7 +82,9 @@ export function ContextMenuLayer() {
     };
   }, [menu, close]);
 
-  if (!menu) return null;
+  if (!menu) {
+    return null;
+  }
   return (
     <div
       ref={ref}

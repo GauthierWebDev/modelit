@@ -57,7 +57,9 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
     transactionStart: null,
     change(label, recipe) {
       const [next, patches] = produceWithPatches(get().doc, recipe);
-      if (!patches.length) return;
+      if (!patches.length) {
+        return;
+      }
       set({ doc: next });
       send({ type: "change", documentId, label, patches });
     },
@@ -90,7 +92,9 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
   const view = createDocumentViewStore();
   const forwardView = (patch: Partial<DocumentViewState>) => {
     view.setState(patch);
-    if (!applying) send({ type: "view", documentId, patch });
+    if (!applying) {
+      send({ type: "view", documentId, patch });
+    }
   };
   view.setState({
     setView: (v) => forwardView({ view: v }),
@@ -109,12 +113,20 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
 
   // Outil, boîtes de dialogue : renvoyés à la principale.
   const offUi = useUiStore.subscribe((s, p) => {
-    if (applying) return;
+    if (applying) {
+      return;
+    }
     const patch: UiPatch = {};
-    for (const key of UI_KEYS) if (s[key] !== p[key]) Object.assign(patch, { [key]: s[key] });
-    if (!Object.keys(patch).length) return;
+    for (const key of UI_KEYS) {
+      if (s[key] !== p[key]) {
+        Object.assign(patch, { [key]: s[key] });
+      }
+    }
+    if (!Object.keys(patch).length) {
+      return;
+    }
     send({ type: "ui", patch });
-    if (DIALOG_KEYS.some((k) => k in patch))
+    if (DIALOG_KEYS.some((k) => k in patch)) {
       useUiStore.setState({
         exportOpen: false,
         optionsOpen: false,
@@ -123,6 +135,7 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
         shareOpen: false,
         about: null,
       });
+    }
   });
 
   // Disposition : la principale l'applique et l'enregistre ; elle revient par le stockage partagé.
@@ -131,7 +144,9 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
   });
 
   const offChannel = channel.listen((message) => {
-    if (message.type !== "state") return;
+    if (message.type !== "state") {
+      return;
+    }
     const { state } = message;
     applying = true;
     try {
@@ -147,7 +162,9 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
       });
       view.setState(state.view);
       const ui = useUiStore.getState();
-      if (ui.tool !== state.ui.tool) useUiStore.setState(state.ui);
+      if (ui.tool !== state.ui.tool) {
+        useUiStore.setState(state.ui);
+      }
       applyCollabMirror(state.collab);
       useMirrorStore.setState({ state });
     } finally {

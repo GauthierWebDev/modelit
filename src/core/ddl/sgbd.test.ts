@@ -25,7 +25,9 @@ const AERO = readFileSync("fixtures/aero_sqlserver.sql", "utf8");
 
 function script(dbms: Dbms, version: string, source = SOURCE) {
   const result = generateDdl(toLogicalModel(reverseEngineer(source, emptyDocument()).doc), { dbms, version });
-  if (!result.ok) throw new Error(result.error);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
   return result.sql;
 }
 
@@ -44,7 +46,9 @@ const REQUIRED = new Set(
 );
 
 const running = (name: string) => {
-  if (REQUIRED.has(name.replace(/^merise-/, ""))) return true;
+  if (REQUIRED.has(name.replace(/^merise-/, ""))) {
+    return true;
+  }
   try {
     return docker(["inspect", "-f", "{{.State.Running}}", name]).trim() === "true";
   } catch {
@@ -354,7 +358,9 @@ describe.runIf(process.env.SGBD_DOCKER)("PostgreSQL 18 (Docker)", () => {
         { dbms: "postgresql", version: "18" },
         { spatial: "wkb" },
       );
-      if (!result.ok) throw new Error(result.error);
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
       psql(result.sql, "aero");
       const run = (sql: string) => psql(sql, "aero").trim();
       run(`INSERT INTO ref.aeroport (code_iata, code_oaci, nom, ville, pays) VALUES ('CDG', 'LFPG', 'Roissy', 'Paris', 'FR'), ('ORY', NULL, 'Orly', 'Paris', 'FR');
@@ -439,7 +445,9 @@ describe.runIf(process.env.SGBD_DOCKER)("PostgreSQL 18 (Docker)", () => {
       { dbms: "postgresql", version: "18" },
       { collations: "deterministic" },
     );
-    if (!result.ok) throw new Error(result.error);
+    if (!result.ok) {
+      throw new Error(result.error);
+    }
     psql(result.sql, "mediatheque_det");
     psql(
       "INSERT INTO adherent (num_carte, nom, email) VALUES ('ABC123', 'A', 'a@x'), ('abc123', 'B', 'b@x');",

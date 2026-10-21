@@ -11,7 +11,9 @@ export function McpIndicator() {
     const timer = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(timer);
   }, []);
-  if (!last || Date.now() - last > ACTIVE_FOR || now - last > ACTIVE_FOR) return null;
+  if (!last || Date.now() - last > ACTIVE_FOR || now - last > ACTIVE_FOR) {
+    return null;
+  }
   return (
     <span className="flex items-center gap-1 text-violet-600 dark:text-violet-400">
       <Bot size={12} />

@@ -16,7 +16,9 @@ function PasswordPrompt() {
   const password = useCollabStore((s) => (s.guest?.status === "password" ? s.guest.password : null));
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
-  if (!password) return null;
+  if (!password) {
+    return null;
+  }
   const submit = async () => {
     setSending(true);
     await answerPassword(value);
@@ -80,7 +82,9 @@ function PasswordPrompt() {
  */
 export function CollabBridge() {
   useEffect(() => {
-    if (!collabAvailable()) return;
+    if (!collabAvailable()) {
+      return;
+    }
     setCollabTransport({ startHost: startHostTransport, connect: connectGuestTransport });
     setVoiceBackend({ support: voiceSupport, start: startVoice });
     let off: (() => void) | undefined;
@@ -89,8 +93,11 @@ export function CollabBridge() {
       useUiStore.getState().setShareOpen(true);
       void joinFromLink(url);
     }).then((f) => {
-      if (disposed) f();
-      else off = f;
+      if (disposed) {
+        f();
+      } else {
+        off = f;
+      }
     });
     return () => {
       disposed = true;

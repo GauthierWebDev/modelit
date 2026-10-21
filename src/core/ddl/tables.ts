@@ -45,11 +45,15 @@ export function createTable(
       table.primaryKeyState,
       () => constraintName(ctx, table, undefined, "PK", [], true)!,
     );
-    if (line) lines.push(line);
+    if (line) {
+      lines.push(line);
+    }
   }
   for (const unique of table.uniques) {
     const line = uniqueLine(ctx, table, unique, after);
-    if (line) lines.push(line);
+    if (line) {
+      lines.push(line);
+    }
   }
   table.checks.forEach((c, i) => {
     const expression = check(ctx, table, c);
@@ -62,10 +66,14 @@ export function createTable(
     const name = constraintName(ctx, table, c.name, "CK", [String(i + 1)], where === "after");
     const definition = `${name ? `CONSTRAINT ${q(ctx, name)} ` : ""}CHECK (${expression})${stateClause(ctx, table, "check", label, c.state)}`;
     const line = place(ctx, table, definition, where, after, c.state, () => name!);
-    if (line) lines.push(line);
+    if (line) {
+      lines.push(line);
+    }
   });
   for (const fk of table.foreignKeys) {
-    if (deferred.has(fk)) continue;
+    if (deferred.has(fk)) {
+      continue;
+    }
     const where = placement(ctx, table, "foreign", foreignKeyLabel(fk), fk.state);
     const definition = foreignKey(ctx, tables, table, fk, graph);
     const line = place(
@@ -77,10 +85,14 @@ export function createTable(
       fk.state,
       () => constraintName(ctx, table, undefined, "FK", [fk.referencedTable], true)!,
     );
-    if (line) lines.push(line);
+    if (line) {
+      lines.push(line);
+    }
   }
   // Partitionnement : abandonné, signalé (O-39).
-  if (table.partition) ctx.report.add("physical", table.name, MSG.lossPartition(d.partitioning));
+  if (table.partition) {
+    ctx.report.add("physical", table.name, MSG.lossPartition(d.partitioning));
+  }
   const options =
     (ctx.script.tableOptions.get(table) ?? "") +
     (d.comments === "inline" && table.comment ? ` COMMENT=${sqlString(table.comment)}` : "");
@@ -95,14 +107,21 @@ export function createTable(
 function comments(ctx: Context, table: LogicalTable) {
   const name = tableName(ctx, table);
   const commented = table.columns.filter((c) => c.comment);
-  if (!table.comment && !commented.length) return;
-  if (ctx.dialect.comments === "inline") return;
+  if (!table.comment && !commented.length) {
+    return;
+  }
+  if (ctx.dialect.comments === "inline") {
+    return;
+  }
   if (ctx.dialect.comments === "statement") {
-    if (table.comment) ctx.script.epilogue.push(`COMMENT ON TABLE ${name} IS ${sqlString(table.comment)};`);
-    for (const c of commented)
+    if (table.comment) {
+      ctx.script.epilogue.push(`COMMENT ON TABLE ${name} IS ${sqlString(table.comment)};`);
+    }
+    for (const c of commented) {
       ctx.script.epilogue.push(
         `COMMENT ON COLUMN ${name}.${q(ctx, c.name, c.caseSensitive)} IS ${sqlString(c.comment!)};`,
       );
+    }
     return;
   }
   ctx.report.add("comment", table.name, MSG.lossComments(Number(Boolean(table.comment)) + commented.length));

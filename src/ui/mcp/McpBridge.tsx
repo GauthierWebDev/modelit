@@ -31,7 +31,9 @@ export function McpBridge() {
   const { enabled, port, token } = usePreferencesStore((s) => s.mcp);
 
   useEffect(() => {
-    if (!mcpAvailable()) return;
+    if (!mcpAvailable()) {
+      return;
+    }
     let off: (() => void) | undefined;
     let disposed = false;
     void onMcpRequest((request, respond) => {
@@ -62,13 +64,19 @@ export function McpBridge() {
           );
         });
     }).then((f) => {
-      if (disposed) f();
-      else off = f;
+      if (disposed) {
+        f();
+      } else {
+        off = f;
+      }
     });
     let offReleased: (() => void) | undefined;
     void onMcpReleased(() => useMcpStore.setState({ status: "released", error: null })).then((f) => {
-      if (disposed) f();
-      else offReleased = f;
+      if (disposed) {
+        f();
+      } else {
+        offReleased = f;
+      }
     });
     return () => {
       disposed = true;
@@ -78,7 +86,9 @@ export function McpBridge() {
   }, []);
 
   useEffect(() => {
-    if (!mcpAvailable()) return;
+    if (!mcpAvailable()) {
+      return;
+    }
     if (!enabled || !token) {
       void stopMcp().then(() => useMcpStore.setState({ status: "off", error: null }));
       return;

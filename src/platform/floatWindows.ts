@@ -19,8 +19,12 @@ export interface ScreenRect {
 export function floatKind(): { kind: "toolbar" } | { kind: "group"; id: string } | null {
   const params = new URLSearchParams(window.location.search);
   const kind = params.get("float");
-  if (kind === "toolbar") return { kind };
-  if (kind === "group" && params.get("id")) return { kind, id: params.get("id")! };
+  if (kind === "toolbar") {
+    return { kind };
+  }
+  if (kind === "group" && params.get("id")) {
+    return { kind, id: params.get("id")! };
+  }
   return null;
 }
 
@@ -66,7 +70,9 @@ export async function openFloat(
 ) {
   const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
   const existing = await WebviewWindow.getByLabel(label);
-  if (existing) return placeFloat(label, rect);
+  if (existing) {
+    return placeFloat(label, rect);
+  }
   const created = new WebviewWindow(label, {
     url,
     x: Math.round(rect.x),
@@ -93,7 +99,9 @@ export async function placeFloat(label: string, rect: ScreenRect) {
   const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
   const { LogicalPosition, LogicalSize } = await import("@tauri-apps/api/dpi");
   const w = await WebviewWindow.getByLabel(label);
-  if (!w) return;
+  if (!w) {
+    return;
+  }
   await w.setPosition(new LogicalPosition(Math.round(rect.x), Math.round(rect.y)));
   await w.setSize(new LogicalSize(Math.round(rect.width), Math.round(rect.height)));
 }
@@ -110,7 +118,9 @@ export async function openFloats(): Promise<string[]> {
 }
 
 export async function closeAllFloats() {
-  for (const label of await openFloats()) await closeFloat(label);
+  for (const label of await openFloats()) {
+    await closeFloat(label);
+  }
 }
 
 /** Zone cliente de la fenêtre courante, en coordonnées logiques de l'écran. */

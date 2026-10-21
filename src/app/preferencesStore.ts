@@ -204,6 +204,8 @@ export const usePreferencesStore = create<PreferencesState>()(
 // (thème, langue, disposition) sont relues dès qu'elles changent.
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (e) => {
-    if (e.key === "modelit/preferences") void usePreferencesStore.persist.rehydrate();
+    if (e.key === "modelit/preferences") {
+      void usePreferencesStore.persist.rehydrate();
+    }
   });
 }

@@ -24,17 +24,23 @@ export function ExportDialog() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (open) setView(doc.view.getState().view);
+    if (open) {
+      setView(doc.view.getState().view);
+    }
   }, [open, doc]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, setOpen]);
 
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
   const format = FORMATS.find((f) => f.id === prefs.format)!;
   const transparent = format.transparent && prefs.transparent;
 
