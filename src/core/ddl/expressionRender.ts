@@ -44,9 +44,6 @@ export function renderOperand(
 }
 
 export function renderCondition(c: Condition, target: Target, columnCase?: (name: string) => boolean): string | null {
-  const op = (o: Operand) => renderOperand(o, target, columnCase);
-  const all = (parts: (string | null)[]) => (parts.every((p) => p !== null) ? (parts as string[]) : null);
-  const not = (negated: boolean) => (negated ? "NOT " : "");
   switch (c.kind) {
     case "and":
     case "or": {
@@ -62,6 +59,20 @@ export function renderCondition(c: Condition, target: Target, columnCase?: (name
       const inner = renderCondition(c.item, target, columnCase);
       return inner && `NOT (${inner})`;
     }
+    default:
+      return renderPredicate(c, target, (o: Operand) => renderOperand(o, target, columnCase));
+  }
+}
+
+const all = (parts: (string | null)[]) => (parts.every((p) => p !== null) ? (parts as string[]) : null);
+const not = (negated: boolean) => (negated ? "NOT " : "");
+
+function renderPredicate(
+  c: Exclude<Condition, { kind: "and" | "or" | "not" }>,
+  target: Target,
+  op: (o: Operand) => string | null,
+): string | null {
+  switch (c.kind) {
     case "compare": {
       const parts = all([op(c.left), op(c.right)]);
       return parts && `${parts[0]} ${c.op} ${parts[1]}`;
@@ -82,37 +93,45 @@ export function renderCondition(c: Condition, target: Target, columnCase?: (name
       const parts = all([op(c.operand), op(c.pattern)]);
       return parts && `${parts[0]} ${not(c.negated)}LIKE ${parts[1]}`;
     }
-    case "regex": {
-      if (target.dbms !== "postgresql") {
-        return null;
-      }
-      const operandText = op(c.operand);
-      return (
-        operandText &&
-        `${operandText}${c.collateC ? ' COLLATE "C"' : ""} ${c.negated ? "!" : ""}~${c.insensitive ? "*" : ""} ${sqlString(c.pattern)}`
-      );
-    }
+    case "regex":
+      return renderRegex(c, target, op);
     case "isJson": {
       const operandText = op(c.operand);
-      if (!operandText) {
-        return null;
-      }
-      switch (target.dbms) {
-        case "postgresql":
-          return isAtLeast("postgresql", target.version, "16") ? `${operandText} IS ${not(c.negated)}JSON` : null;
-        case "oracle":
-          return `${operandText} IS ${not(c.negated)}JSON`;
-        case "sqlserver":
-          return `ISJSON(${operandText}) = ${c.negated ? 0 : 1}`;
-        case "mysql":
-        case "mariadb":
-          return `JSON_VALID(${operandText}) = ${c.negated ? 0 : 1}`;
-        case "sqlite":
-          return `json_valid(${operandText}) = ${c.negated ? 0 : 1}`;
-        default:
-          return null;
-      }
+      return operandText ? renderIsJson(operandText, c.negated, target) : null;
     }
+  }
+}
+
+function renderRegex(
+  c: Extract<Condition, { kind: "regex" }>,
+  target: Target,
+  op: (o: Operand) => string | null,
+): string | null {
+  if (target.dbms !== "postgresql") {
+    return null;
+  }
+  const operandText = op(c.operand);
+  return (
+    operandText &&
+    `${operandText}${c.collateC ? ' COLLATE "C"' : ""} ${c.negated ? "!" : ""}~${c.insensitive ? "*" : ""} ${sqlString(c.pattern)}`
+  );
+}
+
+function renderIsJson(operandText: string, negated: boolean, target: Target): string | null {
+  switch (target.dbms) {
+    case "postgresql":
+      return isAtLeast("postgresql", target.version, "16") ? `${operandText} IS ${not(negated)}JSON` : null;
+    case "oracle":
+      return `${operandText} IS ${not(negated)}JSON`;
+    case "sqlserver":
+      return `ISJSON(${operandText}) = ${negated ? 0 : 1}`;
+    case "mysql":
+    case "mariadb":
+      return `JSON_VALID(${operandText}) = ${negated ? 0 : 1}`;
+    case "sqlite":
+      return `json_valid(${operandText}) = ${negated ? 0 : 1}`;
+    default:
+      return null;
   }
 }
 
