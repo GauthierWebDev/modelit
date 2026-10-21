@@ -1,9 +1,8 @@
-import type { LogicalForeignKey, LogicalKey, LogicalTable } from "../mld/logical";
+import type { LogicalForeignKey, LogicalTable } from "../mld/logical";
 import type { ConstraintState } from "../model/physical";
 import { MSG } from "../validation/messages";
-import { type Context, describeKey } from "./context";
+import type { Context } from "./context";
 import { referentialAction } from "./dialects";
-import { expressionIndex, include, keyColumns, keyIndex } from "./indexes";
 import { columnRef, constraintName, q, tableName, tableRef } from "./naming";
 import type { ConstraintKind } from "./targets/dialect";
 
@@ -99,40 +98,53 @@ function actions(
 ): string {
   const parts: string[] = [];
   for (const event of ["delete", "update"] as const) {
-    let action = event === "delete" ? fk.onDelete : fk.onUpdate;
-    if (!action) {
-      continue;
-    }
-    // SQL Server refuse les chemins de cascade multiples ou cycliques.
-    if (
-      sqlServerGraph &&
-      ["cascade", "set null", "set default"].includes(action) &&
-      !sqlServerGraph.accept(event, fk.referencedTable, table.name)
-    ) {
-      ctx.report.add(
-        "action",
-        table.name,
-        MSG.lossCascadePath(event.toUpperCase(), action.toUpperCase()),
-        fk.columns.join(", "),
-      );
-      action = "no action";
-    }
-    const result = referentialAction(ctx.target, event, action);
-    if (result.kind === "emit") {
-      parts.push(result.sql);
-    } else if (result.kind === "degraded") {
-      if (result.sql) {
-        parts.push(result.sql);
-      }
-      ctx.report.add(
-        "action",
-        table.name,
-        MSG.lossAction(`ON ${event.toUpperCase()} ${action.toUpperCase()}`, result.fallback.toUpperCase()),
-        fk.columns.join(", "),
-      );
+    const action = event === "delete" ? fk.onDelete : fk.onUpdate;
+    if (action) {
+      eventAction(ctx, table, fk, event, action, sqlServerGraph, parts);
     }
   }
   return parts.length > 0 ? ` ${parts.join(" ")}` : "";
+}
+
+/** ON DELETE / ON UPDATE pour la cible ; action dégradée ou chemin de cascade refusé signalés. */
+function eventAction(
+  ctx: Context,
+  table: LogicalTable,
+  fk: LogicalForeignKey,
+  event: "delete" | "update",
+  wanted: NonNullable<LogicalForeignKey["onDelete"]>,
+  sqlServerGraph: CascadeGraph | null,
+  parts: string[],
+) {
+  let action = wanted;
+  // SQL Server refuse les chemins de cascade multiples ou cycliques.
+  if (
+    sqlServerGraph &&
+    ["cascade", "set null", "set default"].includes(action) &&
+    !sqlServerGraph.accept(event, fk.referencedTable, table.name)
+  ) {
+    ctx.report.add(
+      "action",
+      table.name,
+      MSG.lossCascadePath(event.toUpperCase(), action.toUpperCase()),
+      fk.columns.join(", "),
+    );
+    action = "no action";
+  }
+  const result = referentialAction(ctx.target, event, action);
+  if (result.kind === "emit") {
+    parts.push(result.sql);
+  } else if (result.kind === "degraded") {
+    if (result.sql) {
+      parts.push(result.sql);
+    }
+    ctx.report.add(
+      "action",
+      table.name,
+      MSG.lossAction(`ON ${event.toUpperCase()} ${action.toUpperCase()}`, result.fallback.toUpperCase()),
+      fk.columns.join(", "),
+    );
+  }
 }
 
 export function foreignKey(
@@ -189,119 +201,5 @@ export class CascadeGraph {
     targets.add(child);
     this.edges[event].set(referenced, targets);
     return true;
-  }
-}
-
-// ---------------------------------------------------------------------------------------------
-// Identifiants alternatifs (UNIQUE)
-
-/**
- * Contrainte UNIQUE dans le CREATE TABLE, ou `null` si elle devient un index unique en fin de
- * script (préfixe : sur expression) ou si la cible ne sait pas l'exprimer (signalé) (O-35).
- */
-export function uniqueLine(ctx: Context, table: LogicalTable, unique: LogicalKey, after: string[]): string | null {
-  const d = ctx.dialect;
-  const label = describeKey(unique);
-  if (unique.method && unique.method !== "btree" && !d.uniques.methods) {
-    // Une méthode autre que B-tree ne garantit pas l'unicité (PostgreSQL : HASH non unique).
-    ctx.report.add("index", table.name, MSG.lossIndexMethod(unique.name ?? label, unique.method.toUpperCase()));
-  }
-  // Sur expression ou conditionnelle : index unique en fin de script (O-39).
-  if (unique.expression || unique.where) {
-    ctx.script.epilogue.push(...expressionIndex(ctx, table, unique));
-    return null;
-  }
-  if (unique.prefixes && !d.indexes.nativePrefixes) {
-    ctx.script.epilogue.push(...keyIndex(ctx, table, unique, true));
-    return null;
-  }
-  // Plusieurs NULL admis (index filtré SQL Server « IS NOT NULL ») : là où UNIQUE n'en admet qu'un, même index filtré (O-41).
-  if (unique.nulls === "distinct" && d.uniques.singleNull) {
-    const filter = unique.columns.map((c) => `${columnRef(ctx, table, c)} IS NOT NULL`).join(" AND ");
-    const indexName = q(ctx, constraintName(ctx, table, unique.name, "AK", unique.columns, true)!);
-    ctx.script.epilogue.push(
-      `CREATE UNIQUE INDEX ${indexName} ON ${tableName(ctx, table)}(${keyColumns(ctx, table, unique)}) WHERE ${filter};`,
-    );
-    return null;
-  }
-  const where = placement(ctx, table, "unique", unique.name ?? label, unique.state);
-  const name = constraintName(ctx, table, unique.name, "AK", unique.columns);
-  const columns = keyColumns(ctx, table, unique);
-  const method = d.uniques.methods && unique.method ? ` USING ${unique.method.toUpperCase()}` : "";
-  const equalNulls = unique.nulls === "not distinct" || unique.nulls === "oracle";
-  const nulls = equalNulls ? nullsClause(ctx, table, unique) : "";
-  if (!equalNulls) {
-    singleNullLoss(ctx, table, unique.columns, unique.name ?? label);
-  }
-  // Dans une clé composée, les NULL y sont égaux entre eux (Oracle) (O-39).
-  if (
-    !equalNulls &&
-    d.uniques.equalNulls === "composite" &&
-    unique.columns.length > 1 &&
-    unique.columns.some((c) => nullable(table, c))
-  ) {
-    ctx.report.add("index", table.name, MSG.lossOracleCompositeNulls(unique.name ?? label));
-  }
-  // INCLUDE sur une contrainte UNIQUE (O-42).
-  const covering = unique.include?.length && d.uniques.include ? include(ctx, table, unique) : "";
-  // Sinon, include() a déjà signalé la perte s'il y en a une.
-  if (unique.include?.length && !d.uniques.include) {
-    ctx.report.add("index", table.name, MSG.lossInclude(unique.name ?? label));
-  }
-  const state = stateClause(ctx, table, "unique", unique.name ?? label, unique.state);
-  const definition = `${name ? `CONSTRAINT ${q(ctx, name)} ` : ""}UNIQUE${nulls}(${columns})${covering}${method}${state}`;
-  return place(
-    ctx,
-    table,
-    definition,
-    where,
-    after,
-    unique.state,
-    () => constraintName(ctx, table, undefined, "AK", unique.columns, true)!,
-  );
-}
-
-/** Colonne qui admet NULL (ni NOT NULL ni membre de la clé primaire). */
-const nullable = (table: LogicalTable, name: string) =>
-  !(table.primaryKey.includes(name) || table.columns.find((c) => c.name === name)?.notNull);
-
-/**
- * NULL égaux dans une clé composée (Oracle) ou NULLS NOT DISTINCT (PostgreSQL) (O-39) : exprimés
- * nativement ou par une clause, sinon signalés. Une ligne entièrement NULL, qu'Oracle ignore,
- * devient un doublon ailleurs : signalé si possible.
- */
-function nullsClause(ctx: Context, table: LogicalTable, unique: LogicalKey): string {
-  const equal = ctx.dialect.uniques.equalNulls;
-  const label = unique.name ?? describeKey(unique);
-  const allNullable = unique.columns.every((c) => nullable(table, c));
-  if (equal === "composite") {
-    if (unique.nulls === "not distinct" && allNullable) {
-      ctx.report.add("index", table.name, MSG.lossNullsAllNull(label));
-    }
-    return "";
-  }
-  // Seulement si les NULL deviennent égaux ici : sans NULLS NOT DISTINCT, les lignes entièrement
-  // NULL restent admises en double, comme dans Oracle.
-  const equalized = equal === "native" || (equal !== null && equal.clause !== null);
-  if (unique.nulls === "oracle" && allNullable && equalized) {
-    ctx.report.add("index", table.name, MSG.lossNullsAllNull(label));
-  }
-  if (equal === "native") {
-    return "";
-  }
-  if (equal?.clause) {
-    return equal.clause;
-  }
-  ctx.report.add("index", table.name, MSG.lossNullsNotDistinct(label));
-  return "";
-}
-
-/** Une contrainte UNIQUE n'y admet qu'un seul NULL, contrairement aux autres SGBD (SQL Server) (O-39). */
-export function singleNullLoss(ctx: Context, table: LogicalTable, columns: string[], label: string) {
-  if (!ctx.dialect.uniques.singleNull) {
-    return;
-  }
-  if (columns.some((name) => nullable(table, name))) {
-    ctx.report.add("index", table.name, MSG.lossSqlServerNulls(label));
   }
 }

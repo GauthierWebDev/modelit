@@ -1,7 +1,7 @@
 import type { LogicalColumn, LogicalTable } from "../mld/logical";
 import { MSG } from "../validation/messages";
 import { check } from "./checks";
-import { place, placement, singleNullLoss, stateClause } from "./constraints";
+import { place, placement, stateClause } from "./constraints";
 import { type Context, sqlString } from "./context";
 import { sameDialect } from "./dialects";
 import { type Operand, parseDefault, renderOperand } from "./expressions";
@@ -9,6 +9,7 @@ import { translateGenerated } from "./generatedExpression";
 import { columnRef, constraintName, q } from "./naming";
 import { sequenceDefault } from "./sequences";
 import { typeOf } from "./types";
+import { singleNullLoss } from "./uniques";
 
 /** Définition d'une colonne dans le CREATE TABLE. */
 export function columnLine(

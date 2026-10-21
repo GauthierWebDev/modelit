@@ -2,18 +2,11 @@ import type { LogicalForeignKey, LogicalTable } from "../mld/logical";
 import { MSG } from "../validation/messages";
 import { check } from "./checks";
 import { columnLine } from "./columns";
-import {
-  type CascadeGraph,
-  foreignKey,
-  foreignKeyLabel,
-  place,
-  placement,
-  stateClause,
-  uniqueLine,
-} from "./constraints";
+import { type CascadeGraph, foreignKey, foreignKeyLabel, place, placement, stateClause } from "./constraints";
 import { type Context, INDENT, sqlString } from "./context";
 import { sameDialect } from "./dialects";
 import { columnRef, constraintName, declareSchema, q, tableName } from "./naming";
+import { uniqueLine } from "./uniques";
 
 /** CREATE TABLE, suivi des contraintes émises en commentaire (désactivées, non traduites). */
 export function createTable(

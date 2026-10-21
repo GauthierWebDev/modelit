@@ -82,33 +82,37 @@ function sqlServerLikes(ctx: Context, c: Condition, table: LogicalTable): Condit
       const item = sqlServerLikes(ctx, c.item, table);
       return item && { ...c, item };
     }
-    case "like": {
-      const regex = c.pattern.kind === "string" ? likeToRegex(c.pattern.value) : null;
-      if (!regex) {
-        return c;
-      }
-      if (!ctx.dialect.constraints.regex) {
-        return null;
-      }
-      const column =
-        c.operand.kind === "column"
-          ? table.columns.find((col) => col.name.toLowerCase() === (c.operand as { name: string }).name.toLowerCase())
-          : undefined;
-      const klass = column ? effectiveCollationClass(ctx, column) : undefined;
-      const insensitive = klass === "ci" || klass === "ai_ci";
-      const nondeterministic = insensitive && icuCollations(ctx);
-      return {
-        kind: "regex",
-        operand: c.operand,
-        pattern: regex,
-        negated: c.negated,
-        insensitive,
-        ...(nondeterministic ? { collateC: true } : {}),
-      };
-    }
+    case "like":
+      return likeAsRegex(ctx, c, table);
     default:
       return c;
   }
+}
+
+/** LIKE réécrit en expression régulière (SQL Server n'a pas de LIKE à motif complet), ou `null` sans regex. */
+function likeAsRegex(ctx: Context, c: Extract<Condition, { kind: "like" }>, table: LogicalTable): Condition | null {
+  const regex = c.pattern.kind === "string" ? likeToRegex(c.pattern.value) : null;
+  if (!regex) {
+    return c;
+  }
+  if (!ctx.dialect.constraints.regex) {
+    return null;
+  }
+  const column =
+    c.operand.kind === "column"
+      ? table.columns.find((col) => col.name.toLowerCase() === (c.operand as { name: string }).name.toLowerCase())
+      : undefined;
+  const klass = column ? effectiveCollationClass(ctx, column) : undefined;
+  const insensitive = klass === "ci" || klass === "ai_ci";
+  const nondeterministic = insensitive && icuCollations(ctx);
+  return {
+    kind: "regex",
+    operand: c.operand,
+    pattern: regex,
+    negated: c.negated,
+    insensitive,
+    ...(nondeterministic ? { collateC: true } : {}),
+  };
 }
 
 /** Colonne booléenne comparée à 0 / 1 (BIT SQL Server, TINYINT(1) MySQL) : FALSE / TRUE (O-41). */
