@@ -87,6 +87,7 @@ export interface StartOptions {
  * Démarre le vocal. `mic` : faux si le micro est refusé ou absent (écoute seule, O-48 « Micro
  * refusé ») ; `micError` en donne la raison.
  */
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: moteur du vocal sans test automatique ni test humain encore possible (O-48) ; découpage reporté après les tests sur deux postes
 export async function startVoice({
   onFrame,
   onLevel,
