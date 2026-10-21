@@ -73,9 +73,10 @@ export function DbmsTarget() {
         className={`flex items-center gap-1 rounded px-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-700 ${open ? "bg-neutral-200 dark:bg-neutral-700" : ""}`}
       >
         {custom ? <Wrench size={12} /> : <Database size={12} />}
+        {/* biome-ignore lint/suspicious/noLeakedRender: libellé texte de la cible, affiché volontairement */}
         {custom ? custom.name : base}
       </button>
-      {open && (
+      {open ? (
         <div
           role="dialog"
           aria-label={t("target.title")}
@@ -104,14 +105,14 @@ export function DbmsTarget() {
               </select>
             </Field>
             <Field label={t("toolbar.version")}>
-              <Select value={dbmsVersion} options={versions} onChange={(value) => setDbmsVersion(doc, value)} />
+              <Select value={dbmsVersion} options={versions} onChange={(version) => setDbmsVersion(doc, version)} />
             </Field>
           </fieldset>
-          {custom && (
+          {custom ? (
             <p className="rounded bg-amber-50 px-2 py-1 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
               {t("customDbms.basedOnLabel", { dbms: base })} · {t("customDbms.typesCount", { n: redefined })}
             </p>
-          )}
+          ) : null}
           <button
             type="button"
             className="self-start text-xs text-blue-600 hover:underline dark:text-blue-400"
@@ -141,7 +142,7 @@ export function DbmsTarget() {
           </div>
           {readOnly && <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("target.readOnly")}</p>}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

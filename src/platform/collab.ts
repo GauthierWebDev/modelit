@@ -17,12 +17,12 @@ interface Payload {
 function on(event: string, handler: (payload: Payload) => void): () => void {
   let off: (() => void) | undefined;
   let disposed = false;
-  void import("@tauri-apps/api/event").then(({ listen }) =>
-    listen<Payload>(event, (e) => handler(e.payload)).then((f) => {
-      if (disposed) f();
-      else off = f;
-    }),
-  );
+  void (async () => {
+    const { listen } = await import("@tauri-apps/api/event");
+    const f = await listen<Payload>(event, (e) => handler(e.payload));
+    if (disposed) f();
+    else off = f;
+  })();
   return () => {
     disposed = true;
     off?.();
@@ -115,7 +115,10 @@ export async function connectGuestTransport(addr: string): Promise<GuestLink> {
 
 /** Liens `modelit://` reçus : au lancement de l'application, puis pendant qu'elle tourne. */
 export async function onOpenLink(handler: (url: string) => void): Promise<() => void> {
-  if (!isTauri()) return () => {};
+  if (!isTauri())
+    return () => {
+      // Hors de Tauri, aucun lien modelit:// : rien à désabonner.
+    };
   const { getCurrent, onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
   for (const url of (await getCurrent()) ?? []) handler(url);
   return onOpenUrl((urls) => urls.forEach(handler));

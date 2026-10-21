@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { toLogicalModel } from "../mld/transform";
 import { model } from "../testing/builder";
+import { byCodeUnit } from "../testing/order";
 import { extractFragment, freeName, parseFragment, pasteFragment } from "./clipboard";
 import type { ModelDocument } from "./document";
 
@@ -51,7 +52,7 @@ describe("copier / coller", () => {
     expect(
       toLogicalModel(doc)
         .tables.map((t) => t.name)
-        .sort(),
+        .sort(byCodeUnit),
     ).toEqual(["CLIENT", "CLIENT_2", "COMMANDE", "COMMANDE_2"]);
   });
 
@@ -60,7 +61,7 @@ describe("copier / coller", () => {
     const fragment = extractFragment(doc, [idOf(doc, "PASSER")])!;
     const [copy] = pasteFragment(doc, fragment);
     const legs = doc.links.filter((l) => l.associationId === copy);
-    expect(legs.map((l) => l.entityId).sort()).toEqual([idOf(doc, "CLIENT"), idOf(doc, "COMMANDE")].sort());
+    expect(legs.map((l) => l.entityId).sort(byCodeUnit)).toEqual([idOf(doc, "CLIENT"), idOf(doc, "COMMANDE")].sort());
     expect(legs.find((l) => l.entityId === idOf(doc, "COMMANDE"))!.cardinality).toEqual({ min: 1, max: 1 });
   });
 

@@ -21,7 +21,10 @@ let busy = false;
 
 /** Vérification automatique, à appeler au lancement ; silencieuse si rien n'est disponible ou en cas d'erreur. */
 export function scheduleUpdateCheck(): () => void {
-  if (!updatesSupported()) return () => {};
+  if (!updatesSupported())
+    return () => {
+      // Aucune vérification programmée : rien à annuler.
+    };
   const timer = window.setTimeout(() => {
     if (usePreferencesStore.getState().updateCheck) void run(false);
   }, STARTUP_DELAY);

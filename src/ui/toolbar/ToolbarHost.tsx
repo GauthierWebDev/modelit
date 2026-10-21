@@ -95,8 +95,8 @@ export function ToolbarHost() {
   return (
     <>
       {!floating && <Toolbar onGripDown={onGripDown} />}
-      {floating && drag?.overBand && <div className="h-9 flex-none border-b-2 border-blue-500 bg-blue-500/15" />}
-      {floating && (
+      {floating && drag?.overBand ? <div className="h-9 flex-none border-b-2 border-blue-500 bg-blue-500/15" /> : null}
+      {floating ? (
         <div
           ref={floatingRef}
           data-floating-toolbar=""
@@ -107,7 +107,7 @@ export function ToolbarHost() {
         >
           <Toolbar floating onGripDown={onGripDown} />
         </div>
-      )}
+      ) : null}
     </>
   );
 }

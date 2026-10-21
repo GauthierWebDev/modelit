@@ -27,6 +27,7 @@ export function documentName(
   return n === 1 ? t("app.untitled") : t("app.untitledN", { n });
 }
 
+// biome-ignore lint/suspicious/useAwait: renvoie toujours une promesse, même quand la réponse est immédiate
 export async function confirmLoseChanges(doc: DocumentHandle): Promise<boolean> {
   if (!selectIsDirty(doc.store.getState())) return true;
   return confirmDialog({

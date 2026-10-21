@@ -29,7 +29,7 @@ export function TypePicker({
           </optgroup>
         ))}
       </select>
-      {value && <TypeParameters value={value} onChange={onChange} />}
+      {value ? <TypeParameters value={value} onChange={onChange} /> : null}
     </div>
   );
 }

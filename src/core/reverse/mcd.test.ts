@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { toLogicalModel } from "../mld/transform";
 import { emptyDocument } from "../model/factory";
+import { byCodeUnit } from "../testing/order";
 import { reverseEngineer } from "./build";
 
 /** Itération 5 (override O-36) : MCD reconstruit à partir de la fixture médiathèque. */
@@ -43,7 +44,7 @@ describe("MCD de la médiathèque (O-36)", () => {
   });
 
   it("2. noms : contrainte, puis colonne, sauf s'ils se réduisent à une table reliée ou à son abréviation (O-37)", () => {
-    expect(doc.associations.map((a) => a.name).sort()).toEqual(
+    expect(doc.associations.map((a) => a.name).sort(byCodeUnit)).toEqual(
       ["favori", "reco", "vo", "parrain", "emprunt_Exemplaire", "emprunt_adherent", "Exemplaire_oeuvre"].sort(),
     );
   });
@@ -110,7 +111,7 @@ describe("MCD de la médiathèque (O-36)", () => {
     );
     expect(names).not.toContain("labo");
     const roles = labo.links.filter((l) => l.role);
-    expect(roles.map((l) => l.role).sort()).toEqual(["mentor", "precedente"]);
+    expect(roles.map((l) => l.role ?? "").sort(byCodeUnit)).toEqual(["mentor", "precedente"]);
     expect(roles.every((l) => l.cardinality.max === "n")).toBe(true);
     expect(labo.inheritances).toEqual([]);
   });
@@ -130,7 +131,7 @@ describe("MCD de l'hôpital (O-39)", () => {
   const issues = toLogicalModel(hopital).issues.map((i) => i.message);
 
   it("17. nommage : pas de règle b) quand la colonne porte le nom de la colonne référencée ; repli table_table", () => {
-    expect(names.sort()).toEqual(
+    expect(names.sort(byCodeUnit)).toEqual(
       [
         "chef",
         "parent",

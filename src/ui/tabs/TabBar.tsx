@@ -56,7 +56,9 @@ export function TabBar() {
           active={doc.id === activeId}
           onPointerDown={(e) => onPointerDown(e, doc.id)}
           onPointerMove={onPointerMove}
-          onPointerUp={() => (drag.current = null)}
+          onPointerUp={() => {
+            drag.current = null;
+          }}
         />
       ))}
       <button

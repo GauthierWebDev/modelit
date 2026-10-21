@@ -10,6 +10,7 @@ import type { DdlOptions } from "../model/settings";
 import { reverseEngineer } from "../reverse/build";
 import { model } from "../testing/builder";
 import { catalogOf, type Difference, diffCatalogs } from "../testing/catalog";
+import { byCodeUnit } from "../testing/order";
 import { generateDdl, type Loss } from "./generate";
 
 /**
@@ -249,7 +250,7 @@ describe("exécution réelle (critère 2)", () => {
       rows
         .filter((r) => r.tbl === "chercheur" && r.contype === "f")
         .map((r) => r.del)
-        .sort(),
+        .sort(byCodeUnit),
     ).toEqual(["a", "n"]); // NO ACTION, SET NULL
     const index = await pg.query<{ indexname: string }>(
       "SELECT indexname FROM pg_indexes WHERE indexname = 'ix_participer_labo'",

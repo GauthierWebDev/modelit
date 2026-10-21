@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noBitwiseOperators: traitement des échantillons audio
 /**
  * Moteur du vocal (O-48, D18) : capture du micro avec le traitement vocal du système (annulation
  * d'écho, réduction du bruit), compression Opus (WebCodecs), lecture de chaque participant avec son

@@ -51,7 +51,7 @@ export function SectionChecks({ close, withReset }: { close: () => void; withRes
           {sectionLabel(s)}
         </MenuCheck>
       ))}
-      {withReset && (
+      {withReset ? (
         <>
           <MenuSeparator />
           <MenuItem
@@ -63,7 +63,7 @@ export function SectionChecks({ close, withReset }: { close: () => void; withRes
             {t("dock.reset")}
           </MenuItem>
         </>
-      )}
+      ) : null}
     </>
   );
 }
@@ -104,7 +104,7 @@ export function GroupView({
           highlighted ? "ring-2 ring-blue-500 ring-inset" : ""
         }`}
       >
-        {onClose && (
+        {onClose ? (
           <button
             type="button"
             aria-label={t("dock.close")}
@@ -114,7 +114,7 @@ export function GroupView({
           >
             <X size={12} />
           </button>
-        )}
+        ) : null}
         {/* biome-ignore lint/a11y/useSemanticElements: poignée de déplacement au pointeur, hors de l'ordre de tabulation */}
         <span
           role="button"

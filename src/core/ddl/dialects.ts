@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noBitwiseOperators: empreinte FNV-1a des noms raccourcis
 import type { Dbms } from "../dbms/dbms";
 import type { TypeTemplates } from "../dbms/typeMapping";
 import type { ReferentialAction, SqlDialect } from "../model/physical";

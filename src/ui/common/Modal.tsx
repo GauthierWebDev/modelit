@@ -76,12 +76,14 @@ export function Modal({
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: fond de la boîte, un clic à l'extérieur la ferme (Échap au clavier)
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: fond de la boîte, un clic à l'extérieur la ferme (Échap au clavier)
     <div
       data-ui-only
       className={`fixed inset-0 ${layer} flex items-center justify-center bg-black/30`}
       onMouseDown={() => close.current()}
     >
       {/* biome-ignore lint/a11y/noStaticElementInteractions: rôle passé en prop (dialog ou alertdialog) */}
+      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: un clic dans la boîte ne doit pas atteindre le fond */}
       {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole: rôle passé en prop (dialog ou alertdialog) */}
       <div
         ref={box}
@@ -101,11 +103,11 @@ export function Modal({
           {title}
         </h2>
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">{children}</div>
-        {footer && (
+        {footer ? (
           <div className="flex items-center gap-2 border-t border-neutral-200 px-4 py-3 dark:border-neutral-700">
             {footer}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

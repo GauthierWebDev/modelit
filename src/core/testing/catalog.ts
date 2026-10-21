@@ -16,6 +16,7 @@ import type { ConstraintState, ReferentialAction, SequenceDefinition, SqlDialect
 import { type NamedExpression, type ParsedColumn, type ParsedKey, type ParsedTable, parseSql } from "../reverse/parse";
 import { tokenize } from "../reverse/tokenize";
 import { integerRange, sqlTypeToDataType } from "../reverse/types";
+import { byCodeUnit } from "./order";
 
 /**
  * Catalogue normalisé d'un script LDD (overrides O-29, O-35) : ce qu'une base créée par ce script
@@ -614,7 +615,7 @@ function tableCatalog(
     ),
     indexes: byText(table.indexes.map((i) => keyOf(i, columnName))),
     ...(table.comment ? { comment: table.comment } : {}),
-    triggers: table.triggers.map((t) => t.name.toLowerCase()).sort(),
+    triggers: table.triggers.map((t) => t.name.toLowerCase()).sort(byCodeUnit),
     ...(stateText(table.primaryKeyState) ? { primaryKeyState: stateText(table.primaryKeyState) } : {}),
     ...(table.storage.length ? { storage: [...table.storage].sort() } : {}),
     ...(table.partition ? { partition: compact(table.partition).toLowerCase() } : {}),

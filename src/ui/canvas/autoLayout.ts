@@ -124,13 +124,16 @@ let queue: Promise<unknown> = Promise.resolve();
 const WORKER_TIMEOUT = 8000;
 
 function computeLayout(nodes: GridNode[], edges: GridEdge[]): Promise<Map<string, Point>> {
-  const run = queue.then(() =>
-    withTimeout(computeLayoutNow(nodes, edges), WORKER_TIMEOUT).catch((e: unknown) => {
+  const run = queue.then(async () => {
+    try {
+      return await withTimeout(computeLayoutNow(nodes, edges), WORKER_TIMEOUT);
+    } catch (e: unknown) {
+      // biome-ignore lint/suspicious/noConsole: diagnostic de repli pour le développeur, sans effet pour l'utilisateur
       console.warn("Placement automatique : Workers indisponibles, calcul sur le fil principal.", e);
       resetPool();
       return gridLayout(nodes, edges).positions;
-    }),
-  );
+    }
+  });
   queue = run.catch(() => undefined);
   return run;
 }

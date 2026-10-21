@@ -16,7 +16,9 @@ import { usePreferencesStore } from "@/app/preferencesStore";
  */
 
 let screenOrigin = { x: 0, y: 0 };
-export const setScreenOrigin = (origin: { x: number; y: number }) => (screenOrigin = origin);
+export const setScreenOrigin = (origin: { x: number; y: number }) => {
+  screenOrigin = origin;
+};
 export const toScreen = <R extends { x: number; y: number }>(r: R): R => ({
   ...r,
   x: r.x + screenOrigin.x,
@@ -24,7 +26,9 @@ export const toScreen = <R extends { x: number; y: number }>(r: R): R => ({
 });
 
 let dropDelegate: ((item: DragItem, screen: { x: number; y: number }) => void) | null = null;
-export const setDropDelegate = (delegate: typeof dropDelegate) => (dropDelegate = delegate);
+export const setDropDelegate = (delegate: typeof dropDelegate) => {
+  dropDelegate = delegate;
+};
 
 /** Applique un dépôt à la disposition. */
 export function dropItem(item: DragItem, target: DropTarget) {

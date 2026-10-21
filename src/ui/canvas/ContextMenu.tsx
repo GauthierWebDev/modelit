@@ -130,9 +130,9 @@ export function ContextMenuLayer() {
               {action.checked ? <Check size={14} /> : action.icon}
             </span>
             <span className="flex-1">{action.label}</span>
-            {action.shortcut && (
+            {action.shortcut ? (
               <span className="pl-6 text-xs text-neutral-400 dark:text-neutral-500">{action.shortcut}</span>
-            )}
+            ) : null}
           </button>
         ),
       )}

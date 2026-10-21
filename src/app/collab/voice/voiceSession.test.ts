@@ -22,7 +22,7 @@ function fakeBackend(options: { mic?: boolean; support?: "ok" | "no-codec" | "no
   let level: ((level: number) => void) | null = null;
   setVoiceBackend({
     support: async () => options.support ?? "ok",
-    start: async ({ onFrame, onLevel }) => {
+    start: ({ onFrame, onLevel }) => {
       emit = onFrame;
       level = onLevel;
       const engine = {
@@ -48,7 +48,9 @@ function fakeBackend(options: { mic?: boolean; support?: "ok" | "no-codec" | "no
         },
       };
       engines.push(engine);
-      return options.mic === false ? { engine, mic: false, micError: "NotAllowedError" } : { engine, mic: true };
+      return Promise.resolve(
+        options.mic === false ? { engine, mic: false, micError: "NotAllowedError" } : { engine, mic: true },
+      );
     },
   });
   return {

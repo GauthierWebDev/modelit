@@ -280,7 +280,7 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
             </text>
           );
         })}
-        {marquee && (
+        {marquee ? (
           <rect
             {...normalizeRect(marquee.start, marquee.current)}
             fill="var(--mcd-selection)"
@@ -291,9 +291,9 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
             pointerEvents="none"
             data-ui-only=""
           />
-        )}
+        ) : null}
       </CanvasSurface>
-      {renaming && (
+      {renaming ? (
         <InlineRename
           key={JSON.stringify(renaming)}
           target={renaming}
@@ -301,7 +301,7 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
           mode={mode}
           onClose={stopRenaming}
         />
-      )}
+      ) : null}
     </>
   );
 }
@@ -342,7 +342,7 @@ function TableShape({
       >
         {table.name}
       </text>
-      {layout.compositeKey && (
+      {layout.compositeKey ? (
         <line
           x1={x + KEY_BAR_X}
           x2={x + KEY_BAR_X}
@@ -352,7 +352,7 @@ function TableShape({
           strokeWidth={1.5}
           data-tooltip={t("canvas.compositeKey")}
         />
-      )}
+      ) : null}
       {rows.map((r) => {
         const cy = y + r.y + ROW_HEIGHT / 2;
         const style = columnStyle(r);

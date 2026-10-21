@@ -387,7 +387,7 @@ export function McdCanvas() {
               activeIndex={activeBend?.linkId === g.link.id ? activeBend.index : null}
             />
           ))}
-        {activeBendPoint && (
+        {activeBendPoint ? (
           <g
             data-bend-delete=""
             data-tooltip={t("canvas.deleteBend")}
@@ -397,8 +397,8 @@ export function McdCanvas() {
             <circle r={8} fill="var(--mcd-error)" stroke="var(--mcd-canvas)" strokeWidth={1.5} />
             <path d="M-3,-3 L3,3 M3,-3 L-3,3" stroke="#fff" strokeWidth={1.75} strokeLinecap="round" />
           </g>
-        )}
-        {marquee && (
+        ) : null}
+        {marquee ? (
           <rect
             {...marquee}
             fill="var(--mcd-selection)"
@@ -409,16 +409,16 @@ export function McdCanvas() {
             pointerEvents="none"
             data-ui-only=""
           />
-        )}
+        ) : null}
       </CanvasSurface>
-      {renaming && (
+      {renaming ? (
         <McdRename
           key={`${renaming.nodeId}:${renaming.attributeId}`}
           target={renaming}
           layouts={layouts}
           onClose={stopRenaming}
         />
-      )}
+      ) : null}
     </>
   );
 }

@@ -104,18 +104,18 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
     }
     if (rest.startsWith("/*")) {
       // SQL Server, PostgreSQL : les commentaires s'imbriquent (profondeur) ; ailleurs, le premier */ ferme.
-      let depth = 1;
+      let nesting = 1;
       let j = i + 2;
-      while (j < sql.length && depth > 0) {
+      while (j < sql.length && nesting > 0) {
         if (nested && sql.startsWith("/*", j)) {
-          depth++;
+          nesting++;
           j += 2;
         } else if (sql.startsWith("*/", j)) {
-          depth--;
+          nesting--;
           j += 2;
         } else j++;
       }
-      i = depth > 0 ? sql.length : j;
+      i = nesting > 0 ? sql.length : j;
       continue;
     }
     // */ hors commentaire : commentaire mal imbriqué pour ce dialecte (O-41).
@@ -196,7 +196,7 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
     // Chaînes '…' (préfixes N, E, X, B acceptés)
     const prefixed = /^[NnEeXxBb]'/.test(rest);
     if (c === "'" || prefixed) {
-      const start = i;
+      const from = i;
       i += prefixed ? 2 : 1;
       let value = "";
       while (i < sql.length) {
@@ -215,13 +215,13 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
           i++;
         }
       }
-      push("string", value, sql.slice(start, i));
+      push("string", value, sql.slice(from, i));
       continue;
     }
     // Identifiants entre délimiteurs
     if (c === '"' || c === "`" || c === "[") {
       const close = c === "[" ? "]" : c;
-      const start = i;
+      const from = i;
       i++;
       let value = "";
       while (i < sql.length) {
@@ -241,7 +241,7 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
           i++;
         }
       }
-      push("quoted", value, sql.slice(start, i));
+      push("quoted", value, sql.slice(from, i));
       continue;
     }
     // Nombres

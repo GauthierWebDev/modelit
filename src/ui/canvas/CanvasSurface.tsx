@@ -75,6 +75,7 @@ export function CanvasSurface({
   const gridSize = (grid ?? 10) * viewport.zoom;
 
   return (
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: canevas de modélisation (rôle application), pointeur et clavier gérés ici
     <svg
       ref={svgRef}
       role="application"

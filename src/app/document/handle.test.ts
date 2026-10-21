@@ -1,4 +1,5 @@
 import { emptyDocument } from "@core/index";
+import { byCodeUnit } from "@core/testing/order";
 import { describe, expect, it } from "vitest";
 import { addEntity, connectNodes, deleteObjects, moveNodes, renameNode } from "../commands";
 import { ddlOf, logicalModelOf } from "../derived";
@@ -110,7 +111,7 @@ describe("géométrie du schéma", () => {
 
     deleteObjects(doc, [a]);
     const { layout } = doc.store.getState().doc;
-    expect(Object.keys(layout.positions).sort()).toEqual([b, result.created].sort());
+    expect(Object.keys(layout.positions).sort(byCodeUnit)).toEqual([b, result.created].sort());
     expect(layout.bends).toEqual({});
   });
 });

@@ -127,8 +127,12 @@ export function createSessionStore(
       },
 
       // Fichiers : seul l'hôte enregistre (O-05 §4.3) ; l'indicateur suit son enregistrement.
-      load() {},
-      restore() {},
+      load() {
+        // Seul l'hôte ouvre ou enregistre le fichier (O-05 §4.3).
+      },
+      restore() {
+        // Seul l'hôte récupère une sauvegarde automatique (O-05 §4.3).
+      },
       markSaved(filePath) {
         set({ savedDoc: get().doc, filePath });
       },

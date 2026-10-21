@@ -57,7 +57,13 @@ const notifyError = (message: string | null) =>
   message && useUiStore.getState().notify({ kind: "error", text: message });
 
 /** Copie aussi dans le presse-papiers du système quand c'est possible (autre instance de ModelIt). */
-const toSystemClipboard = (text: string | null) => void (text && navigator.clipboard?.writeText(text).catch(() => {}));
+const toSystemClipboard = (text: string | null) =>
+  void (
+    text &&
+    navigator.clipboard?.writeText(text).catch(() => {
+      // Presse-papiers du système refusé : la copie interne suffit.
+    })
+  );
 
 function editingActions(doc: DocumentHandle, count: number): Action[] {
   const selection = () => doc.view.getState().selection;

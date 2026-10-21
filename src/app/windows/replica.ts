@@ -62,17 +62,29 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
       send({ type: "change", documentId, label, patches });
     },
     // Les glisser-déposer (seuls utilisateurs des transactions) n'existent que dans la principale.
-    begin() {},
+    begin() {
+      // Pas de transaction dans une fenêtre flottante (voir ci-dessus).
+    },
     preview(recipe) {
       set({ doc: produce(get().doc, recipe) });
     },
-    commit() {},
-    cancel() {},
+    commit() {
+      // Pas de transaction dans une fenêtre flottante (voir ci-dessus).
+    },
+    cancel() {
+      // Pas de transaction dans une fenêtre flottante (voir ci-dessus).
+    },
     undo: () => send({ type: "undo", documentId }),
     redo: () => send({ type: "redo", documentId }),
-    load() {},
-    restore() {},
-    markSaved() {},
+    load() {
+      // Ouvrir un fichier se fait dans la fenêtre principale.
+    },
+    restore() {
+      // La récupération se fait dans la fenêtre principale.
+    },
+    markSaved() {
+      // Enregistrer est le rôle de la fenêtre principale.
+    },
   }));
 
   const view = createDocumentViewStore();

@@ -108,7 +108,7 @@ export function KeyPatternField({
         ))}
         <option value={CUSTOM}>{t("pattern.custom")}</option>
       </select>
-      {custom && (
+      {custom ? (
         <>
           <CommitInput
             value={displayPattern(value, language)}
@@ -146,7 +146,7 @@ export function KeyPatternField({
             <p className="mt-0.5">{t("pattern.example", { example: applyPattern(value, SAMPLE) })}</p>
           </div>
         </>
-      )}
+      ) : null}
     </div>
   );
 }

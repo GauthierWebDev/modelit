@@ -41,6 +41,7 @@ export function AttributesSection() {
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: intercepte Suppr pour le canevas, la zone n'est pas interactive
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: intercepte Suppr pour le canevas, la zone n'est pas interactive
     <div
       className="flex h-full flex-col overflow-y-auto"
       // Suppr ne vise jamais le canevas tant que le focus est dans la section (O-50).
@@ -165,14 +166,21 @@ function AttributesPanel({
     }
   };
 
-  const drag = useRowDrag(rows, readOnly ? () => {} : move);
+  const drag = useRowDrag(
+    rows,
+    readOnly
+      ? () => {
+          // Lecture seule : l'ordre des rubriques ne change pas.
+        }
+      : move,
+  );
   const duplicates = new Set(attributes.map((a) => a.name).filter((name, i, all) => all.indexOf(name) !== i));
 
   return (
     <>
       <div className="flex items-center justify-between gap-2 border-b border-neutral-200 px-3 py-2 dark:border-neutral-700">
         <h3 className="min-w-0 truncate text-sm font-semibold">{owner.name}</h3>
-        {isEntity && (
+        {isEntity ? (
           <button
             type="button"
             className="flex flex-none items-center gap-1 text-xs text-blue-600 hover:underline dark:text-blue-400"
@@ -180,7 +188,7 @@ function AttributesPanel({
           >
             <KeyRound size={12} /> {t("inspector.autoDiscriminant")}
           </button>
-        )}
+        ) : null}
       </div>
       <div role="listbox" aria-label={t("inspector.attributes")} className="flex flex-col py-1">
         {attributes.length === 0 && <p className="px-3 py-1 text-sm text-neutral-500">{t("attributes.empty")}</p>}
@@ -218,14 +226,14 @@ function AttributesPanel({
               >
                 {typeSummary(a.type)}
               </span>
-              {isEntity && (
+              {isEntity ? (
                 <Pill
                   label="ID"
                   tooltip={t("attribute.identifier")}
                   on={a.identifier}
                   onToggle={() => update(a.id, { identifier: !a.identifier })}
                 />
-              )}
+              ) : null}
               <Pill
                 label="NN"
                 tooltip="NOT NULL"
@@ -303,16 +311,17 @@ function AttributeDetail({
         <TypePicker value={a.type} onChange={(type) => update({ type, sourceType: undefined })} />
       </Field>
       <div className="flex flex-wrap gap-x-3">
-        {isEntity && (
+        {isEntity ? (
           <Checkbox
             label={t("attribute.identifier")}
             checked={a.identifier}
             onChange={(identifier) => update({ identifier })}
           />
-        )}
+        ) : null}
         <Checkbox label="NOT NULL" checked={a.notNull} onChange={(notNull) => update({ notNull })} />
         <Checkbox label="UNIQUE" checked={a.unique} onChange={(unique) => update({ unique })} />
       </div>
+      {/* biome-ignore lint/correctness/useUniqueElementIds: prop « id » de Disclosure = clé de préférence, pas un id du DOM */}
       <Disclosure id="attribute.advanced" title={t("inspector.advanced")}>
         <AdvancedFields attribute={a} dialect={doc.settings.dbms} update={(patch) => void update(patch)} />
       </Disclosure>

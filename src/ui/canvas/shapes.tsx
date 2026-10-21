@@ -92,6 +92,7 @@ interface NodeShapeProps {
   linkNames?: Map<string, string>;
 }
 
+// biome-ignore lint/suspicious/noShadow: nom de la fonction affiché par les outils de développement de React
 export const NodeShape = memo(function NodeShape({
   node,
   layout,
@@ -173,7 +174,7 @@ export const NodeShape = memo(function NodeShape({
             >
               {mark.label}
             </text>
-            {alternate && (
+            {alternate ? (
               <>
                 {/* Identifiant alternatif : souligné en pointillé, étiquette AI (O-36). */}
                 <line
@@ -208,11 +209,11 @@ export const NodeShape = memo(function NodeShape({
                   {alternate.prefix ? " ⚠" : ""}
                 </text>
               </>
-            )}
+            ) : null}
           </g>
         );
       })}
-      {referencedKey && (
+      {referencedKey ? (
         <text
           x={x + width / 2}
           y={y + height + 11}
@@ -226,7 +227,7 @@ export const NodeShape = memo(function NodeShape({
         >
           → {referencedKey.attributes.join(", ")}
         </text>
-      )}
+      ) : null}
       <ErrorBadge x={x + width} y={y} issues={issues} />
     </g>
   );
@@ -238,6 +239,7 @@ interface LinkShapeProps {
 }
 
 /** Patte entre une association et une entité (tracé, cassures, cardinalité). */
+// biome-ignore lint/suspicious/noShadow: nom de la fonction affiché par les outils de développement de React
 export const LinkShape = memo(function LinkShape({ geometry, selected }: LinkShapeProps) {
   const { link, points, label } = geometry;
   const text = formatCardinality(link.cardinality) + (link.relativeId ? "(R)" : "");
@@ -270,7 +272,7 @@ export const LinkShape = memo(function LinkShape({ geometry, selected }: LinkSha
       >
         {text}
       </text>
-      {role && (
+      {role ? (
         /* Rôle de la patte (réflexives : parrain, originale…) (O-36). */
         <text
           x={rolePoint.x}
@@ -286,7 +288,7 @@ export const LinkShape = memo(function LinkShape({ geometry, selected }: LinkSha
         >
           {role}
         </text>
-      )}
+      ) : null}
     </g>
   );
 });
@@ -347,6 +349,7 @@ const CONSTRAINT_SYMBOL: Record<Inheritance["constraint"], string> = { none: "",
  * Triangle d'héritage (overrides O-18, O-27) : toujours droit, pointe en haut ;
  * symbole de la contrainte au centre (X, T, XT, ou vide).
  */
+// biome-ignore lint/suspicious/noShadow: nom de la fonction affiché par les outils de développement de React
 export const InheritanceShape = memo(function InheritanceShape({
   inheritance,
   layout,
@@ -389,6 +392,7 @@ export const InheritanceShape = memo(function InheritanceShape({
 });
 
 /** Lien d'héritage ; celui de l'entité générique est plus épais et fléché (non désactivable, O-27). */
+// biome-ignore lint/suspicious/noShadow: nom de la fonction affiché par les outils de développement de React
 export const InheritanceLinkShape = memo(function InheritanceLinkShape({
   geometry,
   selected,

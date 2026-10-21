@@ -97,7 +97,9 @@ export function startOwner(
   };
 
   // Abonnements au document actif, renouvelés quand l'onglet actif change.
-  let unsubscribeDoc = () => {};
+  let unsubscribeDoc = () => {
+    // Aucun abonnement avant le premier onglet actif.
+  };
   const watchActive = () => {
     unsubscribeDoc();
     const doc = activeDocument();

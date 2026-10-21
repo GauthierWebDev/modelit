@@ -14,7 +14,7 @@ import { IconButton } from "@/ui/common/controls";
 function OutputBody({ copyText, children }: { copyText?: string | null; children: ReactNode }) {
   return (
     <div className="relative h-full overflow-auto p-3 font-mono text-[13px] leading-5 select-text">
-      {copyText != null && (
+      {typeof copyText === "string" && (
         <div className="absolute top-1 right-1">
           <IconButton tooltip={t("output.copy")} onClick={() => void navigator.clipboard.writeText(copyText)}>
             <Copy size={14} />
@@ -95,7 +95,7 @@ function SqlView({ sql, losses }: { sql: string; losses: Loss[] }) {
           >
             {open ? "▾" : "▸"} {t("output.losses", { n: losses.length })}
           </button>
-          {open && (
+          {open ? (
             <ul className="mt-1 list-disc pl-5 text-xs text-neutral-700 dark:text-neutral-300">
               {/* Une ligne par perte, avec ses emplacements (O-37). */}
               {groupLosses(losses).map((g) => (
@@ -110,7 +110,7 @@ function SqlView({ sql, losses }: { sql: string; losses: Loss[] }) {
                 </li>
               ))}
             </ul>
-          )}
+          ) : null}
         </div>
       )}
       <pre>{sql}</pre>
@@ -141,7 +141,7 @@ function MldView() {
                     .join(" ") || undefined
                 }
               >
-                {c.foreign && "#"}
+                {c.foreign ? "#" : null}
                 {c.name}
               </span>
             </span>

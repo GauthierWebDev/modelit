@@ -32,7 +32,7 @@ export function Menu({
   return (
     <div ref={ref} className="relative inline-flex">
       {trigger({ open, toggle: () => setOpen((o) => !o) })}
-      {open && (
+      {open ? (
         <div
           role="menu"
           className={`absolute top-full z-50 mt-1 min-w-48 rounded border border-neutral-200 bg-white py-1 text-sm shadow-lg dark:border-neutral-700 dark:bg-neutral-800 ${
@@ -41,7 +41,7 @@ export function Menu({
         >
           {children(() => setOpen(false))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -64,7 +64,7 @@ export function MenuItem({
     >
       <span className="w-3.5 flex-none" />
       <span className="flex-1">{children}</span>
-      {shortcut && <span className="pl-6 text-xs text-neutral-400 dark:text-neutral-500">{shortcut}</span>}
+      {shortcut ? <span className="pl-6 text-xs text-neutral-400 dark:text-neutral-500">{shortcut}</span> : null}
     </button>
   );
 }
@@ -96,7 +96,7 @@ export function MenuCheck({
       onClick={onSelect}
       className="flex w-full items-center gap-2 px-3 py-1 text-left whitespace-nowrap hover:bg-neutral-100 disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-neutral-700"
     >
-      <span className="flex w-3.5 flex-none justify-center">{checked && <Check size={14} />}</span>
+      <span className="flex w-3.5 flex-none justify-center">{checked ? <Check size={14} /> : null}</span>
       {children}
     </button>
   );

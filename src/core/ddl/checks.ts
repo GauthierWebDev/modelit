@@ -16,27 +16,27 @@ import {
 import { effectiveCollationClass, freeTypeFallback, icuCollations } from "./types";
 
 /** CHECK écrit pour la cible, ou `null` (non traduisible ou incompatible : commentaire + perte). */
-export function check(ctx: Context, table: LogicalTable, check: CheckConstraint, column?: string): string | null {
+export function check(ctx: Context, table: LogicalTable, constraint: CheckConstraint, column?: string): string | null {
   let expression: string | null = null;
-  if (sameDialect(check.dialect, ctx.target.dbms) || check.dialect === "generic") {
+  if (sameDialect(constraint.dialect, ctx.target.dbms) || constraint.dialect === "generic") {
     expression =
-      check.dialect === "generic"
-        ? (renderStructured(ctx, table, check.expression) ?? check.expression)
-        : check.expression;
+      constraint.dialect === "generic"
+        ? (renderStructured(ctx, table, constraint.expression) ?? constraint.expression)
+        : constraint.expression;
   } else {
-    expression = renderStructured(ctx, table, check.expression, check.dialect);
+    expression = renderStructured(ctx, table, constraint.expression, constraint.dialect);
   }
   if (expression === null) {
-    ctx.report.add("check", table.name, MSG.lossCheck(check.expression), column);
+    ctx.report.add("check", table.name, MSG.lossCheck(constraint.expression), column);
     return null;
   }
   // Typage strict (PostgreSQL, DB2) : un CHECK qui compare des familles de types différentes
   // après conversion (ex. YEAR devenu texte) ferait échouer le script (O-35).
   if (ctx.dialect.constraints.strictCheckTyping) {
-    const condition = parseCondition(check.expression);
+    const condition = parseCondition(constraint.expression);
     const conflict = condition && typeConflict(condition, (name) => familyOf(ctx, table, name));
     if (conflict) {
-      ctx.report.add("check", table.name, MSG.lossCheckTypes(check.expression, conflict), column);
+      ctx.report.add("check", table.name, MSG.lossCheckTypes(constraint.expression, conflict), column);
       return null;
     }
   }

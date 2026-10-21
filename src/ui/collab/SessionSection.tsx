@@ -93,6 +93,7 @@ export function SessionTitle() {
           className="min-w-4 rounded-full bg-blue-600 px-1 text-center text-[10px] leading-4 font-semibold text-white"
           aria-label={t("collab.unread", { n: unread })}
         >
+          {/* biome-ignore lint/suspicious/noLeakedRender: compteur affiché volontairement, toujours > 0 ici */}
           {unread > 99 ? "99+" : unread}
         </span>
       )}
@@ -225,7 +226,7 @@ export function SessionSection() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 p-2">
       <div className="flex flex-wrap items-center gap-1">
-        {isHost && links && (
+        {isHost && links ? (
           <>
             <button type="button" className={small} onClick={() => copy("edit", links.edit)}>
               <Copy size={12} /> {copied === "edit" ? t("collab.copied") : t("collab.editLink")}
@@ -234,7 +235,7 @@ export function SessionSection() {
               <Copy size={12} /> {copied === "read" ? t("collab.copied") : t("collab.readLink")}
             </button>
           </>
-        )}
+        ) : null}
         <div className="flex-1" />
         <button
           type="button"
@@ -276,7 +277,7 @@ export function SessionSection() {
                 {p.id === you && <span className="text-neutral-400"> ({t("collab.you")})</span>}
               </span>
               <span className="text-xs text-neutral-400">{t(ROLE_LABEL[p.role])}</span>
-              {p.audio && (
+              {p.audio ? (
                 <span
                   className="flex flex-none items-center text-neutral-500"
                   {...tip(p.audio.muted ? t("voice.theyMuted") : t("voice.theyIn"))}
@@ -287,7 +288,7 @@ export function SessionSection() {
                     <Headphones size={12} aria-label={t("voice.theyIn")} />
                   )}
                 </span>
-              )}
+              ) : null}
               <div className="flex-1" />
               {voice.status === "on" && p.audio && p.id !== you && volume !== 100 && (
                 <span className="text-[10px] text-neutral-400 tabular-nums group-focus-within:hidden group-hover:hidden">
