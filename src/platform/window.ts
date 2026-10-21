@@ -47,7 +47,10 @@ export function onCloseRequested(canClose: () => Promise<boolean>, isDirty: () =
 
 /** Événement émis par un élément du menu natif (macOS, `src-tauri/src/lib.rs`) ; renvoie la désinscription. */
 function onMenuEvent(event: string, handler: () => void): () => void {
-  if (!isTauri()) return () => {};
+  if (!isTauri())
+    return () => {
+      // Hors de Tauri, pas de menu natif : rien à désabonner.
+    };
   let unlisten: (() => void) | undefined;
   let disposed = false;
   void import("@tauri-apps/api/event").then(async ({ listen }) => {

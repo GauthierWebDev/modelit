@@ -109,12 +109,12 @@ export function reverseEngineer(
         warnings.push(MSG.reverseUnknownTable(table.name, fk.table));
         continue;
       }
-      const referencedColumns = fk.referencedColumns.length ? fk.referencedColumns : target.primaryKey;
-      if (referencedColumns.length !== fk.columns.length) {
+      const targetColumns = fk.referencedColumns.length ? fk.referencedColumns : target.primaryKey;
+      if (targetColumns.length !== fk.columns.length) {
         warnings.push(MSG.reverseColumnMismatch(table.name, fk.table));
         continue;
       }
-      resolved.push({ ...fk, referencedColumns, target });
+      resolved.push({ ...fk, referencedColumns: targetColumns, target });
     }
     fks.set(table, resolved);
   }

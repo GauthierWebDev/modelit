@@ -42,7 +42,9 @@
         "noEqualsToNull": "error",
         "useAwait": "error",
         "noNestedPromises": "error",
-        "noUnnecessaryConditions": "off"
+        "noUnnecessaryConditions": "off",
+        "noShadow": "error",
+        "noEmptyBlockStatements": "error"
       },
       "correctness": {
         "noUndeclaredVariables": "error",

@@ -34,8 +34,8 @@ const table = (sql: string, name: string) =>
 const announced = (sql: string): Loss[] =>
   (sql.match(/^-- {3}• .*$/gm) ?? []).map((line) => {
     const [where, ...rest] = line.replace(/^-- {3}• /, "").split(" — ");
-    const [table, column] = where!.split(".");
-    return { category: "type", table: table!, column, message: rest.join(" — ") };
+    const [tableName, column] = where!.split(".");
+    return { category: "type", table: tableName!, column, message: rest.join(" — ") };
   });
 
 /** Écarts source → sortie que le rapport ne justifie pas (même table, catégorie compatible, même colonne). */

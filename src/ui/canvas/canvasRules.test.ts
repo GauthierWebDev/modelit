@@ -29,11 +29,11 @@ import { layoutsOf } from "./viewport";
  * du renommage au double-clic (O-56, O-58, O-59).
  */
 
-const doc = emptyDocument();
+const EMPTY_DOC = emptyDocument();
 const box = (x: number, y: number, width = 110, height = 40): NodeLayout => ({ x, y, width, height, rows: [] });
 /** Encombrement de l'association qui sera créée (« Association 1 », sans rubrique). */
 const ASSOCIATION = (() => {
-  const l = nodeLayout(createAssociation(nextFreeName("Association", [])), { x: 0, y: 0 }, doc.settings.display);
+  const l = nodeLayout(createAssociation(nextFreeName("Association", [])), { x: 0, y: 0 }, EMPTY_DOC.settings.display);
   return { width: l.width, height: l.height };
 })();
 const overlaps = (a: Rect, b: Rect) => intersects(a, b);
@@ -292,7 +292,7 @@ describe("double-clic dans le MLD et le MPD (O-56, O-59)", () => {
   const at = (mode: "mld" | "mpd", tableName: string, columnName: string | null, part: "name" | "type" = "name") => {
     const { doc, logical } = setup();
     const layouts = tableLayouts(logical, doc, mode);
-    const l = layouts.find((x) => x.table.name === tableName)!;
+    const l = layouts.find((layout) => layout.table.name === tableName)!;
     const row = columnName ? l.rows.find((r) => r.column.name === columnName)! : null;
     const y = l.y + (row ? row.y + ROW_HEIGHT / 2 : TITLE_HEIGHT / 2);
     const x = l.x + (part === "type" ? l.typeX + 2 : 14);

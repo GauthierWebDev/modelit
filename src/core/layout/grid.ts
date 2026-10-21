@@ -809,8 +809,8 @@ function candidates(state: State, v: number, radius: number, out: number[]): num
     return out;
   }
   const seen = new Set<number>();
-  const around = [state.cellOf[v]!, ...pb.incident[v]!.map((e) => state.cellOf[pb.other(e, v)]!)];
-  for (const c of around) {
+  const centres = [state.cellOf[v]!, ...pb.incident[v]!.map((e) => state.cellOf[pb.other(e, v)]!)];
+  for (const c of centres) {
     const col = c % pb.cols;
     const row = Math.floor(c / pb.cols);
     for (let r = Math.max(0, row - radius); r <= Math.min(pb.rows - 1, row + radius); r++) {

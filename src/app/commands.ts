@@ -430,7 +430,7 @@ export function renameAttribute(doc: DocumentHandle, ownerId: Id, attributeId: I
 
 /** Ajoute en fin de liste une rubrique au nom libre (« rubrique_N ») ; renvoie son identifiant. */
 export function addAttribute(doc: DocumentHandle, ownerId: Id): Id | null {
-  const owner = [...current(doc).entities, ...current(doc).associations].find((n) => n.id === ownerId);
+  const owner = [...current(doc).entities, ...current(doc).associations].find((node) => node.id === ownerId);
   if (!owner) return null;
   const taken = new Set(owner.attributes.map((a) => a.name));
   let n = owner.attributes.length + 1;

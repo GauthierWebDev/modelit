@@ -105,7 +105,7 @@ export function DbmsTarget() {
               </select>
             </Field>
             <Field label={t("toolbar.version")}>
-              <Select value={dbmsVersion} options={versions} onChange={(value) => setDbmsVersion(doc, value)} />
+              <Select value={dbmsVersion} options={versions} onChange={(version) => setDbmsVersion(doc, version)} />
             </Field>
           </fieldset>
           {custom ? (

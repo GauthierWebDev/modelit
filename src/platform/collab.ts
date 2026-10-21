@@ -115,7 +115,10 @@ export async function connectGuestTransport(addr: string): Promise<GuestLink> {
 
 /** Liens `modelit://` reçus : au lancement de l'application, puis pendant qu'elle tourne. */
 export async function onOpenLink(handler: (url: string) => void): Promise<() => void> {
-  if (!isTauri()) return () => {};
+  if (!isTauri())
+    return () => {
+      // Hors de Tauri, aucun lien modelit:// : rien à désabonner.
+    };
   const { getCurrent, onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
   for (const url of (await getCurrent()) ?? []) handler(url);
   return onOpenUrl((urls) => urls.forEach(handler));

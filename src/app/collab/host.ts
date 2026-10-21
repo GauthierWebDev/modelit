@@ -187,10 +187,10 @@ export function startHost({
         return;
       case "ops": {
         if (!guest) return;
-        const doc = store.getState().doc;
-        if (guest.role !== "editor") return link.send(peer, { type: "rejected", reason: "read-only", doc });
+        const snapshot = store.getState().doc;
+        if (guest.role !== "editor") return link.send(peer, { type: "rejected", reason: "read-only", doc: snapshot });
         if (message.ai && !state.getState().aiAllowed)
-          return link.send(peer, { type: "rejected", reason: "ai-disabled", doc });
+          return link.send(peer, { type: "rejected", reason: "ai-disabled", doc: snapshot });
         store.getState().applyRemote(message.ops);
         return broadcast({ type: "ops", ops: message.ops, author: peer });
       }

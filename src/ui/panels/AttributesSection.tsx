@@ -165,7 +165,14 @@ function AttributesPanel({
     }
   };
 
-  const drag = useRowDrag(rows, readOnly ? () => {} : move);
+  const drag = useRowDrag(
+    rows,
+    readOnly
+      ? () => {
+          // Lecture seule : l'ordre des rubriques ne change pas.
+        }
+      : move,
+  );
   const duplicates = new Set(attributes.map((a) => a.name).filter((name, i, all) => all.indexOf(name) !== i));
 
   return (

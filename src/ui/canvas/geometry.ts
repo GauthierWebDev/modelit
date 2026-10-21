@@ -522,8 +522,8 @@ function segmentsIntersect(p: Point, q: Point, r: Point, s: Point): boolean {
 function distanceToSegment(p: Point, a: Point, b: Point): number {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
-  const t = dx || dy ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy))) : 0;
-  return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+  const ratio = dx || dy ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy))) : 0;
+  return Math.hypot(p.x - (a.x + ratio * dx), p.y - (a.y + ratio * dy));
 }
 
 export const snap = (value: number, grid: number | null) => (grid ? Math.round(value / grid) * grid : value);

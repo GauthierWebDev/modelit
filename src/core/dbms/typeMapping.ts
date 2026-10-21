@@ -257,27 +257,27 @@ const VERSION_OVERRIDES: { dbms: Dbms; since: string; row: RowKey; sql: string }
 
 /** Gabarit du SGBD (et de sa version) pour un type conceptuel, sans personnalisation. */
 export function defaultTemplate(key: TypeKey, dbms: Dbms, version: string | undefined): string | null {
-  const row: RowKey = key in COUNTER_KEYS ? COUNTER_KEYS[key as keyof typeof COUNTER_KEYS] : (key as RowKey);
+  const tableRow: RowKey = key in COUNTER_KEYS ? COUNTER_KEYS[key as keyof typeof COUNTER_KEYS] : (key as RowKey);
   const override = VERSION_OVERRIDES.filter(
-    (o) => o.dbms === dbms && o.row === row && isAtLeast(dbms, version, o.since),
+    (o) => o.dbms === dbms && o.row === tableRow && isAtLeast(dbms, version, o.since),
   ).at(-1);
-  return override ? override.sql : TABLE[row][dbms];
+  return override ? override.sql : TABLE[tableRow][dbms];
 }
 
-function templateFor(row: TypeKey, dbms: Dbms, version: string | undefined, custom?: TypeTemplates): string | null {
-  const redefined = custom?.[row]?.trim();
-  return redefined || defaultTemplate(row, dbms, version);
+function templateFor(key: TypeKey, dbms: Dbms, version: string | undefined, custom?: TypeTemplates): string | null {
+  const redefined = custom?.[key]?.trim();
+  return redefined || defaultTemplate(key, dbms, version);
 }
 
 /** Variables qu'un gabarit peut contenir, selon le type conceptuel. */
-export function templateVariables(row: TypeKey): string[] {
-  if (/^(ascii|unicode|binary)/.test(row)) return ["n"];
-  return row === "decimal" ? ["p", "s"] : [];
+export function templateVariables(key: TypeKey): string[] {
+  if (/^(ascii|unicode|binary)/.test(key)) return ["n"];
+  return key === "decimal" ? ["p", "s"] : [];
 }
 
 /** Variable sans objet pour ce type, ou inconnue, dans un gabarit saisi (O-59) ; `null` si valide. */
-export function invalidTemplateVariable(row: TypeKey, template: string): string | null {
-  const allowed = templateVariables(row);
+export function invalidTemplateVariable(key: TypeKey, template: string): string | null {
+  const allowed = templateVariables(key);
   for (const [, name] of template.matchAll(/\{(\w*)\}/g)) if (!allowed.includes(name!)) return `{${name}}`;
   return null;
 }

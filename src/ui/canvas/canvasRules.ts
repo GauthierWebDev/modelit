@@ -186,12 +186,12 @@ export function mcdRenameTarget(
   point: Point,
 ): { nodeId: Id; attributeId: Id | null } | null {
   const hit = [...layouts].findLast(
-    ([id, l]) =>
+    ([id, box]) =>
       !doc.inheritances.some((h) => h.id === id) &&
-      point.x >= l.x &&
-      point.x <= l.x + l.width &&
-      point.y >= l.y &&
-      point.y <= l.y + l.height,
+      point.x >= box.x &&
+      point.x <= box.x + box.width &&
+      point.y >= box.y &&
+      point.y <= box.y + box.height,
   );
   if (!hit) return null;
   const [nodeId, l] = hit;
