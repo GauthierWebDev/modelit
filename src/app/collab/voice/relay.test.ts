@@ -7,30 +7,30 @@ import { type AudioPacket, encodePacket } from "./packet";
 
 const voice = (n: number) => ({ seq: n, level: 120, payload: new Uint8Array([n, n, n]) });
 
+function session() {
+  const net = memoryNetwork();
+  const host = startHost({
+    link: net.hostLink,
+    doc: emptyDocument(),
+    secrets: { editor: "e", reader: "r" },
+    me: { id: "host", name: "Alice", color: "#000" },
+  });
+  const bob = startGuest({ link: net.connect("bob"), secret: "e", name: "Bob", color: "#111" });
+  const carol = startGuest({ link: net.connect("carol"), secret: "r", name: "Carol", color: "#222" });
+  const dave = startGuest({ link: net.connect("dave"), secret: "e", name: "Dave", color: "#333" });
+  net.flush();
+  const heard = (who: { onAudio: (h: (p: AudioPacket) => void) => () => void }) => {
+    const packets: AudioPacket[] = [];
+    who.onAudio((p) => packets.push(p));
+    return packets;
+  };
+  return { net, host, bob, carol, dave, heard };
+}
+const audioOf = (g: GuestSession) =>
+  Object.fromEntries(g.state.getState().participants.map((p) => [p.id, p.audio ?? null]));
+
 /** Vocal (O-48, D18) : état dans la liste des participants, voix relayée par l'hôte. */
 describe("vocal : relais par l'hôte", () => {
-  function session() {
-    const net = memoryNetwork();
-    const host = startHost({
-      link: net.hostLink,
-      doc: emptyDocument(),
-      secrets: { editor: "e", reader: "r" },
-      me: { id: "host", name: "Alice", color: "#000" },
-    });
-    const bob = startGuest({ link: net.connect("bob"), secret: "e", name: "Bob", color: "#111" });
-    const carol = startGuest({ link: net.connect("carol"), secret: "r", name: "Carol", color: "#222" });
-    const dave = startGuest({ link: net.connect("dave"), secret: "e", name: "Dave", color: "#333" });
-    net.flush();
-    const heard = (who: { onAudio: (h: (p: AudioPacket) => void) => () => void }) => {
-      const packets: AudioPacket[] = [];
-      who.onAudio((p) => packets.push(p));
-      return packets;
-    };
-    return { net, host, bob, carol, dave, heard };
-  }
-  const audioOf = (g: GuestSession) =>
-    Object.fromEntries(g.state.getState().participants.map((p) => [p.id, p.audio ?? null]));
-
   it("personne n'est dans le vocal par défaut ; rejoindre et couper le micro se voit chez tous", () => {
     const { net, host, bob, carol } = session();
     expect(audioOf(carol)).toEqual({ host: null, bob: null, carol: null, dave: null });
@@ -76,7 +76,9 @@ describe("vocal : relais par l'hôte", () => {
     expect(atBob.map((p) => [p.speaker, p.seq])).toEqual([["host", 7]]);
     expect(atDave).toEqual([]);
   });
+});
 
+describe("vocal : relais par l'hôte", () => {
   it("un invité ne peut pas parler au nom d'un autre, ni hors du vocal, ni micro coupé", () => {
     const net = memoryNetwork();
     const host = startHost({
@@ -117,7 +119,9 @@ describe("vocal : relais par l'hôte", () => {
     net.flush();
     expect(atHost.map((p) => p.seq)).toEqual([2, 3]);
   });
+});
 
+describe("vocal : relais par l'hôte", () => {
   it("après une reconnexion, l'invité est de nouveau dans le vocal", () => {
     const { net, host, bob } = session();
     bob.setVoice(true, true);

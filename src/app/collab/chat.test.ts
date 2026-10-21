@@ -5,24 +5,24 @@ import { startHost } from "./host";
 import { memoryNetwork } from "./memoryNetwork";
 import { CHAT_MAX } from "./protocol";
 
+function session() {
+  const net = memoryNetwork();
+  const host = startHost({
+    link: net.hostLink,
+    doc: emptyDocument(),
+    secrets: { editor: "e", reader: "r" },
+    me: { id: "host", name: "Alice", color: "#000" },
+  });
+  const bob = startGuest({ link: net.connect("bob"), secret: "e", name: "Bob", color: "#111" });
+  const carol = startGuest({ link: net.connect("carol"), secret: "r", name: "Carol", color: "#222" });
+  net.flush();
+  return { net, host, bob, carol };
+}
+const lines = (chat: { kind: string; name: string; text: string }[]) =>
+  chat.map((m) => (m.kind === "text" ? `${m.name}: ${m.text}` : `${m.kind} ${m.name}`));
+
 /** Chat de session (O-05 §6). */
 describe("chat", () => {
-  function session() {
-    const net = memoryNetwork();
-    const host = startHost({
-      link: net.hostLink,
-      doc: emptyDocument(),
-      secrets: { editor: "e", reader: "r" },
-      me: { id: "host", name: "Alice", color: "#000" },
-    });
-    const bob = startGuest({ link: net.connect("bob"), secret: "e", name: "Bob", color: "#111" });
-    const carol = startGuest({ link: net.connect("carol"), secret: "r", name: "Carol", color: "#222" });
-    net.flush();
-    return { net, host, bob, carol };
-  }
-  const lines = (chat: { kind: string; name: string; text: string }[]) =>
-    chat.map((m) => (m.kind === "text" ? `${m.name}: ${m.text}` : `${m.kind} ${m.name}`));
-
   it("tout le monde reçoit les messages, lecteurs compris, dans l'ordre d'arrivée chez l'hôte", () => {
     const { net, host, bob, carol } = session();
     bob.sendChat("Je prends CLIENT");

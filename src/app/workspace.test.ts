@@ -19,10 +19,10 @@ const ids = () => useWorkspaceStore.getState().documents.map((d) => d.id);
 const names = () => useWorkspaceStore.getState().documents.map((d) => documentName(d));
 const openFile = (path: string) => openInTab((d) => d.store.getState().load(emptyDocument(), path));
 
+beforeEach(resetWorkspace);
+
 /** Onglets (override O-44). */
 describe("espace de travail", () => {
-  beforeEach(resetWorkspace);
-
   it("un document vierge au départ", () => {
     expect(ids()).toHaveLength(1);
     expect(names()).toEqual(["Sans titre"]);
@@ -67,7 +67,9 @@ describe("espace de travail", () => {
     expect(useWorkspaceStore.getState().untitled).toEqual({});
     expect(names()).toEqual(["x.mcd"]);
   });
+});
 
+describe("espace de travail", () => {
   it("fichier déjà ouvert : retrouvé par son chemin", () => {
     const a = openFile("/m/a.mcd");
     openFile("/m/b.mcd");
@@ -109,7 +111,9 @@ describe("espace de travail", () => {
     activateNeighbour(-1);
     expect(activeDocument()).toBe(b);
   });
+});
 
+describe("espace de travail", () => {
   it("glisser-déposer : réordonne sans changer l'onglet actif", () => {
     const a = openFile("/m/a.mcd");
     const b = openFile("/m/b.mcd");
