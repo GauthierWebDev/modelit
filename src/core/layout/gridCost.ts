@@ -108,32 +108,47 @@ export function fullCost(s: State, quality?: GridQuality): number {
     cost += lengthTerm(s, e, quality);
   }
   for (let e = 0; e < pb.m; e += 1) {
-    for (let f = e + 1; f < pb.m; f += 1) {
-      if (crosses(s, e, f) || cutsLoop(s, e, f) || cutsLoop(s, f, e)) {
-        cost += WEIGHT.crossing;
-        if (quality) {
-          quality.crossings += 1;
-        }
-      }
-    }
-    for (let w = 0; w < pb.n; w += 1) {
-      if (hits(s, e, w)) {
-        cost += WEIGHT.through;
-        if (quality) {
-          quality.through += 1;
-        }
-      }
-    }
+    cost = edgeConflicts(s, e, cost, quality);
   }
   for (let v = 0; v < pb.n; v += 1) {
-    const list = pb.incident[v]!;
-    for (let i = 0; i < list.length; i += 1) {
-      for (let j = i + 1; j < list.length; j += 1) {
-        cost += angleTerm(s, v, list[i]!, list[j]!, quality);
+    cost = nodeAngles(s, v, cost, quality);
+  }
+  return cost;
+}
+
+/** Croisements de `e` avec les traits suivants, puis objets que `e` traverse (ajoutés à `cost`, dans l'ordre). */
+function edgeConflicts(s: State, e: number, cost: number, quality?: GridQuality): number {
+  const { pb } = s;
+  let total = cost;
+  for (let f = e + 1; f < pb.m; f += 1) {
+    if (crosses(s, e, f) || cutsLoop(s, e, f) || cutsLoop(s, f, e)) {
+      total += WEIGHT.crossing;
+      if (quality) {
+        quality.crossings += 1;
       }
     }
   }
-  return cost;
+  for (let w = 0; w < pb.n; w += 1) {
+    if (hits(s, e, w)) {
+      total += WEIGHT.through;
+      if (quality) {
+        quality.through += 1;
+      }
+    }
+  }
+  return total;
+}
+
+/** Angles entre les traits issus de `v` (ajoutés à `cost`, dans l'ordre). */
+function nodeAngles(s: State, v: number, cost: number, quality?: GridQuality): number {
+  const list = s.pb.incident[v]!;
+  let total = cost;
+  for (let i = 0; i < list.length; i += 1) {
+    for (let j = i + 1; j < list.length; j += 1) {
+      total += angleTerm(s, v, list[i]!, list[j]!, quality);
+    }
+  }
+  return total;
 }
 
 /**
@@ -149,6 +164,27 @@ export function partialCost(s: State, v: number, w: number): number {
   if (w >= 0) {
     s.nodeMark[w] = stamp;
   }
+  const { touchedCount, cornerCount } = markTouched(s, v, w, stamp);
+  let cost = 0;
+  for (let i = 0; i < touchedCount; i += 1) {
+    cost = touchedEdgeCost(s, s.touched[i]!, stamp, cost);
+  }
+  for (const x of w >= 0 ? [v, w] : [v]) {
+    for (let e = 0; e < pb.m; e += 1) {
+      if (s.edgeMark[e] !== stamp && hits(s, e, x)) {
+        cost += WEIGHT.through;
+      }
+    }
+  }
+  for (let i = 0; i < cornerCount; i += 1) {
+    cost = cornerAngles(s, s.corners[i]!, stamp, cost);
+  }
+  return cost;
+}
+
+/** Marque les traits issus de `v` et `w`, et leurs extrémités (coins dont les angles changent). */
+function markTouched(s: State, v: number, w: number, stamp: number) {
+  const { pb } = s;
   let touchedCount = 0;
   let cornerCount = 0;
   const addCorner = (x: number) => {
@@ -171,43 +207,41 @@ export function partialCost(s: State, v: number, w: number): number {
       addCorner(pb.eb[e]!);
     }
   }
-  let cost = 0;
-  for (let i = 0; i < touchedCount; i += 1) {
-    const e = s.touched[i]!;
-    cost += lengthTerm(s, e);
-    for (let f = 0; f < pb.m; f += 1) {
-      if (f === e || (s.edgeMark[f] === stamp && f < e)) {
-        continue;
-      }
-      if (crosses(s, e, f) || cutsLoop(s, e, f) || cutsLoop(s, f, e)) {
-        cost += WEIGHT.crossing;
-      }
+  return { touchedCount, cornerCount };
+}
+
+/** Longueur, croisements (chaque paire de traits marqués une seule fois) et traversées d'un trait marqué. */
+function touchedEdgeCost(s: State, e: number, stamp: number, cost: number): number {
+  const { pb } = s;
+  let total = cost + lengthTerm(s, e);
+  for (let f = 0; f < pb.m; f += 1) {
+    if (f === e || (s.edgeMark[f] === stamp && f < e)) {
+      continue;
     }
-    for (let x = 0; x < pb.n; x += 1) {
-      if (hits(s, e, x)) {
-        cost += WEIGHT.through;
+    if (crosses(s, e, f) || cutsLoop(s, e, f) || cutsLoop(s, f, e)) {
+      total += WEIGHT.crossing;
+    }
+  }
+  for (let x = 0; x < pb.n; x += 1) {
+    if (hits(s, e, x)) {
+      total += WEIGHT.through;
+    }
+  }
+  return total;
+}
+
+/** Angles au coin `x` qui font intervenir un objet ou un trait marqué. */
+function cornerAngles(s: State, x: number, stamp: number, cost: number): number {
+  const list = s.pb.incident[x]!;
+  let total = cost;
+  for (let a = 0; a < list.length; a += 1) {
+    for (let b = a + 1; b < list.length; b += 1) {
+      const e = list[a]!;
+      const f = list[b]!;
+      if (s.nodeMark[x] === stamp || s.edgeMark[e] === stamp || s.edgeMark[f] === stamp) {
+        total += angleTerm(s, x, e, f);
       }
     }
   }
-  for (const x of w >= 0 ? [v, w] : [v]) {
-    for (let e = 0; e < pb.m; e += 1) {
-      if (s.edgeMark[e] !== stamp && hits(s, e, x)) {
-        cost += WEIGHT.through;
-      }
-    }
-  }
-  for (let i = 0; i < cornerCount; i += 1) {
-    const x = s.corners[i]!;
-    const list = pb.incident[x]!;
-    for (let a = 0; a < list.length; a += 1) {
-      for (let b = a + 1; b < list.length; b += 1) {
-        const e = list[a]!;
-        const f = list[b]!;
-        if (s.nodeMark[x] === stamp || s.edgeMark[e] === stamp || s.edgeMark[f] === stamp) {
-          cost += angleTerm(s, x, e, f);
-        }
-      }
-    }
-  }
-  return cost;
+  return total;
 }
