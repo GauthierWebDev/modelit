@@ -69,51 +69,54 @@ export function RemoteCursors({ viewport }: { viewport: Viewport }) {
         ) {
           return null;
         }
-        const x = state.cursor.x * viewport.zoom + viewport.x;
-        const y = state.cursor.y * viewport.zoom + viewport.y;
-        return (
-          <g
-            key={p.id}
-            data-cursor={p.id}
-            style={{ transform: `translate(${x}px, ${y}px)`, transition: "transform 80ms linear" }}
-          >
-            <path
-              d="M0,0 L0,16 L4.5,12 L7.5,19 L10,18 L7,11 L12.5,11 Z"
-              fill={p.color}
-              stroke="white"
-              strokeWidth={1.2}
-              strokeLinejoin="round"
-            />
-            <g transform="translate(12 18)">
-              {/* Qui parle (O-48) : halo autour de l'étiquette. */}
-              {speaking.includes(p.id) && (
-                <rect
-                  x={-3}
-                  y={-3}
-                  rx={6}
-                  height={24}
-                  width={p.name.length * 6.6 + 18}
-                  fill="none"
-                  stroke={p.color}
-                  strokeOpacity={0.5}
-                  strokeWidth={3}
-                />
-              )}
-              <rect rx={4} height={18} width={p.name.length * 6.6 + 12} fill={p.color} />
-              <text
-                x={6}
-                y={13}
-                fontSize={11}
-                fontWeight={600}
-                fill="white"
-                style={{ fontFamily: "system-ui, sans-serif" }}
-              >
-                {p.name}
-              </text>
-            </g>
-          </g>
-        );
+        return remoteCursor(p, state.cursor, viewport, speaking.includes(p.id));
       })}
+    </g>
+  );
+}
+
+/** Flèche à la couleur du participant et étiquette de son nom (halo s'il parle). */
+function remoteCursor(
+  p: ReturnType<typeof useCollabStore.getState>["participants"][number],
+  at: Point,
+  viewport: Viewport,
+  talking: boolean,
+) {
+  const x = at.x * viewport.zoom + viewport.x;
+  const y = at.y * viewport.zoom + viewport.y;
+  return (
+    <g
+      key={p.id}
+      data-cursor={p.id}
+      style={{ transform: `translate(${x}px, ${y}px)`, transition: "transform 80ms linear" }}
+    >
+      <path
+        d="M0,0 L0,16 L4.5,12 L7.5,19 L10,18 L7,11 L12.5,11 Z"
+        fill={p.color}
+        stroke="white"
+        strokeWidth={1.2}
+        strokeLinejoin="round"
+      />
+      <g transform="translate(12 18)">
+        {/* Qui parle (O-48) : halo autour de l'étiquette. */}
+        {talking ? (
+          <rect
+            x={-3}
+            y={-3}
+            rx={6}
+            height={24}
+            width={p.name.length * 6.6 + 18}
+            fill="none"
+            stroke={p.color}
+            strokeOpacity={0.5}
+            strokeWidth={3}
+          />
+        ) : null}
+        <rect rx={4} height={18} width={p.name.length * 6.6 + 12} fill={p.color} />
+        <text x={6} y={13} fontSize={11} fontWeight={600} fill="white" style={{ fontFamily: "system-ui, sans-serif" }}>
+          {p.name}
+        </text>
+      </g>
     </g>
   );
 }
