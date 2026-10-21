@@ -107,11 +107,29 @@ function script(ctx: Context, model: LogicalModel): string {
   const graph = ctx.dialect.constraints.singleCascadePath ? new CascadeGraph() : null;
 
   const statements = order.map((t) => createTable(ctx, tables, t, deferred, graph));
+  statements.push(...deferredForeignKeys(ctx, tables, order, deferred, graph));
+  storageLosses(ctx, order);
+  const indexes = ctx.options.indexes
+    ? order.flatMap((table) => table.indexes.flatMap((index) => keyIndex(ctx, table, index, false)))
+    : [];
+  // Extensions et collations d'abord, puis schémas, séquences et tables (O-42).
+  const { preamble, schemas, notValidated, epilogue } = ctx.script;
+  const head = preamble.filter((p) => /^CREATE (EXTENSION|COLLATION)/.test(p));
+  const rest = preamble.filter((p) => !head.includes(p));
+  return [...head, ...schemas, ...rest, ...statements, ...notValidated, ...indexes, ...epilogue].join("\n\n");
+}
+
+/** Clés étrangères différées : ALTER TABLE … ADD après toutes les tables. */
+function deferredForeignKeys(
+  ctx: Context,
+  tables: LogicalTable[],
+  order: LogicalTable[],
+  deferred: Set<LogicalForeignKey>,
+  graph: CascadeGraph | null,
+): string[] {
+  const statements: string[] = [];
   for (const table of order) {
-    for (const fk of table.foreignKeys) {
-      if (!deferred.has(fk)) {
-        continue;
-      }
+    for (const fk of table.foreignKeys.filter((x) => deferred.has(x))) {
       const where = placement(ctx, table, "foreign", foreignKeyLabel(fk), fk.state);
       const alter = `ALTER TABLE ${tableName(ctx, table)} ADD ${foreignKey(ctx, tables, table, fk, graph)}`;
       if (where === "comment") {
@@ -121,23 +139,20 @@ function script(ctx: Context, model: LogicalModel): string {
       }
     }
   }
-  // Clauses de stockage : une ligne du rapport pour toutes les tables concernées (O-39).
+  return statements;
+}
+
+/** Clauses de stockage : une ligne du rapport pour toutes les tables concernées (O-39). */
+function storageLosses(ctx: Context, order: LogicalTable[]) {
   const storage = [...new Set(order.flatMap((t) => t.storage ?? []))];
-  if (storage.length > 0) {
-    for (const table of order) {
-      if (table.storage?.length) {
-        ctx.report.add("physical", table.name, MSG.lossStorage(storage.join(", ")));
-      }
+  if (storage.length === 0) {
+    return;
+  }
+  for (const table of order) {
+    if (table.storage?.length) {
+      ctx.report.add("physical", table.name, MSG.lossStorage(storage.join(", ")));
     }
   }
-  const indexes = ctx.options.indexes
-    ? order.flatMap((table) => table.indexes.flatMap((index) => keyIndex(ctx, table, index, false)))
-    : [];
-  // Extensions et collations d'abord, puis schémas, séquences et tables (O-42).
-  const { preamble, schemas, notValidated, epilogue } = ctx.script;
-  const head = preamble.filter((p) => /^CREATE (EXTENSION|COLLATION)/.test(p));
-  const rest = preamble.filter((p) => !head.includes(p));
-  return [...head, ...schemas, ...rest, ...statements, ...notValidated, ...indexes, ...epilogue].join("\n\n");
 }
 
 /** En-tête du script : rapport de pertes en commentaire SQL. */

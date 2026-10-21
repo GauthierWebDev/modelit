@@ -91,38 +91,47 @@ function factor(r: Reader): Node {
     return inner;
   }
   if (t.type === "word") {
-    const lower = t.value.toLowerCase();
-    if (lower === "interval") {
-      const amount = r.next();
-      const unit = r.next();
-      if (amount?.type !== "number" || unit?.type !== "word" || !UNITS.has(unit.value.toLowerCase())) {
-        throw new Error("intervalle");
-      }
-      return { kind: "interval", amount: amount.value, unit: unit.value.toLowerCase() };
-    }
-    if (r.punct("(")) {
-      r.next();
-      const args: Node[] = [];
-      while (!r.punct(")")) {
-        args.push(expression(r));
-        if (r.punct(",")) {
-          r.next();
-        } else if (!r.punct(")")) {
-          throw new Error("arguments");
-        }
-      }
-      r.next();
-      if (lower === "date" && args.length === 1) {
-        return { kind: "date", arg: args[0]! };
-      }
-      if (!FUNCTIONS.has(lower)) {
-        throw new Error(`fonction ${lower}`);
-      }
-      return { kind: "call", name: lower, args };
-    }
-    return { kind: "column", name: t.value, quoted: false };
+    return wordFactor(r, t);
   }
   throw new Error("lexème");
+}
+
+/** INTERVAL n unité, appel de fonction, ou colonne. */
+function wordFactor(r: Reader, t: Token): Node {
+  const lower = t.value.toLowerCase();
+  if (lower === "interval") {
+    const amount = r.next();
+    const unit = r.next();
+    if (amount?.type !== "number" || unit?.type !== "word" || !UNITS.has(unit.value.toLowerCase())) {
+      throw new Error("intervalle");
+    }
+    return { kind: "interval", amount: amount.value, unit: unit.value.toLowerCase() };
+  }
+  if (r.punct("(")) {
+    return call(r, lower);
+  }
+  return { kind: "column", name: t.value, quoted: false };
+}
+
+function call(r: Reader, lower: string): Node {
+  r.next();
+  const args: Node[] = [];
+  while (!r.punct(")")) {
+    args.push(expression(r));
+    if (r.punct(",")) {
+      r.next();
+    } else if (!r.punct(")")) {
+      throw new Error("arguments");
+    }
+  }
+  r.next();
+  if (lower === "date" && args.length === 1) {
+    return { kind: "date", arg: args[0]! };
+  }
+  if (!FUNCTIONS.has(lower)) {
+    throw new Error(`fonction ${lower}`);
+  }
+  return { kind: "call", name: lower, args };
 }
 
 /** Résultat de type date (DATE(x)) : `date + INTERVAL n DAY` devient `date + n` en PostgreSQL. */
@@ -203,35 +212,42 @@ function render(n: Node, ctx: TranslationContext): string {
       return `-${render(n.arg, ctx)}`;
     case "call":
       return `${n.name.toUpperCase()}(${n.args.map((a) => render(a, ctx)).join(", ")})`;
-    case "date": {
-      if (!pg) {
-        throw new Error("DATE");
-      }
-      // timestamptz → date dépend du fuseau de session : interdit dans une colonne calculée.
-      if (
-        n.arg.kind === "column" &&
-        ctx.columnType(n.arg.name)?.kind === "datetime" &&
-        (ctx.columnType(n.arg.name) as { withTimeZone: boolean }).withTimeZone
-      ) {
-        throw new Error("non immuable");
-      }
-      const inner = render(n.arg, ctx);
-      return n.arg.kind === "column" ? `${inner}::date` : `(${inner})::date`;
-    }
+    case "date":
+      return renderDate(n, ctx);
     case "interval":
       if (!pg) {
         throw new Error("INTERVAL");
       }
       return `INTERVAL '${n.amount} ${n.unit}'`;
-    case "binary": {
-      // date ± INTERVAL n DAY → date ± n (reste une date) ; sinon intervalle PostgreSQL.
-      if (pg && isDate(n.left) && n.right.kind === "interval" && n.right.unit === "day") {
-        return `(${render(n.left, ctx)} ${n.op} ${n.right.amount})`;
-      }
-      if (n.right.kind === "interval" && !pg) {
-        throw new Error("INTERVAL");
-      }
-      return `(${render(n.left, ctx)} ${n.op} ${render(n.right, ctx)})`;
-    }
+    case "binary":
+      return renderBinary(n, ctx);
   }
+}
+
+function renderDate(n: Extract<Node, { kind: "date" }>, ctx: TranslationContext): string {
+  if (ctx.target.dbms !== "postgresql") {
+    throw new Error("DATE");
+  }
+  // timestamptz → date dépend du fuseau de session : interdit dans une colonne calculée.
+  if (
+    n.arg.kind === "column" &&
+    ctx.columnType(n.arg.name)?.kind === "datetime" &&
+    (ctx.columnType(n.arg.name) as { withTimeZone: boolean }).withTimeZone
+  ) {
+    throw new Error("non immuable");
+  }
+  const inner = render(n.arg, ctx);
+  return n.arg.kind === "column" ? `${inner}::date` : `(${inner})::date`;
+}
+
+/** date ± INTERVAL n DAY → date ± n (reste une date) ; sinon intervalle PostgreSQL. */
+function renderBinary(n: Extract<Node, { kind: "binary" }>, ctx: TranslationContext): string {
+  const pg = ctx.target.dbms === "postgresql";
+  if (pg && isDate(n.left) && n.right.kind === "interval" && n.right.unit === "day") {
+    return `(${render(n.left, ctx)} ${n.op} ${n.right.amount})`;
+  }
+  if (n.right.kind === "interval" && !pg) {
+    throw new Error("INTERVAL");
+  }
+  return `(${render(n.left, ctx)} ${n.op} ${render(n.right, ctx)})`;
 }
