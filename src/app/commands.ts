@@ -508,7 +508,7 @@ export function addAttribute(doc: DocumentHandle, ownerId: Id): Id | null {
   const taken = new Set(owner.attributes.map((a) => a.name));
   let n = owner.attributes.length + 1;
   while (taken.has(t("attribute.defaultName", { n }))) {
-    n++;
+    n += 1;
   }
   const created = createAttribute(t("attribute.defaultName", { n }));
   return setAttributes(doc, ownerId, [...owner.attributes, created], "history.addAttribute") ? null : created.id;

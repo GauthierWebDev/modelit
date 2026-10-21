@@ -87,7 +87,7 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
 
     // Espaces
     if (/\s/.test(c)) {
-      i++;
+      i += 1;
       continue;
     }
     // Commentaires
@@ -108,13 +108,13 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
       let j = i + 2;
       while (j < sql.length && nesting > 0) {
         if (nested && sql.startsWith("/*", j)) {
-          nesting++;
+          nesting += 1;
           j += 2;
         } else if (sql.startsWith("*/", j)) {
-          nesting--;
+          nesting -= 1;
           j += 2;
         } else {
-          j++;
+          j += 1;
         }
       }
       i = nesting > 0 ? sql.length : j;
@@ -159,7 +159,7 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
     }
     if (c === ";") {
       push(delimiter === ";" && depth === 0 ? "end" : "punct", ";", ";");
-      i++;
+      i += 1;
       continue;
     }
     // GO (SQL Server) et / (Oracle) seuls sur leur ligne
@@ -170,7 +170,7 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
     }
     if (c === "/" && aloneOnLine(sql, i, 1)) {
       push("end", ";", "/");
-      i++;
+      i += 1;
       continue;
     }
     // Chaînes dollar (PostgreSQL) : corps de fonctions, ignorés en bloc
@@ -210,11 +210,11 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
           value += "'";
           i += 2;
         } else if (d === "'") {
-          i++;
+          i += 1;
           break;
         } else {
           value += d;
-          i++;
+          i += 1;
         }
       }
       push("string", value, sql.slice(from, i));
@@ -224,7 +224,7 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
     if (c === '"' || c === "`" || c === "[") {
       const close = c === "[" ? "]" : c;
       const from = i;
-      i++;
+      i += 1;
       let value = "";
       while (i < sql.length) {
         // MySQL : "…" est une chaîne, où \" échappe le guillemet (COMMENT "… \"VO\" …").
@@ -236,11 +236,11 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
           value += close;
           i += 2;
         } else if (sql[i] === close) {
-          i++;
+          i += 1;
           break;
         } else {
           value += sql[i];
-          i++;
+          i += 1;
         }
       }
       push("quoted", value, sql.slice(from, i));
@@ -263,16 +263,16 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
     if (isWordStart(c)) {
       let j = i + 1;
       while (j < sql.length && isWordPart(sql[j]!)) {
-        j++;
+        j += 1;
       }
       const word = sql.slice(i, j).toLowerCase();
       if (delimiter === ";" && (word === "begin" || word === "case") && inRoutine()) {
-        depth++;
+        depth += 1;
       } else if (word === "end" && depth > 0) {
         // END IF / END LOOP / END WHILE ferment un bloc non compté ; END [CASE] ferme BEGIN ou CASE.
         const following = /^\s+(\w+)/.exec(sql.slice(j))?.[1]?.toLowerCase();
         if (!["if", "loop", "while", "repeat", "for"].includes(following ?? "")) {
-          depth--;
+          depth -= 1;
         }
       }
       push("word", sql.slice(i, j), sql.slice(i, j));
@@ -287,7 +287,7 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
       continue;
     }
     push("punct", c, c);
-    i++;
+    i += 1;
   }
   return tokens;
 }

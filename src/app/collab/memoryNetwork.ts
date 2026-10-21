@@ -22,7 +22,7 @@ export function memoryNetwork() {
   let toLose = 0;
   const delivered = () => {
     if (toLose > 0) {
-      toLose--;
+      toLose -= 1;
       return false;
     }
     return true;
@@ -137,7 +137,7 @@ export function memoryNetwork() {
   };
   /** Livre tout, y compris ce qu'envoient les traitements asynchrones (vérification du mot de passe). */
   const settle = async () => {
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 50; i += 1) {
       flush();
       await new Promise((r) => setTimeout(r, 0));
       if (!queue.length) {

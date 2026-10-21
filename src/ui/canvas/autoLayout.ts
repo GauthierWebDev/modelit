@@ -188,7 +188,8 @@ async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<M
       let running = workers.length;
       const lane = async (worker: Worker) => {
         while (next < LAYOUT_CHUNKS) {
-          const chunk = next++;
+          const chunk = next;
+          next += 1;
           busy.add(worker);
           results.push(await runChunk(worker, nodes, edges, chunk));
           busy.delete(worker);
@@ -197,7 +198,8 @@ async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<M
             return resolve();
           }
         }
-        if (--running === 0) {
+        running -= 1;
+        if (running === 0) {
           resolve();
         }
       };

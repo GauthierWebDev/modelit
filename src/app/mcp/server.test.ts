@@ -6,8 +6,11 @@ import { activeDocument, resetWorkspace, useWorkspaceStore } from "../workspace"
 import { handleMcpMessage, TOOLS } from "./server";
 
 let nextId = 1;
-const call = (method: string, params?: Record<string, unknown>) =>
-  handleMcpMessage({ jsonrpc: "2.0", id: nextId++, method, ...(params ? { params } : {}) });
+const call = (method: string, params?: Record<string, unknown>) => {
+  const id = nextId;
+  nextId += 1;
+  return handleMcpMessage({ jsonrpc: "2.0", id, method, ...(params ? { params } : {}) });
+};
 const tool = async (name: string, args: Record<string, unknown> = {}) => {
   const response = await call("tools/call", { name, arguments: args });
   return response!.result as { content: { text: string }[]; isError?: boolean };

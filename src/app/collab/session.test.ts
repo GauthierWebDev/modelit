@@ -245,7 +245,7 @@ describe("session collaborative", () => {
       const pick = <T>(list: T[]): T | undefined => list[Math.floor(random() * list.length)];
       const { h, net, converged } = session();
       const actors = [h.alice, h.bob, h.claire];
-      for (let step = 0; step < 200; step++) {
+      for (let step = 0; step < 200; step += 1) {
         const actor = pick(actors)!;
         const doc = actor.store.getState().doc;
         const entity = pick(doc.entities);

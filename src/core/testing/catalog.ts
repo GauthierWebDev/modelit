@@ -760,7 +760,7 @@ function propagateForeignRanges(catalog: Catalog) {
           .split(", ")
           .map((x) => BigInt(x))
       : null;
-  for (let changed = true, pass = 0; changed && pass < 10; pass++) {
+  for (let changed = true, pass = 0; changed && pass < 10; pass += 1) {
     changed = false;
     for (const table of catalog) {
       for (const fk of table.foreignKeys) {

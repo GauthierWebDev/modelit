@@ -58,7 +58,7 @@ export function constraintName(
       name = `idx_${base}`;
     }
     let unique = name;
-    for (let i = 2; ctx.used.names.has(unique.toLowerCase()); i++) {
+    for (let i = 2; ctx.used.names.has(unique.toLowerCase()); i += 1) {
       unique = `${name}_${i}`;
     }
     name = unique;

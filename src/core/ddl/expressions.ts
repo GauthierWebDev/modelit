@@ -93,7 +93,9 @@ class Reader {
     return this.tokens[this.i + o];
   }
   next() {
-    return this.tokens[this.i++];
+    const token = this.tokens[this.i];
+    this.i += 1;
+    return token;
   }
   word(...words: string[]) {
     const t = this.peek();
@@ -108,7 +110,7 @@ class Reader {
       if (!this.word(w)) {
         throw new Error(`attendu ${w}`);
       }
-      this.i++;
+      this.i += 1;
     }
   }
 }
@@ -395,7 +397,7 @@ export function likeToRegex(pattern: string): string | null {
     return null;
   }
   let out = "^";
-  for (let i = 0; i < pattern.length; i++) {
+  for (let i = 0; i < pattern.length; i += 1) {
     const ch = pattern[i]!;
     if (ch === "%") {
       out += ".*";

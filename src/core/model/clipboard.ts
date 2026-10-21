@@ -186,7 +186,7 @@ function pasteOffset(doc: ModelDocument, fragment: ModelFragment): Point {
   const occupied = (p: Point) => Object.values(doc.layout.positions).some((q) => q.x === p.x && q.y === p.y);
   let k = 1;
   while (occupied({ x: anchor.x + k * step, y: anchor.y + k * step })) {
-    k++;
+    k += 1;
   }
   return { x: k * step, y: k * step };
 }
@@ -199,7 +199,7 @@ export function freeName(name: string, taken: Set<string>): string {
     const base = suffixed && taken.has(suffixed[1]!) ? suffixed[1]! : name;
     let n = 2;
     while (taken.has(`${base}_${n}`)) {
-      n++;
+      n += 1;
     }
     result = `${base}_${n}`;
   }

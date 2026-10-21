@@ -111,7 +111,7 @@ describe("vocal : relais par l'hôte", () => {
     bob.setVoice(true, false);
     net.flush();
     net.lose(1);
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 1; i <= 3; i += 1) {
       bob.sendAudio(voice(i));
     }
     net.flush();

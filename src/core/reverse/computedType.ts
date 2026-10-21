@@ -102,7 +102,9 @@ class Reader {
     return this.tokens[this.i + o];
   }
   next() {
-    return this.tokens[this.i++];
+    const token = this.tokens[this.i];
+    this.i += 1;
+    return token;
   }
   punct(v: string) {
     return this.peek()?.type === "punct" && this.peek()!.value === v;
@@ -138,10 +140,15 @@ export function inferComputedType(
     while (r.peek()) {
       const t = r.next()!;
       if (t.type === "punct" && t.value === "(") {
-        depth++;
+        depth += 1;
       }
-      if (t.type === "punct" && t.value === ")" && depth-- === 0) {
-        break;
+      if (t.type === "punct" && t.value === ")") {
+        // Parenthèse fermante au niveau 0 : fin de la liste (comparé avant la décrémentation).
+        const closing = depth === 0;
+        depth -= 1;
+        if (closing) {
+          break;
+        }
       }
       if (t.type === "punct" && t.value === "," && depth === 0) {
         list.push(current);

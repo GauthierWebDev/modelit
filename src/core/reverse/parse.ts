@@ -152,14 +152,16 @@ class Cursor {
     return this.tokens[this.i + offset];
   }
   next() {
-    return this.tokens[this.i++];
+    const token = this.tokens[this.i];
+    this.i += 1;
+    return token;
   }
   done() {
     return this.i >= this.tokens.length;
   }
   /** Consomme les mots donnés s'ils se suivent ; renvoie vrai si c'est le cas. */
   accept(...words: string[]) {
-    for (let k = 0; k < words.length; k++) {
+    for (let k = 0; k < words.length; k += 1) {
       if (!isWord(this.peek(k), words[k]!)) {
         return false;
       }
@@ -178,7 +180,7 @@ class Cursor {
     }
     const parts = [this.next()!];
     while (isPunct(this.peek(), ".") && isName(this.peek(1))) {
-      this.i++;
+      this.i += 1;
       parts.push(this.next()!);
     }
     const token = parts.at(-1)!;
@@ -198,9 +200,12 @@ class Cursor {
     while (!this.done()) {
       const t = this.next()!;
       if (isPunct(t, "(")) {
-        depth++;
-      } else if (isPunct(t, ")") && --depth === 0) {
-        return this.tokens.slice(start + 1, this.i - 1);
+        depth += 1;
+      } else if (isPunct(t, ")")) {
+        depth -= 1;
+        if (depth === 0) {
+          return this.tokens.slice(start + 1, this.i - 1);
+        }
       }
     }
     return this.tokens.slice(start + 1);
@@ -217,10 +222,10 @@ function splitCommas(tokens: Token[]): Token[][] {
   let depth = 0;
   for (const t of tokens) {
     if (isPunct(t, "(")) {
-      depth++;
+      depth += 1;
     }
     if (isPunct(t, ")")) {
-      depth--;
+      depth -= 1;
     }
     if (depth === 0 && isPunct(t, ",")) {
       parts.push(current);
@@ -672,7 +677,8 @@ function createSequence(c: Cursor, schema: ParsedSchema): void {
   const qualified = c.qualified();
   const name = qualified?.name;
   if (!name) {
-    return void schema.ignored++;
+    schema.ignored += 1;
+    return;
   }
   const sequence: SequenceDefinition & { ownedBy?: { table: string; column: string } } = {
     name,
@@ -734,7 +740,7 @@ function alterSequence(c: Cursor, schema: ParsedSchema): void {
   if (sequence && c.accept("owned", "by")) {
     sequence.ownedBy = ownedBy(c);
   } else {
-    schema.ignored++;
+    schema.ignored += 1;
   }
 }
 
@@ -1010,7 +1016,7 @@ function generatedColumn(c: Cursor, column: ParsedColumn) {
     if (isPunct(c.peek(), "(")) {
       const group = c.group() ?? [];
       tokens.push({ type: "punct", value: "(", raw: "(" }, ...group, { type: "punct", value: ")", raw: ")" });
-      groups++;
+      groups += 1;
     } else {
       tokens.push(c.next()!);
     }
@@ -1051,11 +1057,14 @@ const GENERATED_STOP = new Set([
 /** La première parenthèse ferme-t-elle à la fin ? */
 function wrapsAll(tokens: Token[]): boolean {
   let depth = 0;
-  for (let k = 0; k < tokens.length; k++) {
+  for (let k = 0; k < tokens.length; k += 1) {
     if (isPunct(tokens[k], "(")) {
-      depth++;
-    } else if (isPunct(tokens[k], ")") && --depth === 0) {
-      return k === tokens.length - 1;
+      depth += 1;
+    } else if (isPunct(tokens[k], ")")) {
+      depth -= 1;
+      if (depth === 0) {
+        return k === tokens.length - 1;
+      }
     }
   }
   return false;
@@ -1097,7 +1106,7 @@ function createTable(c: Cursor, schema: ParsedSchema): void {
   const qualified = c.qualified();
   const body = c.group();
   if (!qualified || !body) {
-    schema.ignored++; // CREATE TABLE … AS SELECT, LIKE… : sans définition de colonnes
+    schema.ignored += 1; // CREATE TABLE … AS SELECT, LIKE… : sans définition de colonnes
     return;
   }
   const table: ParsedTable = {
@@ -1207,7 +1216,7 @@ function alterTable(c: Cursor, schema: ParsedSchema, statement: Token[]): void {
     if (name) {
       schema.skipped.push(joinRaw(statement.slice(0, 8)));
     } else {
-      schema.ignored++;
+      schema.ignored += 1;
     }
     return;
   }
@@ -1343,7 +1352,7 @@ function alterTable(c: Cursor, schema: ParsedSchema, statement: Token[]): void {
     }
   }
   if (!used) {
-    schema.ignored++;
+    schema.ignored += 1;
   }
 }
 
@@ -1354,7 +1363,8 @@ function createIndex(c: Cursor, schema: ParsedSchema, unique: boolean, kind?: "f
     clustered = isWord(c.next(), "clustered") || clustered;
   }
   if (!c.accept("index")) {
-    return void schema.ignored++;
+    schema.ignored += 1;
+    return;
   }
   c.accept("concurrently");
   while (isWord(c.peek(), "if", "not", "exists")) {
@@ -1362,7 +1372,8 @@ function createIndex(c: Cursor, schema: ParsedSchema, unique: boolean, kind?: "f
   }
   const name = isWord(c.peek(), "on") ? undefined : (c.qualifiedName() ?? undefined);
   if (!c.accept("on")) {
-    return void schema.ignored++;
+    schema.ignored += 1;
+    return;
   }
   c.accept("only");
   const table = findTable(schema, c.qualifiedName());
@@ -1453,7 +1464,8 @@ function createIndex(c: Cursor, schema: ParsedSchema, unique: boolean, kind?: "f
     }
   }
   if (!table || !key || !c.done()) {
-    return void schema.ignored++;
+    schema.ignored += 1;
+    return;
   }
   if (kind) {
     key.kind = kind;
@@ -1479,7 +1491,8 @@ function commentOn(c: Cursor, schema: ParsedSchema): void {
     c.next();
   }
   if (!c.accept("is")) {
-    return void schema.ignored++;
+    schema.ignored += 1;
+    return;
   }
   const text = c.next();
   const comment = text?.type === "string" ? text.value : undefined;
@@ -1495,7 +1508,7 @@ function commentOn(c: Cursor, schema: ParsedSchema): void {
       column.comment = comment;
     }
   } else {
-    schema.ignored++;
+    schema.ignored += 1;
   }
 }
 
@@ -1506,7 +1519,8 @@ function commentOn(c: Cursor, schema: ParsedSchema): void {
 function extendedProperty(c: Cursor, schema: ParsedSchema): void {
   const procedure = c.qualifiedName();
   if (procedure?.toLowerCase() !== "sp_addextendedproperty") {
-    return void schema.ignored++;
+    schema.ignored += 1;
+    return;
   }
   const parameters = new Map<string, string>();
   for (const part of splitCommas(c.tokens.slice(c.i))) {
@@ -1517,7 +1531,8 @@ function extendedProperty(c: Cursor, schema: ParsedSchema): void {
   }
   const table = findTable(schema, parameters.get("level1name"));
   if (parameters.get("name")?.toLowerCase() !== "ms_description" || !table) {
-    return void schema.ignored++;
+    schema.ignored += 1;
+    return;
   }
   const level2 = parameters.get("level2type")?.toLowerCase();
   const column =
@@ -1529,7 +1544,7 @@ function extendedProperty(c: Cursor, schema: ParsedSchema): void {
   } else if (!level2) {
     table.comment = parameters.get("value");
   } else {
-    schema.ignored++;
+    schema.ignored += 1;
   }
 }
 
@@ -1553,14 +1568,15 @@ function createTrigger(c: Cursor, schema: ParsedSchema, raw: string): void {
   c.accept("on");
   const table = findTable(schema, c.qualifiedName());
   if (!name || !table) {
-    return void schema.ignored++;
+    schema.ignored += 1;
+    return;
   }
   table.triggers.push({ name, sql: raw });
 }
 
 /** CREATE DATABASE / SCHEMA … [DEFAULT] COLLATE [=] x : collation par défaut des colonnes de texte. */
 function createDatabase(c: Cursor, schema: ParsedSchema): void {
-  schema.ignored++;
+  schema.ignored += 1;
   while (!c.done()) {
     if (c.accept("collate")) {
       if (isPunct(c.peek(), "=")) {
@@ -1595,7 +1611,8 @@ function createCollation(c: Cursor, schema: ParsedSchema): void {
 function createType(c: Cursor, schema: ParsedSchema): void {
   const name = c.qualifiedName();
   if (!name || !c.accept("as", "enum")) {
-    return void schema.ignored++;
+    schema.ignored += 1;
+    return;
   }
   const values = (c.group() ?? []).filter((t) => t.type === "string").map((t) => t.value);
   schema.enumTypes.set(name.toLowerCase(), values);
@@ -1655,7 +1672,7 @@ export function parseSql(sql: string, dialect?: SqlDialect): ParsedSchema {
         } else if (c.accept("sequence")) {
           createSequence(c, schema);
         } else {
-          schema.ignored++;
+          schema.ignored += 1;
         }
       } else if (c.accept("alter", "table")) {
         alterTable(c, schema, statement);
@@ -1666,7 +1683,7 @@ export function parseSql(sql: string, dialect?: SqlDialect): ParsedSchema {
       } else if (c.accept("exec") || c.accept("execute")) {
         extendedProperty(c, schema);
       } else {
-        schema.ignored++;
+        schema.ignored += 1;
       }
     } catch {
       schema.skipped.push(joinRaw(statement.slice(0, 8)));

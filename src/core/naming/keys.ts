@@ -48,7 +48,7 @@ export function uniqueName(base: string, used: ReadonlySet<string>): string {
   if (!used.has(base)) {
     return base;
   }
-  for (let i = 2; ; i++) {
+  for (let i = 2; ; i += 1) {
     if (!used.has(`${base}_${i}`)) {
       return `${base}_${i}`;
     }

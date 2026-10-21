@@ -47,7 +47,7 @@ function nextUntitled(untitled: Record<string, number>): number {
   const used = new Set(Object.values(untitled));
   let n = 1;
   while (used.has(n)) {
-    n++;
+    n += 1;
   }
   return n;
 }

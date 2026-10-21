@@ -36,7 +36,8 @@
         "noNonNullAssertion": "off",
         "noProcessEnv": "error",
         "noDefaultExport": "error",
-        "useBlockStatements": "error"
+        "useBlockStatements": "error",
+        "noIncrementDecrement": "error"
       },
       "suspicious": {
         "noLeakedRender": "error",

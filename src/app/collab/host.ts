@@ -88,8 +88,9 @@ export function startHost({
   const everyone = () => [host, ...guests.values()];
   let chatId = 0;
   const post = (kind: ChatMessage["kind"], who: Participant, text = "") => {
+    chatId += 1;
     const message: ChatMessage = {
-      id: ++chatId,
+      id: chatId,
       kind,
       author: who.id,
       name: who.name,
@@ -161,7 +162,8 @@ export function startHost({
         return challenge(peer, pending?.attemptsLeft ?? MAX_ATTEMPTS);
       }
       if (!(await password.verify(pending.nonce, message.proof))) {
-        await wait(failureDelay(++failures));
+        failures += 1;
+        await wait(failureDelay(failures));
         if (pending.attemptsLeft <= 1) {
           challenges.delete(peer);
           link.send(peer, { type: "rejected", reason: "bad-password" });

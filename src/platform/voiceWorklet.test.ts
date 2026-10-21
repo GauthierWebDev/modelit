@@ -27,7 +27,7 @@ describe("worklets du vocal", () => {
     const capture = new (processors.get("modelit-capture")!)();
     const frames: Float32Array[] = [];
     capture.port.postMessage = (f) => frames.push(f);
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 16; i += 1) {
       capture.process([[block(i)]], []); // 16 × 128 = 2048 échantillons
     }
     expect(frames.map((f) => f.length)).toEqual([960, 960]);
@@ -56,7 +56,7 @@ describe("worklets du vocal", () => {
   it("lecture : un manque produit du silence, puis la réserve se reconstitue", () => {
     const { push, pull } = player();
     push(block(0.5, 2880));
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < 22; i += 1) {
       pull(); // 22 × 128 = 2816 : il reste 64 échantillons
     }
     const last = pull();

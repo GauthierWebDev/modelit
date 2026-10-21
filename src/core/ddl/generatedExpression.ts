@@ -30,7 +30,9 @@ class Reader {
     return this.tokens[this.i];
   }
   next() {
-    return this.tokens[this.i++];
+    const token = this.tokens[this.i];
+    this.i += 1;
+    return token;
   }
   punct(value: string) {
     const t = this.peek();

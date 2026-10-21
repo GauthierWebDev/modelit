@@ -428,7 +428,7 @@ export function pathOf(points: Point[], smooth: boolean): string {
   let d = `M${first.x},${first.y}`;
   const m0 = mid(points[0]!, points[1]!);
   d += ` L${m0.x},${m0.y}`;
-  for (let i = 1; i < points.length - 1; i++) {
+  for (let i = 1; i < points.length - 1; i += 1) {
     const m = mid(points[i]!, points[i + 1]!);
     d += ` Q${points[i]!.x},${points[i]!.y} ${m.x},${m.y}`;
   }
@@ -451,7 +451,7 @@ function crossings(points: Point[], obstacles: Rect[]): number {
     const hit = points.slice(1).some((p, i) => {
       const q = points[i]!;
       const steps = Math.max(2, Math.ceil(Math.hypot(p.x - q.x, p.y - q.y) / 6));
-      for (let k = 0; k <= steps; k++) {
+      for (let k = 0; k <= steps; k += 1) {
         const x = q.x + ((p.x - q.x) * k) / steps;
         const y = q.y + ((p.y - q.y) * k) / steps;
         if (x > r.x && x < r.x + r.width && y > r.y && y < r.y + r.height) {
@@ -461,7 +461,7 @@ function crossings(points: Point[], obstacles: Rect[]): number {
       return false;
     });
     if (hit) {
-      count++;
+      count += 1;
     }
   }
   return count;

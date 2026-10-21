@@ -33,7 +33,8 @@ let nextId = 1;
 
 function enqueue(request: Omit<DialogRequest, "id" | "resolve">): Promise<boolean> {
   return new Promise((resolve) => {
-    const id = nextId++;
+    const id = nextId;
+    nextId += 1;
     useDialogStore.setState((s) => ({ queue: [...s.queue, { ...request, id, resolve }] }));
   });
 }

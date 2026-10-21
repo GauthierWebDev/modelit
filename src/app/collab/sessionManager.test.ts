@@ -42,7 +42,10 @@ describe("gestionnaire de session", () => {
         link: net.hostLink,
         stop: async () => undefined,
       }),
-      connect: async () => net.connect(`peer${++peers}`),
+      connect: () => {
+        peers += 1;
+        return Promise.resolve(net.connect(`peer${peers}`));
+      },
     });
   });
 
@@ -127,7 +130,7 @@ describe("gestionnaire de session", () => {
       });
       vi.useFakeTimers();
       try {
-        for (let x = 1; x <= 30; x++) {
+        for (let x = 1; x <= 30; x += 1) {
           reportPresence({ view: "mcd", cursor: { x, y: 0 }, selection: [] });
           vi.advanceTimersByTime(5);
         }

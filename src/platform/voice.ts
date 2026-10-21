@@ -124,7 +124,9 @@ export async function startVoice({
     output: (chunk) => {
       const payload = new Uint8Array(chunk.byteLength);
       chunk.copyTo(payload);
-      onFrame({ seq: seq++ & 0xffff, level: levels.shift() ?? 0, payload });
+      const frameSeq = seq & 0xffff;
+      seq += 1;
+      onFrame({ seq: frameSeq, level: levels.shift() ?? 0, payload });
     },
     error: () => undefined,
   });

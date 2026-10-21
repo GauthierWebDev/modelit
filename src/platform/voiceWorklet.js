@@ -52,13 +52,13 @@ class PlayerProcessor extends AudioWorkletProcessor {
   }
 
   push(samples) {
-    for (let i = 0; i < samples.length; i++) {
+    for (let i = 0; i < samples.length; i += 1) {
       if (this.size === this.capacity) {
         this.read = (this.read + 1) % this.capacity;
-        this.size--;
+        this.size -= 1;
       }
       this.buffer[(this.read + this.size) % this.capacity] = samples[i];
-      this.size++;
+      this.size += 1;
     }
     if (this.size > this.max) {
       const drop = this.size - this.start;
@@ -72,17 +72,17 @@ class PlayerProcessor extends AudioWorkletProcessor {
     if (!this.playing && this.size >= this.start) {
       this.playing = true;
     }
-    for (let i = 0; i < output.length; i++) {
+    for (let i = 0; i < output.length; i += 1) {
       if (this.playing && this.size > 0) {
         output[i] = this.buffer[this.read];
         this.read = (this.read + 1) % this.capacity;
-        this.size--;
+        this.size -= 1;
       } else {
         output[i] = 0;
         this.playing = false;
       }
     }
-    for (let c = 1; c < outputs[0].length; c++) {
+    for (let c = 1; c < outputs[0].length; c += 1) {
       outputs[0][c].set(output);
     }
     return true;

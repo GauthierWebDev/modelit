@@ -127,7 +127,9 @@ function applyOne(
   const current = () => doc.store.getState().doc;
   switch (operation.op) {
     case "create_entity": {
-      const id = cmd.addEntity(doc, freeSpot(current(), placed.n++));
+      const spot = freeSpot(current(), placed.n);
+      placed.n += 1;
+      const id = cmd.addEntity(doc, spot);
       check(cmd.renameNode(doc, id, operation.name), `entity « ${operation.name} »`);
       if (operation.attributes?.length) {
         const dbms = current().settings.dbms;
@@ -149,7 +151,8 @@ function applyOne(
       }
       const entities = operation.links.map((l) => resolve(current(), l.entity, "entity"));
       let id: Id;
-      const spot = freeSpot(current(), placed.n++);
+      const spot = freeSpot(current(), placed.n);
+      placed.n += 1;
       if (entities.length === 2 && entities[0] === entities[1]) {
         // Réflexive : deux pattes vers la même entité (override O-08).
         const result = cmd.connectNodes(doc, entities[0]!, entities[1]!, { associationPosition: spot });
@@ -202,7 +205,9 @@ function applyOne(
       if (children.length < 2) {
         refuse("an inheritance needs at least two child entities");
       }
-      const id = cmd.addInheritance(doc, freeSpot(current(), placed.n++));
+      const spot = freeSpot(current(), placed.n);
+      placed.n += 1;
+      const id = cmd.addInheritance(doc, spot);
       for (const entity of [parent, ...children]) {
         const result = cmd.addInheritanceLink(doc, id, entity);
         if (!result || "error" in result) {

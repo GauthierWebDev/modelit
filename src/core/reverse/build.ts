@@ -351,7 +351,7 @@ export function reverseEngineer(
   const usedNames = new Set<string>();
   const associationName = (wanted: string) => {
     let name = wanted;
-    for (let i = 2; usedNames.has(key(name)); i++) {
+    for (let i = 2; usedNames.has(key(name)); i += 1) {
       name = `${wanted}_${i}`;
     }
     usedNames.add(key(name));

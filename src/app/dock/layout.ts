@@ -55,7 +55,11 @@ export type DropTarget =
   | { kind: "float"; rect: Rect };
 
 let counter = 0;
-const newGroupId = () => `g${Date.now().toString(36)}${(counter++).toString(36)}`;
+const newGroupId = () => {
+  const id = `g${Date.now().toString(36)}${counter.toString(36)}`;
+  counter += 1;
+  return id;
+};
 
 const group = (sections: SectionId[], id = newGroupId()): Group => ({
   id,

@@ -110,7 +110,7 @@ describe("synchronisation entre fenêtres", () => {
     const store = activeDocument().store;
     const before = channels.sent.length;
     store.getState().begin();
-    for (let x = 1; x <= 10; x++) {
+    for (let x = 1; x <= 10; x += 1) {
       store.getState().preview((d) => {
         d.layout.positions[id] = { x, y: 0 };
       });

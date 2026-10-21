@@ -128,7 +128,7 @@ describe("placement sur grille (override O-30)", { timeout: 30_000 }, () => {
     let crossings = 0;
     let total = 0;
     let worst = 0;
-    for (let seed = 1; seed <= 20; seed++) {
+    for (let seed = 1; seed <= 20; seed += 1) {
       const { nodes, edges } = randomModel(seed);
       const { positions, quality, wall: elapsed } = layout(nodes, edges);
       total += elapsed;
@@ -153,7 +153,7 @@ function randomModel(seed: number) {
   const k = 5 + Math.floor(r() * 8);
   const nodes: GridNode[] = [];
   const edges: GridEdge[] = [];
-  for (let i = 0; i < k; i++) {
+  for (let i = 0; i < k; i += 1) {
     nodes.push({
       id: `e${i}`,
       width: 330 + r() * 240,
@@ -163,7 +163,7 @@ function randomModel(seed: number) {
     });
   }
   const associations = Math.round(k * (1 + r() * 0.8));
-  for (let j = 0; j < associations; j++) {
+  for (let j = 0; j < associations; j += 1) {
     const id = `a${j}`;
     nodes.push({ id, width: 110 + r() * 60, height: 36 });
     const a = Math.floor(r() * k);

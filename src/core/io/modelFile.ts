@@ -107,7 +107,7 @@ export function deserializeModel(text: string): LoadResult {
       throw new ModelFileError(MSG.noMigration(version));
     }
     model = migrate(model);
-    version++;
+    version += 1;
   }
 
   return { doc: normalize(model), warnings };

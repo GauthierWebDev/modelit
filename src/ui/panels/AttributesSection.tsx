@@ -137,7 +137,7 @@ function AttributesPanel({
     const taken = new Set(list.map((a) => a.name));
     let n = list.length + 1;
     while (taken.has(t("attribute.defaultName", { n }))) {
-      n++;
+      n += 1;
     }
     const created = createAttribute(t("attribute.defaultName", { n }));
     if (apply([...list, created])) {

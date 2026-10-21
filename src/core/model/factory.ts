@@ -51,7 +51,7 @@ export function createLink(associationId: Id, entityId: Id): Link {
 /** Premier nom libre de la forme « <base> <n> » parmi `existing`. */
 export function nextFreeName(base: string, existing: Iterable<string>): string {
   const taken = new Set(existing);
-  for (let i = 1; ; i++) {
+  for (let i = 1; ; i += 1) {
     const candidate = `${base} ${i}`;
     if (!taken.has(candidate)) {
       return candidate;
