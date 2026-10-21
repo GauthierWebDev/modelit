@@ -1,3 +1,16 @@
+import {
+  type DockLayout,
+  type DropTarget,
+  type FloatingGroup,
+  type Group,
+  HIDDEN_BY_DEFAULT,
+  type LastPlace,
+  type Rect,
+  type SectionId,
+  ZONES,
+  type Zone,
+} from "./model";
+
 /**
  * Disposition des sections et de la barre d'outils (overrides O-45, O-46) : données pures,
  * opérations sans effet de bord. Conservée dans les options du poste (`preferencesStore`).
@@ -6,62 +19,15 @@
  * ou bien elle est masquée. Un groupe vide n'existe pas.
  */
 
-export const SECTIONS = ["properties", "attributes", "mld", "sql", "issues", "session"] as const;
-/** Sections affichées seulement à la demande : masquées par défaut (« session » : O-05 §7). */
-const HIDDEN_BY_DEFAULT: SectionId[] = ["session"];
-export type SectionId = (typeof SECTIONS)[number];
-export type Zone = "right" | "bottom";
-export const ZONES: Zone[] = ["right", "bottom"];
-
-export interface Rect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-export interface Group {
-  id: string;
-  sections: SectionId[];
-  active: SectionId;
-  /** Part de la zone occupée (poids relatif entre les groupes d'une zone). */
-  weight: number;
-  collapsed: boolean;
-}
-
-export interface FloatingGroup extends Group {
-  /** Géométrie en coordonnées de l'écran (fenêtre native) ou de la page (navigateur). */
-  rect: Rect;
-}
-
-/** Dernière place d'une section masquée, pour la lui rendre (O-46). */
-export type LastPlace = { group: string } | { zone: Zone } | { rect: Rect };
-
-export interface DockLayout {
-  zones: Record<Zone, { groups: Group[] /** Largeur (droite) ou hauteur (bas), en px. */; size: number }>;
-  floating: FloatingGroup[];
-  hidden: SectionId[];
-  lastPlace: Partial<Record<SectionId, LastPlace>>;
-  toolbar: { floating: boolean; position: { x: number; y: number } | null };
-}
-
-/** Ce qu'on glisse : un onglet (une section) ou un groupe entier. */
-export type DragItem = { kind: "section"; section: SectionId; group: string } | { kind: "group"; group: string };
-
-/** Où déposer une section ou un groupe. */
-export type DropTarget =
-  | { kind: "group"; group: string }
-  | { kind: "zone"; zone: Zone; index: number }
-  | { kind: "float"; rect: Rect };
-
 let counter = 0;
-const newGroupId = () => {
+
+export const newGroupId = () => {
   const id = `g${Date.now().toString(36)}${counter.toString(36)}`;
   counter += 1;
   return id;
 };
 
-const group = (sections: SectionId[], id = newGroupId()): Group => ({
+export const group = (sections: SectionId[], id = newGroupId()): Group => ({
   id,
   sections,
   active: sections[0]!,
@@ -138,7 +104,7 @@ function detach(layout: DockLayout, section: SectionId): LastPlace | null {
 }
 
 /** Insère des sections (ou un groupe entier) à la cible. */
-function attach(layout: DockLayout, sections: SectionId[], target: DropTarget, base?: Group): DockLayout {
+export function attach(layout: DockLayout, sections: SectionId[], target: DropTarget, base?: Group): DockLayout {
   const moved: Group = {
     ...(base ?? group(sections)),
     sections,
@@ -262,20 +228,26 @@ export function showSection(layout: DockLayout, section: SectionId): DockLayout 
   next.hidden = next.hidden.filter((s) => s !== section);
   const place = next.lastPlace[section];
   delete next.lastPlace[section];
+  return tidy(attach(next, [section], returnTarget(next, place)));
+}
+
+/** Dernière place d'une section : son groupe, un groupe flottant rouvert au même endroit, sa fenêtre ou sa zone. */
+function returnTarget(next: DockLayout, place: LastPlace | undefined): DropTarget {
   // Groupe flottant déjà rouvert à la même place (sections d'un groupe fermé) : on le rejoint.
   const sameRect =
     place && "rect" in place
       ? next.floating.find((g) => JSON.stringify(g.rect) === JSON.stringify(place.rect))
       : undefined;
-  const target: DropTarget =
-    place && "group" in place && findGroup(next, place.group)
-      ? { kind: "group", group: place.group }
-      : sameRect
-        ? { kind: "group", group: sameRect.id }
-        : place && "rect" in place
-          ? { kind: "float", rect: place.rect }
-          : { kind: "zone", zone: place && "zone" in place ? place.zone : "right", index: Number.POSITIVE_INFINITY };
-  return tidy(attach(next, [section], target));
+  if (place && "group" in place && findGroup(next, place.group)) {
+    return { kind: "group", group: place.group };
+  }
+  if (sameRect) {
+    return { kind: "group", group: sameRect.id };
+  }
+  if (place && "rect" in place) {
+    return { kind: "float", rect: place.rect };
+  }
+  return { kind: "zone", zone: place && "zone" in place ? place.zone : "right", index: Number.POSITIVE_INFINITY };
 }
 
 export function setZoneSize(layout: DockLayout, zone: Zone, size: number): DockLayout {
@@ -325,103 +297,4 @@ export function keepOnScreen(layout: DockLayout, screens: Rect[], fallback: Rect
     next.toolbar.position = null;
   }
   return next;
-}
-
-const isSection = (s: unknown): s is SectionId => SECTIONS.includes(s as SectionId);
-
-/** Section apparue dans une version plus récente : placée sous le groupe d'une section voisine. */
-const NEAR: Partial<Record<SectionId, SectionId>> = { attributes: "properties" };
-
-/** Juste sous le groupe ancré qui contient `section`, sinon en bas de la zone de droite (O-50). */
-function placeNear(layout: DockLayout, section: SectionId | undefined): DropTarget {
-  for (const zone of ZONES) {
-    const index = layout.zones[zone].groups.findIndex((g) => section && g.sections.includes(section));
-    if (index >= 0) {
-      return { kind: "zone", zone, index: index + 1 };
-    }
-  }
-  return { kind: "zone", zone: "right", index: Number.POSITIVE_INFINITY };
-}
-
-/**
- * Disposition relue des options du poste : toute incohérence (section inconnue, en double,
- * manquante, groupe vide) est réparée, au pire en revenant à la disposition par défaut.
- */
-export function sanitizeLayout(raw: unknown): DockLayout {
-  try {
-    const base = defaultLayout();
-    if (!raw || typeof raw !== "object") {
-      return base;
-    }
-    const input = raw as Partial<DockLayout>;
-    const seen = new Set<SectionId>();
-    const cleanGroup = (g: Partial<Group> | undefined): Group | null => {
-      if (!(g && Array.isArray(g.sections))) {
-        return null;
-      }
-      const sections: SectionId[] = [];
-      for (const s of g.sections) {
-        if (!isSection(s) || seen.has(s)) {
-          continue;
-        }
-        seen.add(s);
-        sections.push(s);
-      }
-      if (sections.length === 0) {
-        return null;
-      }
-      return {
-        id: typeof g.id === "string" ? g.id : newGroupId(),
-        sections,
-        active: isSection(g.active) && sections.includes(g.active) ? g.active : sections[0]!,
-        weight: typeof g.weight === "number" && g.weight > 0 ? g.weight : 1,
-        collapsed: g.collapsed === true,
-      };
-    };
-    const layout: DockLayout = { ...base, lastPlace: {}, hidden: [], floating: [] };
-    for (const zone of ZONES) {
-      const z = input.zones?.[zone];
-      layout.zones[zone] = {
-        size: typeof z?.size === "number" ? z.size : base.zones[zone].size,
-        groups: (Array.isArray(z?.groups) ? z.groups : []).map(cleanGroup).filter((g): g is Group => g !== null),
-      };
-    }
-    for (const g of Array.isArray(input.floating) ? input.floating : []) {
-      const r = (g as Partial<FloatingGroup> | undefined)?.rect;
-      // Sans géométrie lisible, le groupe est ignoré : ses sections reviennent à droite (plus bas).
-      if (!(r && [r.x, r.y, r.width, r.height].every((n) => typeof n === "number"))) {
-        continue;
-      }
-      const cleaned = cleanGroup(g);
-      if (cleaned) {
-        layout.floating.push({ ...cleaned, rect: r });
-      }
-    }
-    layout.hidden = (Array.isArray(input.hidden) ? input.hidden : []).filter((s) => isSection(s) && !seen.has(s));
-    for (const s of layout.hidden) {
-      seen.add(s);
-    }
-    layout.lastPlace = typeof input.lastPlace === "object" && input.lastPlace ? input.lastPlace : {};
-    // Section oubliée (ajoutée par une version plus récente, ou disposition abîmée) : à droite,
-    // ou masquée si elle ne s'affiche qu'à la demande.
-    for (const s of SECTIONS) {
-      if (seen.has(s)) {
-        continue;
-      }
-      if (HIDDEN_BY_DEFAULT.includes(s)) {
-        layout.hidden.push(s);
-        layout.lastPlace[s] ??= { group: "right" };
-      } else {
-        attach(layout, [s], placeNear(layout, NEAR[s]));
-      }
-    }
-    const t = input.toolbar;
-    layout.toolbar = {
-      floating: t?.floating === true,
-      position: t?.position && typeof t.position.x === "number" && typeof t.position.y === "number" ? t.position : null,
-    };
-    return layout;
-  } catch {
-    return defaultLayout();
-  }
 }

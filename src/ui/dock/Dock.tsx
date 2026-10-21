@@ -3,21 +3,23 @@ import { type PointerEvent as ReactPointerEvent, useRef } from "react";
 import { updateDock } from "@/app/dock/actions";
 import {
   closeGroup,
-  type DockLayout,
-  type DropTarget,
   defaultLayout,
-  type FloatingGroup,
-  type Group,
   hideSection,
-  SECTIONS,
   setActive,
   setFloatingRect,
   setWeights,
   setZoneSize,
   showSection,
   toggleCollapsed,
-  type Zone,
 } from "@/app/dock/layout";
+import {
+  type DockLayout,
+  type DropTarget,
+  type FloatingGroup,
+  type Group,
+  SECTIONS,
+  type Zone,
+} from "@/app/dock/model";
 import { usePreferencesStore } from "@/app/preferencesStore";
 import { t } from "@/i18n";
 import { nativeWindows } from "@/platform/floatWindows";

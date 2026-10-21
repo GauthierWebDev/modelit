@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { updateDock } from "@/app/dock/actions";
-import { type DragItem, type DropTarget, moveGroup, moveSection } from "@/app/dock/layout";
+import { moveGroup, moveSection } from "@/app/dock/layout";
+import type { DragItem, DropTarget } from "@/app/dock/model";
 import { usePreferencesStore } from "@/app/preferencesStore";
 
 /**
@@ -39,7 +40,7 @@ export function dropItem(item: DragItem, target: DropTarget) {
   }
 }
 
-export type { DragItem } from "@/app/dock/layout";
+export type { DragItem } from "@/app/dock/model";
 
 interface DragState {
   item: DragItem | null;

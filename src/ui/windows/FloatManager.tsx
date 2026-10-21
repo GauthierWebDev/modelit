@@ -1,14 +1,7 @@
 import { useEffect } from "react";
 import { updateDock } from "@/app/dock/actions";
-import {
-  type DockLayout,
-  type DragItem,
-  findGroup,
-  keepOnScreen,
-  moveGroup,
-  setFloatingRect,
-  setToolbar,
-} from "@/app/dock/layout";
+import { findGroup, keepOnScreen, moveGroup, setFloatingRect, setToolbar } from "@/app/dock/layout";
+import type { DockLayout, DragItem } from "@/app/dock/model";
 import { usePreferencesStore } from "@/app/preferencesStore";
 import { startOwner } from "@/app/windows/owner";
 import type { ToMain, ToReplica } from "@/app/windows/protocol";

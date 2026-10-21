@@ -1,18 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   closeGroup,
-  type DockLayout,
   defaultLayout,
   groupOf,
   hideSection,
   keepOnScreen,
   moveGroup,
   moveSection,
-  sanitizeLayout,
   setActive,
   showSection,
   toggleCollapsed,
 } from "./layout";
+import type { DockLayout } from "./model";
+import { sanitizeLayout } from "./sanitize";
 
 const rect = { x: 100, y: 100, width: 300, height: 200 };
 const shape = (layout: DockLayout) => ({
