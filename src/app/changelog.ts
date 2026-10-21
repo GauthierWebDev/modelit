@@ -51,31 +51,35 @@ export function parseChangelog(markdown: string): ChangelogEntry[] {
       continue;
     }
     lines.push(line);
-
-    const subheading = /^###\s+(.+?)\s*$/.exec(line);
-    if (subheading) {
-      entry.sections.push({ title: subheading[1]!, items: [] });
-      continue;
-    }
-    const item = /^\s*[-*]\s+(.+)$/.exec(line);
-    const text = item ? item[1]!.trim() : line.trim();
-    if (!text) {
-      continue;
-    }
-    let section = entry.sections.at(-1);
-    if (!section) {
-      section = { title: "", items: [] };
-      entry.sections.push(section);
-    }
-    // Ligne de suite (indentée) : complète l'élément précédent.
-    if (!item && /^\s/.test(line) && section.items.length > 0) {
-      section.items[section.items.length - 1] += ` ${text}`;
-    } else {
-      section.items.push(text);
-    }
+    addLine(entry, line);
   }
   close();
   return entries;
+}
+
+/** Ligne d'une version : titre de section (###), élément de liste, ou suite de l'élément précédent. */
+function addLine(entry: ChangelogEntry, line: string) {
+  const subheading = /^###\s+(.+?)\s*$/.exec(line);
+  if (subheading) {
+    entry.sections.push({ title: subheading[1]!, items: [] });
+    return;
+  }
+  const item = /^\s*[-*]\s+(.+)$/.exec(line);
+  const text = item ? item[1]!.trim() : line.trim();
+  if (!text) {
+    return;
+  }
+  let section = entry.sections.at(-1);
+  if (!section) {
+    section = { title: "", items: [] };
+    entry.sections.push(section);
+  }
+  // Ligne de suite (indentée) : complète l'élément précédent.
+  if (!item && /^\s/.test(line) && section.items.length > 0) {
+    section.items[section.items.length - 1] += ` ${text}`;
+  } else {
+    section.items.push(text);
+  }
 }
 
 export function changelogEntry(markdown: string, version: string): ChangelogEntry | undefined {
