@@ -15,12 +15,14 @@ import {
   type Id,
   type InheritanceConstraint,
   linkSourceId,
+  type ModelDocument,
   MSG,
   nextFreeName,
   type Point,
   positionOf,
   setBends,
 } from "@core/index";
+import type { Draft } from "immer";
 import { type MessageKey, t } from "@/i18n";
 import { change, current, findNode } from "./commandSupport";
 import type { DocumentHandle } from "./document/handle";
@@ -155,25 +157,30 @@ export function moveNodes(
       delta.set(node.id, { x: p.x - old.x, y: p.y - old.y });
       d.layout.positions[node.id] = p;
     }
-    for (const link of diagramLinks(d)) {
-      const replaced = bends.get(link.id);
-      if (replaced) {
-        setBends(d.layout, link.id, replaced);
-        continue;
-      }
-      const a = delta.get(linkSourceId(link)) ?? { x: 0, y: 0 };
-      const e = delta.get(link.entityId) ?? { x: 0, y: 0 };
-      const dx = (a.x + e.x) / 2;
-      const dy = (a.y + e.y) / 2;
-      if (dx || dy) {
-        setBends(
-          d.layout,
-          link.id,
-          bendsOf(d.layout, link.id).map((b) => ({ x: b.x + dx, y: b.y + dy })),
-        );
-      }
-    }
+    moveBends(d, delta, bends);
   });
+}
+
+/** Cassures remplacées, ou décalées de la moitié du déplacement de chaque extrémité. */
+function moveBends(d: Draft<ModelDocument>, delta: Map<Id, Point>, bends: Map<Id, Point[]>) {
+  for (const link of diagramLinks(d)) {
+    const replaced = bends.get(link.id);
+    if (replaced) {
+      setBends(d.layout, link.id, replaced);
+      continue;
+    }
+    const a = delta.get(linkSourceId(link)) ?? { x: 0, y: 0 };
+    const e = delta.get(link.entityId) ?? { x: 0, y: 0 };
+    const dx = (a.x + e.x) / 2;
+    const dy = (a.y + e.y) / 2;
+    if (dx || dy) {
+      setBends(
+        d.layout,
+        link.id,
+        bendsOf(d.layout, link.id).map((b) => ({ x: b.x + dx, y: b.y + dy })),
+      );
+    }
+  }
 }
 
 export function deleteObjects(doc: DocumentHandle, ids: Id[], label: MessageKey = "history.delete") {
@@ -195,18 +202,7 @@ export function deleteObjects(doc: DocumentHandle, ids: Id[], label: MessageKey 
         h.parentId = undefined;
       }
     }
-    // Géométrie des objets et des traits disparus.
-    const kept = new Set([...diagramNodes(d), ...diagramLinks(d)].map((o) => o.id));
-    for (const id of Object.keys(d.layout.positions)) {
-      if (!kept.has(id)) {
-        delete d.layout.positions[id];
-      }
-    }
-    for (const id of Object.keys(d.layout.bends)) {
-      if (!kept.has(id)) {
-        delete d.layout.bends[id];
-      }
-    }
+    dropGeometry(d);
   });
   doc.view.getState().select([]);
 }
@@ -271,4 +267,19 @@ export function updatePhysical(doc: DocumentHandle, nodeId: Id, recipe: (node: E
       recipe(node as Entity | Association);
     }
   });
+}
+
+/** Géométrie des objets et des traits disparus. */
+function dropGeometry(d: Draft<ModelDocument>) {
+  const kept = new Set([...diagramNodes(d), ...diagramLinks(d)].map((o) => o.id));
+  for (const id of Object.keys(d.layout.positions)) {
+    if (!kept.has(id)) {
+      delete d.layout.positions[id];
+    }
+  }
+  for (const id of Object.keys(d.layout.bends)) {
+    if (!kept.has(id)) {
+      delete d.layout.bends[id];
+    }
+  }
 }
