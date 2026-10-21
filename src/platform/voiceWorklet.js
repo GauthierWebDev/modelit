@@ -70,6 +70,7 @@ class PlayerProcessor extends AudioWorkletProcessor {
   }
 
   process(_inputs, outputs) {
+    // biome-ignore lint/style/useDestructuring: fil audio temps réel, pas d'itérateur à chaque bloc
     const output = outputs[0][0];
     if (!this.playing && this.size >= this.start) {
       this.playing = true;

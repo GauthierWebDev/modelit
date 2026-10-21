@@ -95,7 +95,7 @@ export function deserializeModel(text: string): LoadResult {
   }
 
   const warnings: string[] = [];
-  let version = parsed.version;
+  let { version } = parsed;
   let model = isRecord(parsed.model) ? parsed.model : {};
 
   if (version > CURRENT_VERSION) {
@@ -131,7 +131,7 @@ function normalize(model: RawModel): ModelDocument {
   if (!settings.customDbms) {
     delete settings.customDbms;
   }
-  const layout = model.layout;
+  const { layout } = model;
   return {
     settings,
     entities: asArray(model.entities),

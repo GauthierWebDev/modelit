@@ -30,7 +30,7 @@ function canvasSizeNow() {
 }
 
 export function layoutsOf(doc: ModelDocument): Map<string, NodeLayout> {
-  const display = doc.settings.display;
+  const { display } = doc.settings;
   const linkNames = associationNamesByLink(doc);
   return new Map(diagramNodes(doc).map((n) => [n.id, nodeLayout(n, positionOf(doc.layout, n.id), display, linkNames)]));
 }
@@ -98,7 +98,7 @@ export function fitToRects(doc: DocumentHandle, layouts: Rect[], maxZoom = 1.5) 
 /** Rectangles (coordonnées du modèle) des objets `ids` dans la vue courante : objets du MCD ou tables. */
 export function objectRects(doc: DocumentHandle, ids: string[]): Rect[] {
   const model = doc.store.getState().doc;
-  const view = doc.view.getState().view;
+  const { view } = doc.view.getState();
   const wanted = new Set(ids);
   return view === "mcd"
     ? [...layoutsOf(model).entries()].filter(([id]) => wanted.has(id)).map(([, r]) => r)

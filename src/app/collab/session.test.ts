@@ -201,7 +201,7 @@ describe("session collaborative", () => {
     net.flush(); // reçu pendant le glisser
     h.alice.store.getState().commit("history.move");
     converged();
-    const doc = host.store.getState().doc;
+    const { doc } = host.store.getState();
     expect(doc.entities[0]!.name).toBe("RENOMME_PAR_BOB");
     expect(doc.layout.positions[id]).toEqual({ x: 100, y: 100 });
   });
@@ -247,7 +247,7 @@ describe("session collaborative", () => {
       const actors = [h.alice, h.bob, h.claire];
       for (let step = 0; step < 200; step += 1) {
         const actor = pick(actors)!;
-        const doc = actor.store.getState().doc;
+        const { doc } = actor.store.getState();
         const entity = pick(doc.entities);
         switch (Math.floor(random() * 7)) {
           case 0:

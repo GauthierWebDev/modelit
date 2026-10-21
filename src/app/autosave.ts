@@ -203,7 +203,7 @@ async function offerRecovery() {
   let keys: string[] = [];
   try {
     const found = await readCopies(store);
-    keys = found.keys;
+    ({ keys } = found);
     if (found.copies.length === 0) {
       return;
     }

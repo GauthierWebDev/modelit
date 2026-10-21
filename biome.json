@@ -68,7 +68,8 @@
         "noNestedTernary": "off",
         "noContinue": "off",
         "noHexColors": "off",
-        "noJsxLiterals": "off"
+        "noJsxLiterals": "off",
+        "useDestructuring": "error"
       },
       "suspicious": {
         "noLeakedRender": "error",

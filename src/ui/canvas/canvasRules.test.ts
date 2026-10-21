@@ -171,7 +171,7 @@ describe("dimensions de la vue la plus large (O-60)", () => {
     const { mcd, reserved } = newAssociationSize(d, from, to);
     const handle = createDocumentHandle(structuredClone(d));
     const result = connectNodes(handle, from, to, { associationPosition: { x: 0, y: 0 } });
-    const created = (result as { created: Id }).created;
+    const { created } = result as { created: Id };
     const after = handle.store.getState().doc;
     const table = tableLayouts(toLogicalModel(after), after, "mpd").find((t) => t.sourceId === created)!;
     expect(reserved).toEqual({ width: Math.max(mcd.width, table.width), height: Math.max(mcd.height, table.height) });

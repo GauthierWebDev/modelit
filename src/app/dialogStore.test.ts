@@ -30,7 +30,7 @@ describe("boîtes de dialogue de l'application", () => {
 
   it("avertissements groupés en une seule boîte", () => {
     void showWarnings(["x", "y"]);
-    const queue = useDialogStore.getState().queue;
+    const { queue } = useDialogStore.getState();
     expect(queue).toHaveLength(1);
     expect(queue[0]).toMatchObject({ kind: "alert", tone: "warning", detail: "• x\n• y" });
   });

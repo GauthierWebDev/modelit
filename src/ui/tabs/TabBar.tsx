@@ -33,7 +33,7 @@ export function TabBar() {
   }
 
   function onPointerMove(e: PointerEvent<HTMLElement>) {
-    const current = drag.current;
+    const { current } = drag;
     if (!current) {
       return;
     }

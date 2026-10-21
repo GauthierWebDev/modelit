@@ -34,7 +34,7 @@ export async function embeddedFontCss(text: string, italic: boolean): Promise<st
         return "";
       }
       const data = await dataUrl(url);
-      const style = rule.style;
+      const { style } = rule;
       return (
         `@font-face{font-family:"${FONT_NAME}";font-style:${style.getPropertyValue("font-style")};` +
         `font-weight:${style.getPropertyValue("font-weight")};src:url(${data}) format("woff2");` +

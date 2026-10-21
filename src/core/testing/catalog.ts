@@ -339,9 +339,11 @@ function rangeOf(
     // Bornes explicites (CHECK … BETWEEN, YEAR) : intersection avec la plage du type.
     if (bounds) {
       if (bounds[0] !== null && bounds[0] > min) {
+        // biome-ignore lint/style/useDestructuring: borne retenue sous condition, après comparaison
         min = bounds[0];
       }
       if (bounds[1] !== null && bounds[1] < max) {
+        // biome-ignore lint/style/useDestructuring: borne retenue sous condition, après comparaison
         max = bounds[1];
       }
     }

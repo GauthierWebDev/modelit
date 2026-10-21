@@ -36,7 +36,7 @@ const useDock = () => usePreferencesStore((s) => s.dock);
 
 /** Cases « Sections » : afficher ou masquer chaque section (menu ⌄ et barre d'outils). */
 export function SectionChecks({ close, withReset }: { close: () => void; withReset?: boolean }) {
-  const hidden = useDock().hidden;
+  const { hidden } = useDock();
   return (
     <>
       {SECTIONS.map((s) => (
@@ -83,7 +83,7 @@ export function GroupView({
   const target = useDragStore((s) => s.target);
   const dragging = useDragStore((s) => s.item);
   const highlighted = target?.kind === "group" && target.group === group.id;
-  const Body = SECTION_VIEWS[group.active].Body;
+  const { Body } = SECTION_VIEWS[group.active];
 
   const dropSection = (section: (typeof SECTIONS)[number]) => (to: DropTarget) =>
     dropItem({ kind: "section", section, group: group.id }, to);
@@ -131,7 +131,7 @@ export function GroupView({
         </span>
         <div role="tablist" className="flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden">
           {group.sections.map((s) => {
-            const Title = SECTION_VIEWS[s].Title;
+            const { Title } = SECTION_VIEWS[s];
             const active = s === group.active;
             return (
               <button
@@ -296,7 +296,7 @@ function GroupResizer({ zone, index, layout }: { zone: Zone; index: number; layo
         // La zone entière, pas le parent direct : celui-ci est en `display: contents`, sans boîte
         // (hauteur 0 : le moindre mouvement envoyait le séparateur en butée).
         const parent = e.currentTarget.closest("[data-dock-zone]")!.getBoundingClientRect();
-        const groups = layout.zones[zone].groups;
+        const { groups } = layout.zones[zone];
         const a = groups[index]!.weight;
         const b = groups[index + 1]!.weight;
         const total = groups.reduce((sum, g) => sum + g.weight, 0);
@@ -427,7 +427,7 @@ function FloatingGroupView({ group }: { group: FloatingGroup }) {
 
 /** Groupes flottants dans la page (navigateur) ; dans l'application native, ce sont des fenêtres. */
 export function FloatingGroups() {
-  const floating = useDock().floating;
+  const { floating } = useDock();
   if (nativeWindows()) {
     return null;
   }

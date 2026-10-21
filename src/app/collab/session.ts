@@ -161,7 +161,7 @@ let guest: { session: GuestSession; addr: string; off: () => void; retry?: Retur
   null;
 
 const me = () => {
-  const identity = usePreferencesStore.getState().identity;
+  const { identity } = usePreferencesStore.getState();
   return { name: displayName(identity), color: identity.color };
 };
 
@@ -260,7 +260,7 @@ export async function stopSharing() {
   off();
   session.stop();
   await stop();
-  const tabId = useCollabStore.getState().tabId;
+  const { tabId } = useCollabStore.getState();
   const state = session.store.getState();
   const tab = useWorkspaceStore.getState().documents.find((d) => d.id === tabId);
   if (tab) {
@@ -422,7 +422,7 @@ async function endGuestSession(reason: string | null) {
   guest = null;
   off();
   clearTimeout(retry);
-  const tabId = useCollabStore.getState().tabId;
+  const { tabId } = useCollabStore.getState();
   useCollabStore.setState({
     mode: "idle",
     tabId: null,

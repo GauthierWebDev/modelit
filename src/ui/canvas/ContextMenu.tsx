@@ -27,7 +27,7 @@ export const useContextMenu = create<ContextMenuState>()((set) => ({
  */
 export function blockNativeContextMenu(): () => void {
   const onContextMenu = (e: MouseEvent) => {
-    const target = e.target;
+    const { target } = e;
     const editable =
       target instanceof HTMLElement &&
       (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));

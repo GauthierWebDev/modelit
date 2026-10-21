@@ -53,7 +53,7 @@ export function QuickActions() {
   if (!owner || moving || tool !== "select" || readOnly) {
     return null;
   }
-  const rect = objectRects(doc, [owner])[0];
+  const [rect] = objectRects(doc, [owner]);
   if (!rect) {
     return null;
   }

@@ -132,7 +132,7 @@ function applyOne(
       const id = cmd.addEntity(doc, spot);
       check(cmd.renameNode(doc, id, operation.name), `entity « ${operation.name} »`);
       if (operation.attributes?.length) {
-        const dbms = current().settings.dbms;
+        const { dbms } = current().settings;
         check(
           cmd.setAttributes(
             doc,
@@ -186,7 +186,7 @@ function applyOne(
         }
       });
       if (operation.attributes?.length) {
-        const dbms = current().settings.dbms;
+        const { dbms } = current().settings;
         check(
           cmd.setAttributes(
             doc,
@@ -228,7 +228,7 @@ function applyOne(
     case "set_attributes":
     case "add_attributes": {
       const id = resolve(current(), operation.target);
-      const dbms = current().settings.dbms;
+      const { dbms } = current().settings;
       const owner = [...current().entities, ...current().associations].find((n) => n.id === id);
       if (!owner) {
         return refuse(`« ${operation.target} » has no attributes`);

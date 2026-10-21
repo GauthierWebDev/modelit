@@ -728,9 +728,11 @@ export function valueBounds(c: Condition, column: string): ValueBounds {
           return "none";
         }
         if (b.lo !== null && (lo === null || b.lo > lo)) {
+          // biome-ignore lint/style/useDestructuring: borne retenue sous condition, après comparaison
           lo = b.lo;
         }
         if (b.hi !== null && (hi === null || b.hi < hi)) {
+          // biome-ignore lint/style/useDestructuring: borne retenue sous condition, après comparaison
           hi = b.hi;
         }
       }

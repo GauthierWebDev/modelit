@@ -234,7 +234,7 @@ describe("exécution réelle (critère 2)", () => {
     const constraints = await pg.query<{ tbl: string; conname: string; contype: string; del: string; upd: string }>(`
       SELECT conrelid::regclass::text AS tbl, conname, contype, confdeltype AS del, confupdtype AS upd
       FROM pg_constraint c JOIN pg_namespace n ON n.oid = c.connamespace WHERE n.nspname = 'public'`);
-    const rows = constraints.rows;
+    const { rows } = constraints;
     const count = (type: string) => rows.filter((r) => r.contype === type).length;
     expect(count("f")).toBe(11);
     expect(count("p")).toBe(5);

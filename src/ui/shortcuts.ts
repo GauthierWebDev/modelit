@@ -100,7 +100,7 @@ export function useShortcuts() {
         }
         // Micro du vocal (O-48) : ⌘/Ctrl + Maj + M, y compris pendant une saisie (chat).
         if (key === "m" && e.shiftKey) {
-          const voice = useCollabStore.getState().voice;
+          const { voice } = useCollabStore.getState();
           if (voice.status === "on" && voice.mic) {
             e.preventDefault();
             mainCommand({ name: "collab", action: { kind: "voice", action: { kind: "mute", muted: !voice.muted } } });
@@ -140,7 +140,7 @@ export function useShortcuts() {
         selectReadOnlyTab(useCollabStore.getState()) !== doc.id
       ) {
         e.preventDefault();
-        const grid = docStore.doc.settings.grid;
+        const { grid } = docStore.doc.settings;
         const step = (grid.enabled ? grid.size : 1) * (e.shiftKey ? 10 : 1);
         const [dx, dy] = ARROWS[key];
         nudgeSelection(doc, dx * step, dy * step);

@@ -154,7 +154,7 @@ function attach(layout: DockLayout, sections: SectionId[], target: DropTarget, b
     found.group.active = sections[0]!;
     found.group.collapsed = false;
   } else if (target.kind === "zone") {
-    const groups = layout.zones[target.zone].groups;
+    const { groups } = layout.zones[target.zone];
     groups.splice(Math.max(0, Math.min(groups.length, target.index)), 0, { ...moved, weight: 1 });
   } else {
     layout.floating.push({ ...moved, rect: target.rect });
@@ -187,7 +187,7 @@ export function moveGroup(
   }
   const { group: g, zone } = found;
   if (zone) {
-    const groups = next.zones[zone].groups;
+    const { groups } = next.zones[zone];
     const from = groups.indexOf(g);
     groups.splice(from, 1);
     // Même zone, plus loin : l'indice cible tient compte du groupe retiré.
@@ -287,7 +287,7 @@ export function setZoneSize(layout: DockLayout, zone: Zone, size: number): DockL
 /** Séparateur entre les groupes `index` et `index + 1` d'une zone : transfère du poids. */
 export function setWeights(layout: DockLayout, zone: Zone, index: number, before: number, after: number): DockLayout {
   const next = clone(layout);
-  const groups = next.zones[zone].groups;
+  const { groups } = next.zones[zone];
   if (groups[index] && groups[index + 1]) {
     groups[index]!.weight = Math.max(0.1, before);
     groups[index + 1]!.weight = Math.max(0.1, after);

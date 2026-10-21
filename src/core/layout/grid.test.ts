@@ -37,7 +37,7 @@ const expectWithin = (ms: number, limit: number) => PERF && expect(ms).toBeLessT
 
 /** Graphe du MCD du laboratoire (5 entités, 11 associations dont 2 réflexives). */
 function laboGraph() {
-  const doc = reverseEngineer(readFileSync("fixtures/labo_sqlite.sql", "utf8"), emptyDocument()).doc;
+  const { doc } = reverseEngineer(readFileSync("fixtures/labo_sqlite.sql", "utf8"), emptyDocument());
   // Dimensions relevées dans l'interface : MCD ≈ 120 px de large, MPD 330 à 570 px (types, contraintes).
   const nodes: GridNode[] = diagramNodes(doc).map((n) =>
     n.kind === "entity"
