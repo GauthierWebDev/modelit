@@ -13,7 +13,8 @@ import {
   type TypeFamily,
   typeConflict,
 } from "./expressions";
-import { effectiveCollationClass, freeTypeFallback, icuCollations } from "./types";
+import { effectiveCollationClass, icuCollations } from "./typeCollations";
+import { freeTypeFallback } from "./typeEquivalents";
 
 /** CHECK écrit pour la cible, ou `null` (non traduisible ou incompatible : commentaire + perte). */
 export function check(ctx: Context, table: LogicalTable, constraint: CheckConstraint, column?: string): string | null {
