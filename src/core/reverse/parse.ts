@@ -12,7 +12,7 @@ import {
   extendedProperty,
 } from "./parseStatements";
 import { createTable } from "./parseTables";
-import { splitStatements, tokenize } from "./tokenize";
+import { splitStatements, type Token, tokenize } from "./tokenize";
 
 /**
  * Lecture d'un script SQL de création (overrides O-28, O-29), quel que soit le SGBD et sa version.
@@ -159,66 +159,81 @@ export function parseSql(sql: string, dialect?: SqlDialect): ParsedSchema {
     warnings: [],
   };
   for (const statement of splitStatements(tokenize(sql, { dialect, warnings: schema.warnings }))) {
-    const c = new Cursor(statement);
-    const first = statement[0]!;
-    const last = statement.at(-1)!;
-    const raw =
-      first.pos !== undefined && last.pos !== undefined
-        ? sql.slice(first.pos, last.pos + last.raw.length)
-        : joinRaw(statement);
     try {
-      if (c.accept("create")) {
-        c.accept("or", "replace");
-        // MySQL : CREATE DEFINER = utilisateur TRIGGER …
-        if (c.accept("definer")) {
-          if (isPunct(c.peek(), "=")) {
-            c.next();
-          }
-          while (!(c.done() || isWord(c.peek(), "trigger", "procedure", "function", "view", "event"))) {
-            c.next();
-          }
-        }
-        const unique = c.accept("unique");
-        const kind = isWord(c.peek(), "fulltext", "spatial")
-          ? (c.next()!.value.toLowerCase() as "fulltext" | "spatial")
-          : undefined;
-        while (
-          isWord(c.peek(), "global", "local", "temporary", "temp", "unlogged", "virtual", "external", "transient")
-        ) {
-          c.next();
-        }
-        if (!(unique || kind) && c.accept("table")) {
-          createTable(c, schema);
-        } else if (isWord(c.peek(), "index", "clustered", "nonclustered")) {
-          createIndex(c, schema, unique, kind);
-        } else if (c.accept("trigger")) {
-          createTrigger(c, schema, raw);
-        } else if (c.accept("type")) {
-          createType(c, schema);
-        } else if (c.accept("database") || c.accept("schema")) {
-          createDatabase(c, schema);
-        } else if (c.accept("collation")) {
-          createCollation(c, schema);
-        } else if (c.accept("sequence")) {
-          createSequence(c, schema);
-        } else {
-          schema.ignored += 1;
-        }
-      } else if (c.accept("alter", "table")) {
-        alterTable(c, schema, statement);
-      } else if (c.accept("alter", "sequence")) {
-        alterSequence(c, schema);
-      } else if (c.accept("comment", "on")) {
-        commentOn(c, schema);
-      } else if (c.accept("exec") || c.accept("execute")) {
-        extendedProperty(c, schema);
-      } else {
-        schema.ignored += 1;
-      }
+      parseStatement(schema, statement, statementRaw(sql, statement));
     } catch {
       schema.skipped.push(joinRaw(statement.slice(0, 8)));
     }
   }
   resolveSequences(schema);
   return schema;
+}
+
+/** Texte d'origine de l'instruction (corps de déclencheur…). */
+function statementRaw(sql: string, statement: Token[]): string {
+  const first = statement[0]!;
+  const last = statement.at(-1)!;
+  return first.pos !== undefined && last.pos !== undefined
+    ? sql.slice(first.pos, last.pos + last.raw.length)
+    : joinRaw(statement);
+}
+
+function parseStatement(schema: ParsedSchema, statement: Token[], raw: string) {
+  const c = new Cursor(statement);
+  if (c.accept("create")) {
+    createStatement(c, schema, raw);
+  } else if (c.accept("alter", "table")) {
+    alterTable(c, schema, statement);
+  } else if (c.accept("alter", "sequence")) {
+    alterSequence(c, schema);
+  } else if (c.accept("comment", "on")) {
+    commentOn(c, schema);
+  } else if (c.accept("exec") || c.accept("execute")) {
+    extendedProperty(c, schema);
+  } else {
+    schema.ignored += 1;
+  }
+}
+
+function createStatement(c: Cursor, schema: ParsedSchema, raw: string) {
+  c.accept("or", "replace");
+  // MySQL : CREATE DEFINER = utilisateur TRIGGER …
+  if (c.accept("definer")) {
+    if (isPunct(c.peek(), "=")) {
+      c.next();
+    }
+    while (!(c.done() || isWord(c.peek(), "trigger", "procedure", "function", "view", "event"))) {
+      c.next();
+    }
+  }
+  const unique = c.accept("unique");
+  const kind = isWord(c.peek(), "fulltext", "spatial")
+    ? (c.next()!.value.toLowerCase() as "fulltext" | "spatial")
+    : undefined;
+  while (isWord(c.peek(), "global", "local", "temporary", "temp", "unlogged", "virtual", "external", "transient")) {
+    c.next();
+  }
+  if (!(unique || kind) && c.accept("table")) {
+    createTable(c, schema);
+  } else if (isWord(c.peek(), "index", "clustered", "nonclustered")) {
+    createIndex(c, schema, unique, kind);
+  } else {
+    createOther(c, schema, raw);
+  }
+}
+
+function createOther(c: Cursor, schema: ParsedSchema, raw: string) {
+  if (c.accept("trigger")) {
+    createTrigger(c, schema, raw);
+  } else if (c.accept("type")) {
+    createType(c, schema);
+  } else if (c.accept("database") || c.accept("schema")) {
+    createDatabase(c, schema);
+  } else if (c.accept("collation")) {
+    createCollation(c, schema);
+  } else if (c.accept("sequence")) {
+    createSequence(c, schema);
+  } else {
+    schema.ignored += 1;
+  }
 }

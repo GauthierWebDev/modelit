@@ -42,44 +42,62 @@ export function createSequence(c: Cursor, schema: ParsedSchema): void {
     schema.ignored += 1;
     return;
   }
-  const sequence: SequenceDefinition & { ownedBy?: { table: string; column: string } } = {
+  const sequence: Sequence = {
     name,
     ...(qualified.schema ? { schema: qualified.schema } : {}),
   };
-  const number = () => {
-    const negative = isPunct(c.peek(), "-") ? -1 : 1;
-    if (negative < 0) {
-      c.next();
-    }
-    const t = c.next();
-    return t?.type === "number" ? negative * Number(t.value) : undefined;
-  };
   while (!c.done()) {
-    if (c.accept("start", "with") || c.accept("start")) {
-      sequence.start = number();
-    } else if (c.accept("increment", "by") || c.accept("increment")) {
-      sequence.increment = number();
-    } else if (c.accept("minvalue")) {
-      sequence.min = number();
-    } else if (c.accept("maxvalue")) {
-      sequence.max = number();
-    } else if (c.accept("cache")) {
-      sequence.cache = number();
-    } else if (c.accept("nocache") || c.accept("no", "cache")) {
-      sequence.cache = 1;
-    } else if (c.accept("cycle")) {
-      sequence.cycle = true;
-    } else if (c.accept("nocycle") || c.accept("no", "cycle")) {
-      sequence.cycle = false;
-    } else if (c.accept("owned", "by")) {
-      sequence.ownedBy = ownedBy(c);
-    } else if (c.accept("as")) {
-      sequence.type = c.next()?.value.toLowerCase();
-    } else {
+    if (!sequenceOption(c, sequence)) {
       c.next(); // NOMINVALUE, NOMAXVALUE, ORDER, AS bigint… : défauts ou sans effet sur les valeurs
     }
   }
   schema.sequences.set(name.toLowerCase(), sequence);
+}
+
+type Sequence = SequenceDefinition & { ownedBy?: { table: string; column: string } };
+
+function sequenceOption(c: Cursor, sequence: Sequence): boolean {
+  if (c.accept("start", "with") || c.accept("start")) {
+    sequence.start = signedNumber(c);
+  } else if (c.accept("increment", "by") || c.accept("increment")) {
+    sequence.increment = signedNumber(c);
+  } else if (c.accept("minvalue")) {
+    sequence.min = signedNumber(c);
+  } else if (c.accept("maxvalue")) {
+    sequence.max = signedNumber(c);
+  } else if (c.accept("cache")) {
+    sequence.cache = signedNumber(c);
+  } else {
+    return sequenceFlag(c, sequence);
+  }
+  return true;
+}
+
+function sequenceFlag(c: Cursor, sequence: Sequence): boolean {
+  if (c.accept("nocache") || c.accept("no", "cache")) {
+    sequence.cache = 1;
+  } else if (c.accept("cycle")) {
+    sequence.cycle = true;
+  } else if (c.accept("nocycle") || c.accept("no", "cycle")) {
+    sequence.cycle = false;
+  } else if (c.accept("owned", "by")) {
+    sequence.ownedBy = ownedBy(c);
+  } else if (c.accept("as")) {
+    sequence.type = c.next()?.value.toLowerCase();
+  } else {
+    return false;
+  }
+  return true;
+}
+
+/** Nombre, éventuellement précédé d'un signe moins. */
+function signedNumber(c: Cursor): number | undefined {
+  const negative = isPunct(c.peek(), "-") ? -1 : 1;
+  if (negative < 0) {
+    c.next();
+  }
+  const t = c.next();
+  return t?.type === "number" ? negative * Number(t.value) : undefined;
 }
 
 /** OWNED BY table.colonne (PostgreSQL). */
