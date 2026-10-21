@@ -12,16 +12,7 @@ export function oracle(version: string | undefined): Dialect {
   return {
     ...standard,
     dbms: "oracle",
-    types: {
-      ...standard.types,
-      unboundedDecimal: "native",
-      negativeScale: true,
-      // LOB interdits dans les CHECK et les clés.
-      boundedText: ({ compared, keyed }) => (compared || keyed ? 4000 : undefined),
-      emptyStringIsNull: true,
-      textLength: (sql) => sql.replace(/^(VARCHAR2|CHAR)\((\d+)\)$/, "$1($2 CHAR)"),
-      free: { rowversion: "RAW(8)", uuid: "RAW(16)", json: "CLOB", intervals: false },
-    },
+    types: oracleTypes(),
     counters: {
       ...standard.counters,
       keepSourceType: (sql, source) =>
@@ -64,19 +55,38 @@ export function oracle(version: string | undefined): Dialect {
     },
     // ON DELETE CASCADE / SET NULL uniquement ; aucun ON UPDATE.
     actions: { delete: ["cascade", "set null"], update: [], implicit: ["no action"] },
-    expressions: {
-      booleanLiterals: isAtLeast("oracle", version, "23ai"),
-      dates: {
-        current_date: "CURRENT_DATE",
-        current_time: null,
-        current_timestamp: "CURRENT_TIMESTAMP",
-        localtimestamp: "LOCALTIMESTAMP",
-        localtimestamp_seconds: "SYSDATE",
-        utc_timestamp: "SYS_EXTRACT_UTC(SYSTIMESTAMP)",
-      },
-      functions: { current_user: "USER", uuid: "SYS_GUID()", uuid_sequential: "SYS_GUID()" },
-    },
+    expressions: oracleExpressions(version),
     // Comparaison binaire : comportement par défaut (NLS_COMP = BINARY).
     collations: { ...standard.collations, binary: "" },
+  };
+}
+
+/** Types Oracle : NUMBER sans précision, échelle négative, LOB bornés, chaîne vide égale à NULL, longueur en caractères. */
+function oracleTypes(): Dialect["types"] {
+  return {
+    ...standard.types,
+    unboundedDecimal: "native",
+    negativeScale: true,
+    // LOB interdits dans les CHECK et les clés.
+    boundedText: ({ compared, keyed }) => (compared || keyed ? 4000 : undefined),
+    emptyStringIsNull: true,
+    textLength: (sql) => sql.replace(/^(VARCHAR2|CHAR)\((\d+)\)$/, "$1($2 CHAR)"),
+    free: { rowversion: "RAW(8)", uuid: "RAW(16)", json: "CLOB", intervals: false },
+  };
+}
+
+/** Valeurs par défaut : dates et fonctions, selon la version. */
+function oracleExpressions(version: string | undefined): Dialect["expressions"] {
+  return {
+    booleanLiterals: isAtLeast("oracle", version, "23ai"),
+    dates: {
+      current_date: "CURRENT_DATE",
+      current_time: null,
+      current_timestamp: "CURRENT_TIMESTAMP",
+      localtimestamp: "LOCALTIMESTAMP",
+      localtimestamp_seconds: "SYSDATE",
+      utc_timestamp: "SYS_EXTRACT_UTC(SYSTIMESTAMP)",
+    },
+    functions: { current_user: "USER", uuid: "SYS_GUID()", uuid_sequential: "SYS_GUID()" },
   };
 }

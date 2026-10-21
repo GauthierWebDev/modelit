@@ -25,31 +25,9 @@ function family(dbms: "mysql" | "mariadb", version: string | undefined): Dialect
   return {
     ...standard,
     dbms,
-    types: {
-      ...standard.types,
-      nativeDomains: true,
-      unsigned: true,
-      tinyintBoolean: true,
-      yearRange: false,
-      unboundedDecimal: { precision: 65, scale: 30 },
-      // TEXT dans une clé : longueur de préfixe obligatoire.
-      boundedText: ({ keyed }) => (keyed ? 255 : undefined),
-      free: { rowversion: "BINARY(8)", uuid: dbms === "mariadb" ? "UUID" : "CHAR(36)", json: "JSON", intervals: false },
-    },
+    types: mysqlTypes(dbms),
     counters: { ...standard.counters, startOption: (start) => ` AUTO_INCREMENT=${start}`, nullTakesNextValue: true },
-    columns: {
-      ...standard.columns,
-      onUpdate: true,
-      // Pas de défaut littéral sur TEXT / BLOB / JSON / GEOMETRY ; expression entre parenthèses depuis 8.0.13.
-      defaultFor: (rendered, type) =>
-        /^(\w*text|\w*blob|json|geometry)\b/i.test(type)
-          ? mysql57
-            ? null
-            : rendered.startsWith("(")
-              ? rendered
-              : `(${rendered})`
-          : rendered,
-    },
+    columns: mysqlColumns(mysql57),
     // CHECK ignoré par MySQL avant 8.0.16.
     constraints: { ...standard.constraints, enforcedChecks: !mysql57 },
     uniques: { ...standard.uniques, methods: true },
@@ -67,44 +45,8 @@ function family(dbms: "mysql" | "mariadb", version: string | undefined): Dialect
     identifiers: { quotes: ["`", "`"], reserved: RESERVED, maxLength: 64 },
     actions: { delete: ACTIONS, update: ACTIONS, implicit: [] },
     // Expressions entre parenthèses en DEFAULT : MySQL 8.0.13+, MariaDB 10.2+.
-    expressions:
-      dbms === "mysql"
-        ? {
-            booleanLiterals: true,
-            dates: {
-              current_date: mysql57 ? null : "(CURRENT_DATE)",
-              current_time: mysql57 ? null : "(CURRENT_TIME)",
-              current_timestamp: "CURRENT_TIMESTAMP",
-              localtimestamp: "CURRENT_TIMESTAMP",
-              localtimestamp_seconds: "CURRENT_TIMESTAMP",
-              utc_timestamp: mysql57 ? null : "(UTC_TIMESTAMP())",
-            },
-            functions: mysql57
-              ? { current_user: null, uuid: null, uuid_sequential: null }
-              : { current_user: "(CURRENT_USER())", uuid: "(UUID())", uuid_sequential: "(UUID())" },
-          }
-        : {
-            booleanLiterals: true,
-            dates: {
-              current_date: "(CURRENT_DATE)",
-              current_time: "(CURRENT_TIME)",
-              current_timestamp: "CURRENT_TIMESTAMP",
-              localtimestamp: "CURRENT_TIMESTAMP",
-              localtimestamp_seconds: "CURRENT_TIMESTAMP",
-              utc_timestamp: "(UTC_TIMESTAMP())",
-            },
-            functions: { current_user: "CURRENT_USER()", uuid: "UUID()", uuid_sequential: "UUID()" },
-          },
-    collations: {
-      sensitive: "COLLATE utf8mb4_0900_as_cs",
-      binary: "COLLATE utf8mb4_bin",
-      insensitive: (klass) =>
-        dbms === "mysql"
-          ? { kind: "emit", sql: klass === "ci" ? "COLLATE utf8mb4_0900_as_ci" : "COLLATE utf8mb4_0900_ai_ci" }
-          : klass === "ai_ci"
-            ? { kind: "emit", sql: "COLLATE utf8mb4_unicode_ci" }
-            : { kind: "emit", sql: "COLLATE utf8mb4_unicode_ci", approximation: "accents" },
-    },
+    expressions: mysqlExpressions(dbms, mysql57),
+    collations: mysqlCollations(dbms),
   };
 }
 
@@ -123,4 +65,81 @@ export function mariadb(version: string | undefined): Dialect {
         },
       }
     : base;
+}
+
+/** Types : domaines natifs, non-signé, TINYINT(1) booléen, TEXT borné dans une clé. */
+function mysqlTypes(dbms: "mysql" | "mariadb"): Dialect["types"] {
+  return {
+    ...standard.types,
+    nativeDomains: true,
+    unsigned: true,
+    tinyintBoolean: true,
+    yearRange: false,
+    unboundedDecimal: { precision: 65, scale: 30 },
+    // TEXT dans une clé : longueur de préfixe obligatoire.
+    boundedText: ({ keyed }) => (keyed ? 255 : undefined),
+    free: { rowversion: "BINARY(8)", uuid: dbms === "mariadb" ? "UUID" : "CHAR(36)", json: "JSON", intervals: false },
+  };
+}
+
+/** ON UPDATE ; pas de défaut littéral sur TEXT / BLOB / JSON / GEOMETRY. */
+function mysqlColumns(mysql57: boolean): Dialect["columns"] {
+  return {
+    ...standard.columns,
+    onUpdate: true,
+    // Pas de défaut littéral sur TEXT / BLOB / JSON / GEOMETRY ; expression entre parenthèses depuis 8.0.13.
+    defaultFor: (rendered, type) =>
+      /^(\w*text|\w*blob|json|geometry)\b/i.test(type)
+        ? mysql57
+          ? null
+          : rendered.startsWith("(")
+            ? rendered
+            : `(${rendered})`
+        : rendered,
+  };
+}
+
+/** Valeurs par défaut : dates et fonctions, selon la version. */
+function mysqlExpressions(dbms: "mysql" | "mariadb", mysql57: boolean): Dialect["expressions"] {
+  return dbms === "mysql"
+    ? {
+        booleanLiterals: true,
+        dates: {
+          current_date: mysql57 ? null : "(CURRENT_DATE)",
+          current_time: mysql57 ? null : "(CURRENT_TIME)",
+          current_timestamp: "CURRENT_TIMESTAMP",
+          localtimestamp: "CURRENT_TIMESTAMP",
+          localtimestamp_seconds: "CURRENT_TIMESTAMP",
+          utc_timestamp: mysql57 ? null : "(UTC_TIMESTAMP())",
+        },
+        functions: mysql57
+          ? { current_user: null, uuid: null, uuid_sequential: null }
+          : { current_user: "(CURRENT_USER())", uuid: "(UUID())", uuid_sequential: "(UUID())" },
+      }
+    : {
+        booleanLiterals: true,
+        dates: {
+          current_date: "(CURRENT_DATE)",
+          current_time: "(CURRENT_TIME)",
+          current_timestamp: "CURRENT_TIMESTAMP",
+          localtimestamp: "CURRENT_TIMESTAMP",
+          localtimestamp_seconds: "CURRENT_TIMESTAMP",
+          utc_timestamp: "(UTC_TIMESTAMP())",
+        },
+        functions: { current_user: "CURRENT_USER()", uuid: "UUID()", uuid_sequential: "UUID()" },
+      };
+}
+
+/** Collations utf8mb4 : sensibles, binaires, insensibles (accents approchés en MariaDB). */
+function mysqlCollations(dbms: "mysql" | "mariadb"): Dialect["collations"] {
+  return {
+    sensitive: "COLLATE utf8mb4_0900_as_cs",
+    binary: "COLLATE utf8mb4_bin",
+    insensitive: (klass) =>
+      dbms === "mysql"
+        ? { kind: "emit", sql: klass === "ci" ? "COLLATE utf8mb4_0900_as_ci" : "COLLATE utf8mb4_0900_ai_ci" }
+        : klass === "ai_ci"
+          ? { kind: "emit", sql: "COLLATE utf8mb4_unicode_ci" }
+          : { kind: "emit", sql: "COLLATE utf8mb4_unicode_ci", approximation: "accents" },
+  };
 }
