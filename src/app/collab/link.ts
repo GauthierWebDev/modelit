@@ -10,7 +10,7 @@ const toBase64Url = (text: string) =>
   btoa(String.fromCharCode(...new TextEncoder().encode(text)))
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
-    .replace(/=+$/, "");
+    .replace(/[=]+$/, "");
 
 const fromBase64Url = (value: string) => {
   const base64 = value
@@ -41,7 +41,7 @@ export function parseLink(link: string): { addr: string; secret: string } | null
     }
     const a = url.searchParams.get("a");
     const s = url.searchParams.get("s");
-    if (!a || !s || !/^[0-9a-f]{32}$/.test(s)) {
+    if (!(a && s && /^[0-9a-f]{32}$/.test(s))) {
       return null;
     }
     const addr = fromBase64Url(a);

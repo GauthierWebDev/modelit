@@ -57,7 +57,7 @@ export async function buildSvg(
 ): Promise<{ svg: string; width: number; height: number }> {
   const canvas = document.querySelector<SVGSVGElement>("svg[data-canvas]");
   const root = canvas?.querySelector<SVGGElement>("[data-export-root]");
-  if (!canvas || !root) {
+  if (!(canvas && root)) {
     throw new ExportError(t("export.noCanvas"));
   }
 

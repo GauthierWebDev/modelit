@@ -35,7 +35,7 @@ import { clientToModel, fitToWindow, revealObjects } from "./viewport";
  * Elles passent par les mêmes commandes que les raccourcis (O-52, app/commands).
  */
 
-export type ActionItem = {
+export interface ActionItem {
   kind: "item";
   id: string;
   label: string;
@@ -44,7 +44,7 @@ export type ActionItem = {
   disabled?: boolean;
   checked?: boolean;
   run: () => void;
-};
+}
 
 /** `row` : rangée d'icônes (ex. disposition, O-57). */
 export type Action = ActionItem | { kind: "separator" } | { kind: "row"; id: string; items: ActionItem[] };

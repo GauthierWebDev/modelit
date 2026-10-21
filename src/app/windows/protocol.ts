@@ -81,10 +81,13 @@ export type ToMain =
     };
 
 /** Messages de la principale vers les flottantes. */
-export type ToReplica = { type: "state"; state: MirrorState };
+export interface ToReplica {
+  type: "state";
+  state: MirrorState;
+}
 
 /** Canal entre fenêtres : événements Tauri, ou en mémoire pour les tests. */
 export interface Channel<Out, In> {
-  send(message: Out): void;
-  listen(handler: (message: In) => void): () => void;
+  send: (message: Out) => void;
+  listen: (handler: (message: In) => void) => () => void;
 }

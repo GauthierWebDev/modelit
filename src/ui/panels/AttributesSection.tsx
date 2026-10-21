@@ -82,7 +82,7 @@ function AttributesPanel({
   // Rubrique ajoutée hors de la section (« ⋯ », menu contextuel, O-53) : la choisir et la nommer.
   const toEdit = useUiStore((s) => s.attributeToEdit);
   useEffect(() => {
-    if (!toEdit || !attributes.some((a) => a.id === toEdit)) {
+    if (!(toEdit && attributes.some((a) => a.id === toEdit))) {
       return;
     }
     setSelected(toEdit);
@@ -92,7 +92,7 @@ function AttributesPanel({
   // Colonne renommée dans le MLD / MPD (O-56) : la rubrique est choisie, le focus reste sur le canevas.
   const toShow = useUiStore((s) => s.attributeToShow);
   useEffect(() => {
-    if (!toShow || !attributes.some((a) => a.id === toShow)) {
+    if (!(toShow && attributes.some((a) => a.id === toShow))) {
       return;
     }
     setSelected(toShow);
@@ -409,7 +409,7 @@ function useRowDrag(rows: { current: (HTMLDivElement | null)[] }, move: (from: n
     const onMove = (ev: globalThis.PointerEvent) => {
       const centers = rows.current
         .map((row) => (row ? row.getBoundingClientRect() : null))
-        .map((r) => (r ? r.top + r.height / 2 : Infinity));
+        .map((r) => (r ? r.top + r.height / 2 : Number.POSITIVE_INFINITY));
       target = centers.filter((c) => c < ev.clientY).length;
       setState({ from, target });
     };

@@ -68,7 +68,7 @@ async function writeIndex() {
 async function write(doc: DocumentHandle) {
   const entry = tracked.get(doc.id);
   if (entry) {
-    window.clearTimeout(entry.timer);
+    globalThis.clearTimeout(entry.timer);
     entry.timer = undefined;
     entry.pending = false;
     entry.lastWrite = Date.now();
@@ -109,6 +109,7 @@ function schedule(doc: DocumentHandle) {
   }
   const delay = usePreferencesStore.getState().autosaveDelay * 60_000;
   const wait = Math.max(0, entry.lastWrite + delay - Date.now());
+  // biome-ignore lint/style/useGlobalThis: minuterie du DOM (identifiant numérique), pas celle de Node
   entry.timer = window.setTimeout(() => void write(doc), wait);
 }
 
@@ -116,7 +117,7 @@ function track(doc: DocumentHandle) {
   const unsubscribe = doc.store.subscribe((state, previous) => {
     const changed = state.doc !== previous.doc || state.savedDoc !== previous.savedDoc;
     const transactionEnded = previous.transactionStart !== null && state.transactionStart === null;
-    if (!changed && !transactionEnded) {
+    if (!(changed || transactionEnded)) {
       return;
     }
     // Pendant un glisser-déposer, une seule écriture, à la fin de l'opération.
@@ -137,7 +138,7 @@ async function untrack(id: string) {
   const entry = tracked.get(id);
   if (entry) {
     entry.unsubscribe();
-    window.clearTimeout(entry.timer);
+    globalThis.clearTimeout(entry.timer);
     tracked.delete(id);
   }
   if (!stored.delete(id)) {
@@ -285,7 +286,7 @@ export function startAutosave() {
         if (entry?.timer === undefined) {
           continue;
         }
-        window.clearTimeout(entry.timer);
+        globalThis.clearTimeout(entry.timer);
         entry.timer = undefined;
         schedule(doc);
       }

@@ -615,8 +615,10 @@ function tableCatalog(
   });
   // NULL dans une clé composée Oracle : égaux entre eux, sauf ligne entièrement NULL (O-39).
   const nullable = (n: string) =>
-    !table.primaryKey.some((p) => p.toLowerCase() === n.toLowerCase()) &&
-    !table.columns.find((c) => c.name.toLowerCase() === n.toLowerCase())?.notNull;
+    !(
+      table.primaryKey.some((p) => p.toLowerCase() === n.toLowerCase()) ||
+      table.columns.find((c) => c.name.toLowerCase() === n.toLowerCase())?.notNull
+    );
   // SQL Server : un seul NULL admis par UNIQUE (NULL égaux entre eux, ligne entièrement NULL comprise).
   const nullsOf = (u: ParsedKey) =>
     u.nullsNotDistinct || (dialect === "sqlserver" && !u.where && !u.nullsDistinct && u.columns.some(nullable))
@@ -772,7 +774,7 @@ function propagateForeignRanges(catalog: Catalog) {
           );
           const own = parse(column?.range);
           const ref = parse(referenced?.range);
-          if (!column || !own || !ref || own[0]! >= ref[0]!) {
+          if (!(column && own && ref) || own[0]! >= ref[0]!) {
             return;
           }
           column.range = `[${ref[0]}, ${own[1]}]`;
@@ -814,7 +816,7 @@ function rangeCovers(source?: string, target?: string): boolean {
   if (source === target) {
     return true;
   }
-  if (!source?.startsWith("[") || !target?.startsWith("[")) {
+  if (!(source?.startsWith("[") && target?.startsWith("["))) {
     return false;
   }
   const [smin, smax] = source

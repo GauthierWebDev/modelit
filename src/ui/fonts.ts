@@ -59,7 +59,7 @@ function inUnicodeRange(codePoint: number, range: string): boolean {
   }
   return range.split(",").some((part) => {
     const [start, end = start] = part.trim().replace(/^U\+/i, "").split("-");
-    return codePoint >= parseInt(start!, 16) && codePoint <= parseInt(end!, 16);
+    return codePoint >= Number.parseInt(start!, 16) && codePoint <= Number.parseInt(end!, 16);
   });
 }
 

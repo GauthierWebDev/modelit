@@ -17,7 +17,7 @@ export interface ScreenRect {
 
 /** Fenêtre flottante affichée par cette page, d'après son adresse (`?float=…`). */
 export function floatKind(): { kind: "toolbar" } | { kind: "group"; id: string } | null {
-  const params = new URLSearchParams(window.location.search);
+  const params = new URLSearchParams(globalThis.location.search);
   const kind = params.get("float");
   if (kind === "toolbar") {
     return { kind };

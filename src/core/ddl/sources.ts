@@ -51,7 +51,7 @@ const oracle: SourceRule = (ctx, table, column, _sql, type, checks) => {
   const conditions = activeConditions(table, column);
   // Octets ou caractères : sans objet sur une clé étrangère (découle de la clé référencée) ou quand
   // un CHECK IN n'admet que des valeurs ASCII (un octet par caractère) (O-40).
-  const lengthMatters = !column.foreign && !conditions.some((c) => asciiDomain(c, column.name));
+  const lengthMatters = !(column.foreign || conditions.some((c) => asciiDomain(c, column.name)));
   if (lengthMatters && /^(var)?char2?\s*\(\s*\d+\s+byte\s*\)/i.test(source)) {
     loss("type", MSG.lossByteSemantics());
   } else if (lengthMatters && /^(varchar2?|char|character)\s*\(\s*\d+\s*\)$/i.test(source)) {

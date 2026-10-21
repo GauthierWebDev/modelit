@@ -55,14 +55,7 @@ export function TypesTab() {
 
   return (
     <div className="flex flex-col gap-3">
-      {!custom || !entry ? (
-        <div className="flex items-center gap-3 rounded bg-neutral-100 px-3 py-2 text-sm dark:bg-neutral-800">
-          <p className="flex-1">{t("customDbms.standard", { dbms: base })}</p>
-          <button type="button" className={button} onClick={() => cmd.customizeTarget(handle)}>
-            {t("customDbms.customize")}
-          </button>
-        </div>
-      ) : (
+      {custom && entry ? (
         <section className="flex flex-col gap-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 dark:border-amber-700 dark:bg-amber-950/40">
           <div className="grid grid-cols-[8rem_1fr] items-center gap-2 text-sm">
             <span className="flex items-center gap-1 text-neutral-600 dark:text-neutral-300">
@@ -91,7 +84,7 @@ export function TypesTab() {
                   : t("customDbms.differs")
                 : t("customDbms.notSaved")}
             </span>
-            {(!saved || !sameDefinition(saved, entry)) && (
+            {!(saved && sameDefinition(saved, entry)) && (
               <button type="button" className={button} onClick={() => save(entry)}>
                 {saved ? t("customDbms.updateLibrary") : t("customDbms.save")}
               </button>
@@ -116,6 +109,13 @@ export function TypesTab() {
             </button>
           </div>
         </section>
+      ) : (
+        <div className="flex items-center gap-3 rounded bg-neutral-100 px-3 py-2 text-sm dark:bg-neutral-800">
+          <p className="flex-1">{t("customDbms.standard", { dbms: base })}</p>
+          <button type="button" className={button} onClick={() => cmd.customizeTarget(handle)}>
+            {t("customDbms.customize")}
+          </button>
+        </div>
       )}
 
       <p className="text-xs text-neutral-500 dark:text-neutral-400">

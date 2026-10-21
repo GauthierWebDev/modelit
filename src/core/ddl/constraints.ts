@@ -263,7 +263,7 @@ export function uniqueLine(ctx: Context, table: LogicalTable, unique: LogicalKey
 
 /** Colonne qui admet NULL (ni NOT NULL ni membre de la clé primaire). */
 const nullable = (table: LogicalTable, name: string) =>
-  !table.primaryKey.includes(name) && !table.columns.find((c) => c.name === name)?.notNull;
+  !(table.primaryKey.includes(name) || table.columns.find((c) => c.name === name)?.notNull);
 
 /**
  * NULL égaux dans une clé composée (Oracle) ou NULLS NOT DISTINCT (PostgreSQL) (O-39) : exprimés

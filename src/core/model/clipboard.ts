@@ -76,7 +76,7 @@ export function parseFragment(text: string): ModelFragment | null {
       return null;
     }
     const lists = [data.entities, data.associations, data.inheritances, data.links, data.inheritanceLinks];
-    if (!lists.every(Array.isArray) || !data.layout?.positions || !data.layout.bends) {
+    if (!(lists.every(Array.isArray) && data.layout?.positions && data.layout.bends)) {
       return null;
     }
     return data as ModelFragment;
@@ -134,7 +134,7 @@ export function pasteFragment(doc: ModelDocument, fragment: ModelFragment, at?: 
   const dropped = new Set(
     [...copy.links, ...copy.inheritanceLinks]
       .map((l) => l.id)
-      .filter((id) => !links.some((l) => l.id === id) && !inheritanceLinks.some((l) => l.id === id)),
+      .filter((id) => !(links.some((l) => l.id === id) || inheritanceLinks.some((l) => l.id === id))),
   );
   for (const link of links) {
     delete link.foreignKeyConstraintName;
@@ -247,7 +247,7 @@ function withoutLinks(node: Entity | Association, dropped: Set<Id>) {
   if (dropped.size === 0) {
     return;
   }
-  const keep = (m: KeyMember) => !("linkId" in m) || !dropped.has(m.linkId);
+  const keep = (m: KeyMember) => !("linkId" in m && dropped.has(m.linkId));
   const prune = <K extends { members: KeyMember[]; prefixes?: (number | null)[]; include?: KeyMember[] }>(
     key: K,
   ): K => ({

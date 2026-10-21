@@ -185,7 +185,7 @@ export function GroupView({
                 <>
                   <MenuItem
                     onSelect={() => {
-                      dropGroup({ kind: "zone", zone: "right", index: Infinity });
+                      dropGroup({ kind: "zone", zone: "right", index: Number.POSITIVE_INFINITY });
                       close();
                     }}
                   >
@@ -193,7 +193,7 @@ export function GroupView({
                   </MenuItem>
                   <MenuItem
                     onSelect={() => {
-                      dropGroup({ kind: "zone", zone: "bottom", index: Infinity });
+                      dropGroup({ kind: "zone", zone: "bottom", index: Number.POSITIVE_INFINITY });
                       close();
                     }}
                   >
@@ -310,11 +310,11 @@ function GroupResizer({ zone, index, layout }: { zone: Zone; index: number; layo
           updateDock((l) => setWeights(l, zone, index, a + clamped, b - clamped));
         };
         const up = () => {
-          window.removeEventListener("pointermove", move);
-          window.removeEventListener("pointerup", up);
+          globalThis.removeEventListener("pointermove", move);
+          globalThis.removeEventListener("pointerup", up);
         };
-        window.addEventListener("pointermove", move);
-        window.addEventListener("pointerup", up);
+        globalThis.addEventListener("pointermove", move);
+        globalThis.addEventListener("pointerup", up);
       }}
     />
   );
@@ -336,11 +336,11 @@ export function DockZone({ zone }: { zone: Zone }) {
     const move = (ev: PointerEvent) =>
       updateDock((l) => setZoneSize(l, zone, size + (start - (vertical ? ev.clientX : ev.clientY))));
     const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
+      globalThis.removeEventListener("pointermove", move);
+      globalThis.removeEventListener("pointerup", up);
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    globalThis.addEventListener("pointermove", move);
+    globalThis.addEventListener("pointerup", up);
   };
 
   return (
@@ -395,11 +395,11 @@ function FloatingGroupView({ group }: { group: FloatingGroup }) {
         }),
       );
     const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
+      globalThis.removeEventListener("pointermove", move);
+      globalThis.removeEventListener("pointerup", up);
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    globalThis.addEventListener("pointermove", move);
+    globalThis.addEventListener("pointerup", up);
   };
   const { x, y, width, height } = group.rect;
   return (
@@ -446,7 +446,7 @@ export function DragGhost() {
   const pointer = useDragStore((s) => s.pointer);
   const target = useDragStore((s) => s.target);
   const layout = useDock();
-  if (!item || !pointer) {
+  if (!(item && pointer)) {
     return null;
   }
   const sections =

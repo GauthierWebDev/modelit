@@ -45,7 +45,13 @@
         "useConsistentCurlyBraces": "error",
         "noUnusedTemplateLiteral": "error",
         "useCollapsedIf": "error",
-        "useForOf": "error"
+        "useForOf": "error",
+        "useGlobalThis": "error",
+        "useNumberNamespace": "error",
+        "useConsistentTypeDefinitions": "error",
+        "useConsistentMethodSignatures": "error",
+        "useConsistentMemberAccessibility": "error",
+        "useDefaultSwitchClause": "off"
       },
       "suspicious": {
         "noLeakedRender": "error",
@@ -77,7 +83,11 @@
       },
       "complexity": {
         "noUselessReturn": "error",
-        "noUselessUndefined": "error"
+        "noUselessUndefined": "error",
+        "useSimplifiedLogicExpression": "error",
+        "noDivRegex": "error",
+        "noImplicitCoercions": "error",
+        "noForEach": "error"
       }
     }
   },

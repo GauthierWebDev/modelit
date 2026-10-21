@@ -42,11 +42,11 @@ export function QuickActions() {
       e.stopPropagation();
       setOpen(false);
     };
-    window.addEventListener("pointerdown", onPointer, true);
-    window.addEventListener("keydown", onKey, true);
+    globalThis.addEventListener("pointerdown", onPointer, true);
+    globalThis.addEventListener("keydown", onKey, true);
     return () => {
-      window.removeEventListener("pointerdown", onPointer, true);
-      window.removeEventListener("keydown", onKey, true);
+      globalThis.removeEventListener("pointerdown", onPointer, true);
+      globalThis.removeEventListener("keydown", onKey, true);
     };
   }, [open]);
 

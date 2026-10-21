@@ -115,10 +115,9 @@ function languageSpecific(name: string): boolean {
   if (!/_ci$|_ci_a[is]\b/.test(n)) {
     return false;
   }
-  return (
-    !/^(utf8mb4|utf8mb3|utf8|latin1|ascii|ucs2|utf16|utf32)_(general|unicode|unicode_520|0900_ai|0900_as)_ci$/.test(
-      n,
-    ) && !/^(sql_)?latin1_general(_\d+)?_ci_a[is]$/.test(n)
+  return !(
+    /^(utf8mb4|utf8mb3|utf8|latin1|ascii|ucs2|utf16|utf32)_(general|unicode|unicode_520|0900_ai|0900_as)_ci$/.test(n) ||
+    /^(sql_)?latin1_general(_\d+)?_ci_a[is]$/.test(n)
   );
 }
 

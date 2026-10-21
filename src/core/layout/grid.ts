@@ -473,7 +473,7 @@ class State {
 
   /** Géométrie exacte : centres MCD après ajustement des colonnes et des lignes. */
   refresh() {
-    if (!this.exact || !this.dirty) {
+    if (!(this.exact && this.dirty)) {
       return;
     }
     const { pb, colW, rowH, colX, rowY } = this;
@@ -890,7 +890,7 @@ function forceCells(pb: Problem, rnd: () => number): number[] {
   );
   for (const v of byDegree) {
     let best = -1;
-    let bestD = Infinity;
+    let bestD = Number.POSITIVE_INFINITY;
     for (let c = 0; c < pb.cells; c += 1) {
       if (taken[c]) {
         continue;
@@ -1085,7 +1085,7 @@ export function gridLayoutChunk(
   }
   const pb = new Problem(nodes, edges, opts);
   const large = pb.n > LOCAL_SEARCH_ABOVE;
-  const radius = large ? RADIUS : Infinity;
+  const radius = large ? RADIUS : Number.POSITIVE_INFINITY;
   let best: { cells: Int32Array; cost: number; quality: GridQuality } | null = null;
 
   for (let i = 0; i < RUNS_PER_CHUNK; i += 1) {

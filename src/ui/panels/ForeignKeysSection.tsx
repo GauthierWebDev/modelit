@@ -21,17 +21,17 @@ export function ForeignKeysSection({ tableOf, linkIds }: { tableOf?: Id; linkIds
   const doc = useDocument((s) => s.doc);
   const rows: { table: string; column: LogicalColumn; referenced: string | undefined }[] = [];
   for (const table of logical.tables) {
-    table.columns.forEach((column) => {
+    for (const column of table.columns) {
       if (!column.origin) {
-        return;
+        continue;
       }
       if (table.source.id !== tableOf && !linkIds?.includes(column.origin.linkId)) {
-        return;
+        continue;
       }
       const fk = table.foreignKeys.find((f) => f.columns.includes(column.name));
       const referenced = fk && `${fk.referencedTable}.${fk.referencedColumns[fk.columns.indexOf(column.name)]}`;
       rows.push({ table: table.name, column, referenced });
-    });
+    }
   }
   // Depuis la bulle d'association, la clé peut arriver dans la table d'une entité : on la nomme.
   const showTable = linkIds !== undefined;
@@ -95,7 +95,7 @@ export function ForeignKeysSection({ tableOf, linkIds }: { tableOf?: Id; linkIds
 export function describeLinkage(doc: ModelDocument, linkId: Id): string {
   const reference = doc.links.find((l) => l.id === linkId);
   const association = reference && doc.associations.find((a) => a.id === reference.associationId);
-  if (!reference || !association) {
+  if (!(reference && association)) {
     return "?";
   }
   const entity = (id: Id) => doc.entities.find((e) => e.id === id)?.name ?? "?";

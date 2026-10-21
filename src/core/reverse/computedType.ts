@@ -41,7 +41,7 @@ function capped(p: number, s: number): DataType {
 }
 
 function combine(op: string, a: Inferred, b: Inferred): Inferred {
-  if (!a || !b) {
+  if (!(a && b)) {
     return undefined;
   }
   const numeric = (t: DataType) => ["integer", "decimal", "real", "money", "boolean"].includes(t.kind);
@@ -55,7 +55,7 @@ function combine(op: string, a: Inferred, b: Inferred): Inferred {
       ? { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "large" }
       : { kind: "text", encoding: unicode ? "unicode" : "ascii", length: "variable", size: a.size! + b.size! };
   }
-  if (!numeric(a) || !numeric(b)) {
+  if (!(numeric(a) && numeric(b))) {
     return undefined;
   }
   if (a.kind === "real" || b.kind === "real") {

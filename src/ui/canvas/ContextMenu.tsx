@@ -31,13 +31,13 @@ export function blockNativeContextMenu(): () => void {
     const editable =
       target instanceof HTMLElement &&
       (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
-    if (editable || window.getSelection()?.toString()) {
+    if (editable || globalThis.getSelection()?.toString()) {
       return;
     }
     e.preventDefault();
   };
-  window.addEventListener("contextmenu", onContextMenu);
-  return () => window.removeEventListener("contextmenu", onContextMenu);
+  globalThis.addEventListener("contextmenu", onContextMenu);
+  return () => globalThis.removeEventListener("contextmenu", onContextMenu);
 }
 
 export function ContextMenuLayer() {
@@ -47,7 +47,7 @@ export function ContextMenuLayer() {
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
 
   useLayoutEffect(() => {
-    if (!menu || !ref.current) {
+    if (!(menu && ref.current)) {
       return setPosition(null);
     }
     const { width, height } = ref.current.getBoundingClientRect();
@@ -70,13 +70,13 @@ export function ContextMenuLayer() {
       e.stopPropagation();
       close();
     };
-    window.addEventListener("pointerdown", onPointer, true);
-    window.addEventListener("keydown", onKey, true);
+    globalThis.addEventListener("pointerdown", onPointer, true);
+    globalThis.addEventListener("keydown", onKey, true);
     window.addEventListener("wheel", close, { passive: true });
     window.addEventListener("blur", close);
     return () => {
-      window.removeEventListener("pointerdown", onPointer, true);
-      window.removeEventListener("keydown", onKey, true);
+      globalThis.removeEventListener("pointerdown", onPointer, true);
+      globalThis.removeEventListener("keydown", onKey, true);
       window.removeEventListener("wheel", close);
       window.removeEventListener("blur", close);
     };

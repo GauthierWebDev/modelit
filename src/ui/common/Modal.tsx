@@ -70,9 +70,9 @@ export function Modal({
         }
       }
     };
-    window.addEventListener("keydown", onKey, true);
+    globalThis.addEventListener("keydown", onKey, true);
     return () => {
-      window.removeEventListener("keydown", onKey, true);
+      globalThis.removeEventListener("keydown", onKey, true);
       stack.splice(stack.indexOf(id), 1);
       if (previous?.isConnected) {
         previous.focus();

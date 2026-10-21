@@ -200,7 +200,7 @@ export function syncUntitled(doc: DocumentHandle) {
     const next = { ...untitled };
     delete next[doc.id];
     useWorkspaceStore.setState({ untitled: next });
-  } else if (!named && !(doc.id in untitled)) {
+  } else if (!(named || doc.id in untitled)) {
     useWorkspaceStore.setState({ untitled: { ...untitled, [doc.id]: nextUntitled(untitled) } });
   }
 }

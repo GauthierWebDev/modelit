@@ -148,7 +148,7 @@ function attach(layout: DockLayout, sections: SectionId[], target: DropTarget, b
   if (target.kind === "group") {
     const found = findGroup(layout, target.group);
     if (!found) {
-      return attach(layout, sections, { kind: "zone", zone: "right", index: Infinity }, base);
+      return attach(layout, sections, { kind: "zone", zone: "right", index: Number.POSITIVE_INFINITY }, base);
     }
     found.group.sections.push(...sections.filter((s) => !found.group.sections.includes(s)));
     found.group.active = sections[0]!;
@@ -269,7 +269,7 @@ export function showSection(layout: DockLayout, section: SectionId): DockLayout 
         ? { kind: "group", group: sameRect.id }
         : place && "rect" in place
           ? { kind: "float", rect: place.rect }
-          : { kind: "zone", zone: place && "zone" in place ? place.zone : "right", index: Infinity };
+          : { kind: "zone", zone: place && "zone" in place ? place.zone : "right", index: Number.POSITIVE_INFINITY };
   return tidy(attach(next, [section], target));
 }
 
@@ -335,7 +335,7 @@ function placeNear(layout: DockLayout, section: SectionId | undefined): DropTarg
       return { kind: "zone", zone, index: index + 1 };
     }
   }
-  return { kind: "zone", zone: "right", index: Infinity };
+  return { kind: "zone", zone: "right", index: Number.POSITIVE_INFINITY };
 }
 
 /**
@@ -351,7 +351,7 @@ export function sanitizeLayout(raw: unknown): DockLayout {
     const input = raw as Partial<DockLayout>;
     const seen = new Set<SectionId>();
     const cleanGroup = (g: Partial<Group> | undefined): Group | null => {
-      if (!g || !Array.isArray(g.sections)) {
+      if (!(g && Array.isArray(g.sections))) {
         return null;
       }
       const sections: SectionId[] = [];
@@ -384,7 +384,7 @@ export function sanitizeLayout(raw: unknown): DockLayout {
     for (const g of Array.isArray(input.floating) ? input.floating : []) {
       const r = (g as Partial<FloatingGroup> | undefined)?.rect;
       // Sans géométrie lisible, le groupe est ignoré : ses sections reviennent à droite (plus bas).
-      if (!r || ![r.x, r.y, r.width, r.height].every((n) => typeof n === "number")) {
+      if (!(r && [r.x, r.y, r.width, r.height].every((n) => typeof n === "number"))) {
         continue;
       }
       const cleaned = cleanGroup(g);

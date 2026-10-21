@@ -189,7 +189,7 @@ describe("dimensions de la vue la plus large (O-60)", () => {
     const mcd = [...layoutsOf(d).values()];
     const mpd = tableLayouts(toLogicalModel(d), d, "mpd");
     const clash = (rects: Rect[]) => rects.some((r, i) => rects.slice(i + 1).some((s) => overlaps(r, s)));
-    return !clash(mcd) && !clash(mpd);
+    return !(clash(mcd) || clash(mpd));
   }
 
   it("réflexive : aucun chevauchement dans le MCD ni dans le MPD, la seconde patte contournée", () => {

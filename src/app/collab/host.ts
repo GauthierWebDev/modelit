@@ -158,7 +158,7 @@ export function startHost({
     }
     if (password) {
       const pending = challenges.get(peer);
-      if (!pending || !message.proof) {
+      if (!(pending && message.proof)) {
         return challenge(peer, pending?.attemptsLeft ?? MAX_ATTEMPTS);
       }
       if (!(await password.verify(pending.nonce, message.proof))) {

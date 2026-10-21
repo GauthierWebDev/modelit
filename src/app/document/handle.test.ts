@@ -104,7 +104,7 @@ describe("géométrie du schéma", () => {
     const a = addEntity(doc, { x: 0, y: 0 });
     const b = addEntity(doc, { x: 400, y: 0 });
     const result = connectNodes(doc, a, b, { associationPosition: { x: 200, y: 0 } });
-    if (!result || !("created" in result)) {
+    if (!(result && "created" in result)) {
       throw new Error("association non créée");
     }
     const [leg] = doc.store.getState().doc.links;

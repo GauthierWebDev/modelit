@@ -88,7 +88,7 @@ export function typeOf(
       // TINYINT SQL Server : 0 à 255, toujours rétabli par un CHECK, même si un autre CHECK existe (O-42).
       if (!column.foreign && source?.dialect === "sqlserver" && /^\s*tinyint\b/i.test(source.sql)) {
         checks.push(`${ref()} BETWEEN 0 AND 255`);
-      } else if (!column.foreign && !alreadyNonNegative(table, column)) {
+      } else if (!(column.foreign || alreadyNonNegative(table, column))) {
         checks.push(`${ref()} >= 0`);
       }
       const bits = type.kind === "integer" ? type.bits : (type.bits ?? 32);
@@ -275,7 +275,7 @@ export function typeOf(
     sql = d.textLength(sql);
     const rejected = activeConditions(table, column).some((c) => excludesEmptyString(c, column.name));
     const notNull = column.notNull || table.primaryKey.includes(column.name);
-    if (!rejected || !notNull) {
+    if (!(rejected && notNull)) {
       loss("domain", MSG.lossToOracleEmptyString(notNull));
     }
   }
@@ -300,7 +300,7 @@ function integerLosses(ctx: Context, table: LogicalTable, column: LogicalColumn,
   }
   const from = integerRange(source.sql, source.dialect);
   const to = integerRange(emitted, ctx.target.dbms);
-  if (!from || !to || (to[0] >= from[0] && to[1] <= from[1])) {
+  if (!(from && to) || (to[0] >= from[0] && to[1] <= from[1])) {
     return;
   }
   // Bornes que les CHECK actifs de la colonne et de la table imposent à ses valeurs.

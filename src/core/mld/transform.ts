@@ -87,7 +87,11 @@ function recordMembers(ctx: Context, table: LogicalTable, columns: (KeyColumn & 
 const byKeyOrder = <T extends { keyOrder?: number }>(items: T[]) =>
   items
     .map((item, index) => ({ item, index }))
-    .sort((a, b) => (a.item.keyOrder ?? Infinity) - (b.item.keyOrder ?? Infinity) || a.index - b.index)
+    .sort(
+      (a, b) =>
+        (a.item.keyOrder ?? Number.POSITIVE_INFINITY) - (b.item.keyOrder ?? Number.POSITIVE_INFINITY) ||
+        a.index - b.index,
+    )
     .map(({ item }) => item);
 
 const tableName = (ctx: Context, node: Entity | Association) => logicalName(node, ctx.doc.settings.naming);
@@ -388,7 +392,7 @@ function addReference(
 function referencedKey(ctx: Context, target: Entity, reference: Link): KeyColumn[] {
   const ids = reference.referencedAttributes;
   const attributes = ids?.map((id) => target.attributes.find((a) => a.id === id));
-  if (!attributes?.length || !attributes.every((a) => a !== undefined)) {
+  if (!(attributes?.length && attributes.every((a) => a !== undefined))) {
     return entityKey(ctx, target.id);
   }
   const table = tableName(ctx, target);
@@ -433,10 +437,7 @@ function applyPhysical(ctx: Context, table: LogicalTable, node: Entity | Associa
     // Unicité sur expression ou conditionnelle : jamais confondue avec un UNIQUE sur les colonnes (O-39).
     const partial = Boolean(key.prefixes || key.expression || key.where);
     const same = (u: LogicalKey) =>
-      !partial &&
-      !u.prefixes &&
-      !u.expression &&
-      !u.where &&
+      !(partial || u.prefixes || u.expression || u.where) &&
       u.columns.length === columns.length &&
       u.columns.every((c) => columns.includes(c));
     const existing = table.uniques.find(same);
@@ -493,7 +494,7 @@ function applyPhysical(ctx: Context, table: LogicalTable, node: Entity | Associa
   }
   if (ctx.doc.settings.ddl.sourceColumnOrder && node.columnOrder?.length) {
     const order = new Map(node.columnOrder.map((n, i) => [n.toLowerCase(), i]));
-    const position = (c: LogicalColumn) => order.get(c.name.toLowerCase()) ?? Infinity;
+    const position = (c: LogicalColumn) => order.get(c.name.toLowerCase()) ?? Number.POSITIVE_INFINITY;
     table.columns = table.columns
       .map((c, i) => ({ c, i }))
       .sort((a, b) => position(a.c) - position(b.c) || a.i - b.i)

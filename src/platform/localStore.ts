@@ -3,9 +3,9 @@
  * de données du navigateur (et de la webview Tauri), sans la limite de quelques Mo du localStorage.
  */
 export interface LocalStore {
-  get(key: string): Promise<string | null>;
-  set(key: string, value: string): Promise<void>;
-  remove(key: string): Promise<void>;
+  get: (key: string) => Promise<string | null>;
+  set: (key: string, value: string) => Promise<void>;
+  remove: (key: string) => Promise<void>;
 }
 
 const DB_NAME = "modelit";
@@ -43,7 +43,7 @@ export const indexedDbStore: LocalStore = {
 /** Copie laissée dans le localStorage par une version précédente : à supprimer. */
 export function removeLegacyLocalStorageCopy(key: string) {
   try {
-    window.localStorage.removeItem(key);
+    globalThis.localStorage.removeItem(key);
   } catch {
     // localStorage indisponible : rien à nettoyer.
   }

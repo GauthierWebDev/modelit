@@ -28,7 +28,10 @@ import { layoutsOf } from "./viewport";
  * Appelées par `McdCanvas` et `LogicalCanvas`.
  */
 
-type Size = { width: number; height: number };
+interface Size {
+  width: number;
+  height: number;
+}
 
 /** Marge entre la nouvelle association et tout objet (O-08, O-60). */
 const MARGIN = 16;
@@ -157,7 +160,7 @@ export function placeNewAssociation(
   grid: number | null,
 ): { associationPosition: Point; reflexiveBends?: Point[] } {
   const isEntity = (id: Id) => doc.entities.some((e) => e.id === id);
-  if (!isEntity(fromId) || !isEntity(toId)) {
+  if (!(isEntity(fromId) && isEntity(toId))) {
     return { associationPosition: { x: 0, y: 0 } };
   }
   const layouts = layoutsOf(doc);

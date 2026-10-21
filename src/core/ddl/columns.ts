@@ -186,7 +186,7 @@ function generatedClause(ctx: Context, table: LogicalTable, column: LogicalColum
     return null;
   }
   let stored = generated.stored;
-  if (!stored && !rules.virtual) {
+  if (!(stored || rules.virtual)) {
     stored = true;
     ctx.report.add("generated", table.name, MSG.lossGeneratedMode("VIRTUAL", "STORED"), column.name);
   } else if (stored && !rules.stored) {

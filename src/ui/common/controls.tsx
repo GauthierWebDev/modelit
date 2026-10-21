@@ -58,7 +58,7 @@ export function CommitInput({
         // biome-ignore lint/a11y/noAutofocus: demandé explicitement par l'appelant (saisie qui vient de s'ouvrir)
         autoFocus={autoFocus}
         ref={(input) => {
-          if (!input || !pendingSelect.current || input !== document.activeElement) {
+          if (!(input && pendingSelect.current) || input !== document.activeElement) {
             return;
           }
           pendingSelect.current = false;

@@ -26,12 +26,12 @@ export function scheduleUpdateCheck(): () => void {
       // Aucune vérification programmée : rien à annuler.
     };
   }
-  const timer = window.setTimeout(() => {
+  const timer = globalThis.setTimeout(() => {
     if (usePreferencesStore.getState().updateCheck) {
       void run(false);
     }
   }, STARTUP_DELAY);
-  return () => window.clearTimeout(timer);
+  return () => globalThis.clearTimeout(timer);
 }
 
 /** Vérification demandée par l'utilisateur : le résultat est toujours signalé. */
@@ -92,7 +92,7 @@ async function offer(update: AvailableUpdate) {
     tone: "info",
   });
   // L'application redémarre : le modèle non enregistré serait perdu.
-  if (!accepted || !(await confirmLoseAllChanges())) {
+  if (!(accepted && (await confirmLoseAllChanges()))) {
     return;
   }
 

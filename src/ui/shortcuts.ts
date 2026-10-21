@@ -149,12 +149,12 @@ export function useShortcuts() {
     // Relâcher les flèches (ou quitter la fenêtre) clôt le déplacement : une entrée d'historique.
     const onKeyUp = (e: KeyboardEvent) => ARROWS[e.key.toLowerCase()] && endNudge(activeDocument());
     const onBlur = () => endNudge(activeDocument());
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
+    globalThis.addEventListener("keydown", onKeyDown);
+    globalThis.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
+      globalThis.removeEventListener("keydown", onKeyDown);
+      globalThis.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
     };
   }, []);

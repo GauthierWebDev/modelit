@@ -208,7 +208,7 @@ function operand(r: Reader): Operand {
         r.i += 2;
         return { kind: "function", fn: special.fn };
       }
-      if (!special.call && !r.punct("(")) {
+      if (!(special.call || r.punct("("))) {
         return { kind: "function", fn: special.fn };
       }
       if (!special.call && empty && lower === "current_user") {
@@ -679,7 +679,7 @@ const describeOperand = (o: Operand): string =>
  */
 export function impliesNonNegative(c: Condition, column: string): boolean {
   const isColumn = (o: Operand) => o.kind === "column" && o.name.toLowerCase() === column.toLowerCase();
-  const number = (o: Operand) => (o.kind === "number" ? Number(o.value) : NaN);
+  const number = (o: Operand) => (o.kind === "number" ? Number(o.value) : Number.NaN);
   switch (c.kind) {
     case "and":
       return c.items.some((item) => impliesNonNegative(item, column));

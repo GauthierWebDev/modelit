@@ -21,7 +21,7 @@ export function tableRef(ctx: Context, tables: LogicalTable[], name: string) {
 /** Schéma de la cible pour un schéma source (dbo → public, selon l'option) ; `undefined` : schéma par défaut (O-42). */
 export function schemaOf(ctx: Context, schema: string | undefined): string | undefined {
   const rules = ctx.dialect.schemas;
-  if (!schema || !rules) {
+  if (!(schema && rules)) {
     return undefined;
   }
   const lower = schema.toLowerCase();
@@ -81,8 +81,8 @@ export function declareSchema(ctx: Context, schema: string | undefined, table: L
   }
   const rules = ctx.dialect.schemas;
   const target = schemaOf(ctx, schema);
-  if (!rules || !target) {
-    if (!rules && !["dbo", "public"].includes(schema.toLowerCase())) {
+  if (!(rules && target)) {
+    if (!(rules || ["dbo", "public"].includes(schema.toLowerCase()))) {
       ctx.report.add("name", table.name, MSG.lossSchema(schema));
     }
     return;

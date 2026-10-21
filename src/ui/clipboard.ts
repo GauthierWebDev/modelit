@@ -17,7 +17,8 @@ const isEditable = (target: EventTarget | null) =>
   (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
 /** Champ de saisie, ou texte sélectionné (MLD textuel, script) : le presse-papiers garde son sens habituel. */
-const textContext = (target: EventTarget | null) => isEditable(target) || Boolean(window.getSelection()?.toString());
+const textContext = (target: EventTarget | null) =>
+  isEditable(target) || Boolean(globalThis.getSelection()?.toString());
 
 /** Délai d'attente de l'événement du système avant de passer à la copie en mémoire. */
 const FALLBACK_DELAY = 100;
@@ -73,7 +74,7 @@ export function useClipboard() {
         return;
       }
       handled = false;
-      window.setTimeout(() => {
+      globalThis.setTimeout(() => {
         if (handled) {
           return;
         }
@@ -90,21 +91,21 @@ export function useClipboard() {
     // Un clic sur le canevas abandonne une éventuelle sélection de texte (MLD textuel…).
     const onPointerDown = (e: PointerEvent) => {
       if ((e.target as Element | null)?.closest?.("[data-canvas]")) {
-        window.getSelection()?.removeAllRanges();
+        globalThis.getSelection()?.removeAllRanges();
       }
     };
 
     document.addEventListener("copy", onCopy);
     document.addEventListener("cut", onCopy);
     document.addEventListener("paste", onPaste);
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("pointerdown", onPointerDown, true);
+    globalThis.addEventListener("keydown", onKeyDown);
+    globalThis.addEventListener("pointerdown", onPointerDown, true);
     return () => {
       document.removeEventListener("copy", onCopy);
       document.removeEventListener("cut", onCopy);
       document.removeEventListener("paste", onPaste);
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("pointerdown", onPointerDown, true);
+      globalThis.removeEventListener("keydown", onKeyDown);
+      globalThis.removeEventListener("pointerdown", onPointerDown, true);
     };
   }, []);
 }

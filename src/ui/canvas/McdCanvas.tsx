@@ -134,7 +134,7 @@ export function McdCanvas() {
     setGesture(null);
     const a = layouts.get(fromId);
     const b = toId ? layouts.get(toId) : undefined;
-    if (!a || !b || !toId) {
+    if (!(a && b && toId)) {
       return;
     }
     const isEntity = doc.entities.some((e) => e.id === fromId);
@@ -366,7 +366,7 @@ export function McdCanvas() {
           const under = document.elementFromPoint(e.clientX, e.clientY);
           const handle = under?.closest<SVGElement>("[data-handle=bend]");
           const linkId = hitIdAt(e);
-          if (!handle || !linkId) {
+          if (!(handle && linkId)) {
             return openCanvasMenu(docHandle, e, linkId);
           }
           e.preventDefault();
@@ -487,7 +487,7 @@ function McdRename({
   const node = useDocument((s) => [...s.doc.entities, ...s.doc.associations].find((n) => n.id === target.nodeId));
   const l = layouts.get(target.nodeId);
   const row = target.attributeId ? l?.rows.find((r) => r.attribute.id === target.attributeId) : undefined;
-  const missing = !node || !l || (target.attributeId !== null && !row);
+  const missing = !(node && l) || (target.attributeId !== null && !row);
   useEffect(() => {
     if (missing) {
       onClose();

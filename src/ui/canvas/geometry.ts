@@ -132,7 +132,13 @@ export function attributeMarks(
 ): Map<string, AttributeMarks> {
   // Rubrique unique à elle seule (UNIQUE, ou identifiant alternatif réduit à elle seule, entière) :
   // simplement en gras. Seuls les autres identifiants alternatifs reçoivent une étiquette AI.
-  type Group = { ids: string[]; prefixes: (number | null)[]; scope?: string; expression?: string; condition?: string };
+  interface Group {
+    ids: string[];
+    prefixes: (number | null)[];
+    scope?: string;
+    expression?: string;
+    condition?: string;
+  }
   const groups: Group[] = [];
   const unique = new Set(node.attributes.filter((a) => a.unique).map((a) => a.id));
   for (const key of node.alternateKeys ?? []) {
@@ -242,8 +248,8 @@ export function clipToRect(r: Rect, toward: Point): Point {
     return c;
   }
   const scale = Math.min(
-    dx === 0 ? Infinity : r.width / 2 / Math.abs(dx),
-    dy === 0 ? Infinity : r.height / 2 / Math.abs(dy),
+    dx === 0 ? Number.POSITIVE_INFINITY : r.width / 2 / Math.abs(dx),
+    dy === 0 ? Number.POSITIVE_INFINITY : r.height / 2 / Math.abs(dy),
   );
   return { x: c.x + dx * scale, y: c.y + dy * scale };
 }
@@ -283,7 +289,7 @@ function rolePosition(role: string, points: Point[], entity: Rect, association: 
       x: to.x - ux * distance + uy * (halfWidth * Math.abs(uy) + 8),
       y: to.y - uy * distance - ux * (halfWidth * Math.abs(uy) + 8),
     };
-    if (!touches(candidate, entity) && !touches(candidate, association)) {
+    if (!(touches(candidate, entity) || touches(candidate, association))) {
       return candidate;
     }
   }
@@ -312,7 +318,7 @@ export function linkGeometries(
   for (const link of links) {
     const a = layouts.get(link.associationId);
     const e = layouts.get(link.entityId);
-    if (!a || !e) {
+    if (!(a && e)) {
       continue;
     }
     const bends = allBends[link.id] ?? [];
@@ -400,7 +406,7 @@ export function inheritanceGeometries(
     const triangle = triangles.get(link.inheritanceId);
     const entity = layouts.get(link.entityId);
     const h = inheritances.find((x) => x.id === link.inheritanceId);
-    if (!triangle || !entity || !h) {
+    if (!(triangle && entity && h)) {
       continue;
     }
     const toParent = h.parentId === link.entityId;

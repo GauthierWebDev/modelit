@@ -144,10 +144,12 @@ const isPunct = (t: Token | undefined, value: string) => t?.type === "punct" && 
 const isName = (t: Token | undefined) => t?.type === "word" || t?.type === "quoted";
 
 class Cursor {
-  constructor(
-    readonly tokens: Token[],
-    public i = 0,
-  ) {}
+  readonly tokens: Token[];
+  i: number;
+  constructor(tokens: Token[], i = 0) {
+    this.tokens = tokens;
+    this.i = i;
+  }
   peek(offset = 0) {
     return this.tokens[this.i + offset];
   }
@@ -423,18 +425,20 @@ function constraintState(c: Cursor, table?: ParsedTable): ConstraintState | unde
       }
       // USING INDEX [nom | (CREATE INDEX …)] [TABLESPACE t] [PCTFREE n]… : jusqu'au mot d'état suivant.
       while (
-        !c.done() &&
-        !isWord(
-          c.peek(),
-          "deferrable",
-          "not",
-          "initially",
-          "enable",
-          "disable",
-          "validate",
-          "novalidate",
-          "rely",
-          "norely",
+        !(
+          c.done() ||
+          isWord(
+            c.peek(),
+            "deferrable",
+            "not",
+            "initially",
+            "enable",
+            "disable",
+            "validate",
+            "novalidate",
+            "rely",
+            "norely",
+          )
         )
       ) {
         if (isPunct(c.peek(), "(")) {
@@ -495,7 +499,7 @@ function expressionItems(tokens: Token[], tableColumns: string[]): Omit<ParsedKe
   const parts = splitCommas(tokens);
   const conditional = parts.map((part) => {
     const items = part.filter((t) => !isWord(t, "asc", "desc"));
-    if (!isWord(items[0], "case") || !isWord(items[1], "when") || !isWord(items.at(-1), "end")) {
+    if (!(isWord(items[0], "case") && isWord(items[1], "when") && isWord(items.at(-1), "end"))) {
       return null;
     }
     const then = items.findIndex((t) => isWord(t, "then"));
@@ -779,7 +783,7 @@ function sequenceTrigger(
   );
   const column = assign?.[1] ?? select?.[2];
   const sequence = assign?.[2] ?? select?.[1];
-  if (!column || !sequence) {
+  if (!(column && sequence)) {
     return null;
   }
   const condition = guard?.[1] ?? head[3];
@@ -1012,7 +1016,7 @@ function generatedColumn(c: Cursor, column: ParsedColumn) {
   // Expression jusqu'au premier mot d'option ; SQL Server l'écrit sans parenthèses (`AS DATEDIFF(…)`) (O-41).
   const tokens: Token[] = [];
   let groups = 0;
-  while (!c.done() && !(c.peek()!.type === "word" && GENERATED_STOP.has(c.peek()!.value.toLowerCase()))) {
+  while (!(c.done() || (c.peek()!.type === "word" && GENERATED_STOP.has(c.peek()!.value.toLowerCase())))) {
     if (isPunct(c.peek(), "(")) {
       const group = c.group() ?? [];
       tokens.push({ type: "punct", value: "(", raw: "(" }, ...group, { type: "punct", value: ")", raw: ")" });
@@ -1105,7 +1109,7 @@ function createTable(c: Cursor, schema: ParsedSchema): void {
   }
   const qualified = c.qualified();
   const body = c.group();
-  if (!qualified || !body) {
+  if (!(qualified && body)) {
     schema.ignored += 1; // CREATE TABLE … AS SELECT, LIKE… : sans définition de colonnes
     return;
   }
@@ -1175,9 +1179,11 @@ function createTable(c: Cursor, schema: ParsedSchema): void {
       if (label === "LOB") {
         c.skipGroup();
         while (
-          !c.done() &&
-          !isPunct(c.peek(), "(") &&
-          !(STORAGE_CLAUSES.has(c.peek()!.value.toLowerCase()) && c.peek()!.type === "word")
+          !(
+            c.done() ||
+            isPunct(c.peek(), "(") ||
+            (STORAGE_CLAUSES.has(c.peek()!.value.toLowerCase()) && c.peek()!.type === "word")
+          )
         ) {
           c.next();
         }
@@ -1463,7 +1469,7 @@ function createIndex(c: Cursor, schema: ParsedSchema, unique: boolean, kind?: "f
       c.next(); // nom du tablespace
     }
   }
-  if (!table || !key || !c.done()) {
+  if (!(table && key && c.done())) {
     schema.ignored += 1;
     return;
   }
@@ -1562,12 +1568,12 @@ function createTrigger(c: Cursor, schema: ParsedSchema, raw: string): void {
     return;
   }
   const name = c.qualifiedName();
-  while (!c.done() && !isWord(c.peek(), "on")) {
+  while (!(c.done() || isWord(c.peek(), "on"))) {
     c.next();
   }
   c.accept("on");
   const table = findTable(schema, c.qualifiedName());
-  if (!name || !table) {
+  if (!(name && table)) {
     schema.ignored += 1;
     return;
   }
@@ -1610,7 +1616,7 @@ function createCollation(c: Cursor, schema: ParsedSchema): void {
 /** CREATE TYPE nom AS ENUM ('a', 'b') (PostgreSQL). */
 function createType(c: Cursor, schema: ParsedSchema): void {
   const name = c.qualifiedName();
-  if (!name || !c.accept("as", "enum")) {
+  if (!(name && c.accept("as", "enum"))) {
     schema.ignored += 1;
     return;
   }
@@ -1644,7 +1650,7 @@ export function parseSql(sql: string, dialect?: SqlDialect): ParsedSchema {
           if (isPunct(c.peek(), "=")) {
             c.next();
           }
-          while (!c.done() && !isWord(c.peek(), "trigger", "procedure", "function", "view", "event")) {
+          while (!(c.done() || isWord(c.peek(), "trigger", "procedure", "function", "view", "event"))) {
             c.next();
           }
         }
@@ -1657,7 +1663,7 @@ export function parseSql(sql: string, dialect?: SqlDialect): ParsedSchema {
         ) {
           c.next();
         }
-        if (!unique && !kind && c.accept("table")) {
+        if (!(unique || kind) && c.accept("table")) {
           createTable(c, schema);
         } else if (isWord(c.peek(), "index", "clustered", "nonclustered")) {
           createIndex(c, schema, unique, kind);

@@ -80,7 +80,7 @@ export function parsePattern(input: string, kind: PatternKind, index = INDEX): P
   const unknown: string[] = [];
   const pattern = text.replace(VARIABLE, (match, alias: string) => {
     const variable = index.get(normalize(alias));
-    if (!variable || !allowed.includes(variable)) {
+    if (!(variable && allowed.includes(variable))) {
       unknown.push(match);
       return match;
     }

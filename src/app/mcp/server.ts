@@ -25,12 +25,12 @@ interface Request {
   params?: Record<string, unknown>;
 }
 
-type Response = {
+interface Response {
   jsonrpc: "2.0";
   id: string | number | null;
   result?: unknown;
   error?: { code: number; message: string };
-};
+}
 
 /** Ce que l'application doit faire autour d'un appel : rendre compte de l'activité de l'IA. */
 export interface McpHooks {

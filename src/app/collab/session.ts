@@ -516,7 +516,7 @@ function flushPresence() {
  * au plus 20 fois par seconde ; le dernier état part toujours.
  */
 export function reportPresence(value: Presence) {
-  if (!host && !guest) {
+  if (!(host || guest)) {
     return;
   }
   if (presenceSent && samePresence(presenceSent, value)) {

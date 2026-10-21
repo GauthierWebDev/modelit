@@ -89,7 +89,7 @@ export function McpBridge() {
     if (!mcpAvailable()) {
       return;
     }
-    if (!enabled || !token) {
+    if (!(enabled && token)) {
       void stopMcp().then(() => useMcpStore.setState({ status: "off", error: null }));
       return;
     }

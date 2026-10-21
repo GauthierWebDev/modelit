@@ -232,8 +232,8 @@ function FloatToolbar() {
       }
       setTimeout(() => void focusMain(), 0);
     };
-    window.addEventListener("pointerup", giveBack);
-    return () => window.removeEventListener("pointerup", giveBack);
+    globalThis.addEventListener("pointerup", giveBack);
+    return () => globalThis.removeEventListener("pointerup", giveBack);
   }, []);
 
   return (

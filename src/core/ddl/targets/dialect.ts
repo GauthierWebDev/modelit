@@ -31,7 +31,7 @@ export interface Dialect {
   /** Partitionnement déclaratif : jamais transposé, le rapport le précise (O-39). */
   readonly partitioning: boolean;
   /** Déclencheur réémis vers le même dialecte (corps sans point-virgule final). */
-  trigger(body: string): string;
+  trigger: (body: string) => string;
   readonly identifiers: IdentifierRules;
   /** Actions référentielles acceptées, par événement (O-29). */
   readonly actions: ActionRules;
@@ -92,7 +92,7 @@ export interface CollationRules {
   /** Binaire : clause (vide : comportement par défaut), ou `null` : non transposable. */
   binary: string | null;
   /** Insensible à la casse (`ci`), et aux accents (`ai_ci`). */
-  insensitive(klass: "ci" | "ai_ci"): CollationResult;
+  insensitive: (klass: "ci" | "ai_ci") => CollationResult;
 }
 
 export interface SchemaRules {
@@ -101,11 +101,14 @@ export interface SchemaRules {
   /** Schéma qui existe toujours : écrit, jamais créé (SQL Server : dbo). */
   existing?: string;
   /** Création du schéma (`quoted` : son nom délimité si besoin). */
-  create(name: string, quoted: string): string;
+  create: (name: string, quoted: string) => string;
 }
 
 /** Emplois d'une colonne : comparée dans un CHECK, ou membre d'une clé ou d'un index. */
-export type Usage = { compared: boolean; keyed: boolean };
+export interface Usage {
+  compared: boolean;
+  keyed: boolean;
+}
 
 export interface TypeRules {
   /** Domaines ENUM / SET natifs (MySQL). */
@@ -128,7 +131,7 @@ export interface TypeRules {
   /** Échelle négative (NUMBER(12,-3)) ; sinon précision élargie, échelle 0 (signalé). */
   negativeScale: boolean;
   /** Longueur imposée à un texte long que la cible ne sait pas comparer ou indexer. */
-  boundedText(usage: Usage): number | undefined;
+  boundedText: (usage: Usage) => number | undefined;
   /** Type d'un binaire borné, quand celui de la correspondance ne convient pas (PostgreSQL : BYTEA). */
   boundedBinary?: string;
   /** Types réduits à des affinités : seul un changement d'affinité est une perte (SQLite). */
@@ -138,7 +141,7 @@ export interface TypeRules {
   /** La chaîne vide y vaut NULL (Oracle) (O-39). */
   emptyStringIsNull: boolean;
   /** Longueur d'un texte venu d'un autre dialecte, en caractères comme à la source (Oracle : CHAR). */
-  textLength(sql: string): string;
+  textLength: (sql: string) => string;
   /** Collations insensibles en collations ICU non déterministes, selon l'option (PostgreSQL) (O-38). */
   nondeterministicCollations: boolean;
   /** Équivalents des types libres d'un autre dialecte ; à défaut, texte (signalé). */
@@ -156,11 +159,11 @@ export interface CounterRules {
   /** Compteur 64 bits impossible : type émis à la place (Access : COUNTER), signalé. */
   narrowOnly?: string;
   /** Même dialecte : type d'origine du compteur conservé (Oracle : NUMBER(10)) (O-39). */
-  keepSourceType?(sql: string, source: string): string;
+  keepSourceType?: (sql: string, source: string) => string;
   /** Valeur de départ et pas écrits dans le type (IDENTITY(100, 10), COUNTER(1, 1)) (O-41). */
-  seed?(sql: string, start: number | undefined, step: number | undefined): string | undefined;
+  seed?: (sql: string, start: number | undefined, step: number | undefined) => string | undefined;
   /** Valeur de départ en option de la table (MySQL : AUTO_INCREMENT = n). */
-  startOption?(start: number): string;
+  startOption?: (start: number) => string;
   /** Le compteur refuse toute valeur fournie, comme GENERATED ALWAYS (SQL Server : IDENTITY) (O-42). */
   rejectsExplicitValues: boolean;
   /** Un NULL inséré reçoit déjà la valeur suivante, comme BY DEFAULT ON NULL (MySQL) (O-39). */
@@ -171,9 +174,9 @@ export interface CounterRules {
 
 export interface SequenceRules {
   /** Valeur suivante, en DEFAULT (`name` : nom qualifié et délimité). */
-  next(name: string): string;
+  next: (name: string) => string;
   /** Type des valeurs (AS INT) ; `undefined` : type par défaut (signalé) (O-41). */
-  valueType(type: string): string | undefined;
+  valueType: (type: string) => string | undefined;
   /** Sans cache (cache ≤ 1) ; à défaut, CACHE 1. */
   noCache?: string;
   noCycle: string;
@@ -186,7 +189,7 @@ export interface GeneratedRules {
   stored: boolean;
   /** Le type de la colonne se déclare (SQL Server : déduit de l'expression, signalé). */
   typed: boolean;
-  clause(expression: string, stored: boolean): string;
+  clause: (expression: string, stored: boolean) => string;
 }
 
 export interface ColumnRules {
@@ -197,7 +200,7 @@ export interface ColumnRules {
   /** NOT NULL explicite sur la clé primaire, que la cible n'impose pas (SQLite). */
   primaryKeyNotNull: boolean;
   /** DEFAULT d'une colonne de type `type`, réécrit (`null` : impossible) (MySQL : TEXT, BLOB…). */
-  defaultFor?(rendered: string, type: string): string | null;
+  defaultFor?: (rendered: string, type: string) => string | null;
 }
 
 export type ConstraintKind = "check" | "unique" | "primary" | "foreign";
@@ -208,9 +211,9 @@ export interface ConstraintRules {
   /** Expressions rationnelles dans un CHECK (LIKE à classes SQL Server) (O-42). */
   regex: boolean;
   /** DEFERRABLE [INITIALLY …] (O-39). */
-  deferrable(kind: ConstraintKind): boolean;
+  deferrable: (kind: ConstraintKind) => boolean;
   /** Contrainte ajoutée sans valider les lignes existantes (O-39). */
-  notValidated(kind: ConstraintKind): boolean;
+  notValidated: (kind: ConstraintKind) => boolean;
   notValidatedSuffix: string;
   /** Chemins de cascade multiples ou cycliques refusés (SQL Server). */
   singleCascadePath: boolean;
@@ -248,9 +251,9 @@ export interface IndexRules {
   /** Préfixes de colonnes `col(n)` dans une clé, UNIQUE ou index (MySQL). */
   nativePrefixes: boolean;
   /** Préfixe de colonne `n` en expression, quand il n'est pas natif ; `null` : impossible (O-35). */
-  prefix(ref: string, n: number): string | null;
+  prefix: (ref: string, n: number) => string | null;
   /** Méthode d'index (USING), avant les colonnes ou après ; `null` : B-tree seul. */
-  method: { position: "before" | "after"; accepts(method: string, unique: boolean): boolean } | null;
+  method: { position: "before" | "after"; accepts: (method: string, unique: boolean) => boolean } | null;
   /** INCLUDE (colonnes couvertes) (O-42). */
   include: boolean;
 }

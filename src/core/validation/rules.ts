@@ -68,7 +68,7 @@ export function checkLinkCardinality(doc: ModelDocument, linkId: Id, c: Cardinal
   }
   const link = doc.links.find((l) => l.id === linkId);
   const association = link && doc.associations.find((a) => a.id === link.associationId);
-  if (!link || !association || !isOneOne(c)) {
+  if (!(link && association && isOneOne(c))) {
     return null;
   }
 

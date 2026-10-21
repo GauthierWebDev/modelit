@@ -31,7 +31,7 @@ export function TooltipLayer({ outside = false }: { outside?: boolean }) {
 
   useEffect(() => {
     const hide = () => {
-      window.clearTimeout(timer.current);
+      globalThis.clearTimeout(timer.current);
       current.current = null;
       setShown(null);
     };
@@ -45,6 +45,7 @@ export function TooltipLayer({ outside = false }: { outside?: boolean }) {
         return;
       }
       current.current = target;
+      // biome-ignore lint/style/useGlobalThis: minuterie du DOM (identifiant numérique), pas celle de Node
       timer.current = window.setTimeout(() => {
         const text = target.getAttribute("data-tooltip");
         if (text && target.isConnected) {
@@ -63,13 +64,13 @@ export function TooltipLayer({ outside = false }: { outside?: boolean }) {
       document.removeEventListener("keydown", hide, true);
       document.removeEventListener("wheel", hide, true);
       window.removeEventListener("blur", hide);
-      window.clearTimeout(timer.current);
+      globalThis.clearTimeout(timer.current);
     };
   }, []);
 
   // Placement sous l'élément (au-dessus s'il manque de place), sans sortir de la fenêtre.
   useEffect(() => {
-    if (!shown || !bubble.current) {
+    if (!(shown && bubble.current)) {
       return setPosition(null);
     }
     const { width, height } = bubble.current.getBoundingClientRect();

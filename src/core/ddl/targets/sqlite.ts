@@ -20,7 +20,7 @@ export const sqlite = (): Dialect => ({
   // Pas d'ALTER TABLE … ADD CONSTRAINT : les références vers des tables créées plus loin sont admises.
   constraints: { ...standard.constraints, deferrable: (kind) => kind === "foreign", alterForeignKey: false },
   indexes: { ...standard.indexes, expressions: true, partial: "where", prefix: (ref, n) => `substr(${ref}, 1, ${n})` },
-  identifiers: { quotes: ['"', '"'], reserved: RESERVED, maxLength: Infinity },
+  identifiers: { quotes: ['"', '"'], reserved: RESERVED, maxLength: Number.POSITIVE_INFINITY },
   actions: { delete: ALL_ACTIONS, update: ALL_ACTIONS, implicit: [] },
   expressions: {
     booleanLiterals: true,

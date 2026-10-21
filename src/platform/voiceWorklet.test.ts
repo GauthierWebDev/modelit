@@ -5,8 +5,14 @@ import { beforeAll, describe, expect, it } from "vitest";
  * Worklets du vocal (O-48, D18), hors navigateur : le fichier est évalué avec des remplaçants des
  * globales d'AudioWorklet, pour vérifier le découpage en trames et le tampon de gigue.
  */
-type Port = { postMessage: (data: Float32Array) => void; onmessage?: (event: { data: Float32Array }) => void };
-type Processor = { port: Port; process: (inputs: Float32Array[][], outputs: Float32Array[][]) => boolean };
+interface Port {
+  postMessage: (data: Float32Array) => void;
+  onmessage?: (event: { data: Float32Array }) => void;
+}
+interface Processor {
+  port: Port;
+  process: (inputs: Float32Array[][], outputs: Float32Array[][]) => boolean;
+}
 const processors = new Map<string, new () => Processor>();
 
 beforeAll(() => {

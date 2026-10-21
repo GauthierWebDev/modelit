@@ -621,8 +621,10 @@ export function reverseEngineer(
       // Clé composée Oracle avec une colonne facultative : les NULL y sont égaux entre eux (O-39).
       const nullable = unique.columns.some(
         (c) =>
-          !table.columns.find((col) => key(col.name) === key(c))?.notNull &&
-          !table.primaryKey.some((p) => key(p) === key(c)),
+          !(
+            table.columns.find((col) => key(col.name) === key(c))?.notNull ||
+            table.primaryKey.some((p) => key(p) === key(c))
+          ),
       );
       // SQL Server : un seul NULL admis par UNIQUE, sauf index filtré « IS NOT NULL » (NULL distincts) (O-41).
       const nulls = unique.nullsDistinct
@@ -709,7 +711,7 @@ export function reverseEngineer(
     schema.tables.flatMap((t) => t.columns.map((c) => c.sequence && key(c.sequence.name)).filter(Boolean)),
   );
   for (const sequence of schema.sequences.values()) {
-    if (!used.has(key(sequence.name)) && !sequence.ownedBy) {
+    if (!(used.has(key(sequence.name)) || sequence.ownedBy)) {
       warnings.push(MSG.reverseUnusedSequence(sequence.name));
     }
   }
@@ -731,7 +733,7 @@ export function reverseEngineer(
 
 /** UNIQUE simple : sur des colonnes entières, sans expression ni condition (O-35, O-39). */
 const plainKey = (k: ParsedKey) =>
-  !k.prefixes && !k.expression && !k.where && !k.state && !k.nullsNotDistinct && !k.nullsDistinct;
+  !(k.prefixes || k.expression || k.where || k.state || k.nullsNotDistinct || k.nullsDistinct);
 
 /** Préfixes et méthode d'un index ou d'une contrainte UNIQUE (s'ils sont présents). */
 function keyOptions(k: ParsedKey) {

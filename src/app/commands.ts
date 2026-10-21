@@ -201,7 +201,7 @@ export function connectNodes(
   if (isEntity(fromId) && isInheritance(toId)) {
     return addInheritanceLink(doc, toId, fromId);
   }
-  if (!isEntity(fromId) || !isEntity(toId)) {
+  if (!(isEntity(fromId) && isEntity(toId))) {
     return addLink(doc, fromId, toId);
   }
   const association = createAssociation(
@@ -281,7 +281,7 @@ export function renameLogical(
     return renameForeignKey(doc, column.origin.linkId, column.origin.attributeId, trimmed);
   }
   const owner = [...current(doc).entities, ...current(doc).associations].find((n) => n.id === ownerId);
-  if (!owner || !column.attributeId) {
+  if (!(owner && column.attributeId)) {
     return null;
   }
   const attributes = owner.attributes.map((a) => (a.id === column.attributeId ? { ...a, logicalName: value } : a));
@@ -324,7 +324,7 @@ export function offsetNodes(doc: DocumentHandle, offsets: Map<Id, Point>, label:
   }
   const kept = new Map<Id, Point[]>();
   for (const link of diagramLinks(model)) {
-    if (!offsets.has(linkSourceId(link)) || !offsets.has(link.entityId)) {
+    if (!(offsets.has(linkSourceId(link)) && offsets.has(link.entityId))) {
       kept.set(link.id, bendsOf(model.layout, link.id));
     }
   }
@@ -382,10 +382,10 @@ export function deleteObjects(doc: DocumentHandle, ids: Id[], label: MessageKey 
   change(doc, label, (d) => {
     d.entities = d.entities.filter((e) => !gone.has(e.id));
     d.associations = d.associations.filter((a) => !gone.has(a.id));
-    d.links = d.links.filter((l) => !gone.has(l.id) && !gone.has(l.entityId) && !gone.has(l.associationId));
+    d.links = d.links.filter((l) => !(gone.has(l.id) || gone.has(l.entityId) || gone.has(l.associationId)));
     d.inheritances = d.inheritances.filter((h) => !gone.has(h.id));
     d.inheritanceLinks = d.inheritanceLinks.filter(
-      (l) => !gone.has(l.id) && !gone.has(l.entityId) && !gone.has(l.inheritanceId),
+      (l) => !(gone.has(l.id) || gone.has(l.entityId) || gone.has(l.inheritanceId)),
     );
     // Entité cible dont le lien a disparu : l'héritage n'a plus de cible.
     for (const h of d.inheritances) {
@@ -492,7 +492,7 @@ export function setAttributes(
 export function renameAttribute(doc: DocumentHandle, ownerId: Id, attributeId: Id, name: string): Check {
   const owner = [...current(doc).entities, ...current(doc).associations].find((n) => n.id === ownerId);
   const attribute = owner?.attributes.find((a) => a.id === attributeId);
-  if (!owner || !attribute || attribute.name === name.trim()) {
+  if (!(owner && attribute) || attribute.name === name.trim()) {
     return null;
   }
   const attributes = owner.attributes.map((a) => (a.id === attributeId ? { ...a, name: name.trim() } : a));
@@ -667,7 +667,7 @@ export function setColumnSqlType(doc: DocumentHandle, ownerId: Id, attributeId: 
   const attribute = owner.attributes.find((a) => a.id === attributeId);
   const mine = attribute?.sourceType && sameDialect(attribute.sourceType.dialect, dialect);
   // Vide : seul le type de ce dialecte est retiré ; celui d'un autre (rétroconception) reste.
-  if (!attribute || (!value && !mine) || (mine && attribute.sourceType!.sql === value)) {
+  if (!(attribute && (value || mine)) || (mine && attribute.sourceType!.sql === value)) {
     return null;
   }
   const attributes = owner.attributes.map((a) =>

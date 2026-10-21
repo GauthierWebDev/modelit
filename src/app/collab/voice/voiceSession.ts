@@ -43,7 +43,7 @@ const inSession = () => {
 /** Rejoindre l'audio : micro demandé au système ; refusé, on écoute seulement (O-48). */
 export async function joinAudio() {
   const link = voiceLink();
-  if (!backend || !link || !inSession() || voice().status !== "off") {
+  if (!(backend && link && inSession()) || voice().status !== "off") {
     return;
   }
   setVoiceState({ status: "starting", unavailable: null, micError: null });

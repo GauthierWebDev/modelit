@@ -146,9 +146,9 @@ export function startDrag(
     });
   };
   const end = (e: PointerEvent) => {
-    window.removeEventListener("pointermove", move);
-    window.removeEventListener("pointerup", end);
-    window.removeEventListener("pointercancel", cancel);
+    globalThis.removeEventListener("pointermove", move);
+    globalThis.removeEventListener("pointerup", end);
+    globalThis.removeEventListener("pointercancel", cancel);
     useDragStore.setState({ item: null, pointer: null, target: null });
     if (!moving) {
       onClick?.();
@@ -159,12 +159,12 @@ export function startDrag(
     }
   };
   const cancel = () => {
-    window.removeEventListener("pointermove", move);
-    window.removeEventListener("pointerup", end);
-    window.removeEventListener("pointercancel", cancel);
+    globalThis.removeEventListener("pointermove", move);
+    globalThis.removeEventListener("pointerup", end);
+    globalThis.removeEventListener("pointercancel", cancel);
     useDragStore.setState({ item: null, pointer: null, target: null });
   };
-  window.addEventListener("pointermove", move);
-  window.addEventListener("pointerup", end);
-  window.addEventListener("pointercancel", cancel);
+  globalThis.addEventListener("pointermove", move);
+  globalThis.addEventListener("pointerup", end);
+  globalThis.addEventListener("pointercancel", cancel);
 }

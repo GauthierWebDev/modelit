@@ -41,7 +41,7 @@ export function expressionIndex(ctx: Context, table: LogicalTable, key: LogicalK
   if (key.where) {
     const { expression, dialect } = key.where;
     const rendered = sameDialect(dialect, dbms) ? expression : renderStructured(ctx, table, expression, dialect);
-    if (!rendered || !rules.partial || (rules.partial === "case" && key.expression)) {
+    if (!(rendered && rules.partial) || (rules.partial === "case" && key.expression)) {
       ctx.report.add("index", table.name, MSG.lossUniqueWhere(label));
       return [];
     }

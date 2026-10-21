@@ -9,7 +9,7 @@ import { setNativeTheme } from "@/platform/window";
 export function useApplyTheme() {
   const theme = usePreferencesStore((s) => s.theme);
   useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const media = globalThis.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
       const dark = theme === "dark" || (theme === "system" && media.matches);
       document.documentElement.classList.toggle("dark", dark);

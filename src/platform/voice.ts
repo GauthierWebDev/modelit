@@ -53,7 +53,7 @@ export async function voiceSupport(): Promise<"ok" | "no-codec" | "no-media"> {
       AudioEncoder.isConfigSupported(ENCODER_CONFIG),
       AudioDecoder.isConfigSupported(DECODER_CONFIG),
     ]);
-    if (!enc.supported || !dec.supported) {
+    if (!(enc.supported && dec.supported)) {
       return "no-codec";
     }
   } catch {
@@ -65,14 +65,14 @@ export async function voiceSupport(): Promise<"ok" | "no-codec" | "no-media"> {
 
 export interface VoiceEngine {
   /** Micro coupé : plus rien n'est capturé ni envoyé. */
-  setMuted(muted: boolean): void;
+  setMuted: (muted: boolean) => void;
   /** Voix reçue d'un participant. */
-  play(speaker: string, frame: VoiceFrame): void;
+  play: (speaker: string, frame: VoiceFrame) => void;
   /** Volume d'un participant, de 0 à 2 (200 %). */
-  setVolume(speaker: string, gain: number): void;
+  setVolume: (speaker: string, gain: number) => void;
   /** Participant parti : sa lecture s'arrête. */
-  forget(speaker: string): void;
-  stop(): void;
+  forget: (speaker: string) => void;
+  stop: () => void;
 }
 
 export interface StartOptions {

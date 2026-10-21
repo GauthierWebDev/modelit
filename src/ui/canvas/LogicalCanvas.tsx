@@ -97,7 +97,7 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
     setLink(null);
     const a = tableOf(fromId);
     const b = tableOf(toId);
-    if (!a || !b || !toId) {
+    if (!(a && b && toId)) {
       return;
     }
     // L'association (invisible ici) se place comme depuis le MCD (O-60).

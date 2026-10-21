@@ -37,7 +37,7 @@ export function foreignKeyDefaultName(
   referencedColumn: string,
   single: boolean,
 ): string {
-  if (!single && !usesVariable(pattern, "column")) {
+  if (!(single || usesVariable(pattern, "column"))) {
     return referencedColumn;
   }
   return applyPattern(pattern, { table: referencedTable, column: referencedColumn }) || referencedColumn;
