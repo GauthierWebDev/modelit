@@ -6,7 +6,8 @@ import { t } from "@/i18n";
 import { center, normalizeRect, type Rect } from "./geometry";
 import type { Gesture } from "./mcdGestures";
 import type { useMcdModel } from "./mcdModel";
-import { InheritanceLinkShape, InheritanceShape, LinkHandles, LinkShape, NodeShape } from "./shapes";
+import { NodeShape } from "./nodeShape";
+import { InheritanceLinkShape, InheritanceShape, LinkHandles, LinkShape } from "./shapes";
 
 type Model = ReturnType<typeof useMcdModel>;
 
