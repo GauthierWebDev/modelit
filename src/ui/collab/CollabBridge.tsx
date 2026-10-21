@@ -1,5 +1,5 @@
 import { KeyRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { answerPassword, joinFromLink, leaveSession, setCollabTransport, useCollabStore } from "@/app/collab/session";
 import { setVoiceBackend } from "@/app/collab/voice/voiceSession";
 import { useUiStore } from "@/app/uiStore";
@@ -11,6 +11,8 @@ import { Modal } from "@/ui/common/Modal";
 
 /** Mot de passe demandé par l'hôte d'une session rejointe (O-05 §4.2). */
 function PasswordPrompt() {
+  // Identifiant unique : le bouton du pied de la boîte soumet ce formulaire.
+  const formId = useId();
   const password = useCollabStore((s) => (s.guest?.status === "password" ? s.guest.password : null));
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
@@ -39,7 +41,7 @@ function PasswordPrompt() {
           </button>
           <button
             type="submit"
-            form="collab-password"
+            form={formId}
             disabled={!value || sending}
             className="rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
@@ -49,7 +51,7 @@ function PasswordPrompt() {
       }
     >
       <form
-        id="collab-password"
+        id={formId}
         className="flex flex-col gap-2"
         onSubmit={(e) => {
           e.preventDefault();

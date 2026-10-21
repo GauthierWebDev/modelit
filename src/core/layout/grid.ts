@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noBitwiseOperators: générateur pseudo-aléatoire et grille en entiers (O-34)
 import type { Point } from "../model/document";
 
 /**

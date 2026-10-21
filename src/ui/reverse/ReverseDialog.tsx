@@ -1,6 +1,6 @@
 import { DBMS_LIST, detectDialect, type ReverseReport, reverseEngineer, type SqlDialect } from "@core/index";
 import { FileUp } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { showError } from "@/app/dialogStore";
 import { newModelDocument } from "@/app/modelDefaults";
 import { useUiStore } from "@/app/uiStore";
@@ -16,6 +16,7 @@ import { Modal } from "@/ui/common/Modal";
  * n'importe quel SGBD ; le nouveau modèle prend les réglages des options générales.
  */
 export function ReverseDialog() {
+  const dialectId = useId();
   const open = useUiStore((s) => s.reverseOpen);
   const setOpen = useUiStore((s) => s.setReverseOpen);
   const [sql, setSql] = useState("");
@@ -93,11 +94,11 @@ export function ReverseDialog() {
         className="h-64 w-full resize-y rounded border border-neutral-300 bg-white p-2 font-mono text-xs outline-none focus:border-blue-500 dark:border-neutral-600 dark:bg-neutral-800"
       />
       <div className="mt-2 flex items-center gap-2 text-sm">
-        <label htmlFor="reverse-dialect" className="text-neutral-600 dark:text-neutral-300">
+        <label htmlFor={dialectId} className="text-neutral-600 dark:text-neutral-300">
           {t("reverse.dialect")}
         </label>
         <select
-          id="reverse-dialect"
+          id={dialectId}
           className="rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-sm dark:border-neutral-600 dark:bg-neutral-800"
           value={dialect}
           onChange={(e) => setDialect(e.target.value as SqlDialect | "auto")}

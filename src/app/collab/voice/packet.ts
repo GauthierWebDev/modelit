@@ -1,3 +1,4 @@
+// biome-ignore-all lint/suspicious/noBitwiseOperators: encodage binaire des paquets du vocal
 /**
  * Paquet audio du vocal (O-48, D18), transporté en datagramme : 20 ms de voix compressée en Opus.
  *

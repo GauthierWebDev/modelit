@@ -33,7 +33,9 @@
     "rules": {
       "preset": "recommended",
       "style": {
-        "noNonNullAssertion": "off"
+        "noNonNullAssertion": "off",
+        "noProcessEnv": "error",
+        "noDefaultExport": "error"
       },
       "suspicious": {
         "noLeakedRender": "error",
@@ -44,11 +46,24 @@
         "noNestedPromises": "error",
         "noUnnecessaryConditions": "off",
         "noShadow": "error",
-        "noEmptyBlockStatements": "error"
+        "noEmptyBlockStatements": "error",
+        "noBitwiseOperators": "error",
+        "noConsole": "error",
+        "noMisplacedAssertion": "off"
       },
       "correctness": {
         "noUndeclaredVariables": "error",
-        "noUnresolvedImports": "off"
+        "noUnresolvedImports": "off",
+        "useUniqueElementIds": "error",
+        "noUndeclaredDependencies": "off",
+        "noNodejsModules": "error",
+        "noProcessGlobal": "error"
+      },
+      "security": {
+        "noSecrets": "off"
+      },
+      "a11y": {
+        "noNoninteractiveElementInteractions": "error"
       }
     }
   },
@@ -65,6 +80,31 @@
       "includes": ["src/platform/voiceWorklet.js"],
       "javascript": {
         "globals": ["AudioWorkletProcessor", "registerProcessor", "sampleRate", "currentTime"]
+      }
+    },
+    {
+      "includes": ["scripts/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/*.test.ts", "src/core/testing/**", "scripts/**", "*.ts"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noNodejsModules": "off",
+            "noProcessGlobal": "off"
+          },
+          "style": {
+            "noProcessEnv": "off",
+            "noDefaultExport": "off"
+          }
+        }
       }
     }
   ]

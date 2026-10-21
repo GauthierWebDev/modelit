@@ -41,6 +41,7 @@ export function AttributesSection() {
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: intercepte Suppr pour le canevas, la zone n'est pas interactive
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: intercepte Suppr pour le canevas, la zone n'est pas interactive
     <div
       className="flex h-full flex-col overflow-y-auto"
       // Suppr ne vise jamais le canevas tant que le focus est dans la section (O-50).
@@ -320,6 +321,7 @@ function AttributeDetail({
         <Checkbox label="NOT NULL" checked={a.notNull} onChange={(notNull) => update({ notNull })} />
         <Checkbox label="UNIQUE" checked={a.unique} onChange={(unique) => update({ unique })} />
       </div>
+      {/* biome-ignore lint/correctness/useUniqueElementIds: prop « id » de Disclosure = clé de préférence, pas un id du DOM */}
       <Disclosure id="attribute.advanced" title={t("inspector.advanced")}>
         <AdvancedFields attribute={a} dialect={doc.settings.dbms} update={(patch) => void update(patch)} />
       </Disclosure>
