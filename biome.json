@@ -51,7 +51,26 @@
         "useConsistentTypeDefinitions": "error",
         "useConsistentMethodSignatures": "error",
         "useConsistentMemberAccessibility": "error",
-        "useDefaultSwitchClause": "off"
+        "useDefaultSwitchClause": "off",
+        "noParameterAssign": "error",
+        "noParameterProperties": "error",
+        "noExportedImports": "error",
+        "useErrorCause": "error",
+        "noExcessiveClassesPerFile": "error",
+        "useFilenamingConvention": {
+          "level": "error",
+          "options": {
+            "filenameCases": ["camelCase", "PascalCase", "kebab-case", "export"]
+          }
+        },
+        "useNamingConvention": "off",
+        "useExportsLast": "off",
+        "noNestedTernary": "off",
+        "noContinue": "off",
+        "noHexColors": "off",
+        "noJsxLiterals": "off",
+        "useDestructuring": "error",
+        "useComponentExportOnlyModules": "off"
       },
       "suspicious": {
         "noLeakedRender": "error",
@@ -87,7 +106,15 @@
         "useSimplifiedLogicExpression": "error",
         "noDivRegex": "error",
         "noImplicitCoercions": "error",
-        "noForEach": "error"
+        "noForEach": "error",
+        "noVoid": "off",
+        "useMaxParams": "off"
+      },
+      "performance": {
+        "noAwaitInLoops": "error",
+        "useTopLevelRegex": "off",
+        "noDelete": "off",
+        "noNamespaceImport": "off"
       }
     }
   },

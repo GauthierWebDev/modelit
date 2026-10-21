@@ -4,7 +4,7 @@ import { usePreferencesStore } from "./preferencesStore";
 
 /** Réglages des options générales (override O-21) appliqués aux paramètres d'un document. */
 export function applyModelDefaults(settings: Draft<DocumentSettings> | DocumentSettings) {
-  const defaults = usePreferencesStore.getState().defaults;
+  const { defaults } = usePreferencesStore.getState();
   settings.dbms = defaults.dbms;
   settings.dbmsVersion = resolveVersion(defaults.dbms, defaults.dbmsVersion);
   settings.autoIdMask = defaults.autoIdMask;

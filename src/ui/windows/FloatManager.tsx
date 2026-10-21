@@ -79,6 +79,7 @@ async function reconcile(layout: DockLayout) {
     // La barre s'ajuste elle-même à son contenu : seule sa position est imposée après l'ouverture.
     const key = JSON.stringify(label === toolbarLabel ? { x: rect.x, y: rect.y } : rect);
     if (!open.has(label)) {
+      // biome-ignore lint/performance/noAwaitInLoops: fenêtres natives ouvertes une à une, dans l'ordre de la disposition
       await openFloat(label, url, rect, { resizable, focusable });
     } else if (applied.get(label) !== key && label !== toolbarLabel) {
       await placeFloat(label, rect);
@@ -90,6 +91,7 @@ async function reconcile(layout: DockLayout) {
       continue;
     }
     applied.delete(label);
+    // biome-ignore lint/performance/noAwaitInLoops: fenêtres natives fermées une à une
     await closeFloat(label);
   }
 }

@@ -155,8 +155,8 @@ export function InlineRename({
   }
 
   if (target.part === "type" && row?.column.attributeId) {
-    const attributeId = row.column.attributeId;
-    const settings = doc.store.getState().doc.settings;
+    const { attributeId } = row.column;
+    const { settings } = doc.store.getState().doc;
     return (
       <InlineEditor
         box={{

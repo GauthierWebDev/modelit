@@ -161,7 +161,7 @@ export const NodeShape = memo(function NodeShape({
         const baseline = y + rowY + ROW_HEIGHT / 2;
         const style = attributeStyle(mark);
         const labelWidth = textWidth(mark.label, style);
-        const alternate = mark.alternate;
+        const { alternate } = mark;
         return (
           <g key={attribute.id}>
             <text

@@ -87,15 +87,15 @@ export function deserializeModel(text: string): LoadResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
-  } catch {
-    throw new ModelFileError(MSG.fileUnreadable);
+  } catch (e) {
+    throw new ModelFileError(MSG.fileUnreadable, { cause: e });
   }
   if (!isRecord(parsed) || parsed.format !== FILE_FORMAT || typeof parsed.version !== "number") {
     throw new ModelFileError(MSG.fileNotModel);
   }
 
   const warnings: string[] = [];
-  let version = parsed.version;
+  let { version } = parsed;
   let model = isRecord(parsed.model) ? parsed.model : {};
 
   if (version > CURRENT_VERSION) {
@@ -131,7 +131,7 @@ function normalize(model: RawModel): ModelDocument {
   if (!settings.customDbms) {
     delete settings.customDbms;
   }
-  const layout = model.layout;
+  const { layout } = model;
   return {
     settings,
     entities: asArray(model.entities),

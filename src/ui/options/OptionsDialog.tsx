@@ -29,7 +29,7 @@ export function OptionsDialog() {
     return null;
   }
 
-  const defaults = prefs.defaults;
+  const { defaults } = prefs;
   const setDbms = (dbms: Dbms) => prefs.setDefaults({ dbms, dbmsVersion: resolveVersion(dbms, undefined) });
 
   return (

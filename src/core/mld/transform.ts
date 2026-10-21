@@ -739,7 +739,7 @@ function checkAtomicity(ctx: Context, owner: Entity | Association) {
       ctx.issues.push({ severity: "warning", message: MSG.singleNullUnique(owner.name, names.join(", ")), target });
     }
   }
-  const dbms = ctx.doc.settings.dbms;
+  const { dbms } = ctx.doc.settings;
   for (const a of owner.attributes) {
     if (
       (a.type?.kind === "geography" || a.type?.kind === "geometry") &&

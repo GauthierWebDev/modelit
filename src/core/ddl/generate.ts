@@ -92,7 +92,7 @@ export const orderByDependencies = (tables: LogicalTable[]) => planOrder(tables,
 
 /** Corps du script : préambule, tables, clés étrangères différées, index, épilogue. */
 function script(ctx: Context, model: LogicalModel): string {
-  const tables = model.tables;
+  const { tables } = model;
   countSequenceUsers(ctx, tables);
   const alterAll = ctx.options.foreignKeysInAlter;
   const canAlter = supportsAlterForeignKey(ctx.target);

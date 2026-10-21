@@ -70,7 +70,7 @@ export function textWidth(text: string, style: TextStyle = {}): number {
   let width = text.length * FONT_SIZE * (weight >= BOLD_WEIGHT ? 0.65 : 0.6);
   if (context) {
     context.font = `${italic ? "italic " : ""}${weight} ${FONT_SIZE}px ${FONT_FAMILY}`;
-    width = context.measureText(text).width;
+    ({ width } = context.measureText(text));
   }
   widthCache.set(key, width);
   return width;

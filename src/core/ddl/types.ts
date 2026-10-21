@@ -24,7 +24,7 @@ export function typeOf(
 ): { sql: string | null; checks: string[] } {
   const { dbms, version } = ctx.target;
   const d = ctx.dialect.types;
-  const counters = ctx.dialect.counters;
+  const { counters } = ctx.dialect;
   const checks: string[] = [];
   const ref = () => columnRef(ctx, table, column.name);
   const loss = (category: "type" | "domain" | "unsigned" | "autoIncrement", message: string) =>
@@ -43,7 +43,7 @@ export function typeOf(
   }
 
   // Domaine énuméré (O-35) : le domaine Merise, exprimé selon la cible.
-  const domain = column.domain;
+  const { domain } = column;
   if (domain) {
     const list = domain.values.map((v) => `'${v.replaceAll("'", "''")}'`).join(", ");
     if (d.nativeDomains) {
@@ -407,7 +407,7 @@ function identityStart(ctx: Context, table: LogicalTable, column: LogicalColumn,
   if ((start === undefined && step === undefined) || !table.primaryKey.includes(column.name)) {
     return sql;
   }
-  const counters = ctx.dialect.counters;
+  const { counters } = ctx.dialect;
   if (/AS IDENTITY$/i.test(sql)) {
     return `${sql} (${[start === undefined ? "" : `START WITH ${start}`, step === undefined ? "" : `INCREMENT BY ${step}`].filter(Boolean).join(" ")})`;
   }

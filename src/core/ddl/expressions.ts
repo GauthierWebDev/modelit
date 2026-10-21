@@ -87,8 +87,11 @@ const SPECIAL_FUNCTIONS: Record<string, { fn: SpecialFunction; call: boolean }> 
 };
 
 class Reader {
+  readonly tokens: Token[];
   i = 0;
-  constructor(readonly tokens: Token[]) {}
+  constructor(tokens: Token[]) {
+    this.tokens = tokens;
+  }
   peek(o = 0) {
     return this.tokens[this.i + o];
   }
@@ -725,9 +728,11 @@ export function valueBounds(c: Condition, column: string): ValueBounds {
           return "none";
         }
         if (b.lo !== null && (lo === null || b.lo > lo)) {
+          // biome-ignore lint/style/useDestructuring: borne retenue sous condition, après comparaison
           lo = b.lo;
         }
         if (b.hi !== null && (hi === null || b.hi < hi)) {
+          // biome-ignore lint/style/useDestructuring: borne retenue sous condition, après comparaison
           hi = b.hi;
         }
       }

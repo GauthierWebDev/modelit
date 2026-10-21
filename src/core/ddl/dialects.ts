@@ -97,7 +97,7 @@ export type ActionResult =
   | { kind: "degraded"; sql: string; fallback: ReferentialAction };
 
 export function referentialAction(target: Target, event: Event, action: ReferentialAction): ActionResult {
-  const actions = dialectOf(target).actions;
+  const { actions } = dialectOf(target);
   const supported = actions[event];
   if (supported.includes(action)) {
     return { kind: "emit", sql: `ON ${event.toUpperCase()} ${action.toUpperCase()}` };

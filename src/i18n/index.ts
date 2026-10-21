@@ -9,7 +9,7 @@ import { fr, type MessageKey } from "./fr";
  * (cf. `main.tsx`) : les composants n'ont pas besoin de s'abonner.
  */
 export type Locale = "fr" | "en";
-export type { MessageKey };
+export type { MessageKey } from "./fr";
 
 export const LOCALES: Locale[] = ["fr", "en"];
 

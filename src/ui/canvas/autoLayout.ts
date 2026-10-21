@@ -36,12 +36,12 @@ import { fitToWindow } from "./viewport";
  * Le calcul tourne dans des Web Workers, en parallèle (lots de départs) : l'interface reste réactive.
  */
 export async function autoLayoutTables(handle: DocumentHandle) {
-  let doc = handle.store.getState().doc;
+  let { doc } = handle.store.getState();
   let nodes = diagramNodes(doc);
   if (nodes.length === 0) {
     return;
   }
-  const display = doc.settings.display;
+  const { display } = doc.settings;
   const mpd = new Map(tableLayouts(logicalModelOf(doc), doc, "mpd").map((t) => [t.sourceId, t]));
   const placed = await computeLayout(
     nodes.map((node) => {
@@ -58,7 +58,7 @@ export async function autoLayoutTables(handle: DocumentHandle) {
     diagramLinks(doc).map((l) => ({ a: linkSourceId(l), b: l.entityId })),
   );
   // Repartir du document courant ; s'il a changé d'objets pendant le calcul, résultat abandonné.
-  doc = handle.store.getState().doc;
+  ({ doc } = handle.store.getState());
   nodes = diagramNodes(doc);
   if (nodes.length !== placed.size || nodes.some((n) => !placed.has(n.id))) {
     return;
@@ -191,6 +191,7 @@ async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<M
           const chunk = next;
           next += 1;
           busy.add(worker);
+          // biome-ignore lint/performance/noAwaitInLoops: un fil traite ses lots l'un après l'autre ; les fils tournent en parallèle
           results.push(await runChunk(worker, nodes, edges, chunk));
           busy.delete(worker);
           // Décision certaine : inutile d'attendre les lots en cours ailleurs.

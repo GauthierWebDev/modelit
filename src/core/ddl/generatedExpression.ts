@@ -24,8 +24,11 @@ const FUNCTIONS = new Set(["round", "abs", "coalesce", "upper", "lower", "floor"
 const UNITS = new Set(["day", "month", "year", "hour", "minute", "second", "week"]);
 
 class Reader {
+  readonly tokens: Token[];
   i = 0;
-  constructor(readonly tokens: Token[]) {}
+  constructor(tokens: Token[]) {
+    this.tokens = tokens;
+  }
   peek() {
     return this.tokens[this.i];
   }

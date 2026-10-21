@@ -55,6 +55,7 @@ export async function confirmLoseAllChanges(): Promise<boolean> {
       continue;
     }
     activate(doc.id);
+    // biome-ignore lint/performance/noAwaitInLoops: une confirmation à la fois, l'utilisateur répond dans l'ordre
     if (!(await confirmLoseChanges(doc))) {
       return false;
     }

@@ -101,7 +101,7 @@ export function reverseEngineer(
     ...schema.warnings.map((where) => MSG.reverseOrphanComment(where)),
   ];
   const doc: ModelDocument = structuredClone(base);
-  const naming = doc.settings.naming;
+  const { naming } = doc.settings;
   const tables = new Map(schema.tables.map((t) => [key(t.name), t]));
 
   // 1. Clés étrangères résolues (table et colonnes référencées existantes).

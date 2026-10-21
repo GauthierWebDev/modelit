@@ -11,7 +11,7 @@ describe("renommer une rubrique", () => {
 
   it("change le nom conceptuel, annulable", () => {
     const doc = setup();
-    const id = client(doc).attributes[1]!.id;
+    const { id } = client(doc).attributes[1]!;
     expect(renameAttribute(doc, client(doc).id, id, "  nom complet ")).toBeNull();
     expect(client(doc).attributes[1]!.name).toBe("nom complet");
     doc.store.getState().undo();

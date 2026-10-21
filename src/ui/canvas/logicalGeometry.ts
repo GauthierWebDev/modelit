@@ -114,7 +114,7 @@ function rowsOf(table: LogicalTable, mode: LogicalViewMode, doc: ModelDocument):
 }
 
 export function tableLayouts(model: LogicalModel, doc: ModelDocument, mode: LogicalViewMode): TableLayout[] {
-  const positions = doc.layout.positions;
+  const { positions } = doc.layout;
   return model.tables.map((table) => {
     const raw = rowsOf(table, mode, doc);
     const nameWidth = Math.max(0, ...raw.map((r) => r.indent + textWidth(r.label, columnStyle(r))));

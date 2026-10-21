@@ -107,7 +107,7 @@ describe("synchronisation entre fenêtres", () => {
 
   it("pendant un glisser-déposer, une seule diffusion, à la fin", () => {
     const id = addEntity(activeDocument(), { x: 0, y: 0 });
-    const store = activeDocument().store;
+    const { store } = activeDocument();
     const before = channels.sent.length;
     store.getState().begin();
     for (let x = 1; x <= 10; x += 1) {

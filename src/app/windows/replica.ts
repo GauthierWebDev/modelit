@@ -150,7 +150,7 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
     const { state } = message;
     applying = true;
     try {
-      documentId = state.documentId;
+      ({ documentId } = state);
       const doc: ModelDocument = state.doc;
       store.setState({
         doc,

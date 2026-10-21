@@ -135,7 +135,7 @@ async function rasterize(svg: string, width: number, height: number, options: Ex
     URL.revokeObjectURL(url);
   }
 
-  const mime = FORMATS.find((f) => f.id === options.format)!.mime;
+  const { mime } = FORMATS.find((f) => f.id === options.format)!;
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mime, 0.92));
   // Le moteur refuse les images trop grandes.
   if (!blob) {

@@ -1,3 +1,4 @@
+// biome-ignore-all lint/style/noExcessiveClassesPerFile: problème et état de la recherche, couplés sur le chemin critique
 // biome-ignore-all lint/suspicious/noBitwiseOperators: générateur pseudo-aléatoire et grille en entiers (O-34)
 import type { Point } from "../model/document";
 
@@ -241,11 +242,12 @@ class Problem {
   readonly mcdW: Float64Array;
   readonly mcdH: Float64Array;
 
-  constructor(
-    readonly nodes: GridNode[],
-    edges: GridEdge[],
-    readonly options: GridOptions,
-  ) {
+  readonly nodes: GridNode[];
+  readonly options: GridOptions;
+
+  constructor(nodes: GridNode[], edges: GridEdge[], options: GridOptions) {
+    this.nodes = nodes;
+    this.options = options;
     const n = nodes.length;
     this.n = n;
     // Géométrie de recherche : cellules de taille moyenne, plus proches de l'affichage final
@@ -342,12 +344,13 @@ class State {
   private readonly tmpW: Float64Array;
   private readonly tmpH: Float64Array;
 
-  constructor(
-    readonly pb: Problem,
-    cellOf: ArrayLike<number>,
-    /** Géométrie exacte (affichage final) plutôt que régulière. */
-    readonly exact: boolean,
-  ) {
+  readonly pb: Problem;
+  /** Géométrie exacte (affichage final) plutôt que régulière. */
+  readonly exact: boolean;
+
+  constructor(pb: Problem, cellOf: ArrayLike<number>, exact: boolean) {
+    this.pb = pb;
+    this.exact = exact;
     this.cellOf = Int32Array.from(cellOf);
     this.nodeAt = new Int32Array(pb.cells).fill(-1);
     this.cellOf.forEach((c, v) => {
@@ -479,14 +482,14 @@ class State {
     const { pb, colW, rowH, colX, rowY } = this;
     const { origin, gapX, gapY } = pb.options;
     this.measure(colW, rowH);
-    let x = origin.x;
+    let { x } = origin;
     for (let c = 0; c < pb.cols; c += 1) {
       colX[c] = x;
       if (colW[c]! >= 0) {
         x += colW[c]! + gapX;
       }
     }
-    let y = origin.y;
+    let { y } = origin;
     for (let r = 0; r < pb.rows; r += 1) {
       rowY[r] = y;
       if (rowH[r]! >= 0) {
@@ -635,7 +638,7 @@ class State {
     const { pb } = this;
     pb.work += (pb.incident[v]!.length + (w >= 0 ? pb.incident[w]!.length : 0) + 1) * (pb.m + pb.n);
     this.stamp += 1;
-    const stamp = this.stamp;
+    const { stamp } = this;
     this.nodeMark[v] = stamp;
     if (w >= 0) {
       this.nodeMark[w] = stamp;
@@ -752,7 +755,7 @@ function fittedCorners(pb: Problem, cellOf: ArrayLike<number>): Point[] {
     rowH[row] = Math.max(rowH[row]!, pb.nodes[v]!.height);
   }
   const colX = new Float64Array(pb.cols);
-  let x = origin.x;
+  let { x } = origin;
   for (let c = 0; c < pb.cols; c += 1) {
     if (colW[c]! < 0) {
       continue;
@@ -761,7 +764,7 @@ function fittedCorners(pb: Problem, cellOf: ArrayLike<number>): Point[] {
     x += colW[c]! + gapX;
   }
   const rowY = new Float64Array(pb.rows);
-  let y = origin.y;
+  let { y } = origin;
   for (let r = 0; r < pb.rows; r += 1) {
     if (rowH[r]! < 0) {
       continue;
@@ -826,7 +829,7 @@ function initialCells(pb: Problem, rnd: () => number, shuffled: boolean): number
  * plus proches, en préservant l'ordre des colonnes et des lignes.
  */
 function forceCells(pb: Problem, rnd: () => number): number[] {
-  const n = pb.n;
+  const { n } = pb;
   const x = new Float64Array(n);
   const y = new Float64Array(n);
   for (let v = 0; v < n; v += 1) {
@@ -1131,7 +1134,7 @@ export function gridLayoutChunk(
 export function decidedChunk(results: ChunkResult[]): ChunkResult | undefined {
   const known = new Set(results.map((r) => r.chunk));
   const perfectOnes = results.filter((r) => perfect(r.quality)).sort((a, b) => a.chunk - b.chunk);
-  const first = perfectOnes[0];
+  const [first] = perfectOnes;
   if (!first) {
     return undefined;
   }

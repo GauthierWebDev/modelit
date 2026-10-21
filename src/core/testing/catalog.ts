@@ -339,9 +339,11 @@ function rangeOf(
     // Bornes explicites (CHECK … BETWEEN, YEAR) : intersection avec la plage du type.
     if (bounds) {
       if (bounds[0] !== null && bounds[0] > min) {
+        // biome-ignore lint/style/useDestructuring: borne retenue sous condition, après comparaison
         min = bounds[0];
       }
       if (bounds[1] !== null && bounds[1] < max) {
+        // biome-ignore lint/style/useDestructuring: borne retenue sous condition, après comparaison
         max = bounds[1];
       }
     }
@@ -690,7 +692,8 @@ const schemaName = (schema?: string) =>
   schema && !["dbo", "public"].includes(schema.toLowerCase()) ? schema.toLowerCase() : undefined;
 
 /** Expression sans ses parenthèses englobantes : ((lower(email))) ≡ lower(email) (MySQL). */
-function unwrap(text: string): string {
+function unwrap(source: string): string {
+  let text = source;
   while (text.startsWith("(") && text.endsWith(")")) {
     let depth = 0;
     const inner = [...text.slice(1, -1)].every((ch) => {

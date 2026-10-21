@@ -119,6 +119,7 @@ export async function openFloats(): Promise<string[]> {
 
 export async function closeAllFloats() {
   for (const label of await openFloats()) {
+    // biome-ignore lint/performance/noAwaitInLoops: fenêtres natives fermées une à une
     await closeFloat(label);
   }
 }

@@ -176,7 +176,7 @@ export function tokenize(sql: string, options: TokenizeOptions = {}): Token[] {
     // Chaînes dollar (PostgreSQL) : corps de fonctions, ignorés en bloc
     const dollar = /^\$([A-Za-z_]\w*)?\$/.exec(rest);
     if (dollar) {
-      const tag = dollar[0];
+      const [tag] = dollar;
       const end = sql.indexOf(tag, i + tag.length);
       const stop = end === -1 ? sql.length : end + tag.length;
       push("string", sql.slice(i + tag.length, end === -1 ? sql.length : end), sql.slice(i, stop));

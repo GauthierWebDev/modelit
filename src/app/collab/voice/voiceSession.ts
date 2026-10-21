@@ -65,7 +65,7 @@ export async function joinAudio() {
   if (!inSession() || voice().status !== "starting") {
     return started.engine.stop();
   }
-  engine = started.engine;
+  ({ engine } = started);
   for (const [peer, gain] of Object.entries(voice().volumes)) {
     engine.setVolume(peer, gain);
   }

@@ -74,7 +74,7 @@ function AttributesPanel({
 }) {
   const handle = useDocumentHandle();
   const readOnly = useSessionReadOnly(handle);
-  const attributes = owner.attributes;
+  const { attributes } = owner;
   const [selected, setSelected] = useState<Id | null>(null);
   /** Demande de saisie du nom (rubrique ajoutée, Entrée sur une ligne) : le détail est remonté, nom sélectionné. */
   const [editing, setEditing] = useState<{ id: Id; n: number } | null>(null);
