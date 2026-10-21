@@ -69,7 +69,8 @@
         "noContinue": "off",
         "noHexColors": "off",
         "noJsxLiterals": "off",
-        "useDestructuring": "error"
+        "useDestructuring": "error",
+        "useComponentExportOnlyModules": "off"
       },
       "suspicious": {
         "noLeakedRender": "error",
