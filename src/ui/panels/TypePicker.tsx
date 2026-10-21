@@ -38,38 +38,7 @@ function TypeParameters({ value, onChange }: { value: DataType; onChange: (t: Da
   const small = `${inputClass} w-auto flex-none`;
   switch (value.kind) {
     case "text":
-      return (
-        <>
-          <select
-            className={small}
-            value={value.encoding}
-            onChange={(e) => onChange({ ...value, encoding: e.target.value as typeof value.encoding })}
-          >
-            <option value="ascii">{t("type.ascii")}</option>
-            <option value="unicode">{t("type.unicode")}</option>
-            <option value="binary">{t("type.binary")}</option>
-          </select>
-          <select
-            className={small}
-            value={value.length}
-            onChange={(e) => onChange({ ...value, length: e.target.value as typeof value.length })}
-          >
-            <option value="variable">{t("type.variable")}</option>
-            <option value="fixed">{t("type.fixed")}</option>
-            <option value="large">{t("type.large")}</option>
-          </select>
-          {value.length !== "large" && (
-            <span className="inline-flex" {...tip(t("type.length"))}>
-              <NumberInput
-                className="w-14 flex-none"
-                min={1}
-                value={value.size}
-                onCommit={(size) => onChange({ ...value, size })}
-              />
-            </span>
-          )}
-        </>
-      );
+      return textParameters(value, onChange, small);
     case "integer":
       return (
         <select
@@ -85,26 +54,7 @@ function TypeParameters({ value, onChange }: { value: DataType; onChange: (t: Da
         </select>
       );
     case "decimal":
-      return (
-        <>
-          <span className="inline-flex" {...tip(t("type.precision"))}>
-            <NumberInput
-              className="w-12 flex-none"
-              min={1}
-              value={value.precision}
-              onCommit={(p) => onChange({ ...value, precision: p ?? 15 })}
-            />
-          </span>
-          <span className="inline-flex" {...tip(t("type.scale"))}>
-            <NumberInput
-              className="w-12 flex-none"
-              min={0}
-              value={value.scale}
-              onCommit={(s) => onChange({ ...value, scale: s ?? 0 })}
-            />
-          </span>
-        </>
-      );
+      return decimalParameters(value, onChange);
     case "real":
       return (
         <select
@@ -139,4 +89,66 @@ function TypeParameters({ value, onChange }: { value: DataType; onChange: (t: Da
     default:
       return null;
   }
+}
+
+type TypeOf<K extends DataType["kind"]> = Extract<DataType, { kind: K }>;
+
+/** Texte : codage, longueur (variable, fixe, grande) et taille. */
+function textParameters(value: TypeOf<"text">, onChange: (t: DataType) => void, small: string) {
+  return (
+    <>
+      <select
+        className={small}
+        value={value.encoding}
+        onChange={(e) => onChange({ ...value, encoding: e.target.value as typeof value.encoding })}
+      >
+        <option value="ascii">{t("type.ascii")}</option>
+        <option value="unicode">{t("type.unicode")}</option>
+        <option value="binary">{t("type.binary")}</option>
+      </select>
+      <select
+        className={small}
+        value={value.length}
+        onChange={(e) => onChange({ ...value, length: e.target.value as typeof value.length })}
+      >
+        <option value="variable">{t("type.variable")}</option>
+        <option value="fixed">{t("type.fixed")}</option>
+        <option value="large">{t("type.large")}</option>
+      </select>
+      {value.length !== "large" && (
+        <span className="inline-flex" {...tip(t("type.length"))}>
+          <NumberInput
+            className="w-14 flex-none"
+            min={1}
+            value={value.size}
+            onCommit={(size) => onChange({ ...value, size })}
+          />
+        </span>
+      )}
+    </>
+  );
+}
+
+/** Décimal : précision et échelle. */
+function decimalParameters(value: TypeOf<"decimal">, onChange: (t: DataType) => void) {
+  return (
+    <>
+      <span className="inline-flex" {...tip(t("type.precision"))}>
+        <NumberInput
+          className="w-12 flex-none"
+          min={1}
+          value={value.precision}
+          onCommit={(p) => onChange({ ...value, precision: p ?? 15 })}
+        />
+      </span>
+      <span className="inline-flex" {...tip(t("type.scale"))}>
+        <NumberInput
+          className="w-12 flex-none"
+          min={0}
+          value={value.scale}
+          onCommit={(s) => onChange({ ...value, scale: s ?? 0 })}
+        />
+      </span>
+    </>
+  );
 }
