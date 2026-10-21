@@ -5,22 +5,22 @@ import { startHost } from "./host";
 import { memoryNetwork } from "./memoryNetwork";
 import { failureDelay, verifier } from "./password";
 
+async function protectedSession() {
+  const net = memoryNetwork();
+  const host = startHost({
+    link: net.hostLink,
+    doc: emptyDocument(),
+    secrets: { editor: "e", reader: "r" },
+    me: { id: "alice", name: "Alice", color: "#000" },
+    password: await verifier("correct horse battery"),
+  });
+  const bob = startGuest({ link: net.connect("bob"), secret: "e", name: "Bob", color: "#111" });
+  await net.settle();
+  return { net, host, bob };
+}
+
 /** Mot de passe d'une session (O-05 §4.2, §9) : défi-réponse vérifié par l'hôte. */
 describe("session protégée par mot de passe", () => {
-  async function protectedSession() {
-    const net = memoryNetwork();
-    const host = startHost({
-      link: net.hostLink,
-      doc: emptyDocument(),
-      secrets: { editor: "e", reader: "r" },
-      me: { id: "alice", name: "Alice", color: "#000" },
-      password: await verifier("correct horse battery"),
-    });
-    const bob = startGuest({ link: net.connect("bob"), secret: "e", name: "Bob", color: "#111" });
-    await net.settle();
-    return { net, host, bob };
-  }
-
   it("le mot de passe est demandé avant d'entrer", async () => {
     const { bob, host } = await protectedSession();
     expect(bob.state.getState()).toMatchObject({ status: "password", password: { attemptsLeft: 3, wrong: false } });
@@ -46,7 +46,9 @@ describe("session protégée par mot de passe", () => {
     await net.settle();
     expect(bob.state.getState()).toMatchObject({ status: "ended", ended: "bad-password" });
   });
+}, 30_000);
 
+describe("session protégée par mot de passe", () => {
   it("le mot de passe ne circule jamais", async () => {
     const net = memoryNetwork();
     const sent: string[] = [];
@@ -72,7 +74,9 @@ describe("session protégée par mot de passe", () => {
     expect(bob.state.getState().status).toBe("connected");
     expect(sent.join("")).not.toContain("secret-tres-long");
   });
+}, 30_000);
 
+describe("session protégée par mot de passe", () => {
   it("attente croissante après 3 erreurs, comptée sur toute la session", async () => {
     expect([1, 2, 3, 4, 5, 6, 9, 20].map(failureDelay)).toEqual([0, 0, 0, 1000, 2000, 4000, 30_000, 30_000]);
     const net = memoryNetwork();

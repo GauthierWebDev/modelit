@@ -8,14 +8,14 @@ import { model } from "../testing/builder";
 import { MSG } from "../validation/messages";
 import { defaultTemplate, invalidTemplateVariable, sqlType } from "./typeMapping";
 
+const types = {
+  counter: "BIGSERIAL",
+  unicodeVariable: 'VARCHAR({n}) COLLATE "fr-x-icu"',
+  decimal: "DECIMAL({p},{s})",
+};
+
 /** SGBD personnalisés : types redéfinis, basés sur un SGBD et une version (override O-59). */
 describe("SGBD personnalisé", () => {
-  const types = {
-    counter: "BIGSERIAL",
-    unicodeVariable: 'VARCHAR({n}) COLLATE "fr-x-icu"',
-    decimal: "DECIMAL({p},{s})",
-  };
-
   it("un type redéfini remplace celui de la base ; les autres restent ceux de la base", () => {
     expect(sqlType({ kind: "counter" }, "postgresql", "18", types)).toBe("BIGSERIAL");
     expect(
@@ -35,7 +35,9 @@ describe("SGBD personnalisé", () => {
     expect(invalidTemplateVariable("asciiVariable", "VARCHAR({x})")).toBe("{x}");
     expect(invalidTemplateVariable("binaryFixed", "BYTEA")).toBeNull();
   });
+});
 
+describe("SGBD personnalisé", () => {
   it("script : en-tête « basé sur » et types redéfinis ; MPD : type réellement émis", () => {
     const doc = model().entity("Client", ["id_client*", "nom"]).build();
     doc.entities[0]!.attributes[0]!.type = { kind: "counter" };
@@ -81,7 +83,9 @@ describe("SGBD personnalisé", () => {
     doc.settings.customDbms = { id: "x", name: "Maison", types: { counter: "BIGSERIAL", counterForeignKey: "BIGINT" } };
     expect(sql()).toMatch(/id_client BIGINT NOT NULL/);
   });
+});
 
+describe("SGBD personnalisé", () => {
   it("enregistré dans le fichier du modèle ; une définition illisible est ignorée", () => {
     const doc = model().entity("Client", ["id_client*"]).build();
     doc.settings.customDbms = { id: "x", name: "PostgreSQL maison", types: { counter: "BIGSERIAL" } };
