@@ -216,7 +216,7 @@ describe("dimensions de la vue la plus large (O-60)", () => {
     expect(noOverlap(after)).toBe(true);
   });
 
-  it("à valider : la recherche part de la plus grande boîte de l'entité (table du MPD comprise)", () => {
+  it("réflexive : la recherche part de la plus grande boîte de l'entité, sa table du MPD comprise (O-60)", () => {
     // CLIENT seul : l'emplacement de droite est libre.
     const d = wide();
     d.entities = d.entities.filter((e) => e.name === "CLIENT");
