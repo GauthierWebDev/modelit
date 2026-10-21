@@ -75,9 +75,34 @@ export function startOwner(
     schedule?: (f: () => void) => void;
   } = {},
 ): () => void {
+  const { broadcast, request } = mirror(channel, schedule);
+  const active = watchActive(request);
+  const offWorkspace = useWorkspaceStore.subscribe((s, p) => {
+    if (s.activeId !== p.activeId || s.documents !== p.documents) {
+      active.renew();
+    } else {
+      request();
+    }
+  });
+  const offUi = useUiStore.subscribe(request);
+  const offDialogs = useDialogStore.subscribe(request);
+  const offCollab = useCollabStore.subscribe(request);
+  const offChannel = channel.listen((message) => replicaMessage(message, { broadcast, runCommand, onDrop, onMoved }));
+
+  return () => {
+    active.stop();
+    offWorkspace();
+    offUi();
+    offDialogs();
+    offCollab();
+    offChannel();
+  };
+}
+
+/** Diffusion de l'état aux fenêtres flottantes : immédiate (`broadcast`) ou regroupée (`request`). */
+function mirror(channel: Channel<ToReplica, ToMain>, schedule: (f: () => void) => void) {
   let last: MirrorState | null = null;
   let pending = false;
-
   const broadcast = (force = false) => {
     const doc = activeDocument();
     // Pendant un glisser-déposer, une seule diffusion, à la fin de l'opération.
@@ -101,12 +126,15 @@ export function startOwner(
       broadcast();
     });
   };
+  return { broadcast, request };
+}
 
-  // Abonnements au document actif, renouvelés quand l'onglet actif change.
+/** Abonnements au document actif, renouvelés quand l'onglet actif change. */
+function watchActive(request: () => void) {
   let unsubscribeDoc = () => {
     // Aucun abonnement avant le premier onglet actif.
   };
-  const watchActive = () => {
+  const renew = () => {
     unsubscribeDoc();
     const doc = activeDocument();
     const offStore = doc.store.subscribe(request);
@@ -117,64 +145,61 @@ export function startOwner(
     };
     request();
   };
-  watchActive();
-  const offWorkspace = useWorkspaceStore.subscribe((s, p) => {
-    if (s.activeId !== p.activeId || s.documents !== p.documents) {
-      watchActive();
-    } else {
-      request();
-    }
-  });
-  const offUi = useUiStore.subscribe(request);
-  const offDialogs = useDialogStore.subscribe(request);
-  const offCollab = useCollabStore.subscribe(request);
+  renew();
+  return { renew, stop: () => unsubscribeDoc() };
+}
 
-  const offChannel = channel.listen((message) => {
-    const doc = activeDocument();
-    switch (message.type) {
-      case "hello":
-        return broadcast(true);
-      case "change":
-        if (message.documentId !== doc.id) {
-          return;
-        }
-        return doc.store
-          .getState()
-          .change(message.label, (draft) => void applyPatches(draft as Draft<ModelDocument>, message.patches));
-      case "undo":
-        if (message.documentId === doc.id) {
-          doc.store.getState().undo();
-        }
-        return;
-      case "redo":
-        if (message.documentId === doc.id) {
-          doc.store.getState().redo();
-        }
-        return;
-      case "view":
-        if (message.documentId === doc.id) {
-          doc.view.setState(message.patch);
-        }
-        return;
-      case "ui":
-        return useUiStore.setState(message.patch);
-      case "dock":
-        return usePreferencesStore.getState().updateDock(() => message.layout);
-      case "command":
-        return runCommand(message.command);
-      case "drop":
-        return onDrop?.(message);
-      case "moved":
-        return onMoved?.(message);
-    }
-  });
+interface ReplicaHandlers {
+  broadcast: (force?: boolean) => void;
+  runCommand: (command: MainCommand) => void;
+  onDrop?: (message: Message<"drop">) => void;
+  onMoved?: (message: Message<"moved">) => void;
+}
 
-  return () => {
-    unsubscribeDoc();
-    offWorkspace();
-    offUi();
-    offDialogs();
-    offCollab();
-    offChannel();
-  };
+/** Message d'une fenêtre flottante, appliqué au document actif ou à la fenêtre principale. */
+function replicaMessage(message: ToMain, handlers: ReplicaHandlers) {
+  const doc = activeDocument();
+  switch (message.type) {
+    case "hello":
+      return handlers.broadcast(true);
+    case "change":
+      if (message.documentId !== doc.id) {
+        return;
+      }
+      return doc.store
+        .getState()
+        .change(message.label, (draft) => void applyPatches(draft as Draft<ModelDocument>, message.patches));
+    case "undo":
+    case "redo":
+      if (message.documentId === doc.id) {
+        doc.store.getState()[message.type]();
+      }
+      return;
+    case "view":
+      if (message.documentId === doc.id) {
+        doc.view.setState(message.patch);
+      }
+      return;
+    default:
+      return windowMessage(message, handlers);
+  }
+}
+
+/** Outil, disposition, commande, glisser-déposer entre fenêtres. */
+function windowMessage(
+  message: Exclude<ToMain, { type: "hello" | "change" | "undo" | "redo" | "view" }>,
+  handlers: ReplicaHandlers,
+) {
+  switch (message.type) {
+    case "ui":
+      return useUiStore.setState(message.patch);
+    case "dock":
+      return usePreferencesStore.getState().updateDock(() => message.layout);
+    case "command":
+      return handlers.runCommand(message.command);
+    case "drop":
+      return handlers.onDrop?.(message);
+    case "moved":
+      return handlers.onMoved?.(message);
+  }
 }
