@@ -47,35 +47,9 @@ export class Problem {
     this.cellH = mean((x) => x.height) + options.gapY;
     this.unitW = Math.max(...nodes.map((x) => x.mcdWidth ?? x.width)) + options.gapX;
     this.unitH = Math.max(...nodes.map((x) => x.mcdHeight ?? x.height)) + options.gapY;
-    // Grille un peu plus grande que nécessaire (place pour les déplacements), aux proportions ≈ 4:3.
-    const wanted = Math.max(4, Math.ceil(n * 1.8));
-    // Forme de la grille : d'après les plus grandes boîtes (celles qui fixent les colonnes larges).
-    const widest = Math.max(...nodes.map((x) => x.width)) + options.gapX;
-    const tallest = Math.max(...nodes.map((x) => x.height)) + options.gapY;
-    this.cols = Math.max(2, Math.round(Math.sqrt((wanted * ASPECT * tallest) / widest)));
-    this.rows = Math.max(2, Math.ceil(wanted / this.cols));
+    [this.cols, this.rows] = gridShape(nodes, options);
     this.cells = this.cols * this.rows;
-
-    const index = new Map(nodes.map((x, i) => [x.id, i]));
-    const pairs: [number, number][] = [];
-    const doubled: number[] = [];
-    const seen = new Map<string, number>();
-    for (const e of edges) {
-      const a = index.get(e.a);
-      const b = index.get(e.b);
-      if (a === undefined || b === undefined || a === b) {
-        continue;
-      }
-      const key = a < b ? `${a}:${b}` : `${b}:${a}`;
-      const known = seen.get(key);
-      if (known !== undefined) {
-        doubled[known] = 1;
-        continue;
-      }
-      seen.set(key, pairs.length);
-      pairs.push([a, b]);
-      doubled.push(0);
-    }
+    const { pairs, doubled } = edgePairs(nodes, edges);
     this.m = pairs.length;
     this.ea = Int32Array.from(pairs.map((p) => p[0]));
     this.eb = Int32Array.from(pairs.map((p) => p[1]));
@@ -108,4 +82,41 @@ export class Problem {
   other(e: number, v: number) {
     return this.ea[e] === v ? this.eb[e]! : this.ea[e]!;
   }
+}
+
+/**
+ * Colonnes et lignes : grille un peu plus grande que nécessaire (place pour les déplacements), aux
+ * proportions ≈ 4:3, d'après les plus grandes boîtes (celles qui fixent les colonnes larges).
+ */
+function gridShape(nodes: GridNode[], options: GridOptions): [number, number] {
+  const wanted = Math.max(4, Math.ceil(nodes.length * 1.8));
+  const widest = Math.max(...nodes.map((x) => x.width)) + options.gapX;
+  const tallest = Math.max(...nodes.map((x) => x.height)) + options.gapY;
+  const cols = Math.max(2, Math.round(Math.sqrt((wanted * ASPECT * tallest) / widest)));
+  return [cols, Math.max(2, Math.ceil(wanted / cols))];
+}
+
+/** Arêtes dédoublonnées entre objets distincts ; `doubled` marque les deux pattes d'une réflexive. */
+function edgePairs(nodes: GridNode[], edges: GridEdge[]) {
+  const index = new Map(nodes.map((x, i) => [x.id, i]));
+  const pairs: [number, number][] = [];
+  const doubled: number[] = [];
+  const seen = new Map<string, number>();
+  for (const e of edges) {
+    const a = index.get(e.a);
+    const b = index.get(e.b);
+    if (a === undefined || b === undefined || a === b) {
+      continue;
+    }
+    const key = a < b ? `${a}:${b}` : `${b}:${a}`;
+    const known = seen.get(key);
+    if (known !== undefined) {
+      doubled[known] = 1;
+      continue;
+    }
+    seen.set(key, pairs.length);
+    pairs.push([a, b]);
+    doubled.push(0);
+  }
+  return { pairs, doubled };
 }

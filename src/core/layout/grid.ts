@@ -112,29 +112,13 @@ export function gridLayoutChunk(
   const pb = new Problem(nodes, edges, opts);
   const large = pb.n > LOCAL_SEARCH_ABOVE;
   const radius = large ? RADIUS : Number.POSITIVE_INFINITY;
-  let best: { cells: Int32Array; cost: number; quality: GridQuality } | null = null;
+  let best: RunResult | null = null;
 
   for (let i = 0; i < RUNS_PER_CHUNK; i += 1) {
-    const run = chunk * RUNS_PER_CHUNK + i;
-    const rnd = random(0x5e_ed + run * 7919);
-    // Départs alternés : par forces (déplie le graphe), puis en largeur depuis l'objet le plus relié.
-    const start = run % 2 === 0 ? forceCells(pb, rnd) : initialCells(pb, rnd, run > 1);
-    // 1. Recherche en géométrie régulière (coût incrémental).
-    const state = new State(pb, start, false);
-    improve(state, rnd, radius, large ? 12 : 40);
-    if (!large) {
-      // Mouvements composés (entité + ses associations), puis retouche simple.
-      improveCompound(state, rnd, 1, 3);
-      improve(state, rnd, radius, 40);
-    }
-    // 2. Polissage en géométrie exacte (celle de l'affichage).
-    const exact = new State(pb, state.cellOf, true);
-    improve(exact, rnd, large ? 1 : POLISH_RADIUS, large ? 2 : POLISH_PASSES);
-
-    const quality: GridQuality = { through: 0, crossings: 0, closeAngles: 0 };
-    const cost = quantize(exact.totalCost(quality));
-    if (!best || cost < best.cost - 1e-9) {
-      best = { cells: Int32Array.from(exact.cellOf), cost, quality };
+    const result = searchRun(pb, chunk * RUNS_PER_CHUNK + i, large, radius);
+    const { quality } = result;
+    if (!best || result.cost < best.cost - 1e-9) {
+      best = result;
     }
     // Disposition sans défaut, ou budget du lot épuisé : on garde la meilleure trouvée.
     if (perfect(quality) || pb.work > WORK_BUDGET) {
@@ -148,6 +132,34 @@ export function gridLayoutChunk(
     { x: Math.round(corners[v]!.x), y: Math.round(corners[v]!.y) },
   ]);
   return { chunk, positions, cost: best!.cost, quality: best!.quality };
+}
+
+interface RunResult {
+  cells: Int32Array;
+  cost: number;
+  quality: GridQuality;
+}
+
+/** Un départ : recherche en géométrie régulière, puis polissage en géométrie exacte. */
+function searchRun(pb: Problem, run: number, large: boolean, radius: number): RunResult {
+  const rnd = random(0x5e_ed + run * 7919);
+  // Départs alternés : par forces (déplie le graphe), puis en largeur depuis l'objet le plus relié.
+  const start = run % 2 === 0 ? forceCells(pb, rnd) : initialCells(pb, rnd, run > 1);
+  // 1. Recherche en géométrie régulière (coût incrémental).
+  const state = new State(pb, start, false);
+  improve(state, rnd, radius, large ? 12 : 40);
+  if (!large) {
+    // Mouvements composés (entité + ses associations), puis retouche simple.
+    improveCompound(state, rnd, 1, 3);
+    improve(state, rnd, radius, 40);
+  }
+  // 2. Polissage en géométrie exacte (celle de l'affichage).
+  const exact = new State(pb, state.cellOf, true);
+  improve(exact, rnd, large ? 1 : POLISH_RADIUS, large ? 2 : POLISH_PASSES);
+
+  const quality: GridQuality = { through: 0, crossings: 0, closeAngles: 0 };
+  const cost = quantize(exact.totalCost(quality));
+  return { cells: Int32Array.from(exact.cellOf), cost, quality };
 }
 
 /**

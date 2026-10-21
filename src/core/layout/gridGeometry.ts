@@ -52,37 +52,43 @@ export function segmentHitsBox(
 ): boolean {
   const dx = qx - px;
   const dy = qy - py;
-  let t0 = 0;
-  let t1 = 1;
+  clipRange[0] = 0;
+  clipRange[1] = 1;
   const ps = [-dx, dx, -dy, dy];
   const qs = [px - (cx - hx), cx + hx - px, py - (cy - hy), cy + hy - py];
   for (let i = 0; i < 4; i += 1) {
-    const p = ps[i]!;
-    const q = qs[i]!;
-    if (p === 0) {
-      if (q < 0) {
-        return false;
-      }
-      continue;
-    }
-    const r = q / p;
-    if (p < 0) {
-      if (r > t1) {
-        return false;
-      }
-      if (r > t0) {
-        t0 = r;
-      }
-    } else {
-      if (r < t0) {
-        return false;
-      }
-      if (r < t1) {
-        t1 = r;
-      }
+    if (!clip(ps[i]!, qs[i]!)) {
+      return false;
     }
   }
-  return t0 < t1;
+  return clipRange[0]! < clipRange[1]!;
+}
+
+/** Intervalle [t0, t1] du segment encore dans le rectangle (tampon réutilisé, sans allocation). */
+const clipRange = new Float64Array(2);
+
+/** Restreint `clipRange` par un bord (p, q) de Liang-Barsky ; faux si le segment sort du rectangle. */
+function clip(p: number, q: number): boolean {
+  if (p === 0) {
+    return !(q < 0);
+  }
+  const r = q / p;
+  if (p < 0) {
+    if (r > clipRange[1]!) {
+      return false;
+    }
+    if (r > clipRange[0]!) {
+      clipRange[0] = r;
+    }
+  } else {
+    if (r < clipRange[0]!) {
+      return false;
+    }
+    if (r < clipRange[1]!) {
+      clipRange[1] = r;
+    }
+  }
+  return true;
 }
 
 /**
