@@ -56,17 +56,7 @@ function diffItems(
       return;
     }
     const nested = !owner && WITH_ATTRIBUTES.has(coll);
-    for (const field of new Set([...Object.keys(old), ...Object.keys(x)])) {
-      if (field === "id" || (nested && field === "attributes")) {
-        continue;
-      }
-      if (same(old[field], x[field])) {
-        continue;
-      }
-      ops.push(
-        field in x ? { t: "set", ...where, id: x.id, field, value: x[field] } : { t: "set", ...where, id: x.id, field },
-      );
-    }
+    diffFields(old, x, nested, where, ops);
     if (nested && old.attributes !== x.attributes) {
       diffItems(old.attributes as Item[], x.attributes as Item[], coll, x.id, ops);
     }
@@ -76,6 +66,18 @@ function diffItems(
   const was = before.filter((x) => next.has(x.id)).map((x) => x.id);
   if (!same(kept, was)) {
     ops.push({ t: "order", ...where, ids: after.map((x) => x.id) });
+  }
+}
+
+/** Champs modifiés d'un objet présent des deux côtés (rubriques à part si `nested`). */
+function diffFields(old: Item, x: Item, nested: boolean, where: { coll: CollectionName; owner?: Id }, ops: Op[]) {
+  for (const field of new Set([...Object.keys(old), ...Object.keys(x)])) {
+    if (field === "id" || (nested && field === "attributes") || same(old[field], x[field])) {
+      continue;
+    }
+    ops.push(
+      field in x ? { t: "set", ...where, id: x.id, field, value: x[field] } : { t: "set", ...where, id: x.id, field },
+    );
   }
 }
 
@@ -131,6 +133,18 @@ function target(d: Draft<ModelDocument>, coll: CollectionName, owner?: Id): Item
 }
 
 function applyOne(d: Draft<ModelDocument>, op: Op) {
+  if (op.t === "setting" || op.t === "position" || op.t === "bends") {
+    applyDocumentOp(d, op);
+    return;
+  }
+  const list = target(d, op.coll, op.owner);
+  if (list) {
+    applyListOp(list, op);
+  }
+}
+
+/** Réglage, position, cassures. */
+function applyDocumentOp(d: Draft<ModelDocument>, op: Extract<Op, { t: "setting" | "position" | "bends" }>) {
   switch (op.t) {
     case "setting":
       (d.settings as unknown as Record<string, unknown>)[op.key] = structuredClone(op.value);
@@ -150,10 +164,10 @@ function applyOne(d: Draft<ModelDocument>, op: Op) {
       }
       return;
   }
-  const list = target(d, op.coll, op.owner);
-  if (!list) {
-    return;
-  }
+}
+
+/** Ajout, retrait, champ, ordre, dans une liste d'objets ou de rubriques. */
+function applyListOp(list: Item[], op: Extract<Op, { t: "add" | "remove" | "set" | "order" }>) {
   switch (op.t) {
     case "add": {
       // Déjà là (écho de sa propre opération) : l'objet prend la place que lui donne l'hôte, pour
@@ -171,18 +185,9 @@ function applyOne(d: Draft<ModelDocument>, op: Op) {
       }
       return;
     }
-    case "set": {
-      const item = list.find((x) => x.id === op.id);
-      if (!item) {
-        return;
-      }
-      if ("value" in op) {
-        item[op.field] = structuredClone(op.value);
-      } else {
-        delete item[op.field];
-      }
+    case "set":
+      setField(list, op);
       return;
-    }
     case "order": {
       const rank = new Map(op.ids.map((id, i) => [id, i]));
       const listed = list.filter((x) => rank.has(x.id)).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
@@ -190,6 +195,18 @@ function applyOne(d: Draft<ModelDocument>, op: Op) {
       list.splice(0, list.length, ...listed, ...others);
       return;
     }
+  }
+}
+
+function setField(list: Item[], op: Extract<Op, { t: "set" }>) {
+  const item = list.find((x) => x.id === op.id);
+  if (!item) {
+    return;
+  }
+  if ("value" in op) {
+    item[op.field] = structuredClone(op.value);
+  } else {
+    delete item[op.field];
   }
 }
 
