@@ -32,67 +32,7 @@ export function ToolbarHost() {
   const floatingRef = useRef<HTMLDivElement>(null);
   const lastClick = useRef(0);
 
-  function onGripDown(e: PointerEvent<HTMLElement>) {
-    if (e.button !== 0) {
-      return;
-    }
-    e.preventDefault();
-    const now = Date.now();
-    // Double-clic sur la poignée : ancrer / détacher.
-    if (now - lastClick.current < 350) {
-      lastClick.current = 0;
-      updateDock((l) => setToolbar(l, { floating: !l.toolbar.floating }));
-      return;
-    }
-    lastClick.current = now;
-    const box = (toolbar.floating ? floatingRef.current : e.currentTarget)?.getBoundingClientRect();
-    const state: Drag = {
-      offset: { x: e.clientX - (box?.x ?? 0), y: e.clientY - (box?.y ?? 0) },
-      start: { x: e.clientX, y: e.clientY },
-      floating: toolbar.floating,
-    };
-    let current: { position: { x: number; y: number } | null; overBand: boolean } | null = null;
-    const move = (ev: globalThis.PointerEvent) => {
-      if (!state.floating && ev.clientY - state.start.y < DETACH_DISTANCE) {
-        return;
-      }
-      if (!state.floating) {
-        state.floating = true;
-        state.offset = { x: 16, y: 16 };
-      }
-      current = {
-        position: { x: ev.clientX - state.offset.x, y: ev.clientY - state.offset.y },
-        overBand: ev.clientY < DOCK_BAND,
-      };
-      setDrag(current);
-    };
-    const up = () => {
-      globalThis.removeEventListener("pointermove", move);
-      globalThis.removeEventListener("pointerup", up);
-      setDrag(null);
-      if (!current) {
-        return;
-      }
-      const { position, overBand } = current;
-      if (nativeWindows()) {
-        // La barre devient une fenêtre native, à la même place à l'écran.
-        updateDock((l) =>
-          setToolbar(l, overBand ? { floating: false } : { floating: true, position: position && toScreen(position) }),
-        );
-        return;
-      }
-      // Dans la page, la barre reste entièrement visible (ses dimensions naturelles sont gardées).
-      const width = floatingRef.current?.offsetWidth ?? 0;
-      const height = floatingRef.current?.offsetHeight ?? 0;
-      const clamped = position && {
-        x: Math.max(0, Math.min(position.x, window.innerWidth - width)),
-        y: Math.max(0, Math.min(position.y, window.innerHeight - height)),
-      };
-      updateDock((l) => setToolbar(l, overBand ? { floating: false } : { floating: true, position: clamped }));
-    };
-    globalThis.addEventListener("pointermove", move);
-    globalThis.addEventListener("pointerup", up);
-  }
+  const onGripDown = (e: PointerEvent<HTMLElement>) => gripDown(e, { toolbar, floatingRef, lastClick, setDrag });
 
   const nativeBand = useToolbarBand((s) => s.over);
   const floating = drag ? true : toolbar.floating;
@@ -120,4 +60,81 @@ export function ToolbarHost() {
       ) : null}
     </>
   );
+}
+
+type DragState = { position: { x: number; y: number } | null; overBand: boolean } | null;
+
+interface GripScope {
+  toolbar: ReturnType<typeof usePreferencesStore.getState>["dock"]["toolbar"];
+  floatingRef: { current: HTMLDivElement | null };
+  lastClick: { current: number };
+  setDrag: (drag: DragState) => void;
+}
+
+/** Poignée : double-clic pour ancrer / détacher, glisser pour déplacer (détachée au-delà de DETACH_DISTANCE). */
+function gripDown(e: PointerEvent<HTMLElement>, { toolbar, floatingRef, lastClick, setDrag }: GripScope) {
+  if (e.button !== 0) {
+    return;
+  }
+  e.preventDefault();
+  const now = Date.now();
+  // Double-clic sur la poignée : ancrer / détacher.
+  if (now - lastClick.current < 350) {
+    lastClick.current = 0;
+    updateDock((l) => setToolbar(l, { floating: !l.toolbar.floating }));
+    return;
+  }
+  lastClick.current = now;
+  const box = (toolbar.floating ? floatingRef.current : e.currentTarget)?.getBoundingClientRect();
+  const state: Drag = {
+    offset: { x: e.clientX - (box?.x ?? 0), y: e.clientY - (box?.y ?? 0) },
+    start: { x: e.clientX, y: e.clientY },
+    floating: toolbar.floating,
+  };
+  let current: { position: { x: number; y: number } | null; overBand: boolean } | null = null;
+  const move = (ev: globalThis.PointerEvent) => {
+    if (!state.floating && ev.clientY - state.start.y < DETACH_DISTANCE) {
+      return;
+    }
+    if (!state.floating) {
+      state.floating = true;
+      state.offset = { x: 16, y: 16 };
+    }
+    current = {
+      position: { x: ev.clientX - state.offset.x, y: ev.clientY - state.offset.y },
+      overBand: ev.clientY < DOCK_BAND,
+    };
+    setDrag(current);
+  };
+  const up = () => {
+    globalThis.removeEventListener("pointermove", move);
+    globalThis.removeEventListener("pointerup", up);
+    setDrag(null);
+    if (!current) {
+      return;
+    }
+    dropToolbar(current, floatingRef.current);
+  };
+  globalThis.addEventListener("pointermove", move);
+  globalThis.addEventListener("pointerup", up);
+}
+
+/** Barre lâchée : ancrée sur la bande, sinon flottante à sa nouvelle place. */
+function dropToolbar(current: NonNullable<DragState>, floating: HTMLDivElement | null) {
+  const { position, overBand } = current;
+  if (nativeWindows()) {
+    // La barre devient une fenêtre native, à la même place à l'écran.
+    updateDock((l) =>
+      setToolbar(l, overBand ? { floating: false } : { floating: true, position: position && toScreen(position) }),
+    );
+    return;
+  }
+  // Dans la page, la barre reste entièrement visible (ses dimensions naturelles sont gardées).
+  const width = floating?.offsetWidth ?? 0;
+  const height = floating?.offsetHeight ?? 0;
+  const clamped = position && {
+    x: Math.max(0, Math.min(position.x, window.innerWidth - width)),
+    y: Math.max(0, Math.min(position.y, window.innerHeight - height)),
+  };
+  updateDock((l) => setToolbar(l, overBand ? { floating: false } : { floating: true, position: clamped }));
 }
