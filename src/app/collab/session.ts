@@ -34,10 +34,15 @@ export interface CollabTransport {
   connect: (addr: string) => Promise<GuestLink>;
 }
 
-let transport: CollabTransport | null = null;
+/** Session de la fenêtre (une à la fois, hôte ou invité) et transport, partagés par les commandes de la session. */
+const live: {
+  transport: CollabTransport | null;
+  host: { session: HostSession; stop: () => Promise<void>; off: () => void } | null;
+  guest: { session: GuestSession; addr: string; off: () => void; retry?: ReturnType<typeof setTimeout> } | null;
+} = { transport: null, host: null, guest: null };
 /** Transport utilisé (iroh dans l'application, mémoire dans les tests). */
 export const setCollabTransport = (value: CollabTransport) => {
-  transport = value;
+  live.transport = value;
 };
 
 /** Reconnexion d'un invité (O-05 §4.4) : essais pendant 30 s, toutes les 3 s. */
@@ -139,8 +144,8 @@ function trackChat(next: ChatMessage[], you: string | null): Pick<CollabState, "
 export const markChatRead = () => useCollabStore.getState().unread && useCollabStore.setState({ unread: 0 });
 
 export function sendChat(text: string) {
-  host?.session.sendChat(text);
-  guest?.session.sendChat(text);
+  live.host?.session.sendChat(text);
+  live.guest?.session.sendChat(text);
 }
 
 /** Présence reçue : horodate chaque mouvement de curseur. */
@@ -155,10 +160,6 @@ function trackPresence(next: Record<string, Presence>): Record<string, RemotePre
     }),
   );
 }
-
-let host: { session: HostSession; stop: () => Promise<void>; off: () => void } | null = null;
-let guest: { session: GuestSession; addr: string; off: () => void; retry?: ReturnType<typeof setTimeout> } | null =
-  null;
 
 const me = () => {
   const { identity } = usePreferencesStore.getState();
@@ -181,7 +182,7 @@ export async function shareActiveTab({
   password?: string;
   aiAllowed?: boolean;
 } = {}): Promise<boolean> {
-  if (!transport || useCollabStore.getState().mode !== "idle") {
+  if (!live.transport || useCollabStore.getState().mode !== "idle") {
     return false;
   }
   if (password && password.length < MIN_PASSWORD_LENGTH) {
@@ -194,7 +195,7 @@ export async function shareActiveTab({
   useCollabStore.setState({ mode: "starting", error: null });
   presenceSent = null;
   try {
-    const started = await transport.startHost();
+    const started = await live.transport.startHost();
     const secrets = { editor: newSecret(), reader: newSecret() };
     const original = tab.store.getState();
     const session = startHost({
@@ -228,7 +229,7 @@ export async function shareActiveTab({
         void stopSharing();
       }
     });
-    host = {
+    live.host = {
       session,
       stop: started.stop,
       off: () => {
@@ -252,11 +253,11 @@ export async function shareActiveTab({
 
 /** Arrête le partage pour tous (O-05 §4.4) ; l'onglet redevient un document ordinaire. */
 export async function stopSharing() {
-  if (!host) {
+  if (!live.host) {
     return;
   }
-  const { session, stop, off } = host;
-  host = null;
+  const { session, stop, off } = live.host;
+  live.host = null;
   off();
   session.stop();
   await stop();
@@ -280,8 +281,8 @@ export async function stopSharing() {
   });
 }
 
-export const setGuestsAi = (allowed: boolean) => host?.session.setAiAllowed(allowed);
-export const kick = (peer: string) => host?.session.kick(peer);
+export const setGuestsAi = (allowed: boolean) => live.host?.session.setAiAllowed(allowed);
+export const kick = (peer: string) => live.host?.session.kick(peer);
 
 /** Exclusion demandée depuis la liste des participants : confirmée d'abord (O-05 §4.3). */
 async function confirmKick(peer: string) {
@@ -308,7 +309,7 @@ export async function joinFromLink(url: string): Promise<boolean> {
   if (!parsed) {
     return fail(t("collab.invalidLink"));
   }
-  if (!transport) {
+  if (!live.transport) {
     return false;
   }
   if (useCollabStore.getState().mode !== "idle") {
@@ -318,7 +319,7 @@ export async function joinFromLink(url: string): Promise<boolean> {
   presenceSent = null;
   let link: GuestLink;
   try {
-    link = await transport.connect(parsed.addr);
+    link = await live.transport.connect(parsed.addr);
   } catch (e) {
     useCollabStore.setState({ mode: "idle", error: t("collab.unreachable", { error: String(e) }) });
     return false;
@@ -355,24 +356,24 @@ export async function joinFromLink(url: string): Promise<boolean> {
     }
   };
   const offState = session.state.subscribe(sync);
-  guest = { session, addr: parsed.addr, off: offState };
+  live.guest = { session, addr: parsed.addr, off: offState };
   sync();
   return true;
 }
 
 /** Connexion perdue : nouvelles tentatives pendant 30 s, puis fin de session (O-05 §4.4). */
 function reconnect() {
-  if (!guest || guest.retry !== undefined || !transport) {
+  if (!live.guest || live.guest.retry !== undefined || !live.transport) {
     return;
   }
-  const current = guest;
+  const current = live.guest;
   const deadline = Date.now() + RECONNECT_FOR;
   const attempt = async () => {
-    if (guest !== current) {
+    if (live.guest !== current) {
       return;
     }
     try {
-      current.session.reconnect(await transport!.connect(current.addr));
+      current.session.reconnect(await live.transport!.connect(current.addr));
       current.retry = undefined;
     } catch {
       if (Date.now() + RECONNECT_EVERY > deadline) {
@@ -390,11 +391,11 @@ function reconnect() {
  * l'hôte », pas une perte de connexion) ; un invité la quitte (O-05 §4.4).
  */
 export async function endSessionOnExit() {
-  if (host) {
+  if (live.host) {
     await stopSharing();
-  } else if (guest) {
-    const { session, off, retry } = guest;
-    guest = null;
+  } else if (live.guest) {
+    const { session, off, retry } = live.guest;
+    live.guest = null;
     off();
     clearTimeout(retry);
     session.leave();
@@ -402,11 +403,11 @@ export async function endSessionOnExit() {
 }
 
 /** Réponse au mot de passe demandé par l'hôte. */
-export const answerPassword = (password: string) => guest?.session.answer(password);
+export const answerPassword = (password: string) => live.guest?.session.answer(password);
 
 /** Quitter la session (invité). */
 export async function leaveSession() {
-  guest?.session.leave();
+  live.guest?.session.leave();
   await endGuestSession(null);
 }
 
@@ -415,11 +416,11 @@ export async function leaveSession() {
  * (D16), puis un message en donne la raison.
  */
 async function endGuestSession(reason: string | null) {
-  if (!guest) {
+  if (!live.guest) {
     return;
   }
-  const { session, off, retry } = guest;
-  guest = null;
+  const { session, off, retry } = live.guest;
+  live.guest = null;
   off();
   clearTimeout(retry);
   const { tabId } = useCollabStore.getState();
@@ -507,8 +508,8 @@ function flushPresence() {
   presenceNext = null;
   presenceAt = Date.now();
   presenceSent = value;
-  host?.session.setPresence(value);
-  guest?.session.setPresence(value);
+  live.host?.session.setPresence(value);
+  live.guest?.session.setPresence(value);
 }
 
 /**
@@ -516,7 +517,7 @@ function flushPresence() {
  * au plus 20 fois par seconde ; le dernier état part toujours.
  */
 export function reportPresence(value: Presence) {
-  if (!(host || guest)) {
+  if (!(live.host || live.guest)) {
     return;
   }
   if (presenceSent && samePresence(presenceSent, value)) {
@@ -552,7 +553,7 @@ export interface VoiceLink {
 }
 
 export function voiceLink(): VoiceLink | null {
-  const session = host?.session ?? guest?.session;
+  const session = live.host?.session ?? live.guest?.session;
   return session ? { setVoice: session.setVoice, sendAudio: session.sendAudio, onAudio: session.onAudio } : null;
 }
 
@@ -631,7 +632,7 @@ export function applyCollabMirror(mirror: CollabMirror) {
 /** Section « Session » (O-05 §7) : affichée au début d'une session, masquée à la fin. */
 useCollabStore.subscribe((s, p) => {
   // Fenêtre principale seulement (une flottante reçoit sa disposition de la principale).
-  if (!transport) {
+  if (!live.transport) {
     return;
   }
   const active = (mode: CollabMode) => mode === "host" || mode === "guest";
@@ -654,6 +655,6 @@ usePreferencesStore.subscribe((s, p) => {
     return;
   }
   const { name, color } = me();
-  host?.session.setIdentity(name, color);
-  guest?.session.setIdentity(name, color);
+  live.host?.session.setIdentity(name, color);
+  live.guest?.session.setIdentity(name, color);
 });
