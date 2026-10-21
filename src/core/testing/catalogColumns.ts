@@ -110,26 +110,28 @@ export function rangeOf(
   const bits =
     concept.kind === "integer" ? concept.bits : concept.kind === "counter" ? (concept.bits ?? 32) : undefined;
   if (bits !== undefined) {
-    // Oracle NUMBER(p) : plage décimale ±(10^p − 1) (O-39).
-    let max = digits ? digits[1] : unsigned ? 2n ** BigInt(bits) - 1n : 2n ** BigInt(bits - 1) - 1n;
-    let min = unsigned || nonNegative ? 0n : digits ? digits[0] : -(2n ** BigInt(bits - 1));
-    // Bornes explicites (CHECK … BETWEEN, YEAR) : intersection avec la plage du type.
-    if (bounds) {
-      if (bounds[0] !== null && bounds[0] > min) {
-        // biome-ignore lint/style/useDestructuring: borne retenue sous condition, après comparaison
-        min = bounds[0];
-      }
-      if (bounds[1] !== null && bounds[1] < max) {
-        // biome-ignore lint/style/useDestructuring: borne retenue sous condition, après comparaison
-        max = bounds[1];
-      }
-    }
-    return `[${min}, ${max}]`;
+    return integerRangeText(bits, unsigned, nonNegative, bounds, digits);
   }
   if (concept.kind === "decimal" || concept.kind === "real" || concept.kind === "money") {
     return unsigned || nonNegative ? "≥ 0" : "ℝ";
   }
   return undefined;
+}
+
+/** Plage d'un entier : celle du type (ou décimale, Oracle NUMBER(p)), intersectée avec les bornes. */
+function integerRangeText(
+  bits: number,
+  unsigned: boolean,
+  nonNegative: boolean,
+  bounds?: [bigint | null, bigint | null],
+  digits?: [bigint, bigint],
+): string {
+  // Oracle NUMBER(p) : plage décimale ±(10^p − 1) (O-39).
+  const max = digits ? digits[1] : unsigned ? 2n ** BigInt(bits) - 1n : 2n ** BigInt(bits - 1) - 1n;
+  const min = unsigned || nonNegative ? 0n : digits ? digits[0] : -(2n ** BigInt(bits - 1));
+  // Bornes explicites (CHECK … BETWEEN, YEAR) : intersection avec la plage du type.
+  const [lo, hi] = bounds ?? [null, null];
+  return `[${lo !== null && lo > min ? lo : min}, ${hi !== null && hi < max ? hi : max}]`;
 }
 
 /** Type conceptuel, à la collation, au jeu de caractères et à la largeur des entiers près (comparée par la plage). */
