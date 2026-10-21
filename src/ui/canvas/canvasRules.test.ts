@@ -68,6 +68,12 @@ describe("réflexive : premier emplacement libre autour de l'entité (O-08)", ()
     });
   });
 
+  it("une marge le sépare de tout objet (O-60) : un obstacle trop proche fait passer à l'emplacement suivant", () => {
+    const near = box(slot.right.x + ASSOCIATION.width + 8, slot.right.y, 20, 20);
+    expect(overlaps({ ...slot.right, ...ASSOCIATION }, near)).toBe(false);
+    expect(place(near)).toEqual(slot.below);
+  });
+
   it("jamais sur un obstacle ; aligné sur la grille", () => {
     const others = Object.values(slot).map(blocking);
     const placed = place(...others);
@@ -208,6 +214,17 @@ describe("dimensions de la vue la plus large (O-60)", () => {
     const { after, placement } = create(d, from, to);
     expect(placement.associationPosition).not.toEqual(centred);
     expect(noOverlap(after)).toBe(true);
+  });
+
+  it("à valider : la recherche part de la plus grande boîte de l'entité (table du MPD comprise)", () => {
+    // CLIENT seul : l'emplacement de droite est libre.
+    const d = wide();
+    d.entities = d.entities.filter((e) => e.name === "CLIENT");
+    const id = byId(d, "CLIENT");
+    const largest = placementBoxes(d).get(id)!;
+    const { placement } = create(d, id, id);
+    // Emplacement de droite, au-delà de la table du MPD de l'entité.
+    expect(placement.associationPosition.x).toBeGreaterThanOrEqual(largest.x + largest.width + 90 - 5);
   });
 
   it("aucun objet existant ne bouge", () => {
