@@ -83,31 +83,46 @@ export function checkConceptualModel(ctx: Context) {
  */
 function checkAtomicity(ctx: Context, owner: Entity | Association) {
   const target = { kind: owner.kind, id: owner.id };
+  const warn: Warn = (message) => {
+    ctx.issues.push({ severity: "warning", message, target });
+  };
+  atomicityWarnings(owner, warn);
+  // Annotations physiques que le MCD n'exprime pas (O-39).
+  stateWarnings(ctx, owner, warn);
+  conditionalUniques(ctx, owner, warn);
+  if (owner.partition) {
+    warn(MSG.partitionDropped(owner.name));
+  }
+  // O-41 : UNIQUE à un seul NULL admis (SQL Server) sur une colonne facultative ; types spatiaux ; ROWVERSION.
+  singleNullUniques(ctx, owner, warn);
+  typeWarnings(ctx, owner, warn);
+  prefixKeys(owner, warn);
+}
+
+type Warn = (message: string) => void;
+
+/** Rubriques multivaluées (SET) ou non atomiques (JSON). */
+function atomicityWarnings(owner: Entity | Association, warn: Warn) {
   for (const a of owner.attributes) {
     if (a.domain?.kind === "set") {
-      ctx.issues.push({ severity: "warning", message: MSG.multivaluedAttribute(owner.name, a.name), target });
+      warn(MSG.multivaluedAttribute(owner.name, a.name));
     }
     const json =
       (a.type?.kind === "free" && /^jsonb?$/i.test(a.type.sql.trim())) || /^jsonb?\b/i.test(a.sourceType?.sql ?? "");
     if (json) {
-      ctx.issues.push({ severity: "warning", message: MSG.nonAtomicAttribute(owner.name, a.name), target });
+      warn(MSG.nonAtomicAttribute(owner.name, a.name));
     }
   }
-  // Annotations physiques que le MCD n'exprime pas (O-39).
+}
+
+/** Contraintes désactivées ou non validées : CHECK, UNIQUE, clés étrangères portées. */
+function stateWarnings(ctx: Context, owner: Entity | Association, warn: Warn) {
   const disabled = (name: string | undefined, state: ConstraintState | undefined, fallback: string) => {
     if (state?.disabled) {
-      ctx.issues.push({
-        severity: "warning",
-        message: MSG.constraintDisabled(owner.name, name ?? fallback, state.dialect),
-        target,
-      });
+      warn(MSG.constraintDisabled(owner.name, name ?? fallback, state.dialect));
     }
     if (state?.notValidated) {
-      ctx.issues.push({
-        severity: "warning",
-        message: MSG.constraintNotValidated(owner.name, name ?? fallback, state.dialect),
-        target,
-      });
+      warn(MSG.constraintNotValidated(owner.name, name ?? fallback, state.dialect));
     }
   };
   for (const a of owner.attributes) {
@@ -126,6 +141,9 @@ function checkAtomicity(ctx: Context, owner: Entity | Association) {
       disabled(link.foreignKeyConstraintName, link.foreignKeyState, "FOREIGN KEY");
     }
   }
+}
+
+function conditionalUniques(ctx: Context, owner: Entity | Association, warn: Warn) {
   for (const key of owner.alternateKeys ?? []) {
     if (!key.where) {
       continue;
@@ -135,54 +153,55 @@ function checkAtomicity(ctx: Context, owner: Entity | Association) {
         ("attributeId" in m ? owner.attributes.find((a) => a.id === m.attributeId)?.name : keyMemberLabel(ctx, m)) ??
         "?",
     );
-    ctx.issues.push({
-      severity: "warning",
-      message: MSG.conditionalUnique(owner.name, names.join(", "), key.where.expression),
-      target,
-    });
+    warn(MSG.conditionalUnique(owner.name, names.join(", "), key.where.expression));
   }
-  if (owner.partition) {
-    ctx.issues.push({ severity: "warning", message: MSG.partitionDropped(owner.name), target });
-  }
-  // O-41 : UNIQUE à un seul NULL admis (SQL Server) sur une colonne facultative ; types spatiaux ; ROWVERSION.
+}
+
+function singleNullUniques(ctx: Context, owner: Entity | Association, warn: Warn) {
   for (const key of owner.alternateKeys ?? []) {
     if (key.nulls !== "not distinct") {
       continue;
     }
-    const optional = key.members.filter((m) => {
-      if ("attributeId" in m) {
-        const a = owner.attributes.find((x) => x.id === m.attributeId);
-        return a && !a.notNull && !a.identifier;
-      }
-      const link = ctx.doc.links.find((l) => l.id === m.linkId);
-      const holder = link && ctx.doc.links.find((l) => l.associationId === link.associationId && l.id !== link.id);
-      return holder?.cardinality.min === 0;
-    });
+    const optional = key.members.filter((m) => optionalMember(ctx, owner, m));
     if (optional.length > 0) {
       const names = optional.map((m) =>
         "attributeId" in m
           ? owner.attributes.find((a) => a.id === m.attributeId)!.name
           : (keyMemberLabel(ctx, m) ?? "#"),
       );
-      ctx.issues.push({ severity: "warning", message: MSG.singleNullUnique(owner.name, names.join(", ")), target });
+      warn(MSG.singleNullUnique(owner.name, names.join(", ")));
     }
   }
+}
+
+/** Membre facultatif : rubrique ni NOT NULL ni identifiante, ou patte dont l'autre côté est 0,…. */
+function optionalMember(ctx: Context, owner: Entity | Association, m: KeyMember) {
+  if ("attributeId" in m) {
+    const a = owner.attributes.find((x) => x.id === m.attributeId);
+    return a && !a.notNull && !a.identifier;
+  }
+  const link = ctx.doc.links.find((l) => l.id === m.linkId);
+  const holder = link && ctx.doc.links.find((l) => l.associationId === link.associationId && l.id !== link.id);
+  return holder?.cardinality.min === 0;
+}
+
+/** Types spatiaux sans extension native ; ROWVERSION hors SQL Server. */
+function typeWarnings(ctx: Context, owner: Entity | Association, warn: Warn) {
   const { dbms } = ctx.doc.settings;
   for (const a of owner.attributes) {
     if (
       (a.type?.kind === "geography" || a.type?.kind === "geometry") &&
       (dbms === "postgresql" || dbms === "sqlite" || dbms === "db2")
     ) {
-      ctx.issues.push({
-        severity: "warning",
-        message: MSG.spatialExtension(owner.name, a.name, a.type.kind.toUpperCase(), dbms),
-        target,
-      });
+      warn(MSG.spatialExtension(owner.name, a.name, a.type.kind.toUpperCase(), dbms));
     }
     if (a.type?.kind === "free" && a.type.sql === "ROWVERSION" && dbms !== "sqlserver") {
-      ctx.issues.push({ severity: "warning", message: MSG.rowversionAttribute(owner.name, a.name), target });
+      warn(MSG.rowversionAttribute(owner.name, a.name));
     }
   }
+}
+
+function prefixKeys(owner: Entity | Association, warn: Warn) {
   for (const key of owner.alternateKeys ?? []) {
     if (!key.prefixes?.some((p) => p !== null)) {
       continue;
@@ -191,7 +210,7 @@ function checkAtomicity(ctx: Context, owner: Entity | Association) {
       const attribute = "attributeId" in m ? owner.attributes.find((a) => a.id === m.attributeId)?.name : "#";
       return key.prefixes?.[i] ? `${attribute}(${key.prefixes[i]})` : attribute;
     });
-    ctx.issues.push({ severity: "warning", message: MSG.prefixAlternateKey(owner.name, names.join(", ")), target });
+    warn(MSG.prefixAlternateKey(owner.name, names.join(", ")));
   }
 }
 
