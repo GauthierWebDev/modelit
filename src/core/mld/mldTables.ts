@@ -1,5 +1,5 @@
 import type { Association, Entity, Link } from "../model/document";
-import type { KeyMember } from "../model/physical";
+import type { AlternateKey, IndexDefinition, KeyMember } from "../model/physical";
 import { MSG } from "../validation/messages";
 import type { LogicalColumn, LogicalKey, LogicalTable } from "./logical";
 import {
@@ -52,6 +52,51 @@ function attributeColumns(ctx: Context, owner: Entity | Association, table: stri
 
 /** Identifiants alternatifs, index, contraintes et ordre des colonnes d'origine (O-29). */
 export function applyPhysical(ctx: Context, table: LogicalTable, node: Entity | Association) {
+  const resolveAll = keyResolver(ctx, table, node);
+  for (const key of node.alternateKeys ?? []) {
+    const columns = resolveAll(key.members);
+    if (columns) {
+      applyAlternateKey(table, key, columns, resolveAll);
+    }
+  }
+  for (const index of node.indexes ?? []) {
+    const columns = resolveAll(index.members);
+    if (columns) {
+      table.indexes.push(logicalIndex(index, columns, resolveAll));
+    }
+  }
+  table.checks.push(...(node.checks ?? []));
+  applyTableOptions(table, node);
+  if (ctx.doc.settings.ddl.sourceColumnOrder && node.columnOrder?.length) {
+    table.columns = inSourceOrder(table.columns, node.columnOrder);
+  }
+}
+
+function logicalIndex(index: IndexDefinition, columns: string[], resolveAll: Resolver): LogicalKey {
+  return {
+    name: index.name,
+    columns,
+    ...(index.prefixes ? { prefixes: index.prefixes } : {}),
+    ...(index.method ? { method: index.method } : {}),
+    ...(index.kind ? { kind: index.kind } : {}),
+    ...(index.include && resolveAll(index.include) ? { include: resolveAll(index.include)! } : {}),
+  };
+}
+
+/** Ordre des colonnes du script d'origine ; les autres gardent leur place relative, en fin. */
+function inSourceOrder(columns: LogicalColumn[], columnOrder: string[]): LogicalColumn[] {
+  const order = new Map(columnOrder.map((n, i) => [n.toLowerCase(), i]));
+  const position = (c: LogicalColumn) => order.get(c.name.toLowerCase()) ?? Number.POSITIVE_INFINITY;
+  return columns
+    .map((c, i) => ({ c, i }))
+    .sort((a, b) => position(a.c) - position(b.c) || a.i - b.i)
+    .map(({ c }) => c);
+}
+
+type Resolver = (list: KeyMember[]) => string[] | null;
+
+/** Colonnes des membres d'une clé (rubriques ou pattes), ou `null` si l'un n'a pas de colonne. */
+function keyResolver(ctx: Context, table: LogicalTable, node: Entity | Association): Resolver {
   const members = ctx.members.get(table) ?? new Map<string, string>();
   const tableNameOf = table.name;
   const resolve = (member: KeyMember): string | undefined => {
@@ -61,58 +106,50 @@ export function applyPhysical(ctx: Context, table: LogicalTable, node: Entity | 
     }
     return members.get(memberKey(member.linkId, member.originId));
   };
-  const resolveAll = (list: KeyMember[]) => {
+  return (list: KeyMember[]) => {
     const names = list.map(resolve);
     return names.every((n): n is string => Boolean(n)) ? names : null;
   };
-  for (const key of node.alternateKeys ?? []) {
-    const columns = resolveAll(key.members);
-    if (!columns) {
-      continue;
-    }
-    const options = {
-      ...(key.prefixes ? { prefixes: key.prefixes } : {}),
-      ...(key.method ? { method: key.method } : {}),
-      ...(key.state ? { state: key.state } : {}),
-      ...(key.expression ? { expression: key.expression } : {}),
-      ...(key.where ? { where: key.where } : {}),
-      ...(key.nulls ? { nulls: key.nulls } : {}),
-      ...(key.include && resolveAll(key.include) ? { include: resolveAll(key.include)! } : {}),
-    };
-    // Unicité sur expression ou conditionnelle : jamais confondue avec un UNIQUE sur les colonnes (O-39).
-    const partial = Boolean(key.prefixes || key.expression || key.where);
-    const same = (u: LogicalKey) =>
-      !(partial || u.prefixes || u.expression || u.where) &&
-      u.columns.length === columns.length &&
-      u.columns.every((c) => columns.includes(c));
-    const existing = table.uniques.find(same);
-    if (existing) {
-      Object.assign(existing, { name: existing.name ?? key.name, ...options });
-    } else {
-      table.uniques.push({ name: key.name, columns, ...options });
-    }
-    // UNIQUE nommé (ou avec méthode, ou état) sur une seule colonne : la contrainte de table remplace la mention en ligne.
-    if (columns.length === 1 && (key.name || key.method || key.state) && !partial) {
-      const column = table.columns.find((c) => c.name === columns[0]);
-      if (column) {
-        column.unique = false;
-      }
+}
+
+/** Identifiant alternatif → UNIQUE de la table (fusionné avec un UNIQUE identique). */
+function applyAlternateKey(table: LogicalTable, key: AlternateKey, columns: string[], resolveAll: Resolver) {
+  const options = alternateKeyOptions(key, resolveAll);
+  // Unicité sur expression ou conditionnelle : jamais confondue avec un UNIQUE sur les colonnes (O-39).
+  const partial = Boolean(key.prefixes || key.expression || key.where);
+  const same = (u: LogicalKey) =>
+    !(partial || u.prefixes || u.expression || u.where) &&
+    u.columns.length === columns.length &&
+    u.columns.every((c) => columns.includes(c));
+  const existing = table.uniques.find(same);
+  if (existing) {
+    Object.assign(existing, { name: existing.name ?? key.name, ...options });
+  } else {
+    table.uniques.push({ name: key.name, columns, ...options });
+  }
+  // UNIQUE nommé (ou avec méthode, ou état) sur une seule colonne : la contrainte de table remplace la mention en ligne.
+  if (columns.length === 1 && (key.name || key.method || key.state) && !partial) {
+    const column = table.columns.find((c) => c.name === columns[0]);
+    if (column) {
+      column.unique = false;
     }
   }
-  for (const index of node.indexes ?? []) {
-    const columns = resolveAll(index.members);
-    if (columns) {
-      table.indexes.push({
-        name: index.name,
-        columns,
-        ...(index.prefixes ? { prefixes: index.prefixes } : {}),
-        ...(index.method ? { method: index.method } : {}),
-        ...(index.kind ? { kind: index.kind } : {}),
-        ...(index.include && resolveAll(index.include) ? { include: resolveAll(index.include)! } : {}),
-      });
-    }
-  }
-  table.checks.push(...(node.checks ?? []));
+}
+
+function alternateKeyOptions(key: AlternateKey, resolveAll: Resolver) {
+  return {
+    ...(key.prefixes ? { prefixes: key.prefixes } : {}),
+    ...(key.method ? { method: key.method } : {}),
+    ...(key.state ? { state: key.state } : {}),
+    ...(key.expression ? { expression: key.expression } : {}),
+    ...(key.where ? { where: key.where } : {}),
+    ...(key.nulls ? { nulls: key.nulls } : {}),
+    ...(key.include && resolveAll(key.include) ? { include: resolveAll(key.include)! } : {}),
+  };
+}
+
+/** Compteur, déclencheurs, état de la clé primaire, séquences, partitionnement, stockage, schéma. */
+function applyTableOptions(table: LogicalTable, node: Entity | Association) {
   if (node.autoIncrementStart !== undefined) {
     table.identityStart = node.autoIncrementStart;
   }
@@ -136,14 +173,6 @@ export function applyPhysical(ctx: Context, table: LogicalTable, node: Entity | 
   }
   if (node.schema) {
     table.schema = node.schema;
-  }
-  if (ctx.doc.settings.ddl.sourceColumnOrder && node.columnOrder?.length) {
-    const order = new Map(node.columnOrder.map((n, i) => [n.toLowerCase(), i]));
-    const position = (c: LogicalColumn) => order.get(c.name.toLowerCase()) ?? Number.POSITIVE_INFINITY;
-    table.columns = table.columns
-      .map((c, i) => ({ c, i }))
-      .sort((a, b) => position(a.c) - position(b.c) || a.i - b.i)
-      .map(({ c }) => c);
   }
 }
 
