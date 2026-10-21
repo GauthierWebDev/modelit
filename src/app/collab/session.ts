@@ -59,6 +59,8 @@ interface CollabState {
   participants: Participant[];
   aiAllowed: boolean;
   presence: Record<string, RemotePresence>;
+  /** Vocal de ce poste (O-48) ; « qui parle » est à part (`voice/speaking.ts`), non reflété. */
+  voice: VoiceState;
   chat: ChatMessage[];
   /** Messages des autres arrivés depuis la dernière lecture (badge de la section Session). */
   unread: number;
@@ -77,8 +79,32 @@ interface CollabState {
   error: string | null;
 }
 
+export interface VoiceState {
+  /** `off` : pas dans le vocal ; `starting` : micro et moteur en cours d'ouverture. */
+  status: "off" | "starting" | "on";
+  muted: boolean;
+  /** Faux : écoute seule (micro refusé ou absent). */
+  mic: boolean;
+  /** Raison d'un micro refusé (nom de l'erreur du système). */
+  micError: string | null;
+  /** Vocal impossible sur ce système : codec Opus absent, ou micro non exposé par le webview. */
+  unavailable: "no-codec" | "no-media" | null;
+  /** Volume de chaque participant (0 à 2), retenu jusqu'à la fin de la session. */
+  volumes: Record<string, number>;
+}
+
+export const VOICE_OFF: VoiceState = {
+  status: "off",
+  muted: false,
+  mic: false,
+  micError: null,
+  unavailable: null,
+  volumes: {},
+};
+
 export const useCollabStore = create<CollabState>(() => ({
   mode: "idle",
+  voice: VOICE_OFF,
   tabId: null,
   links: null,
   participants: [],
@@ -464,6 +490,31 @@ export function sharedTabName(): string | null {
   return tab ? documentName(tab) : null;
 }
 
+// ——— Vocal (O-48) ———
+
+/** Canal du vocal de la session en cours (hôte ou invité) ; `null` hors session. */
+export interface VoiceLink {
+  setVoice: (joined: boolean, muted: boolean) => void;
+  sendAudio: HostSession["sendAudio"];
+  onAudio: HostSession["onAudio"];
+}
+
+export function voiceLink(): VoiceLink | null {
+  const session = host?.session ?? guest?.session;
+  return session ? { setVoice: session.setVoice, sendAudio: session.sendAudio, onAudio: session.onAudio } : null;
+}
+
+export type VoiceAction =
+  | { kind: "join" }
+  | { kind: "leave" }
+  | { kind: "mute"; muted: boolean }
+  | { kind: "volume"; peer: string; gain: number };
+let voiceActions: ((action: VoiceAction) => void) | null = null;
+/** Branché par `voice/voiceSession.ts` (qui dépend de ce module, et non l'inverse). */
+export const registerVoiceActions = (run: (action: VoiceAction) => void) => {
+  voiceActions = run;
+};
+
 // ——— Fenêtres flottantes (J-01, D6) ———
 
 /** Actions de session, exécutées par la fenêtre principale (relayées depuis une flottante). */
@@ -473,7 +524,8 @@ export type CollabAction =
   | { kind: "kick"; peer: string }
   | { kind: "guestsAi"; allowed: boolean }
   | { kind: "stop" }
-  | { kind: "leave" };
+  | { kind: "leave" }
+  | { kind: "voice"; action: VoiceAction };
 
 export function runCollabAction(action: CollabAction) {
   switch (action.kind) {
@@ -489,6 +541,8 @@ export function runCollabAction(action: CollabAction) {
       return void stopSharing();
     case "leave":
       return void leaveSession();
+    case "voice":
+      return voiceActions?.(action.action);
   }
 }
 

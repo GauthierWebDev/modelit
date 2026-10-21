@@ -35,6 +35,12 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .manage(mcp::McpState::default())
         .manage(collab::CollabState::default())
+        // Micro : demandé par le vocal d'une session (O-48, D18), seulement après « Rejoindre
+        // l'audio ». Le système garde sa propre autorisation (macOS : Info.plist, invite TCC).
+        .on_permission_request(|_, kind| match kind {
+            tauri::webview::PermissionKind::Microphone => tauri::webview::PermissionResponse::Allow,
+            _ => tauri::webview::PermissionResponse::Default,
+        })
         .invoke_handler(tauri::generate_handler![
             mcp::mcp_start,
             mcp::mcp_stop,
@@ -42,10 +48,12 @@ pub fn run() {
             mcp::mcp_release_others,
             collab::collab_host_start,
             collab::collab_host_send,
+            collab::collab_host_datagram,
             collab::collab_host_close,
             collab::collab_host_stop,
             collab::collab_guest_connect,
             collab::collab_guest_send,
+            collab::collab_guest_datagram,
             collab::collab_guest_close,
             updater_configured
         ])

@@ -12,6 +12,7 @@ import {
   type ToHost,
 } from "./protocol";
 import { createSessionStore, type SessionStore } from "./sessionStore";
+import { type AudioPacket, decodePacket, encodePacket } from "./voice/packet";
 
 /**
  * Hôte d'une session (O-05 ; J-01, phase 5a, D11) : il fait foi. Il applique les modifications
@@ -44,6 +45,12 @@ export interface HostSession {
   /** Présence de l'hôte, diffusée à tous. */
   setPresence: (presence: Presence) => void;
   sendChat: (text: string) => void;
+  /** Vocal de l'hôte (O-48) : rejoint ou quitté, micro coupé ou ouvert. */
+  setVoice: (joined: boolean, muted: boolean) => void;
+  /** 20 ms de voix de l'hôte, vers les invités dans le vocal. */
+  sendAudio: (packet: Omit<AudioPacket, "speaker">) => void;
+  /** Voix des invités, pour l'hôte quand il est dans le vocal. */
+  onAudio: (handler: (packet: AudioPacket) => void) => () => void;
   kick: (peer: string) => void;
   /** Arrête la session pour tous. */
   stop: () => void;
@@ -192,6 +199,12 @@ export function startHost({
         guests.set(peer, { ...guest, name: message.name, color: message.color });
         return publishParticipants();
       }
+      case "voice": {
+        if (!guest) return;
+        const { audio: _previous, ...rest } = guest;
+        guests.set(peer, message.joined ? { ...rest, audio: { muted: message.muted } } : rest);
+        return publishParticipants();
+      }
       case "presence":
         if (guest) relayPresence(peer, message.presence);
         return;
@@ -204,6 +217,21 @@ export function startHost({
         return;
     }
   });
+  // Vocal (O-48, D18) : l'hôte relaie la voix d'un invité aux autres participants du vocal, sous
+  // l'identifiant de l'invité (jamais celui annoncé par l'invité).
+  const audioHandlers = new Set<(packet: AudioPacket) => void>();
+  const listeners = (except: string) => [...guests.values()].filter((g) => g.audio && g.id !== except).map((g) => g.id);
+  const offDatagram = link.onDatagram((peer, data) => {
+    const guest = guests.get(peer);
+    if (!guest?.audio || guest.audio.muted) return;
+    const packet = decodePacket(data);
+    if (!packet) return;
+    const relayed = { ...packet, speaker: peer };
+    const targets = listeners(peer);
+    if (targets.length) link.sendDatagram(targets, encodePacket(relayed));
+    if (host.audio) for (const h of audioHandlers) h(relayed);
+  });
+
   const offClose = link.onClose((peer) => {
     challenges.delete(peer);
     forget(peer);
@@ -239,12 +267,27 @@ export function startHost({
       link.close(peer);
       publishParticipants();
     },
+    setVoice: (joined, muted) => {
+      if (joined) host.audio = { muted };
+      else delete host.audio;
+      publishParticipants();
+    },
+    sendAudio: (packet) => {
+      if (!host.audio || host.audio.muted) return;
+      const targets = listeners(host.id);
+      if (targets.length) link.sendDatagram(targets, encodePacket({ ...packet, speaker: host.id }));
+    },
+    onAudio: (handler) => {
+      audioHandlers.add(handler);
+      return () => audioHandlers.delete(handler);
+    },
     stop: () => {
       broadcast({ type: "ended", reason: "stopped" });
       for (const peer of [...guests.keys()]) link.close(peer);
       guests.clear();
       offMessage();
       offClose();
+      offDatagram();
     },
   };
 }

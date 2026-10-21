@@ -8,6 +8,7 @@ import { chooseTool, showView } from "@/app/viewCommands";
 import { activateNeighbour, activeDocument } from "@/app/workspace";
 import { endNudge, nudgeSelection } from "@/ui/canvas/arrange";
 import { fitToWindow, zoomBy, zoomTo } from "@/ui/canvas/viewport";
+import { mainCommand } from "@/ui/windows/mainCommands";
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 export const MOD = isMac ? "⌘" : "Ctrl+";
@@ -92,6 +93,15 @@ export function useShortcuts() {
             "+": () => zoomBy(doc, 1.2),
             "-": () => zoomBy(doc, 1 / 1.2),
           });
+        }
+        // Micro du vocal (O-48) : ⌘/Ctrl + Maj + M, y compris pendant une saisie (chat).
+        if (key === "m" && e.shiftKey) {
+          const voice = useCollabStore.getState().voice;
+          if (voice.status === "on" && voice.mic) {
+            e.preventDefault();
+            mainCommand({ name: "collab", action: { kind: "voice", action: { kind: "mute", muted: !voice.muted } } });
+          }
+          return;
         }
         const action = actions[key];
         if (action) {

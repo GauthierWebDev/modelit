@@ -2943,6 +2943,8 @@ dependencies = [
 name = "modelit"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
+ "bytes",
  "iroh",
  "serde",
  "serde_json",

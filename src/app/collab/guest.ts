@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { prove } from "./password";
 import type { ChatMessage, GuestLink, Participant, Presence, RejectReason, Role } from "./protocol";
 import { createSessionStore, type SessionStore } from "./sessionStore";
+import { type AudioPacket, decodePacket, encodePacket } from "./voice/packet";
 
 /**
  * Invité d'une session (O-05 ; J-01, phase 5a, D11) : document miroir de l'onglet partagé. Ses
@@ -41,6 +42,12 @@ export interface GuestSession {
   answer: (password: string) => Promise<void>;
   setPresence: (presence: Presence) => void;
   sendChat: (text: string) => void;
+  /** Vocal (O-48) : rejoint ou quitté, micro coupé ou ouvert ; renvoyé après une reconnexion. */
+  setVoice: (joined: boolean, muted: boolean) => void;
+  /** 20 ms de ma voix, vers l'hôte qui la relaie. */
+  sendAudio: (packet: Omit<AudioPacket, "speaker">) => void;
+  /** Voix des autres participants (identifiant posé par l'hôte). */
+  onAudio: (handler: (packet: AudioPacket) => void) => () => void;
   /** Connexion retrouvée (O-05 §4.4) : nouveau canal vers le même hôte. */
   reconnect: (link: GuestLink) => void;
   leave: () => void;
@@ -84,6 +91,8 @@ export function startGuest({
 
   let challenge: { nonce: string; salt: string } | null = null;
   let identity = { name, color };
+  let voice = { joined: false, muted: false };
+  const audioHandlers = new Set<(packet: AudioPacket) => void>();
   /** Mot de passe accepté, gardé en mémoire le temps de la session : reconnexion sans le redemander. */
   let accepted: string | null = null;
   let pending: string | null = null;
@@ -122,6 +131,8 @@ export function startGuest({
             chat: message.chat,
             title: message.title ?? null,
           });
+          // Reconnexion : l'hôte ne se souvient pas de l'état du vocal.
+          if (voice.joined) current.send({ type: "voice", ...voice });
           return;
         case "ops":
           store.getState().applyRemote(message.ops);
@@ -159,10 +170,15 @@ export function startGuest({
     const offClose = target.onClose(() => {
       if (state.getState().status !== "ended") state.setState({ status: "disconnected" });
     });
+    const offDatagram = target.onDatagram((data) => {
+      const packet = decodePacket(data);
+      if (packet) for (const h of audioHandlers) h(packet);
+    });
     target.send({ type: "hello", secret, ...identity });
     return () => {
       offMessage();
       offClose();
+      offDatagram();
     };
   };
   let detach = attach(link);
@@ -177,6 +193,18 @@ export function startGuest({
     answer,
     setPresence: (presence) => {
       if (state.getState().status === "connected") current.send({ type: "presence", presence });
+    },
+    setVoice: (joined, muted) => {
+      voice = { joined, muted };
+      if (state.getState().status === "connected") current.send({ type: "voice", joined, muted });
+    },
+    sendAudio: (packet) => {
+      if (state.getState().status === "connected" && voice.joined && !voice.muted)
+        current.sendDatagram(encodePacket({ ...packet, speaker: "" }));
+    },
+    onAudio: (handler) => {
+      audioHandlers.add(handler);
+      return () => audioHandlers.delete(handler);
     },
     sendChat: (text) => {
       if (state.getState().status === "connected" && text.trim()) current.send({ type: "chat", text });

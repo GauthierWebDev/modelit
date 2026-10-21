@@ -8,7 +8,25 @@ export function memoryNetwork() {
   const queue: (() => void)[] = [];
   const hostHandlers = new Set<(peer: string, m: ToHost) => void>();
   const hostClose = new Set<(peer: string) => void>();
-  const guests = new Map<string, { handlers: Set<(m: ToGuest) => void>; close: Set<() => void>; open: boolean }>();
+  const hostDatagrams = new Set<(peer: string, data: Uint8Array) => void>();
+  const guests = new Map<
+    string,
+    {
+      handlers: Set<(m: ToGuest) => void>;
+      close: Set<() => void>;
+      datagrams: Set<(data: Uint8Array) => void>;
+      open: boolean;
+    }
+  >();
+  /** Datagrammes perdus (vocal) : `lose(n)` fait perdre les n prochains. */
+  let toLose = 0;
+  const delivered = () => {
+    if (toLose > 0) {
+      toLose--;
+      return false;
+    }
+    return true;
+  };
   const clone = <T>(m: T): T => structuredClone(m);
 
   const hostLink: HostLink = {
@@ -33,9 +51,28 @@ export function memoryNetwork() {
         for (const h of g.close) h();
       });
     },
+    sendDatagram: (peers, data) => {
+      for (const peer of peers) {
+        if (!delivered()) continue;
+        const copy = data.slice();
+        queue.push(() => {
+          const g = guests.get(peer);
+          if (g?.open) for (const h of g.datagrams) h(copy);
+        });
+      }
+    },
+    onDatagram: (h) => {
+      hostDatagrams.add(h);
+      return () => hostDatagrams.delete(h);
+    },
   };
   const connect = (peer: string): GuestLink => {
-    const g = { handlers: new Set<(m: ToGuest) => void>(), close: new Set<() => void>(), open: true };
+    const g = {
+      handlers: new Set<(m: ToGuest) => void>(),
+      close: new Set<() => void>(),
+      datagrams: new Set<(data: Uint8Array) => void>(),
+      open: true,
+    };
     guests.set(peer, g);
     return {
       send: (m) =>
@@ -54,6 +91,17 @@ export function memoryNetwork() {
         g.open = false;
         for (const h of hostClose) h(peer);
       },
+      sendDatagram: (data) => {
+        if (!delivered()) return;
+        const copy = data.slice();
+        queue.push(() => {
+          if (g.open) for (const h of hostDatagrams) h(peer, copy);
+        });
+      },
+      onDatagram: (h) => {
+        g.datagrams.add(h);
+        return () => g.datagrams.delete(h);
+      },
     };
   };
   const flush = () => {
@@ -70,5 +118,13 @@ export function memoryNetwork() {
       }
     }
   };
-  return { hostLink, connect, flush, settle };
+  return {
+    hostLink,
+    connect,
+    flush,
+    settle,
+    lose: (n: number) => {
+      toLose = n;
+    },
+  };
 }
