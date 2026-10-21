@@ -149,11 +149,7 @@ export function createAssociation(
 /** Association reliée à ses entités ; réflexive : deux pattes vers la même entité (override O-08). */
 function linkedAssociation(doc: DocumentHandle, name: string, entities: Id[], spot: Point): Id {
   if (entities.length === 2 && entities[0] === entities[1]) {
-    const result = cmd.connectNodes(doc, entities[0]!, entities[1]!, { associationPosition: spot });
-    if (!result || "error" in result) {
-      return refuse(`association « ${name} »: ${result && "error" in result ? result.error : "not created"}`);
-    }
-    return result.created;
+    return reflexiveAssociation(doc, name, entities[0]!, spot);
   }
   const id = cmd.addAssociation(doc, spot);
   for (const entity of entities) {
@@ -163,6 +159,14 @@ function linkedAssociation(doc: DocumentHandle, name: string, entities: Id[], sp
     }
   }
   return id;
+}
+
+function reflexiveAssociation(doc: DocumentHandle, name: string, entity: Id, spot: Point): Id {
+  const result = cmd.connectNodes(doc, entity, entity, { associationPosition: spot });
+  if (!result || "error" in result) {
+    return refuse(`association « ${name} »: ${result && "error" in result ? result.error : "not created"}`);
+  }
+  return result.created;
 }
 
 export function createInheritance(
