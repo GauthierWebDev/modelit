@@ -56,18 +56,28 @@ function declareSequence(ctx: Context, rules: SequenceRules, s: SequenceDefiniti
   ctx.used.sequences.add(s.name.toLowerCase());
   const parts = [`CREATE SEQUENCE ${qualifiedName(ctx, s.schema, s.name)}`];
   declareSchema(ctx, s.schema, table);
-  // Type des valeurs (AS INT), là où la cible l'exprime ; ailleurs, type par défaut (signalé) (O-41).
   if (s.type) {
-    const type = { int: "INTEGER", integer: "INTEGER", bigint: "BIGINT", smallint: "SMALLINT", tinyint: "TINYINT" }[
-      s.type
-    ];
-    const emitted = type && rules.valueType(type);
-    if (emitted) {
-      parts.push(`AS ${emitted}`);
-    } else {
-      ctx.report.add("default", table.name, MSG.lossSequenceType(s.type.toUpperCase()));
-    }
+    parts.push(...sequenceType(ctx, rules, s.type, table));
   }
+  parts.push(...sequenceOptions(rules, s));
+  ctx.script.preamble.push(`${parts.join(" ")};`);
+}
+
+/** Type des valeurs (AS INT), là où la cible l'exprime ; ailleurs, type par défaut (signalé) (O-41). */
+function sequenceType(ctx: Context, rules: SequenceRules, valueType: string, table: LogicalTable): string[] {
+  const type = { int: "INTEGER", integer: "INTEGER", bigint: "BIGINT", smallint: "SMALLINT", tinyint: "TINYINT" }[
+    valueType
+  ];
+  const emitted = type && rules.valueType(type);
+  if (emitted) {
+    return [`AS ${emitted}`];
+  }
+  ctx.report.add("default", table.name, MSG.lossSequenceType(valueType.toUpperCase()));
+  return [];
+}
+
+function sequenceOptions(rules: SequenceRules, s: SequenceDefinition): string[] {
+  const parts: string[] = [];
   if (s.start !== undefined) {
     parts.push(`START WITH ${s.start}`);
   }
@@ -86,5 +96,5 @@ function declareSequence(ctx: Context, rules: SequenceRules, s: SequenceDefiniti
   if (s.cycle !== undefined) {
     parts.push(s.cycle ? "CYCLE" : rules.noCycle);
   }
-  ctx.script.preamble.push(`${parts.join(" ")};`);
+  return parts;
 }
