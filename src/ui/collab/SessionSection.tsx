@@ -205,18 +205,7 @@ export function SessionSection() {
   const [copied, setCopied] = useState<string | null>(null);
 
   if (mode !== "host" && mode !== "guest") {
-    return (
-      <div className="flex flex-col items-start gap-2 p-3 text-sm text-neutral-500 dark:text-neutral-400">
-        <p>{t("collab.none")}</p>
-        <button
-          type="button"
-          className="flex items-center gap-1 rounded border border-neutral-300 px-2 py-0.5 hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800"
-          onClick={() => useUiStore.getState().setShareOpen(true)}
-        >
-          <Users size={14} /> {t("collab.shareOrJoin")}
-        </button>
-      </div>
-    );
+    return noSession();
   }
 
   const isHost = mode === "host";
@@ -225,31 +214,10 @@ export function SessionSection() {
     setCopied(what);
     setTimeout(() => setCopied(null), 1500);
   };
-  const small = "flex items-center gap-1 rounded px-1.5 py-0.5 text-xs hover:bg-neutral-200 dark:hover:bg-neutral-700";
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 p-2">
-      <div className="flex flex-wrap items-center gap-1">
-        {isHost && links ? (
-          <>
-            <button type="button" className={small} onClick={() => copy("edit", links.edit)}>
-              <Copy size={12} /> {copied === "edit" ? t("collab.copied") : t("collab.editLink")}
-            </button>
-            <button type="button" className={small} onClick={() => copy("read", links.read)}>
-              <Copy size={12} /> {copied === "read" ? t("collab.copied") : t("collab.readLink")}
-            </button>
-          </>
-        ) : null}
-        <div className="flex-1" />
-        <button
-          type="button"
-          className={`${small} text-red-600 dark:text-red-400`}
-          onClick={() => act({ kind: isHost ? "stop" : "leave" })}
-        >
-          {isHost ? <Square size={12} /> : <LogOut size={12} />}
-          {isHost ? t("collab.stop") : t("collab.leave")}
-        </button>
-      </div>
+      {sessionBar(isHost, links, copied, copy)}
       {isHost && (
         <Checkbox
           label={t("collab.allowAi")}
@@ -260,81 +228,162 @@ export function SessionSection() {
       <VoiceBar />
 
       <ul aria-label={t("collab.participantsList")} className="flex flex-col gap-0.5">
-        {participants.map((p) => {
-          const view = presence[p.id]?.view;
-          const talking = speaking.includes(p.id);
-          const volume = Math.round((voice.volumes[p.id] ?? 1) * 100);
-          return (
-            <li
-              key={p.id}
-              className="group flex items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
-            >
-              <span
-                className="h-2.5 w-2.5 flex-none rounded-full transition-shadow"
-                style={{ background: p.color, boxShadow: talking ? `0 0 0 3px ${p.color}55` : undefined }}
-              />
-              <span
-                className={`min-w-0 truncate ${talking ? "font-semibold" : ""}`}
-                {...(talking ? { "data-speaking": "" } : {})}
-              >
-                {p.name}
-                {p.id === you && <span className="text-neutral-400"> ({t("collab.you")})</span>}
-              </span>
-              <span className="text-xs text-neutral-400">{t(ROLE_LABEL[p.role])}</span>
-              {p.audio ? (
-                <span
-                  className="flex flex-none items-center text-neutral-500"
-                  {...tip(p.audio.muted ? t("voice.theyMuted") : t("voice.theyIn"))}
-                >
-                  {p.audio.muted ? (
-                    <MicOff size={12} className="text-red-500" aria-label={t("voice.theyMuted")} />
-                  ) : (
-                    <Headphones size={12} aria-label={t("voice.theyIn")} />
-                  )}
-                </span>
-              ) : null}
-              <div className="flex-1" />
-              {voice.status === "on" && p.audio && p.id !== you && volume !== 100 && (
-                <span className="text-[10px] text-neutral-400 tabular-nums group-focus-within:hidden group-hover:hidden">
-                  {volume} %
-                </span>
-              )}
-              {voice.status === "on" && p.audio && p.id !== you && (
-                <input
-                  type="range"
-                  min={0}
-                  max={200}
-                  step={5}
-                  value={volume}
-                  aria-label={t("voice.volume", { name: p.name, n: volume })}
-                  {...tip(t("voice.volume", { name: p.name, n: volume }))}
-                  className="hidden w-16 accent-emerald-600 group-focus-within:block group-hover:block"
-                  onChange={(e) => voiceAct({ kind: "volume", peer: p.id, gain: Number(e.target.value) / 100 })}
-                />
-              )}
-              {view && p.id !== you && (
-                <span
-                  className={`text-[10px] font-semibold text-neutral-400 ${voice.status === "on" && p.audio ? "group-focus-within:hidden group-hover:hidden" : ""}`}
-                >
-                  {VIEW_LABEL[view]}
-                </span>
-              )}
-              {isHost && p.role !== "host" && (
-                <button
-                  type="button"
-                  aria-label={t("collab.kick", { name: p.name })}
-                  {...tip(t("collab.kick", { name: p.name }))}
-                  className="invisible rounded p-0.5 text-neutral-500 group-hover:visible hover:bg-red-100 hover:text-red-600 focus:visible dark:hover:bg-red-950"
-                  onClick={() => act({ kind: "kick", peer: p.id })}
-                >
-                  <UserX size={13} />
-                </button>
-              )}
-            </li>
-          );
-        })}
+        {participants.map((p) => participantRow(p, { presence, speaking, voice, you, isHost }))}
       </ul>
       <Chat />
     </div>
+  );
+}
+
+/** Pas de session : invitation à partager ou rejoindre. */
+function noSession() {
+  return (
+    <div className="flex flex-col items-start gap-2 p-3 text-sm text-neutral-500 dark:text-neutral-400">
+      <p>{t("collab.none")}</p>
+      <button
+        type="button"
+        className="flex items-center gap-1 rounded border border-neutral-300 px-2 py-0.5 hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800"
+        onClick={() => useUiStore.getState().setShareOpen(true)}
+      >
+        <Users size={14} /> {t("collab.shareOrJoin")}
+      </button>
+    </div>
+  );
+}
+
+const small = "flex items-center gap-1 rounded px-1.5 py-0.5 text-xs hover:bg-neutral-200 dark:hover:bg-neutral-700";
+
+type CollabState = ReturnType<typeof useCollabStore.getState>;
+
+/** Liens à copier (hôte), arrêter le partage ou quitter. */
+function sessionBar(
+  isHost: boolean,
+  links: CollabState["links"],
+  copied: string | null,
+  copy: (what: string, value: string) => void,
+) {
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {isHost && links ? (
+        <>
+          <button type="button" className={small} onClick={() => copy("edit", links.edit)}>
+            <Copy size={12} /> {copied === "edit" ? t("collab.copied") : t("collab.editLink")}
+          </button>
+          <button type="button" className={small} onClick={() => copy("read", links.read)}>
+            <Copy size={12} /> {copied === "read" ? t("collab.copied") : t("collab.readLink")}
+          </button>
+        </>
+      ) : null}
+      <div className="flex-1" />
+      <button
+        type="button"
+        className={`${small} text-red-600 dark:text-red-400`}
+        onClick={() => act({ kind: isHost ? "stop" : "leave" })}
+      >
+        {isHost ? <Square size={12} /> : <LogOut size={12} />}
+        {isHost ? t("collab.stop") : t("collab.leave")}
+      </button>
+    </div>
+  );
+}
+
+/** Ce qu'une ligne de participant lit. */
+interface RowScope {
+  presence: CollabState["presence"];
+  speaking: string[];
+  voice: CollabState["voice"];
+  you: CollabState["you"];
+  isHost: boolean;
+}
+
+type Participant = CollabState["participants"][number];
+
+/** Participant : pastille (parle), nom, rôle, micro, volume, vue, exclusion (hôte). */
+function participantRow(p: Participant, row: RowScope) {
+  const { presence, speaking, voice, you, isHost } = row;
+  const view = presence[p.id]?.view;
+  const talking = speaking.includes(p.id);
+  return (
+    <li
+      key={p.id}
+      className="group flex items-center gap-2 rounded px-1 py-0.5 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+    >
+      <span
+        className="h-2.5 w-2.5 flex-none rounded-full transition-shadow"
+        style={{ background: p.color, boxShadow: talking ? `0 0 0 3px ${p.color}55` : undefined }}
+      />
+      <span
+        className={`min-w-0 truncate ${talking ? "font-semibold" : ""}`}
+        {...(talking ? { "data-speaking": "" } : {})}
+      >
+        {p.name}
+        {p.id === you && <span className="text-neutral-400"> ({t("collab.you")})</span>}
+      </span>
+      <span className="text-xs text-neutral-400">{t(ROLE_LABEL[p.role])}</span>
+      {audioMark(p)}
+      <div className="flex-1" />
+      {volumeControl(p, row)}
+      {view && p.id !== you && (
+        <span
+          className={`text-[10px] font-semibold text-neutral-400 ${voice.status === "on" && p.audio ? "group-focus-within:hidden group-hover:hidden" : ""}`}
+        >
+          {VIEW_LABEL[view]}
+        </span>
+      )}
+      {isHost && p.role !== "host" && (
+        <button
+          type="button"
+          aria-label={t("collab.kick", { name: p.name })}
+          {...tip(t("collab.kick", { name: p.name }))}
+          className="invisible rounded p-0.5 text-neutral-500 group-hover:visible hover:bg-red-100 hover:text-red-600 focus:visible dark:hover:bg-red-950"
+          onClick={() => act({ kind: "kick", peer: p.id })}
+        >
+          <UserX size={13} />
+        </button>
+      )}
+    </li>
+  );
+}
+
+/** Micro du participant : coupé ou ouvert, absent hors du vocal. */
+function audioMark(p: Participant) {
+  return p.audio ? (
+    <span
+      className="flex flex-none items-center text-neutral-500"
+      {...tip(p.audio.muted ? t("voice.theyMuted") : t("voice.theyIn"))}
+    >
+      {p.audio.muted ? (
+        <MicOff size={12} className="text-red-500" aria-label={t("voice.theyMuted")} />
+      ) : (
+        <Headphones size={12} aria-label={t("voice.theyIn")} />
+      )}
+    </span>
+  ) : null;
+}
+
+/** Volume d'un autre participant dans le vocal : réglage au survol, valeur sinon (si ≠ 100 %). */
+function volumeControl(p: Participant, { voice, you }: RowScope) {
+  const volume = Math.round((voice.volumes[p.id] ?? 1) * 100);
+  return (
+    <>
+      {voice.status === "on" && p.audio && p.id !== you && volume !== 100 && (
+        <span className="text-[10px] text-neutral-400 tabular-nums group-focus-within:hidden group-hover:hidden">
+          {volume} %
+        </span>
+      )}
+      {voice.status === "on" && p.audio && p.id !== you && (
+        <input
+          type="range"
+          min={0}
+          max={200}
+          step={5}
+          value={volume}
+          aria-label={t("voice.volume", { name: p.name, n: volume })}
+          {...tip(t("voice.volume", { name: p.name, n: volume }))}
+          className="hidden w-16 accent-emerald-600 group-focus-within:block group-hover:block"
+          onChange={(e) => voiceAct({ kind: "volume", peer: p.id, gain: Number(e.target.value) / 100 })}
+        />
+      )}
+    </>
   );
 }
