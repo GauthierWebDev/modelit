@@ -185,7 +185,7 @@ export function GroupView({
                 <>
                   <MenuItem
                     onSelect={() => {
-                      dropGroup({ kind: "zone", zone: "right", index: Infinity });
+                      dropGroup({ kind: "zone", zone: "right", index: Number.POSITIVE_INFINITY });
                       close();
                     }}
                   >
@@ -193,7 +193,7 @@ export function GroupView({
                   </MenuItem>
                   <MenuItem
                     onSelect={() => {
-                      dropGroup({ kind: "zone", zone: "bottom", index: Infinity });
+                      dropGroup({ kind: "zone", zone: "bottom", index: Number.POSITIVE_INFINITY });
                       close();
                     }}
                   >
@@ -246,7 +246,9 @@ function DropSlot({ zone, index, after }: { zone: Zone; index: number; after?: b
   const target = useDragStore((s) => s.target);
   const dragging = useDragStore((s) => s.item !== null);
   const active = target?.kind === "zone" && target.zone === zone && target.index === index;
-  if (!dragging) return null;
+  if (!dragging) {
+    return null;
+  }
   const position =
     zone === "right"
       ? after
@@ -308,11 +310,11 @@ function GroupResizer({ zone, index, layout }: { zone: Zone; index: number; layo
           updateDock((l) => setWeights(l, zone, index, a + clamped, b - clamped));
         };
         const up = () => {
-          window.removeEventListener("pointermove", move);
-          window.removeEventListener("pointerup", up);
+          globalThis.removeEventListener("pointermove", move);
+          globalThis.removeEventListener("pointerup", up);
         };
-        window.addEventListener("pointermove", move);
-        window.addEventListener("pointerup", up);
+        globalThis.addEventListener("pointermove", move);
+        globalThis.addEventListener("pointerup", up);
       }}
     />
   );
@@ -324,7 +326,9 @@ export function DockZone({ zone }: { zone: Zone }) {
   const dragging = useDragStore((s) => s.item !== null);
   const { groups, size } = layout.zones[zone];
   const ref = useRef<HTMLDivElement>(null);
-  if (groups.length === 0 && !dragging) return null;
+  if (groups.length === 0 && !dragging) {
+    return null;
+  }
   const vertical = zone === "right";
 
   const resizeZone = (e: ReactPointerEvent) => {
@@ -332,17 +336,17 @@ export function DockZone({ zone }: { zone: Zone }) {
     const move = (ev: PointerEvent) =>
       updateDock((l) => setZoneSize(l, zone, size + (start - (vertical ? ev.clientX : ev.clientY))));
     const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
+      globalThis.removeEventListener("pointermove", move);
+      globalThis.removeEventListener("pointerup", up);
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    globalThis.addEventListener("pointermove", move);
+    globalThis.addEventListener("pointerup", up);
   };
 
   return (
     <div
       className={`flex flex-none ${vertical ? "flex-row" : "flex-col"}`}
-      style={vertical ? { width: groups.length ? size : 28 } : { height: groups.length ? size : 28 }}
+      style={vertical ? { width: groups.length > 0 ? size : 28 } : { height: groups.length > 0 ? size : 28 }}
     >
       {/* biome-ignore lint/a11y/useSemanticElements: séparateur redimensionnable (motif ARIA window splitter), pas une ligne */}
       <div
@@ -367,7 +371,7 @@ export function DockZone({ zone }: { zone: Zone }) {
             >
               <GroupView group={g} zone={zone} />
               <DropSlot zone={zone} index={i} />
-              {i === groups.length - 1 && <DropSlot zone={zone} index={groups.length} after />}
+              {i === groups.length - 1 && <DropSlot zone={zone} index={groups.length} after={true} />}
             </div>
           </div>
         ))}
@@ -391,11 +395,11 @@ function FloatingGroupView({ group }: { group: FloatingGroup }) {
         }),
       );
     const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
+      globalThis.removeEventListener("pointermove", move);
+      globalThis.removeEventListener("pointerup", up);
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    globalThis.addEventListener("pointermove", move);
+    globalThis.addEventListener("pointerup", up);
   };
   const { x, y, width, height } = group.rect;
   return (
@@ -424,7 +428,9 @@ function FloatingGroupView({ group }: { group: FloatingGroup }) {
 /** Groupes flottants dans la page (navigateur) ; dans l'application native, ce sont des fenêtres. */
 export function FloatingGroups() {
   const floating = useDock().floating;
-  if (nativeWindows()) return null;
+  if (nativeWindows()) {
+    return null;
+  }
   return (
     <>
       {floating.map((g) => (
@@ -440,7 +446,9 @@ export function DragGhost() {
   const pointer = useDragStore((s) => s.pointer);
   const target = useDragStore((s) => s.target);
   const layout = useDock();
-  if (!item || !pointer) return null;
+  if (!(item && pointer)) {
+    return null;
+  }
   const sections =
     item.kind === "section"
       ? [item.section]

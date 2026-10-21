@@ -128,7 +128,11 @@ describe("dimensions de la vue la plus large (O-60)", () => {
     doc.layout.positions[client!.id] = { x: 100, y: 100 };
     doc.layout.positions[produit!.id] = { x: 700, y: 100 };
     doc.layout.positions[commande!.id] = { x: 1300, y: 100 };
-    for (const e of doc.entities) for (const at of e.attributes) at.type ??= { kind: "integer", bits: 32 };
+    for (const e of doc.entities) {
+      for (const at of e.attributes) {
+        at.type ??= { kind: "integer", bits: 32 };
+      }
+    }
     // Complément long : la table du MPD s'élargit nettement au-delà de la boîte du MCD.
     client!.attributes[1]!.complement = "DEFAULT 'adresse inconnue'";
     return doc;
@@ -185,7 +189,7 @@ describe("dimensions de la vue la plus large (O-60)", () => {
     const mcd = [...layoutsOf(d).values()];
     const mpd = tableLayouts(toLogicalModel(d), d, "mpd");
     const clash = (rects: Rect[]) => rects.some((r, i) => rects.slice(i + 1).some((s) => overlaps(r, s)));
-    return !clash(mcd) && !clash(mpd);
+    return !(clash(mcd) || clash(mpd));
   }
 
   it("réflexive : aucun chevauchement dans le MCD ni dans le MPD, la seconde patte contournée", () => {
@@ -231,7 +235,9 @@ describe("dimensions de la vue la plus large (O-60)", () => {
     const d = wide();
     const id = byId(d, "CLIENT");
     const { after } = create(d, id, id);
-    for (const [key, p] of Object.entries(d.layout.positions)) expect(after.layout.positions[key]).toEqual(p);
+    for (const [key, p] of Object.entries(d.layout.positions)) {
+      expect(after.layout.positions[key]).toEqual(p);
+    }
   });
 
   it("patte ou lien d'héritage : aucun placement calculé (connectNodes ne crée pas d'association)", () => {

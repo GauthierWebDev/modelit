@@ -10,9 +10,11 @@ import { joinFromLink, leaveSession, setCollabTransport, shareActiveTab, stopSha
 
 let nextId = 1;
 const tool = async (name: string, args: Record<string, unknown> = {}) => {
+  const id = nextId;
+  nextId += 1;
   const response = await handleMcpMessage({
     jsonrpc: "2.0",
-    id: nextId++,
+    id,
     method: "tools/call",
     params: { name, arguments: args },
   });

@@ -6,7 +6,9 @@ import { t } from "@/i18n";
 /** Session en cours dans la barre d'état (O-05) : rôle, état de la connexion, participants. */
 export function CollabIndicator() {
   const { mode, participants, guest } = useCollabStore();
-  if (mode !== "host" && mode !== "guest") return null;
+  if (mode !== "host" && mode !== "guest") {
+    return null;
+  }
   const label =
     mode === "host"
       ? t("collab.sharing")

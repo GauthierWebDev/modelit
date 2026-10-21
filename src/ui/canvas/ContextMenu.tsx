@@ -17,7 +17,7 @@ interface ContextMenuState {
 
 export const useContextMenu = create<ContextMenuState>()((set) => ({
   menu: null,
-  open: (x, y, actions) => set({ menu: actions.length ? { x, y, actions } : null }),
+  open: (x, y, actions) => set({ menu: actions.length > 0 ? { x, y, actions } : null }),
   close: () => set({ menu: null }),
 }));
 
@@ -31,11 +31,13 @@ export function blockNativeContextMenu(): () => void {
     const editable =
       target instanceof HTMLElement &&
       (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
-    if (editable || window.getSelection()?.toString()) return;
+    if (editable || globalThis.getSelection()?.toString()) {
+      return;
+    }
     e.preventDefault();
   };
-  window.addEventListener("contextmenu", onContextMenu);
-  return () => window.removeEventListener("contextmenu", onContextMenu);
+  globalThis.addEventListener("contextmenu", onContextMenu);
+  return () => globalThis.removeEventListener("contextmenu", onContextMenu);
 }
 
 export function ContextMenuLayer() {
@@ -45,7 +47,9 @@ export function ContextMenuLayer() {
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
 
   useLayoutEffect(() => {
-    if (!menu || !ref.current) return setPosition(null);
+    if (!(menu && ref.current)) {
+      return setPosition(null);
+    }
     const { width, height } = ref.current.getBoundingClientRect();
     setPosition({
       left: Math.max(4, Math.min(menu.x, window.innerWidth - width - 4)),
@@ -54,27 +58,33 @@ export function ContextMenuLayer() {
   }, [menu]);
 
   useEffect(() => {
-    if (!menu) return;
+    if (!menu) {
+      return;
+    }
     const onPointer = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && close();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape") {
+        return;
+      }
       // Échap ferme le menu sans désélectionner sur le canevas.
       e.stopPropagation();
       close();
     };
-    window.addEventListener("pointerdown", onPointer, true);
-    window.addEventListener("keydown", onKey, true);
+    globalThis.addEventListener("pointerdown", onPointer, true);
+    globalThis.addEventListener("keydown", onKey, true);
     window.addEventListener("wheel", close, { passive: true });
     window.addEventListener("blur", close);
     return () => {
-      window.removeEventListener("pointerdown", onPointer, true);
-      window.removeEventListener("keydown", onKey, true);
+      globalThis.removeEventListener("pointerdown", onPointer, true);
+      globalThis.removeEventListener("keydown", onKey, true);
       window.removeEventListener("wheel", close);
       window.removeEventListener("blur", close);
     };
   }, [menu, close]);
 
-  if (!menu) return null;
+  if (!menu) {
+    return null;
+  }
   return (
     <div
       ref={ref}

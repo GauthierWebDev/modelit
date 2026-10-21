@@ -89,7 +89,7 @@ describe("session protégée par mot de passe", () => {
     for (const peer of ["eve1", "eve2"]) {
       const eve = startGuest({ link: net.connect(peer), secret: "e", name: "Eve", color: "#222" });
       await net.settle();
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 3; i += 1) {
         await eve.answer(`faux ${i}`);
         await net.settle();
       }

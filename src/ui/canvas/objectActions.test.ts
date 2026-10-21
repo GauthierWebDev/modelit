@@ -35,7 +35,9 @@ function setup(): DocumentHandle {
 const model_ = (doc: DocumentHandle) => doc.store.getState().doc;
 const entity = (doc: DocumentHandle, name: string) => model_(doc).entities.find((e) => e.name === name)!;
 const menuOn = (doc: DocumentHandle, id: string | null, point = { x: 0, y: 0 }) => {
-  if (id) doc.view.getState().select([id]);
+  if (id) {
+    doc.view.getState().select([id]);
+  }
   return contextActions(doc, id, point);
 };
 

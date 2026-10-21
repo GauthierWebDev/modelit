@@ -28,7 +28,10 @@ import { layoutsOf } from "./viewport";
  * Appelées par `McdCanvas` et `LogicalCanvas`.
  */
 
-type Size = { width: number; height: number };
+interface Size {
+  width: number;
+  height: number;
+}
 
 /** Marge entre la nouvelle association et tout objet (O-08, O-60). */
 const MARGIN = 16;
@@ -111,7 +114,9 @@ export function reflexiveSlot(entity: Rect, size: Size, obstacles: Rect[], grid:
     for (const candidate of ["right", "below", "left", "above"] as Side[]) {
       const p = at(candidate, distance);
       const snapped = { x: snap(p.x, grid), y: snap(p.y, grid) };
-      if (isFree(snapped, size, obstacles)) return snapped;
+      if (isFree(snapped, size, obstacles)) {
+        return snapped;
+      }
     }
   }
   return at("right", 90);
@@ -135,7 +140,9 @@ export function betweenSlot(a: Rect, b: Rect, mcd: Size, size: Size, obstacles: 
   });
   for (const offset of [0, ...Array.from({ length: TRIES }, (_, i) => [(i + 1) * STEP, -(i + 1) * STEP]).flat()]) {
     const p = corner(offset);
-    if (isFree(p, size, obstacles)) return p;
+    if (isFree(p, size, obstacles)) {
+      return p;
+    }
   }
   return corner(0);
 }
@@ -153,7 +160,9 @@ export function placeNewAssociation(
   grid: number | null,
 ): { associationPosition: Point; reflexiveBends?: Point[] } {
   const isEntity = (id: Id) => doc.entities.some((e) => e.id === id);
-  if (!isEntity(fromId) || !isEntity(toId)) return { associationPosition: { x: 0, y: 0 } };
+  if (!(isEntity(fromId) && isEntity(toId))) {
+    return { associationPosition: { x: 0, y: 0 } };
+  }
   const layouts = layoutsOf(doc);
   const boxes = placementBoxes(doc);
   const obstacles = [...boxes.values()];
@@ -193,10 +202,14 @@ export function mcdRenameTarget(
       point.y >= box.y &&
       point.y <= box.y + box.height,
   );
-  if (!hit) return null;
+  if (!hit) {
+    return null;
+  }
   const [nodeId, l] = hit;
   const dy = point.y - l.y;
-  if (dy < TITLE_HEIGHT) return { nodeId, attributeId: null };
+  if (dy < TITLE_HEIGHT) {
+    return { nodeId, attributeId: null };
+  }
   const row = l.rows.find((r) => dy >= r.y && dy < r.y + ROW_HEIGHT);
   return row ? { nodeId, attributeId: row.attribute.id } : null;
 }
@@ -206,11 +219,17 @@ export function logicalRenameTarget(layouts: TableLayout[], mode: LogicalViewMod
   const layout = layouts.findLast(
     (l) => point.x >= l.x && point.x <= l.x + l.width && point.y >= l.y && point.y <= l.y + l.height,
   );
-  if (!layout) return null;
+  if (!layout) {
+    return null;
+  }
   const dy = point.y - layout.y;
-  if (dy < TITLE_HEIGHT) return { sourceId: layout.sourceId, column: null };
+  if (dy < TITLE_HEIGHT) {
+    return { sourceId: layout.sourceId, column: null };
+  }
   const row = layout.rows.find((r) => dy >= r.y && dy < r.y + ROW_HEIGHT);
-  if (!row) return null;
+  if (!row) {
+    return null;
+  }
   // MPD : le type d'une colonne propre, hors compteur (O-59) ; ailleurs sur la ligne, son nom.
   const dx = point.x - layout.x;
   if (mode === "mpd" && dx >= layout.typeX - 4 && dx < layout.constraintsX - 4) {

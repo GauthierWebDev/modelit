@@ -21,9 +21,13 @@ export function tableRef(ctx: Context, tables: LogicalTable[], name: string) {
 /** Schéma de la cible pour un schéma source (dbo → public, selon l'option) ; `undefined` : schéma par défaut (O-42). */
 export function schemaOf(ctx: Context, schema: string | undefined): string | undefined {
   const rules = ctx.dialect.schemas;
-  if (!schema || !rules) return undefined;
+  if (!(schema && rules)) {
+    return undefined;
+  }
   const lower = schema.toLowerCase();
-  if (lower === "dbo") return rules.existing === "dbo" || ctx.options.dboSchema === "dbo" ? "dbo" : undefined;
+  if (lower === "dbo") {
+    return rules.existing === "dbo" || ctx.options.dboSchema === "dbo" ? "dbo" : undefined;
+  }
   return lower === rules.omitted ? undefined : schema;
 }
 
@@ -50,30 +54,43 @@ export function constraintName(
   if (!name && (naming !== "none" || required)) {
     const base = [table.name, ...parts].join("_");
     name = naming === "suffix" ? `${base}_${kind}` : `${kind}_${base}`;
-    if (kind === "IX" && naming === "none") name = `idx_${base}`;
+    if (kind === "IX" && naming === "none") {
+      name = `idx_${base}`;
+    }
     let unique = name;
-    for (let i = 2; ctx.used.names.has(unique.toLowerCase()); i++) unique = `${name}_${i}`;
+    for (let i = 2; ctx.used.names.has(unique.toLowerCase()); i += 1) {
+      unique = `${name}_${i}`;
+    }
     name = unique;
   }
-  if (!name) return undefined;
+  if (!name) {
+    return undefined;
+  }
   const fitted = fitName(name, ctx.maxName);
-  if (fitted !== name && explicit) ctx.report.add("name", table.name, MSG.lossName(name, fitted, ctx.maxName));
+  if (fitted !== name && explicit) {
+    ctx.report.add("name", table.name, MSG.lossName(name, fitted, ctx.maxName));
+  }
   ctx.used.names.add(fitted.toLowerCase());
   return fitted;
 }
 
 /** CREATE SCHEMA en tête de script pour tout schéma source autre que celui par défaut (O-42). */
 export function declareSchema(ctx: Context, schema: string | undefined, table: LogicalTable) {
-  if (!schema) return;
+  if (!schema) {
+    return;
+  }
   const rules = ctx.dialect.schemas;
   const target = schemaOf(ctx, schema);
-  if (!rules || !target) {
-    if (!rules && !["dbo", "public"].includes(schema.toLowerCase()))
+  if (!(rules && target)) {
+    if (!(rules || ["dbo", "public"].includes(schema.toLowerCase()))) {
       ctx.report.add("name", table.name, MSG.lossSchema(schema));
+    }
     return;
   }
   const lower = target.toLowerCase();
-  if (ctx.used.schemas.has(lower) || lower === rules.existing) return;
+  if (ctx.used.schemas.has(lower) || lower === rules.existing) {
+    return;
+  }
   ctx.used.schemas.add(lower);
   ctx.script.schemas.push(rules.create(target, q(ctx, target)));
 }

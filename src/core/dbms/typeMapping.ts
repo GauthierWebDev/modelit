@@ -271,14 +271,20 @@ function templateFor(key: TypeKey, dbms: Dbms, version: string | undefined, cust
 
 /** Variables qu'un gabarit peut contenir, selon le type conceptuel. */
 export function templateVariables(key: TypeKey): string[] {
-  if (/^(ascii|unicode|binary)/.test(key)) return ["n"];
+  if (/^(ascii|unicode|binary)/.test(key)) {
+    return ["n"];
+  }
   return key === "decimal" ? ["p", "s"] : [];
 }
 
 /** Variable sans objet pour ce type, ou inconnue, dans un gabarit saisi (O-59) ; `null` si valide. */
 export function invalidTemplateVariable(key: TypeKey, template: string): string | null {
   const allowed = templateVariables(key);
-  for (const [, name] of template.matchAll(/\{(\w*)\}/g)) if (!allowed.includes(name!)) return `{${name}}`;
+  for (const [, name] of template.matchAll(/\{(\w*)\}/g)) {
+    if (!allowed.includes(name!)) {
+      return `{${name}}`;
+    }
+  }
   return null;
 }
 
@@ -289,7 +295,9 @@ function rowKey(type: Exclude<DataType, { kind: "free" }>): TypeKey {
       return `${type.encoding}${length}` as RowKey;
     }
     case "integer":
-      if (type.counterKey) return type.bits === 64 ? "counter64ForeignKey" : "counterForeignKey";
+      if (type.counterKey) {
+        return type.bits === 64 ? "counter64ForeignKey" : "counterForeignKey";
+      }
       return `int${type.bits}`;
     case "real":
       return type.precision === "single" ? "realSingle" : "realDouble";
@@ -315,18 +323,24 @@ const FRACTIONAL_SECONDS: Dbms[] = ["postgresql", "oracle", "mysql", "mariadb", 
 
 /** Type SQL d'une colonne, ou `null` si non défini pour ce SGBD. */
 export function sqlType(type: DataType, dbms: Dbms, version?: string, custom?: TypeTemplates): string | null {
-  if (type.kind === "free") return type.sql.trim() || null;
+  if (type.kind === "free") {
+    return type.sql.trim() || null;
+  }
   const template = templateFor(rowKey(type), dbms, version, custom);
-  if (template === null) return null;
+  if (template === null) {
+    return null;
+  }
   const values =
     type.kind === "text" ? { n: type.size } : type.kind === "decimal" ? { p: type.precision, s: type.scale } : {};
   let base = fill(template, values);
   // PostgreSQL : NUMERIC(p) plutôt que NUMERIC(p,0) (même type).
-  if (type.kind === "decimal" && type.scale === 0 && type.precision !== undefined && dbms === "postgresql")
+  if (type.kind === "decimal" && type.scale === 0 && type.precision !== undefined && dbms === "postgresql") {
     base = `NUMERIC(${type.precision})`;
+  }
   // Précision des fractions de seconde écrite à la source (O-39) : TIMESTAMP(0), TIMESTAMPTZ(3), DATETIME2(3)…
-  if (type.kind === "datetime" && type.precision !== undefined && FRACTIONAL_SECONDS.includes(dbms))
+  if (type.kind === "datetime" && type.precision !== undefined && FRACTIONAL_SECONDS.includes(dbms)) {
     base = base.replace(/^(\w+)/, `$1(${type.precision})`);
+  }
   return type.kind === "text" && type.collation ? `${base} COLLATE ${type.collation}` : base;
 }
 

@@ -15,7 +15,9 @@ function memoryChannels() {
   const owner: Channel<ToReplica, ToMain> = {
     send: (m) => {
       sent.push(m);
-      for (const h of toReplica) h(structuredClone(m));
+      for (const h of toReplica) {
+        h(structuredClone(m));
+      }
     },
     listen: (h) => {
       toMain.add(h);
@@ -24,7 +26,9 @@ function memoryChannels() {
   };
   const replica: Channel<ToMain, ToReplica> = {
     send: (m) => {
-      for (const h of toMain) h(structuredClone(m));
+      for (const h of toMain) {
+        h(structuredClone(m));
+      }
     },
     listen: (h) => {
       toReplica.add(h);
@@ -106,10 +110,11 @@ describe("synchronisation entre fenêtres", () => {
     const store = activeDocument().store;
     const before = channels.sent.length;
     store.getState().begin();
-    for (let x = 1; x <= 10; x++)
+    for (let x = 1; x <= 10; x += 1) {
       store.getState().preview((d) => {
         d.layout.positions[id] = { x, y: 0 };
       });
+    }
     expect(channels.sent.length).toBe(before);
     store.getState().commit("history.move");
     expect(channels.sent.length).toBe(before + 1);

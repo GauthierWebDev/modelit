@@ -56,7 +56,7 @@ export function AppMenu() {
             </MenuItem>
             <MenuSeparator />
             <MenuLabel>{t("toolbar.sections")}</MenuLabel>
-            <SectionChecks close={close} withReset />
+            <SectionChecks close={close} withReset={true} />
             <MenuSeparator />
             <MenuLabel>{t("menu.theme")}</MenuLabel>
             {THEMES.map((id) => (

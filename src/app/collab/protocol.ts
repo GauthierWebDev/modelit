@@ -100,21 +100,21 @@ export const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
 
 /** Côté hôte : un canal par invité, désigné par un identifiant de connexion. */
 export interface HostLink {
-  send(peer: string, message: ToGuest): void;
-  onMessage(handler: (peer: string, message: ToHost) => void): () => void;
-  onClose(handler: (peer: string) => void): () => void;
-  close(peer: string): void;
+  send: (peer: string, message: ToGuest) => void;
+  onMessage: (handler: (peer: string, message: ToHost) => void) => () => void;
+  onClose: (handler: (peer: string) => void) => () => void;
+  close: (peer: string) => void;
   /** Datagramme (vocal) vers plusieurs invités : non fiable, sans ordre garanti. */
-  sendDatagram(peers: string[], data: Uint8Array): void;
-  onDatagram(handler: (peer: string, data: Uint8Array) => void): () => void;
+  sendDatagram: (peers: string[], data: Uint8Array) => void;
+  onDatagram: (handler: (peer: string, data: Uint8Array) => void) => () => void;
 }
 
 /** Côté invité : le canal vers l'hôte. */
 export interface GuestLink {
-  send(message: ToHost): void;
-  onMessage(handler: (message: ToGuest) => void): () => void;
-  onClose(handler: () => void): () => void;
-  close(): void;
-  sendDatagram(data: Uint8Array): void;
-  onDatagram(handler: (data: Uint8Array) => void): () => void;
+  send: (message: ToHost) => void;
+  onMessage: (handler: (message: ToGuest) => void) => () => void;
+  onClose: (handler: () => void) => () => void;
+  close: () => void;
+  sendDatagram: (data: Uint8Array) => void;
+  onDatagram: (handler: (data: Uint8Array) => void) => () => void;
 }

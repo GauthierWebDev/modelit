@@ -25,7 +25,9 @@ export function detectDialect(sql: string): SqlDialect {
   let best: { dialect: SqlDialect; score: number } = { dialect: "generic", score: 0 };
   for (const { dialect, patterns } of HINTS) {
     const score = patterns.filter((p) => p.test(sql)).length;
-    if (score > best.score) best = { dialect, score };
+    if (score > best.score) {
+      best = { dialect, score };
+    }
   }
   return best.dialect;
 }

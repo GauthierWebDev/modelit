@@ -6,8 +6,11 @@ import { activeDocument, resetWorkspace, useWorkspaceStore } from "../workspace"
 import { handleMcpMessage, TOOLS } from "./server";
 
 let nextId = 1;
-const call = (method: string, params?: Record<string, unknown>) =>
-  handleMcpMessage({ jsonrpc: "2.0", id: nextId++, method, ...(params ? { params } : {}) });
+const call = (method: string, params?: Record<string, unknown>) => {
+  const id = nextId;
+  nextId += 1;
+  return handleMcpMessage({ jsonrpc: "2.0", id, method, ...(params ? { params } : {}) });
+};
 const tool = async (name: string, args: Record<string, unknown> = {}) => {
   const response = await call("tools/call", { name, arguments: args });
   return response!.result as { content: { text: string }[]; isError?: boolean };
@@ -67,9 +70,9 @@ describe("serveur MCP", () => {
 
   it("notification : pas de réponse ; méthode inconnue : erreur JSON-RPC ; en-tête Mcp-Method incohérent : refusé", async () => {
     expect(await handleMcpMessage({ jsonrpc: "2.0", method: "notifications/initialized" })).toBeNull();
-    expect((await call("resources/list"))!.error?.code).toBe(-32601);
+    expect((await call("resources/list"))!.error?.code).toBe(-32_601);
     const mismatch = await handleMcpMessage({ jsonrpc: "2.0", id: 1, method: "tools/list" }, {}, "tools/call");
-    expect(mismatch!.error?.code).toBe(-32600);
+    expect(mismatch!.error?.code).toBe(-32_600);
   });
 
   it("apply_changes : crée le modèle en une seule entrée d'annulation", async () => {

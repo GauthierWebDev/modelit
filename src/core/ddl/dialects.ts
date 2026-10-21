@@ -31,7 +31,9 @@ export const targetOf = (s: Pick<DocumentSettings, "dbms" | "dbmsVersion" | "cus
 
 /** Même dialecte : l'expression ou le type d'origine peut être réémis tel quel. */
 export function sameDialect(source: SqlDialect | undefined, target: Dbms) {
-  if (!source) return false;
+  if (!source) {
+    return false;
+  }
   const family = (d: SqlDialect) => (d === "mariadb" ? "mysql" : d);
   return family(source) === family(target);
 }
@@ -52,7 +54,9 @@ export function quoteIdentifier(target: Target, name: string, caseSensitive = fa
   const plain = /^[A-Za-z_][A-Za-z0-9_]*$/.test(name);
   const folded = folding === "lower" ? name.toLowerCase() : folding === "upper" ? name.toUpperCase() : name;
   const caseLost = caseSensitive && folding !== undefined && folded !== name;
-  if (plain && !caseLost && !isReserved(target.dbms, name)) return name;
+  if (plain && !caseLost && !isReserved(target.dbms, name)) {
+    return name;
+  }
   const [open, close] = quotes;
   return `${open}${name.replaceAll(close, close + close)}${close}`;
 }
@@ -65,12 +69,18 @@ export const maxIdentifierLength = (target: Target): number => dialectOf(target)
 
 /** Raccourcit un nom trop long en gardant un suffixe stable (empreinte du nom complet). */
 export function fitName(name: string, max: number): string {
-  if (new TextEncoder().encode(name).length <= max) return name;
-  let hash = 2166136261;
-  for (const c of name) hash = Math.imul(hash ^ c.codePointAt(0)!, 16777619) >>> 0;
+  if (new TextEncoder().encode(name).length <= max) {
+    return name;
+  }
+  let hash = 2_166_136_261;
+  for (const c of name) {
+    hash = Math.imul(hash ^ c.codePointAt(0)!, 16_777_619) >>> 0;
+  }
   const suffix = `_${hash.toString(16).padStart(8, "0")}`;
   let head = name;
-  while (new TextEncoder().encode(head + suffix).length > max) head = head.slice(0, -1);
+  while (new TextEncoder().encode(head + suffix).length > max) {
+    head = head.slice(0, -1);
+  }
   return head + suffix;
 }
 
@@ -89,8 +99,12 @@ export type ActionResult =
 export function referentialAction(target: Target, event: Event, action: ReferentialAction): ActionResult {
   const actions = dialectOf(target).actions;
   const supported = actions[event];
-  if (supported.includes(action)) return { kind: "emit", sql: `ON ${event.toUpperCase()} ${action.toUpperCase()}` };
-  if (action === "no action" || actions.implicit.includes(action)) return { kind: "implicit" };
+  if (supported.includes(action)) {
+    return { kind: "emit", sql: `ON ${event.toUpperCase()} ${action.toUpperCase()}` };
+  }
+  if (action === "no action" || actions.implicit.includes(action)) {
+    return { kind: "implicit" };
+  }
   // RESTRICT → NO ACTION là où RESTRICT n'existe pas (SQL Server) : écrit explicitement.
   if (action === "restrict" && supported.includes("no action")) {
     return { kind: "degraded", sql: `ON ${event.toUpperCase()} NO ACTION`, fallback: "no action" };
@@ -121,9 +135,17 @@ export const specialFunction = (target: Target, fn: SpecialFunction): string | n
 /** Affinité SQLite d'un type déclaré (documentation SQLite, « Datatypes », §3.1). */
 export function sqliteAffinity(type: string): "INTEGER" | "TEXT" | "BLOB" | "REAL" | "NUMERIC" {
   const t = type.toUpperCase();
-  if (t.includes("INT")) return "INTEGER";
-  if (/CHAR|CLOB|TEXT/.test(t)) return "TEXT";
-  if (t.includes("BLOB") || !t.trim()) return "BLOB";
-  if (/REAL|FLOA|DOUB/.test(t)) return "REAL";
+  if (t.includes("INT")) {
+    return "INTEGER";
+  }
+  if (/CHAR|CLOB|TEXT/.test(t)) {
+    return "TEXT";
+  }
+  if (t.includes("BLOB") || !t.trim()) {
+    return "BLOB";
+  }
+  if (/REAL|FLOA|DOUB/.test(t)) {
+    return "REAL";
+  }
   return "NUMERIC";
 }

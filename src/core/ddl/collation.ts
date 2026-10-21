@@ -36,28 +36,55 @@ export function isBinaryCollation(name: string): boolean {
  */
 export function collationClass(name: string, declared?: Map<string, Record<string, string>>): CollationClass {
   const n = name.replace(/^"|"$/g, "").toLowerCase();
-  if (n === "c" || n === "posix" || n === "binary" || n === "ucs_basic" || n.endsWith("_bin") || n.endsWith("_bin2"))
+  if (n === "c" || n === "posix" || n === "binary" || n === "ucs_basic" || n.endsWith("_bin") || n.endsWith("_bin2")) {
     return "binary";
+  }
   const icu = declared?.get(n);
   if (icu && icu.deterministic === "false") {
-    if (/ks-level1/.test(icu.locale ?? "")) return "ai_ci";
-    if (/ks-level2/.test(icu.locale ?? "")) return "ci";
+    if (/ks-level1/.test(icu.locale ?? "")) {
+      return "ai_ci";
+    }
+    if (/ks-level2/.test(icu.locale ?? "")) {
+      return "ci";
+    }
   }
-  if (n === PG_COLLATIONS.ai_ci.name) return "ai_ci";
-  if (n === PG_COLLATIONS.ci.name) return "ci";
+  if (n === PG_COLLATIONS.ai_ci.name) {
+    return "ai_ci";
+  }
+  if (n === PG_COLLATIONS.ci.name) {
+    return "ci";
+  }
   // SQL Server : …_CI_AI, …_CI_AS, …_CS_AS
-  if (/_ci_ai\b/.test(n)) return "ai_ci";
-  if (/_ci_as\b/.test(n)) return "ci";
-  if (/_cs_as\b/.test(n)) return "sensitive";
+  if (/_ci_ai\b/.test(n)) {
+    return "ai_ci";
+  }
+  if (/_ci_as\b/.test(n)) {
+    return "ci";
+  }
+  if (/_cs_as\b/.test(n)) {
+    return "sensitive";
+  }
   // Oracle : BINARY_AI, BINARY_CI
-  if (n === "binary_ai") return "ai_ci";
-  if (n === "binary_ci") return "ci";
+  if (n === "binary_ai") {
+    return "ai_ci";
+  }
+  if (n === "binary_ci") {
+    return "ci";
+  }
   // SQLite : NOCASE (ASCII seulement)
-  if (n === "nocase") return "ci";
+  if (n === "nocase") {
+    return "ci";
+  }
   // MySQL / MariaDB : …_as_ci, …_ci (insensible aux accents par défaut), …_cs, …_as_cs
-  if (n.endsWith("_as_ci")) return "ci";
-  if (n.endsWith("_ci")) return "ai_ci";
-  if (n.endsWith("_cs")) return "sensitive";
+  if (n.endsWith("_as_ci")) {
+    return "ci";
+  }
+  if (n.endsWith("_ci")) {
+    return "ai_ci";
+  }
+  if (n.endsWith("_cs")) {
+    return "sensitive";
+  }
   return "other";
 }
 
@@ -85,11 +112,12 @@ export function defaultCollationClass(dialect: SqlDialect): CollationClass | und
  */
 function languageSpecific(name: string): boolean {
   const n = name.toLowerCase();
-  if (!/_ci$|_ci_a[is]\b/.test(n)) return false;
-  return (
-    !/^(utf8mb4|utf8mb3|utf8|latin1|ascii|ucs2|utf16|utf32)_(general|unicode|unicode_520|0900_ai|0900_as)_ci$/.test(
-      n,
-    ) && !/^(sql_)?latin1_general(_\d+)?_ci_a[is]$/.test(n)
+  if (!/_ci$|_ci_a[is]\b/.test(n)) {
+    return false;
+  }
+  return !(
+    /^(utf8mb4|utf8mb3|utf8|latin1|ascii|ucs2|utf16|utf32)_(general|unicode|unicode_520|0900_ai|0900_as)_ci$/.test(n) ||
+    /^(sql_)?latin1_general(_\d+)?_ci_a[is]$/.test(n)
   );
 }
 
@@ -122,13 +150,21 @@ export function translateCollation(
 }
 
 function translateClass(name: string, source: SqlDialect | undefined, target: Target): CollationResult {
-  if (source && sameFamily(source, target.dbms)) return { kind: "emit", sql: `COLLATE ${name}` };
+  if (source && sameFamily(source, target.dbms)) {
+    return { kind: "emit", sql: `COLLATE ${name}` };
+  }
   const klass = collationClass(name);
-  if (klass === "other") return { kind: "dropped" };
+  if (klass === "other") {
+    return { kind: "dropped" };
+  }
   const rules = dialectOf(target).collations;
   // Comportement par défaut des collations déterministes (PostgreSQL, Oracle, DB2, SQLite).
-  if (klass === "sensitive") return { kind: "emit", sql: rules.sensitive };
-  if (klass === "binary") return rules.binary === null ? { kind: "dropped" } : { kind: "emit", sql: rules.binary };
+  if (klass === "sensitive") {
+    return { kind: "emit", sql: rules.sensitive };
+  }
+  if (klass === "binary") {
+    return rules.binary === null ? { kind: "dropped" } : { kind: "emit", sql: rules.binary };
+  }
   // Insensible à la casse (et aux accents) : ci / ai_ci.
   return rules.insensitive(klass);
 }

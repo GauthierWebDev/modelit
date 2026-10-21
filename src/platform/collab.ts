@@ -20,8 +20,11 @@ function on(event: string, handler: (payload: Payload) => void): () => void {
   void (async () => {
     const { listen } = await import("@tauri-apps/api/event");
     const f = await listen<Payload>(event, (e) => handler(e.payload));
-    if (disposed) f();
-    else off = f;
+    if (disposed) {
+      f();
+    } else {
+      off = f;
+    }
   })();
   return () => {
     disposed = true;
@@ -32,7 +35,9 @@ function on(event: string, handler: (payload: Payload) => void): () => void {
 /** Datagrammes (vocal, O-48) : base64 entre l'interface et Rust (événements Tauri en texte). */
 const toBase64 = (bytes: Uint8Array) => {
   let text = "";
-  for (const b of bytes) text += String.fromCharCode(b);
+  for (const b of bytes) {
+    text += String.fromCharCode(b);
+  }
   return btoa(text);
 };
 const fromBase64 = (text: string) => Uint8Array.from(atob(text), (c) => c.charCodeAt(0));
@@ -53,7 +58,9 @@ export async function startHostTransport(): Promise<{ addr: string; link: HostLi
     onMessage: (handler) =>
       on("collab://host-message", ({ peer, data }) => {
         const message = parse<ToHost>(data);
-        if (message) handler(peer, message);
+        if (message) {
+          handler(peer, message);
+        }
       }),
     onClose: (handler) => on("collab://host-close", ({ peer }) => handler(peer)),
     close: (peer) => void invoke("collab_host_close", { peer }),
@@ -70,16 +77,26 @@ export async function connectGuestTransport(addr: string): Promise<GuestLink> {
   const closers = new Set<() => void>();
   const offMessage = on("collab://guest-message", ({ data }) => {
     const message = parse<ToGuest>(data);
-    if (message) for (const h of handlers) h(message);
+    if (message) {
+      for (const h of handlers) {
+        h(message);
+      }
+    }
   });
   const offClose = on("collab://guest-close", () => {
-    for (const h of closers) h();
+    for (const h of closers) {
+      h();
+    }
   });
   const datagrams = new Set<(data: Uint8Array) => void>();
   const offDatagram = on("collab://guest-datagram", ({ data }) => {
-    if (!data) return;
+    if (!data) {
+      return;
+    }
     const bytes = fromBase64(data);
-    for (const h of datagrams) h(bytes);
+    for (const h of datagrams) {
+      h(bytes);
+    }
   });
   try {
     await invoke("collab_guest_connect", { addr });
@@ -115,11 +132,14 @@ export async function connectGuestTransport(addr: string): Promise<GuestLink> {
 
 /** Liens `modelit://` reçus : au lancement de l'application, puis pendant qu'elle tourne. */
 export async function onOpenLink(handler: (url: string) => void): Promise<() => void> {
-  if (!isTauri())
+  if (!isTauri()) {
     return () => {
       // Hors de Tauri, aucun lien modelit:// : rien à désabonner.
     };
+  }
   const { getCurrent, onOpenUrl } = await import("@tauri-apps/plugin-deep-link");
-  for (const url of (await getCurrent()) ?? []) handler(url);
+  for (const url of (await getCurrent()) ?? []) {
+    handler(url);
+  }
   return onOpenUrl((urls) => urls.forEach(handler));
 }

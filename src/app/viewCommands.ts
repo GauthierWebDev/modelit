@@ -17,9 +17,13 @@ export const toolAvailable = (tool: Tool, view: ViewMode) =>
 export function showView(doc: DocumentHandle, view: ViewMode) {
   doc.view.getState().setView(view);
   const ui = useUiStore.getState();
-  if (!toolAvailable(ui.tool, view)) ui.setTool("select");
+  if (!toolAvailable(ui.tool, view)) {
+    ui.setTool("select");
+  }
 }
 
 export function chooseTool(doc: DocumentHandle, tool: Tool) {
-  if (toolAvailable(tool, doc.view.getState().view)) useUiStore.getState().setTool(tool);
+  if (toolAvailable(tool, doc.view.getState().view)) {
+    useUiStore.getState().setTool(tool);
+  }
 }

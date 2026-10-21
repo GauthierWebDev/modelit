@@ -31,24 +31,32 @@ export function QuickActions() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: refermer le menu quand l'objet visé change
   useEffect(() => setOpen(false), [owner]);
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const onPointer = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
+      if (e.key !== "Escape") {
+        return;
+      }
       e.stopPropagation();
       setOpen(false);
     };
-    window.addEventListener("pointerdown", onPointer, true);
-    window.addEventListener("keydown", onKey, true);
+    globalThis.addEventListener("pointerdown", onPointer, true);
+    globalThis.addEventListener("keydown", onKey, true);
     return () => {
-      window.removeEventListener("pointerdown", onPointer, true);
-      window.removeEventListener("keydown", onKey, true);
+      globalThis.removeEventListener("pointerdown", onPointer, true);
+      globalThis.removeEventListener("keydown", onKey, true);
     };
   }, [open]);
 
-  if (!owner || moving || tool !== "select" || readOnly) return null;
+  if (!owner || moving || tool !== "select" || readOnly) {
+    return null;
+  }
   const rect = objectRects(doc, [owner])[0];
-  if (!rect) return null;
+  if (!rect) {
+    return null;
+  }
   // Écarté du coin : la pastille d'erreur (O-15) y est posée.
   const left = (rect.x + rect.width) * viewport.zoom + viewport.x + 10;
   const top = rect.y * viewport.zoom + viewport.y - 8;

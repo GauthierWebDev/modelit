@@ -20,7 +20,9 @@ export async function openModelFile(filterName: string): Promise<OpenedFile | nu
     const { open } = await import("@tauri-apps/plugin-dialog");
     const { readTextFile } = await import("@tauri-apps/plugin-fs");
     const path = await open({ multiple: false, directory: false, filters: filters(filterName) });
-    if (typeof path !== "string") return null;
+    if (typeof path !== "string") {
+      return null;
+    }
     return { path, content: await readTextFile(path) };
   }
   return browserPickFile(`.${FILE_EXTENSION},application/json`);
@@ -32,7 +34,9 @@ export async function openTextFile(filter: { name: string; extensions: string[] 
     const { open } = await import("@tauri-apps/plugin-dialog");
     const { readTextFile } = await import("@tauri-apps/plugin-fs");
     const path = await open({ multiple: false, directory: false, filters: [filter] });
-    if (typeof path !== "string") return null;
+    if (typeof path !== "string") {
+      return null;
+    }
     return { path, content: await readTextFile(path) };
   }
   return browserPickFile(filter.extensions.map((e) => `.${e}`).join(","));
@@ -52,7 +56,9 @@ export async function saveModelFile(
     const { save } = await import("@tauri-apps/plugin-dialog");
     const { writeTextFile } = await import("@tauri-apps/plugin-fs");
     const target = path ?? (await save({ defaultPath: suggestedName, filters: filters(filterName) }));
-    if (!target) return null;
+    if (!target) {
+      return null;
+    }
     await writeTextFile(target, content);
     return target;
   }
@@ -74,7 +80,9 @@ export async function saveExportFile(
     const { save } = await import("@tauri-apps/plugin-dialog");
     const { writeFile } = await import("@tauri-apps/plugin-fs");
     const target = await save({ defaultPath: suggestedName, filters: [filter] });
-    if (!target) return null;
+    if (!target) {
+      return null;
+    }
     await writeFile(target, new Uint8Array(await data.arrayBuffer()));
     return target;
   }

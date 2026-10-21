@@ -14,7 +14,9 @@ class CaptureProcessor extends AudioWorkletProcessor {
 
   process(inputs) {
     const input = inputs[0]?.[0];
-    if (!input) return true;
+    if (!input) {
+      return true;
+    }
     let offset = 0;
     while (offset < input.length) {
       const n = Math.min(FRAME - this.filled, input.length - offset);
@@ -39,24 +41,25 @@ class CaptureProcessor extends AudioWorkletProcessor {
 class PlayerProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.capacity = 48000; // 1 s
+    this.capacity = 48_000; // 1 s
     this.buffer = new Float32Array(this.capacity);
     this.read = 0;
     this.size = 0;
     this.playing = false;
     this.start = 2880; // 60 ms
-    this.max = 11520; // 240 ms
+    this.max = 11_520; // 240 ms
     this.port.onmessage = (event) => this.push(event.data);
   }
 
   push(samples) {
-    for (let i = 0; i < samples.length; i++) {
+    // biome-ignore lint/style/useForOf: boucle du fil audio temps réel, gardée en indices
+    for (let i = 0; i < samples.length; i += 1) {
       if (this.size === this.capacity) {
         this.read = (this.read + 1) % this.capacity;
-        this.size--;
+        this.size -= 1;
       }
       this.buffer[(this.read + this.size) % this.capacity] = samples[i];
-      this.size++;
+      this.size += 1;
     }
     if (this.size > this.max) {
       const drop = this.size - this.start;
@@ -67,18 +70,22 @@ class PlayerProcessor extends AudioWorkletProcessor {
 
   process(_inputs, outputs) {
     const output = outputs[0][0];
-    if (!this.playing && this.size >= this.start) this.playing = true;
-    for (let i = 0; i < output.length; i++) {
+    if (!this.playing && this.size >= this.start) {
+      this.playing = true;
+    }
+    for (let i = 0; i < output.length; i += 1) {
       if (this.playing && this.size > 0) {
         output[i] = this.buffer[this.read];
         this.read = (this.read + 1) % this.capacity;
-        this.size--;
+        this.size -= 1;
       } else {
         output[i] = 0;
         this.playing = false;
       }
     }
-    for (let c = 1; c < outputs[0].length; c++) outputs[0][c].set(output);
+    for (let c = 1; c < outputs[0].length; c += 1) {
+      outputs[0][c].set(output);
+    }
     return true;
   }
 }

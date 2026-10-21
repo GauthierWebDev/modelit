@@ -18,10 +18,14 @@ export interface AvailableUpdate {
 }
 
 export async function checkForUpdate(): Promise<AvailableUpdate | null> {
-  if (!isTauri()) return null;
+  if (!isTauri()) {
+    return null;
+  }
   const { check } = await import("@tauri-apps/plugin-updater");
   const update = await check();
-  if (!update) return null;
+  if (!update) {
+    return null;
+  }
   return {
     version: update.version,
     currentVersion: update.currentVersion,
@@ -30,8 +34,12 @@ export async function checkForUpdate(): Promise<AvailableUpdate | null> {
       let total: number | undefined;
       let received = 0;
       await update.downloadAndInstall((event) => {
-        if (event.event === "Started") total = event.data.contentLength;
-        if (event.event === "Progress") received += event.data.chunkLength;
+        if (event.event === "Started") {
+          total = event.data.contentLength;
+        }
+        if (event.event === "Progress") {
+          received += event.data.chunkLength;
+        }
         progress(total ? Math.min(received / total, 1) : null);
       });
       const { relaunch } = await import("@tauri-apps/plugin-process");

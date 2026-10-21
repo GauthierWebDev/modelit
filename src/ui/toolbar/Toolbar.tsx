@@ -79,7 +79,9 @@ export function Toolbar({
   // Lecture seule (lecteur, reconnexion) : seul l'outil de sélection reste (O-05 §4.3).
   const readOnly = useSessionReadOnly(doc);
   useEffect(() => {
-    if (readOnly && tool !== "select") chooseTool(doc, "select");
+    if (readOnly && tool !== "select") {
+      chooseTool(doc, "select");
+    }
   }, [readOnly, tool, doc]);
   const view = useDocumentView((s) => s.view);
   const undoLabel = useDocument(selectUndoLabel);

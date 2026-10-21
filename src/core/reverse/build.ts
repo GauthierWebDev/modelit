@@ -87,9 +87,14 @@ export function reverseEngineer(
       ...t.columns.flatMap((c) => (c.check ? [c.check] : [])),
       ...t.foreignKeys,
       ...t.uniques,
-    ])
-      if (x.state) x.state.dialect = dialect;
-    if (t.primaryKeyState) t.primaryKeyState.dialect = dialect;
+    ]) {
+      if (x.state) {
+        x.state.dialect = dialect;
+      }
+    }
+    if (t.primaryKeyState) {
+      t.primaryKeyState.dialect = dialect;
+    }
   }
   const warnings = [
     ...schema.skipped.map((text) => MSG.reverseUnreadable(text)),
@@ -109,7 +114,7 @@ export function reverseEngineer(
         warnings.push(MSG.reverseUnknownTable(table.name, fk.table));
         continue;
       }
-      const targetColumns = fk.referencedColumns.length ? fk.referencedColumns : target.primaryKey;
+      const targetColumns = fk.referencedColumns.length > 0 ? fk.referencedColumns : target.primaryKey;
       if (targetColumns.length !== fk.columns.length) {
         warnings.push(MSG.reverseColumnMismatch(table.name, fk.table));
         continue;
@@ -122,8 +127,12 @@ export function reverseEngineer(
   // 2. Tables d'association (clé primaire = union de clés étrangères).
   const isJoinTable = (table: ParsedTable) => {
     const list = fks.get(table)!;
-    if (table.primaryKey.length === 0 || list.length < 2) return false;
-    if (!list.every((fk) => within(fk.columns, table.primaryKey))) return false;
+    if (table.primaryKey.length === 0 || list.length < 2) {
+      return false;
+    }
+    if (!list.every((fk) => within(fk.columns, table.primaryKey))) {
+      return false;
+    }
     return within(
       table.primaryKey,
       list.flatMap((fk) => fk.columns),
@@ -137,7 +146,9 @@ export function reverseEngineer(
   const childrenOf = new Map<ParsedTable, ParsedTable[]>();
   const inheritanceFk = new Map<ParsedTable, ResolvedFk>();
   for (const table of schema.tables) {
-    if (joinTables.has(table)) continue;
+    if (joinTables.has(table)) {
+      continue;
+    }
     const candidate = fks
       .get(table)!
       .find(
@@ -147,7 +158,9 @@ export function reverseEngineer(
           sameColumns(fk.columns, table.primaryKey) &&
           sameColumns(fk.referencedColumns, fk.target.primaryKey),
       );
-    if (!candidate) continue;
+    if (!candidate) {
+      continue;
+    }
     childrenOf.set(candidate.target, [...(childrenOf.get(candidate.target) ?? []), table]);
     inheritanceFk.set(table, candidate);
   }
@@ -168,27 +181,34 @@ export function reverseEngineer(
       type = inferComputedType(column.generated.expression, columnType, dialect);
     }
     // NUMBER sans précision alimenté par une séquence : entier 64 bits (O-39).
-    if (column.sequence && type?.kind === "decimal" && type.precision === undefined)
+    if (column.sequence && type?.kind === "decimal" && type.precision === undefined) {
       type = { kind: "integer", bits: 64 };
+    }
     // RAW(16) DEFAULT SYS_GUID() (Oracle) : identifiant universel → UUID (approximation signalée) (O-39).
     if (
       dialect === "oracle" &&
       /^raw\s*\(\s*16\s*\)$/i.test(column.type.trim()) &&
       /^sys_guid\s*\(\s*\)$/i.test(column.default?.trim() ?? "")
-    )
+    ) {
       type = { kind: "free", sql: "UUID" };
+    }
     // ENUM / SET : texte, dont les valeurs permises forment le domaine de la rubrique (O-35).
-    if (domain?.kind === "enum")
+    if (domain?.kind === "enum") {
       type = {
         kind: "text",
         encoding: "unicode",
         length: "variable",
         size: Math.max(1, ...domain.values.map((v) => v.length)),
       };
-    if (domain?.kind === "set") type = { kind: "text", encoding: "unicode", length: "large" };
+    }
+    if (domain?.kind === "set") {
+      type = { kind: "text", encoding: "unicode", length: "large" };
+    }
     // Collation effective : celle de la colonne, sinon de la table, sinon de la base (O-37).
     const collation = column.collation ?? table.collation ?? schema.defaultCollation;
-    if (type?.kind === "text" && type.encoding !== "binary" && collation) type.collation = collation;
+    if (type?.kind === "text" && type.encoding !== "binary" && collation) {
+      type.collation = collation;
+    }
     // UNIQUE sur la seule colonne, sans préfixe : propriété de la rubrique (le nom ou la méthode
     // éventuels sont gardés par un identifiant alternatif). Un UNIQUE sur préfixe n'en est pas un.
     const singleUnique = table.uniques.some(
@@ -210,15 +230,30 @@ export function reverseEngineer(
           : undefined,
     });
     // UNSIGNED (MySQL), TINYINT (SQL Server : 0 à 255) (O-41).
-    if (/\bunsigned\b/i.test(column.type) || (dialect === "sqlserver" && /^\s*tinyint\b/i.test(column.type)))
+    if (/\bunsigned\b/i.test(column.type) || (dialect === "sqlserver" && /^\s*tinyint\b/i.test(column.type))) {
       attribute.unsigned = true;
-    if (domain) attribute.domain = domain;
-    if (column.generated) attribute.generated = { ...column.generated, dialect };
-    if (column.onUpdate) attribute.onUpdate = { expression: column.onUpdate, dialect };
-    if (column.sequence) attribute.sequence = column.sequence;
-    if (column.identity) attribute.identity = column.identity;
-    if (column.sqlServerOptions?.length) attribute.sqlServerOptions = column.sqlServerOptions;
-    if (logicalName(attribute, naming) !== column.name) attribute.logicalName = column.name;
+    }
+    if (domain) {
+      attribute.domain = domain;
+    }
+    if (column.generated) {
+      attribute.generated = { ...column.generated, dialect };
+    }
+    if (column.onUpdate) {
+      attribute.onUpdate = { expression: column.onUpdate, dialect };
+    }
+    if (column.sequence) {
+      attribute.sequence = column.sequence;
+    }
+    if (column.identity) {
+      attribute.identity = column.identity;
+    }
+    if (column.sqlServerOptions?.length) {
+      attribute.sqlServerOptions = column.sqlServerOptions;
+    }
+    if (logicalName(attribute, naming) !== column.name) {
+      attribute.logicalName = column.name;
+    }
     return attribute;
   };
 
@@ -226,12 +261,16 @@ export function reverseEngineer(
   entityTables.forEach((table, index) => {
     const entity = createEntity(table.name);
     doc.layout.positions[entity.id] = { x: (index % 5) * 280, y: Math.floor(index / 5) * 220 };
-    if (logicalName(entity, naming) !== table.name) entity.logicalName = table.name;
+    if (logicalName(entity, naming) !== table.name) {
+      entity.logicalName = table.name;
+    }
     entity.comment = table.comment;
     const fkColumns = new Set(fks.get(table)!.flatMap((fk) => fk.columns.map(key)));
     const attributes = new Map<string, Attribute>();
     for (const column of table.columns) {
-      if (fkColumns.has(key(column.name))) continue;
+      if (fkColumns.has(key(column.name))) {
+        continue;
+      }
       const attribute = toAttribute(column, table);
       attributes.set(key(column.name), attribute);
       entity.attributes.push(attribute);
@@ -244,11 +283,15 @@ export function reverseEngineer(
   /** Rubrique d'origine d'une colonne de clé (en remontant les clés étrangères). */
   const originOf = (table: ParsedTable, column: string, seen = new Set<ParsedTable>()): Attribute | undefined => {
     const own = attributeOf.get(table)?.get(key(column));
-    if (own || seen.has(table)) return own;
+    if (own || seen.has(table)) {
+      return own;
+    }
     seen.add(table);
     for (const fk of fks.get(table)!) {
       const index = fk.columns.findIndex((c) => key(c) === key(column));
-      if (index >= 0) return originOf(fk.target, fk.referencedColumns[index]!, seen);
+      if (index >= 0) {
+        return originOf(fk.target, fk.referencedColumns[index]!, seen);
+      }
     }
     return undefined;
   };
@@ -265,9 +308,11 @@ export function reverseEngineer(
         referenced,
         fk.columns.length === 1,
       );
-      if (origin && column !== defaultName) names[origin.id] = column;
+      if (origin && column !== defaultName) {
+        names[origin.id] = column;
+      }
     });
-    return Object.keys(names).length ? names : undefined;
+    return Object.keys(names).length > 0 ? names : undefined;
   };
 
   /** Commentaires des colonnes de la clé étrangère (rubriques référencées → texte). */
@@ -276,9 +321,11 @@ export function reverseEngineer(
     fk.columns.forEach((column, i) => {
       const comment = table.columns.find((c) => key(c.name) === key(column))?.comment;
       const origin = originOf(fk.target, fk.referencedColumns[i]!);
-      if (comment && origin) comments[origin.id] = comment;
+      if (comment && origin) {
+        comments[origin.id] = comment;
+      }
     });
-    return Object.keys(comments).length ? comments : undefined;
+    return Object.keys(comments).length > 0 ? comments : undefined;
   };
 
   /**
@@ -292,7 +339,9 @@ export function reverseEngineer(
       .flatMap((o) => o.columns);
     const provided = new Set([...table.primaryKey, ...relativeColumns, ...before.flatMap((o) => o.columns)].map(key));
     const shared = fk.columns.filter((c) => provided.has(key(c)));
-    if (!shared.length || within(fk.columns, table.primaryKey)) return undefined;
+    if (shared.length === 0 || within(fk.columns, table.primaryKey)) {
+      return;
+    }
     warnings.push(MSG.reverseSharedColumns(table.name, shared.join(", ")));
     return shared
       .map((c) => originOf(fk.target, fk.referencedColumns[fk.columns.findIndex((x) => key(x) === key(c))]!)?.id)
@@ -302,7 +351,9 @@ export function reverseEngineer(
   const usedNames = new Set<string>();
   const associationName = (wanted: string) => {
     let name = wanted;
-    for (let i = 2; usedNames.has(key(name)); i++) name = `${wanted}_${i}`;
+    for (let i = 2; usedNames.has(key(name)); i += 1) {
+      name = `${wanted}_${i}`;
+    }
     usedNames.add(key(name));
     return name;
   };
@@ -331,11 +382,15 @@ export function reverseEngineer(
           ? ""
           : match;
       });
-    if (acceptable(fromConstraint)) return associationName(fromConstraint);
+    if (acceptable(fromConstraint)) {
+      return associationName(fromConstraint);
+    }
     // Règle b) : pas quand la colonne porte le nom de la colonne référencée (matricule, code_service) (O-39).
     if (fk.columns.length === 1 && key(fk.columns[0]!) !== key(fk.referencedColumns[0]!)) {
       const fromColumn = fk.columns[0]!.replace(/_+(id|fk)$/i, "").replace(/^(id|fk)_+/i, "");
-      if (acceptable(fromColumn)) return associationName(fromColumn);
+      if (acceptable(fromColumn)) {
+        return associationName(fromColumn);
+      }
     }
     return associationName(`${table.name}_${fk.target.name}`);
   };
@@ -359,8 +414,11 @@ export function reverseEngineer(
     // Sans le nom de la colonne référencée (isbn_originale → originale) ni celui de la table
     // (service_parent → parent) (O-39).
     for (const part of [referenced, key(table.name)]) {
-      if (role.startsWith(`${part}_`)) role = role.slice(part.length + 1);
-      else if (role.endsWith(`_${part}`)) role = role.slice(0, -part.length - 1);
+      if (role.startsWith(`${part}_`)) {
+        role = role.slice(part.length + 1);
+      } else if (role.endsWith(`_${part}`)) {
+        role = role.slice(0, -part.length - 1);
+      }
     }
     return role || column;
   };
@@ -371,14 +429,18 @@ export function reverseEngineer(
     link.onDelete = fk.onDelete;
     link.onUpdate = fk.onUpdate;
     link.foreignKeyConstraintName = fk.name;
-    if (fk.state) link.foreignKeyState = fk.state;
+    if (fk.state) {
+      link.foreignKeyState = fk.state;
+    }
   };
 
   // 5. Associations issues des tables d'association.
   const joinAssociations = new Map<ParsedTable, Association>();
   for (const table of joinTables) {
     const association = createAssociation(associationName(table.name));
-    if (logicalName(association, naming) !== table.name) association.logicalName = table.name;
+    if (logicalName(association, naming) !== table.name) {
+      association.logicalName = table.name;
+    }
     association.comment = table.comment;
     const fkColumns = new Set(fks.get(table)!.flatMap((fk) => fk.columns.map(key)));
     association.attributes = table.columns.filter((c) => !fkColumns.has(key(c.name))).map((c) => toAttribute(c, table));
@@ -407,7 +469,9 @@ export function reverseEngineer(
     const entity = entities.get(table)!;
     const before: ResolvedFk[] = [];
     for (const fk of fks.get(table)!) {
-      if (inheritanceFk.get(table) === fk) continue;
+      if (inheritanceFk.get(table) === fk) {
+        continue;
+      }
       const parent = entities.get(fk.target);
       if (!parent) {
         warnings.push(MSG.reverseReferencesAssociation(table.name, fk.target.name));
@@ -433,17 +497,22 @@ export function reverseEngineer(
       // Clé étrangère vers un identifiant alternatif (ex. oeuvre(isbn)) : rubriques référencées (O-35).
       if (!sameColumns(fk.referencedColumns, fk.target.primaryKey)) {
         const targets = fk.referencedColumns.map((c) => attributeOf.get(fk.target)?.get(key(c)));
-        if (targets.every((a): a is Attribute => Boolean(a)))
+        if (targets.every((a): a is Attribute => Boolean(a))) {
           parentLink.referencedAttributes = targets.map((a) => a.id);
+        }
       }
       const childLink = createLink(association.id, entity.id);
       childLink.cardinality = { min: notNull ? 1 : 0, max: 1 };
       childLink.relativeId = relative;
       childLink.foreignKeyHolder = true;
       applyForeignKey(childLink, fk);
-      if (fk.target === table) parentLink.role = reflexiveRole(table, fk);
+      if (fk.target === table) {
+        parentLink.role = reflexiveRole(table, fk);
+      }
       // MySQL analyse mais n'applique pas un REFERENCES écrit dans la définition de colonne.
-      if (fk.inline && (dialect === "mysql" || dialect === "mariadb")) childLink.sourceNotEnforced = true;
+      if (fk.inline && (dialect === "mysql" || dialect === "mariadb")) {
+        childLink.sourceNotEnforced = true;
+      }
       referenceLink.set(fk, parentLink);
       doc.associations.push(association);
       doc.links.push(parentLink, childLink);
@@ -462,14 +531,20 @@ export function reverseEngineer(
       link.onDelete = fk.onDelete;
       link.onUpdate = fk.onUpdate;
       link.foreignKeyConstraintName = fk.name;
-      if (fk.state) link.foreignKeyState = fk.state;
+      if (fk.state) {
+        link.foreignKeyState = fk.state;
+      }
       // Clé héritée : même nom que celle de l'entité générique, sauf renommage (adherent_id → id).
       const names: Record<Id, string> = {};
       fk.columns.forEach((column, i) => {
         const origin = originOf(fk.target, fk.referencedColumns[i]!);
-        if (origin && key(column) !== key(fk.referencedColumns[i]!)) names[origin.id] = column;
+        if (origin && key(column) !== key(fk.referencedColumns[i]!)) {
+          names[origin.id] = column;
+        }
       });
-      if (Object.keys(names).length) link.foreignKeyNames = names;
+      if (Object.keys(names).length > 0) {
+        link.foreignKeyNames = names;
+      }
       doc.inheritanceLinks.push(link);
       inheritanceLinkOf.set(child, link);
     }
@@ -478,33 +553,55 @@ export function reverseEngineer(
   // 7. Annotations de table : nom quoté, nom de clé primaire, UNIQUE, CHECK, index, ordre des colonnes.
   for (const table of schema.tables) {
     const node: Entity | Association | undefined = entities.get(table) ?? joinAssociations.get(table);
-    if (!node) continue;
+    if (!node) {
+      continue;
+    }
     node.caseSensitive = table.quoted || undefined;
     node.primaryKeyName = table.primaryKeyName;
     node.columnOrder = table.columns.map((c) => c.name);
     const start = table.autoIncrementStart ?? table.columns.find((c) => c.identityStart !== undefined)?.identityStart;
-    if (start !== undefined) node.autoIncrementStart = start;
+    if (start !== undefined) {
+      node.autoIncrementStart = start;
+    }
     const step = table.columns.find((c) => c.identityIncrement !== undefined)?.identityIncrement;
-    if (step !== undefined) node.autoIncrementStep = step;
-    if (table.triggers.length) node.triggers = table.triggers.map((t) => ({ ...t, dialect }));
-    if (table.primaryKeyState) node.primaryKeyState = table.primaryKeyState;
-    if (table.storage.length) node.storage = table.storage;
-    if (table.partition) node.partition = { sql: table.partition, dialect };
-    if (table.schema) node.schema = table.schema;
+    if (step !== undefined) {
+      node.autoIncrementStep = step;
+    }
+    if (table.triggers.length > 0) {
+      node.triggers = table.triggers.map((t) => ({ ...t, dialect }));
+    }
+    if (table.primaryKeyState) {
+      node.primaryKeyState = table.primaryKeyState;
+    }
+    if (table.storage.length > 0) {
+      node.storage = table.storage;
+    }
+    if (table.partition) {
+      node.partition = { sql: table.partition, dialect };
+    }
+    if (table.schema) {
+      node.schema = table.schema;
+    }
     // Séquences utilisées par les colonnes de la table (O-39).
     const sequences = table.columns
       .map((c) => c.sequence && schema.sequences.get(key(c.sequence.name)))
       .filter((s): s is NonNullable<typeof s> => Boolean(s))
       .map(({ ownedBy: _owned, ...definition }) => definition);
-    if (sequences.length) node.sequences = sequences;
+    if (sequences.length > 0) {
+      node.sequences = sequences;
+    }
     const memberOf = (column: string): KeyMember | undefined => {
       const attribute = attributeOf.get(table)?.get(key(column));
-      if (attribute) return { attributeId: attribute.id };
+      if (attribute) {
+        return { attributeId: attribute.id };
+      }
       for (const fk of fks.get(table)!) {
         const index = fk.columns.findIndex((c) => key(c) === key(column));
         const link = referenceLink.get(fk);
         const origin = index >= 0 ? originOf(fk.target, fk.referencedColumns[index]!) : undefined;
-        if (link && origin) return { linkId: link.id, originId: origin.id };
+        if (link && origin) {
+          return { linkId: link.id, originId: origin.id };
+        }
       }
       return undefined;
     };
@@ -524,8 +621,10 @@ export function reverseEngineer(
       // Clé composée Oracle avec une colonne facultative : les NULL y sont égaux entre eux (O-39).
       const nullable = unique.columns.some(
         (c) =>
-          !table.columns.find((col) => key(col.name) === key(c))?.notNull &&
-          !table.primaryKey.some((p) => key(p) === key(c)),
+          !(
+            table.columns.find((col) => key(col.name) === key(c))?.notNull ||
+            table.primaryKey.some((p) => key(p) === key(c))
+          ),
       );
       // SQL Server : un seul NULL admis par UNIQUE, sauf index filtré « IS NOT NULL » (NULL distincts) (O-41).
       const nulls = unique.nullsDistinct
@@ -537,7 +636,9 @@ export function reverseEngineer(
             : undefined;
       const single = unique.columns.length === 1 ? attributeOf.get(table)?.get(key(unique.columns[0]!)) : undefined;
       const plain = plainKey(unique) && !unique.method && !nulls;
-      if (single && !unique.name && plain) continue; // déjà porté par la rubrique
+      if (single && !unique.name && plain) {
+        continue; // déjà porté par la rubrique
+      }
       const list = members(unique.columns);
       // UNIQUE anonyme couvrant exactement une clé étrangère : exprimé par la cardinalité 0,1.
       if (
@@ -545,9 +646,12 @@ export function reverseEngineer(
         plainKey(unique) &&
         !nulls &&
         fks.get(table)!.some((fk) => sameColumns(fk.columns, unique.columns))
-      )
+      ) {
         continue;
-      if (!list) continue;
+      }
+      if (!list) {
+        continue;
+      }
       node.alternateKeys = [
         ...(node.alternateKeys ?? []),
         {
@@ -564,7 +668,7 @@ export function reverseEngineer(
     }
     for (const index of table.indexes) {
       const list = members(index.columns);
-      if (list)
+      if (list) {
         node.indexes = [
           ...(node.indexes ?? []),
           {
@@ -575,6 +679,7 @@ export function reverseEngineer(
             ...(index.include && members(index.include) ? { include: members(index.include)! } : {}),
           },
         ];
+      }
     }
     // CHECK : sur une seule rubrique → son domaine ; sinon contrainte de la table.
     const checks: { check: NamedExpression; column?: string }[] = [
@@ -592,8 +697,9 @@ export function reverseEngineer(
         ? [column]
         : referencedColumns(check.expression).filter((c) => table.columns.some((col) => key(col.name) === key(c)));
       const attribute = cited.length === 1 ? attributeOf.get(table)?.get(key(cited[0]!)) : undefined;
-      if (attribute && !attribute.check) attribute.check = annotation;
-      else {
+      if (attribute && !attribute.check) {
+        attribute.check = annotation;
+      } else {
         node.checks ??= [];
         node.checks.push(annotation);
       }
@@ -604,8 +710,11 @@ export function reverseEngineer(
   const used = new Set(
     schema.tables.flatMap((t) => t.columns.map((c) => c.sequence && key(c.sequence.name)).filter(Boolean)),
   );
-  for (const sequence of schema.sequences.values())
-    if (!used.has(key(sequence.name)) && !sequence.ownedBy) warnings.push(MSG.reverseUnusedSequence(sequence.name));
+  for (const sequence of schema.sequences.values()) {
+    if (!(used.has(key(sequence.name)) || sequence.ownedBy)) {
+      warnings.push(MSG.reverseUnusedSequence(sequence.name));
+    }
+  }
 
   placeBetween(doc);
   return {
@@ -624,7 +733,7 @@ export function reverseEngineer(
 
 /** UNIQUE simple : sur des colonnes entières, sans expression ni condition (O-35, O-39). */
 const plainKey = (k: ParsedKey) =>
-  !k.prefixes && !k.expression && !k.where && !k.state && !k.nullsNotDistinct && !k.nullsDistinct;
+  !(k.prefixes || k.expression || k.where || k.state || k.nullsNotDistinct || k.nullsDistinct);
 
 /** Préfixes et méthode d'un index ou d'une contrainte UNIQUE (s'ils sont présents). */
 function keyOptions(k: ParsedKey) {
@@ -655,14 +764,18 @@ function placeBetween(doc: ModelDocument) {
   const { positions } = doc.layout;
   const center = (ids: Id[]) => {
     const points = ids.map((id) => positions[id]).filter((p) => p !== undefined);
-    if (!points.length) return { x: 0, y: 0 };
+    if (points.length === 0) {
+      return { x: 0, y: 0 };
+    }
     return {
       x: points.reduce((s, p) => s + p.x, 0) / points.length + 60,
       y: points.reduce((s, p) => s + p.y, 0) / points.length + 110,
     };
   };
-  for (const a of doc.associations)
+  for (const a of doc.associations) {
     positions[a.id] = center(doc.links.filter((l) => l.associationId === a.id).map((l) => l.entityId));
-  for (const h of doc.inheritances)
+  }
+  for (const h of doc.inheritances) {
     positions[h.id] = center(doc.inheritanceLinks.filter((l) => l.inheritanceId === h.id).map((l) => l.entityId));
+  }
 }

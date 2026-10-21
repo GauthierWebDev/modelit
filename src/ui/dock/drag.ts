@@ -32,8 +32,11 @@ export const setDropDelegate = (delegate: typeof dropDelegate) => {
 
 /** Applique un dépôt à la disposition. */
 export function dropItem(item: DragItem, target: DropTarget) {
-  if (item.kind === "section") updateDock((l) => moveSection(l, item.section, target));
-  else if (target.kind !== "group") updateDock((l) => moveGroup(l, item.group, target));
+  if (item.kind === "section") {
+    updateDock((l) => moveSection(l, item.section, target));
+  } else if (target.kind !== "group") {
+    updateDock((l) => moveGroup(l, item.group, target));
+  }
 }
 
 export type { DragItem };
@@ -52,18 +55,23 @@ export const FLOAT_SIZE = { width: 320, height: 320 };
 export function targetAt(x: number, y: number, item: DragItem): DropTarget {
   const element = document.elementFromPoint(x, y);
   const group = element?.closest<HTMLElement>("[data-drop-group]")?.dataset.dropGroup;
-  if (group && item.kind === "section" && group !== item.group) return { kind: "group", group };
+  if (group && item.kind === "section" && group !== item.group) {
+    return { kind: "group", group };
+  }
   const slot = element?.closest<HTMLElement>("[data-drop-zone]");
-  if (slot)
+  if (slot) {
     return {
       kind: "zone",
       zone: slot.dataset.dropZone as "right" | "bottom",
       index: Number(slot.dataset.dropIndex ?? 0),
     };
+  }
   // Groupe entier : toute la zone d'ancrage (et ses abords) est une cible.
   if (item.kind === "group") {
     const zone = zoneTargetAt(x, y);
-    if (zone) return zone;
+    if (zone) {
+      return zone;
+    }
   }
   // Fenêtre flottante native sous le pointeur (hors de la page) : son en-tête accueille un onglet.
   const sx = x + screenOrigin.x;
@@ -73,7 +81,9 @@ export function targetAt(x: number, y: number, item: DragItem): DropTarget {
     .dock.floating.find(
       (g) => sx >= g.rect.x && sx <= g.rect.x + g.rect.width && sy >= g.rect.y && sy <= g.rect.y + 34,
     );
-  if (header && item.kind === "section" && header.id !== item.group) return { kind: "group", group: header.id };
+  if (header && item.kind === "section" && header.id !== item.group) {
+    return { kind: "group", group: header.id };
+  }
   return { kind: "float", rect: { x: x - 24 + screenOrigin.x, y: y - 14 + screenOrigin.y, ...FLOAT_SIZE } };
 }
 
@@ -87,8 +97,9 @@ const ZONE_SNAP = 48;
 export function zoneTargetAt(x: number, y: number): DropTarget | null {
   for (const zone of document.querySelectorAll<HTMLElement>("[data-dock-zone]")) {
     const r = zone.getBoundingClientRect();
-    if (x < r.left - ZONE_SNAP || x > r.right + ZONE_SNAP || y < r.top - ZONE_SNAP || y > r.bottom + ZONE_SNAP)
+    if (x < r.left - ZONE_SNAP || x > r.right + ZONE_SNAP || y < r.top - ZONE_SNAP || y > r.bottom + ZONE_SNAP) {
       continue;
+    }
     const name = zone.dataset.dockZone as "right" | "bottom";
     const groups = [
       ...zone.querySelectorAll<HTMLElement>(":scope > [data-group-id], :scope > .contents > [data-group-id]"),
@@ -122,7 +133,9 @@ export function startDrag(
   const start = { x: event.clientX, y: event.clientY };
   let moving = false;
   const move = (e: PointerEvent) => {
-    if (!moving && Math.hypot(e.clientX - start.x, e.clientY - start.y) < THRESHOLD) return;
+    if (!moving && Math.hypot(e.clientX - start.x, e.clientY - start.y) < THRESHOLD) {
+      return;
+    }
     moving = true;
     const target = targetAt(e.clientX, e.clientY, item);
     const state = useDragStore.getState();
@@ -133,21 +146,25 @@ export function startDrag(
     });
   };
   const end = (e: PointerEvent) => {
-    window.removeEventListener("pointermove", move);
-    window.removeEventListener("pointerup", end);
-    window.removeEventListener("pointercancel", cancel);
+    globalThis.removeEventListener("pointermove", move);
+    globalThis.removeEventListener("pointerup", end);
+    globalThis.removeEventListener("pointercancel", cancel);
     useDragStore.setState({ item: null, pointer: null, target: null });
-    if (!moving) onClick?.();
-    else if (dropDelegate) dropDelegate(item, { x: e.clientX + screenOrigin.x, y: e.clientY + screenOrigin.y });
-    else onDrop(targetAt(e.clientX, e.clientY, item));
+    if (!moving) {
+      onClick?.();
+    } else if (dropDelegate) {
+      dropDelegate(item, { x: e.clientX + screenOrigin.x, y: e.clientY + screenOrigin.y });
+    } else {
+      onDrop(targetAt(e.clientX, e.clientY, item));
+    }
   };
   const cancel = () => {
-    window.removeEventListener("pointermove", move);
-    window.removeEventListener("pointerup", end);
-    window.removeEventListener("pointercancel", cancel);
+    globalThis.removeEventListener("pointermove", move);
+    globalThis.removeEventListener("pointerup", end);
+    globalThis.removeEventListener("pointercancel", cancel);
     useDragStore.setState({ item: null, pointer: null, target: null });
   };
-  window.addEventListener("pointermove", move);
-  window.addEventListener("pointerup", end);
-  window.addEventListener("pointercancel", cancel);
+  globalThis.addEventListener("pointermove", move);
+  globalThis.addEventListener("pointerup", end);
+  globalThis.addEventListener("pointercancel", cancel);
 }

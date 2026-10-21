@@ -16,9 +16,13 @@ export function attributeLogicalName(
   primaryPattern: KeyPattern,
   entityName = "",
 ): string {
-  if (attribute.logicalName?.trim()) return attribute.logicalName.trim();
+  if (attribute.logicalName?.trim()) {
+    return attribute.logicalName.trim();
+  }
   const derived = logicalName(attribute, naming);
-  if (!attribute.autoKey) return derived;
+  if (!attribute.autoKey) {
+    return derived;
+  }
   return applyPattern(primaryPattern, { table: tableName, name: derived, entity: entityName }) || derived;
 }
 
@@ -33,12 +37,20 @@ export function foreignKeyDefaultName(
   referencedColumn: string,
   single: boolean,
 ): string {
-  if (!single && !usesVariable(pattern, "column")) return referencedColumn;
+  if (!(single || usesVariable(pattern, "column"))) {
+    return referencedColumn;
+  }
   return applyPattern(pattern, { table: referencedTable, column: referencedColumn }) || referencedColumn;
 }
 
 /** `base` s'il est libre, sinon `base_2`, `base_3`… (override O-13). */
 export function uniqueName(base: string, used: ReadonlySet<string>): string {
-  if (!used.has(base)) return base;
-  for (let i = 2; ; i++) if (!used.has(`${base}_${i}`)) return `${base}_${i}`;
+  if (!used.has(base)) {
+    return base;
+  }
+  for (let i = 2; ; i += 1) {
+    if (!used.has(`${base}_${i}`)) {
+      return `${base}_${i}`;
+    }
+  }
 }

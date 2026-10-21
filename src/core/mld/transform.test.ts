@@ -210,7 +210,9 @@ describe("nommage des clés (override O-13)", () => {
   const base = () => {
     const doc = model().entity("user", []).entity("post", []).association("ecrire", ["user 0,n", "post 1,1"]).build();
     doc.settings.keys = { primary: "id_<table>", foreign: "<table>_id" };
-    for (const e of doc.entities) e.attributes = [createAutoIdentifier("code <entity>", e.name)];
+    for (const e of doc.entities) {
+      e.attributes = [createAutoIdentifier("code <entity>", e.name)];
+    }
     return doc;
   };
 

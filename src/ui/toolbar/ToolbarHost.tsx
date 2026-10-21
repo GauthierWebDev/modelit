@@ -20,7 +20,11 @@ const DOCK_BAND = 44;
 /** Distance à parcourir vers le bas pour détacher la barre ancrée. */
 const DETACH_DISTANCE = 24;
 
-type Drag = { offset: { x: number; y: number }; start: { x: number; y: number }; floating: boolean };
+interface Drag {
+  offset: { x: number; y: number };
+  start: { x: number; y: number };
+  floating: boolean;
+}
 
 export function ToolbarHost() {
   const toolbar = usePreferencesStore((s) => s.dock.toolbar);
@@ -29,7 +33,9 @@ export function ToolbarHost() {
   const lastClick = useRef(0);
 
   function onGripDown(e: PointerEvent<HTMLElement>) {
-    if (e.button !== 0) return;
+    if (e.button !== 0) {
+      return;
+    }
     e.preventDefault();
     const now = Date.now();
     // Double-clic sur la poignée : ancrer / détacher.
@@ -47,7 +53,9 @@ export function ToolbarHost() {
     };
     let current: { position: { x: number; y: number } | null; overBand: boolean } | null = null;
     const move = (ev: globalThis.PointerEvent) => {
-      if (!state.floating && ev.clientY - state.start.y < DETACH_DISTANCE) return;
+      if (!state.floating && ev.clientY - state.start.y < DETACH_DISTANCE) {
+        return;
+      }
       if (!state.floating) {
         state.floating = true;
         state.offset = { x: 16, y: 16 };
@@ -59,10 +67,12 @@ export function ToolbarHost() {
       setDrag(current);
     };
     const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
+      globalThis.removeEventListener("pointermove", move);
+      globalThis.removeEventListener("pointerup", up);
       setDrag(null);
-      if (!current) return;
+      if (!current) {
+        return;
+      }
       const { position, overBand } = current;
       if (nativeWindows()) {
         // La barre devient une fenêtre native, à la même place à l'écran.
@@ -80,8 +90,8 @@ export function ToolbarHost() {
       };
       updateDock((l) => setToolbar(l, overBand ? { floating: false } : { floating: true, position: clamped }));
     };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    globalThis.addEventListener("pointermove", move);
+    globalThis.addEventListener("pointerup", up);
   }
 
   const nativeBand = useToolbarBand((s) => s.over);
@@ -105,7 +115,7 @@ export function ToolbarHost() {
             position ? { left: position.x, top: position.y } : { left: "50%", top: 56, transform: "translateX(-50%)" }
           }
         >
-          <Toolbar floating onGripDown={onGripDown} />
+          <Toolbar floating={true} onGripDown={onGripDown} />
         </div>
       ) : null}
     </>

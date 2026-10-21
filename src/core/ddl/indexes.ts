@@ -16,19 +16,22 @@ export function expressionIndex(ctx: Context, table: LogicalTable, key: LogicalK
   let items: string | null = keyColumns(ctx, table, key);
   if (key.expression) {
     const { expression, dialect } = key.expression;
-    items = !rules.expressions
-      ? null
-      : sameDialect(dialect, dbms)
+    items = rules.expressions
+      ? sameDialect(dialect, dbms)
         ? expression
         : translateGenerated(expression, dialect, {
             target: ctx.target,
             columnType: (n) => table.columns.find((c) => c.name.toLowerCase() === n.toLowerCase())?.type,
             caseSensitive,
-          });
+          })
+      : null;
     // Élément d'index : appel de fonction tel quel, autre expression entre parenthèses.
-    if (items && !sameDialect(dialect, dbms) && !/^\w+\(.*\)$/s.test(items))
+    if (items && !sameDialect(dialect, dbms) && !/^\w+\(.*\)$/s.test(items)) {
       items = /^\(.*\)$/s.test(items) ? items : `(${items})`;
-    if (items && rules.parenthesizedExpressions && !sameDialect(dialect, dbms)) items = `(${items})`;
+    }
+    if (items && rules.parenthesizedExpressions && !sameDialect(dialect, dbms)) {
+      items = `(${items})`;
+    }
     if (!items) {
       ctx.report.add("index", table.name, MSG.lossUniqueExpression(label));
       return [];
@@ -38,14 +41,16 @@ export function expressionIndex(ctx: Context, table: LogicalTable, key: LogicalK
   if (key.where) {
     const { expression, dialect } = key.where;
     const rendered = sameDialect(dialect, dbms) ? expression : renderStructured(ctx, table, expression, dialect);
-    if (!rendered || !rules.partial || (rules.partial === "case" && key.expression)) {
+    if (!(rendered && rules.partial) || (rules.partial === "case" && key.expression)) {
       ctx.report.add("index", table.name, MSG.lossUniqueWhere(label));
       return [];
     }
     // Motif CASE WHEN cond THEN col END : les clés NULL ne sont pas indexées.
-    if (rules.partial === "case")
+    if (rules.partial === "case") {
       items = key.columns.map((c) => `CASE WHEN ${rendered} THEN ${columnRef(ctx, table, c)} END`).join(", ");
-    else condition = ` WHERE ${rendered}`;
+    } else {
+      condition = ` WHERE ${rendered}`;
+    }
   }
   const index = q(ctx, constraintName(ctx, table, key.name, "AK", key.columns, true)!);
   return [`CREATE UNIQUE INDEX ${index} ON ${name}(${items})${include(ctx, table, key)}${condition};`];
@@ -68,8 +73,9 @@ export function keyIndex(ctx: Context, table: LogicalTable, index: LogicalKey, u
   const on = tableName(ctx, table);
   const name = q(ctx, constraintName(ctx, table, index.name, unique ? "AK" : "IX", index.columns, true)!);
   if (index.kind) {
-    if (rules.nativeKinds)
+    if (rules.nativeKinds) {
       return [`CREATE ${index.kind.toUpperCase()} INDEX ${name} ON ${on}(${keyColumns(ctx, table, index)});`];
+    }
     if (rules.fulltextGin && index.kind === "fulltext") {
       const text = index.columns.map((c) => `coalesce(${columnRef(ctx, table, c)}, '')`).join(" || ' ' || ");
       ctx.report.add("index", table.name, MSG.lossFulltextGin(index.name ?? label));
@@ -95,9 +101,11 @@ export function keyIndex(ctx: Context, table: LogicalTable, index: LogicalKey, u
   }
   let method = "";
   if (index.method && index.method !== "btree") {
-    if (rules.method?.accepts(index.method, unique)) method = ` USING ${index.method.toUpperCase()}`;
-    else if (!unique)
+    if (rules.method?.accepts(index.method, unique)) {
+      method = ` USING ${index.method.toUpperCase()}`;
+    } else if (!unique) {
       ctx.report.add("index", table.name, MSG.lossIndexMethod(index.name ?? label, index.method.toUpperCase()));
+    }
   }
   const using = rules.method?.position === "before" ? method : "";
   const trailing = rules.method?.position === "after" ? method : "";
@@ -108,7 +116,9 @@ export function keyIndex(ctx: Context, table: LogicalTable, index: LogicalKey, u
 
 /** INCLUDE (colonnes couvertes), là où la cible l'exprime ; ailleurs signalé (O-42). */
 export function include(ctx: Context, table: LogicalTable, key: LogicalKey): string {
-  if (!key.include?.length) return "";
+  if (!key.include?.length) {
+    return "";
+  }
   if (ctx.dialect.indexes.include) {
     return ` INCLUDE (${key.include.map((c) => columnRef(ctx, table, c)).join(", ")})`;
   }

@@ -42,13 +42,18 @@ describe("gestionnaire de session", () => {
         link: net.hostLink,
         stop: async () => undefined,
       }),
-      connect: async () => net.connect(`peer${++peers}`),
+      connect: () => {
+        peers += 1;
+        return Promise.resolve(net.connect(`peer${peers}`));
+      },
     });
   });
 
   afterEach(async () => {
     await stopSharing();
-    if (useCollabStore.getState().mode === "guest") await leaveSession();
+    if (useCollabStore.getState().mode === "guest") {
+      await leaveSession();
+    }
   });
 
   describe("côté hôte", () => {
@@ -119,11 +124,13 @@ describe("gestionnaire de session", () => {
       const seen: number[] = [];
       bob.state.subscribe((s) => {
         const x = s.presence.host?.cursor?.x;
-        if (x !== undefined && x !== seen.at(-1)) seen.push(x);
+        if (x !== undefined && x !== seen.at(-1)) {
+          seen.push(x);
+        }
       });
       vi.useFakeTimers();
       try {
-        for (let x = 1; x <= 30; x++) {
+        for (let x = 1; x <= 30; x += 1) {
           reportPresence({ view: "mcd", cursor: { x, y: 0 }, selection: [] });
           vi.advanceTimersByTime(5);
         }

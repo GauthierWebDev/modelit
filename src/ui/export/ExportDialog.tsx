@@ -24,17 +24,23 @@ export function ExportDialog() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (open) setView(doc.view.getState().view);
+    if (open) {
+      setView(doc.view.getState().view);
+    }
   }, [open, doc]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      return;
+    }
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    globalThis.addEventListener("keydown", onKey);
+    return () => globalThis.removeEventListener("keydown", onKey);
   }, [open, setOpen]);
 
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
   const format = FORMATS.find((f) => f.id === prefs.format)!;
   const transparent = format.transparent && prefs.transparent;
 
@@ -79,7 +85,7 @@ export function ExportDialog() {
     // biome-ignore lint/a11y/noStaticElementInteractions: fond de la boîte, un clic à l'extérieur la ferme
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: fond de la boîte, un clic à l'extérieur la ferme
     <div
-      data-ui-only
+      data-ui-only={true}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
       onMouseDown={() => setOpen(false)}
     >

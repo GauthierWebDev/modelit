@@ -239,13 +239,13 @@ describe("session collaborative", () => {
     for (const seed of [1, 7, 42]) {
       let state = seed;
       const random = () => {
-        state = (state * 1103515245 + 12345) % 2 ** 31;
+        state = (state * 1_103_515_245 + 12_345) % 2 ** 31;
         return state / 2 ** 31;
       };
       const pick = <T>(list: T[]): T | undefined => list[Math.floor(random() * list.length)];
       const { h, net, converged } = session();
       const actors = [h.alice, h.bob, h.claire];
-      for (let step = 0; step < 200; step++) {
+      for (let step = 0; step < 200; step += 1) {
         const actor = pick(actors)!;
         const doc = actor.store.getState().doc;
         const entity = pick(doc.entities);
@@ -254,32 +254,42 @@ describe("session collaborative", () => {
             cmd.addEntity(actor, { x: step * 10, y: 0 });
             break;
           case 1:
-            if (entity) cmd.renameNode(actor, entity.id, `E${step}`);
+            if (entity) {
+              cmd.renameNode(actor, entity.id, `E${step}`);
+            }
             break;
           case 2:
-            if (entity) cmd.deleteObjects(actor, [entity.id]);
+            if (entity) {
+              cmd.deleteObjects(actor, [entity.id]);
+            }
             break;
           case 3:
-            if (entity)
+            if (entity) {
               cmd.setAttributes(actor, entity.id, [
                 ...entity.attributes,
                 { id: `a${seed}-${step}`, name: `r${step}`, identifier: false, notNull: false, unique: false },
               ]);
+            }
             break;
           case 4:
-            if (entity) cmd.moveNodes(actor, new Map([[entity.id, { x: step, y: step }]]));
+            if (entity) {
+              cmd.moveNodes(actor, new Map([[entity.id, { x: step, y: step }]]));
+            }
             break;
           case 5:
             actor.store.getState().undo();
             break;
           case 6: {
             const other = pick(doc.entities);
-            if (entity && other && entity.id !== other.id)
+            if (entity && other && entity.id !== other.id) {
               cmd.connectNodes(actor, entity.id, other.id, { associationPosition: { x: 0, y: 0 } });
+            }
             break;
           }
         }
-        if (random() < 0.3) net.flush();
+        if (random() < 0.3) {
+          net.flush();
+        }
       }
       converged();
     }

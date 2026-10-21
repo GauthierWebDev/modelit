@@ -41,7 +41,9 @@ export function CanvasSurface({
 
   useEffect(() => {
     const svg = svgRef.current;
-    if (!svg) return;
+    if (!svg) {
+      return;
+    }
     setCanvasElement(svg);
     const observer = new ResizeObserver(([entry]) => entry && setCanvasSize(entry.contentRect));
     observer.observe(svg);
@@ -95,7 +97,9 @@ export function CanvasSurface({
         }
       }}
       onPointerMove={(e) => {
-        if (shared) reportCursor(doc, modelPoint(e));
+        if (shared) {
+          reportCursor(doc, modelPoint(e));
+        }
         if (pan.current) {
           const p = screenPoint(e);
           const { start, origin } = pan.current;

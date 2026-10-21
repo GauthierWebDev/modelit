@@ -87,7 +87,7 @@ const WORK_BUDGET = 2e7;
 const WEIGHT = { through: 150, crossing: 60, angle: 20, length: 1 };
 /** En dessous de cet angle, deux traits issus d'un même objet sont jugés confondus. */
 /** cos(20°), en littéral : pas de trigonométrie à l'exécution (voir `quantize`). */
-const COS_MIN_ANGLE = 0.9396926207859084;
+const COS_MIN_ANGLE = 0.939_692_620_785_908_4;
 
 /**
  * Reproductibilité : le moteur JavaScript peut calculer certaines fonctions (trigonométrie,
@@ -118,7 +118,9 @@ function segmentsCross(
   const d2 = orient(rx, ry, sx, sy, qx, qy);
   const d3 = orient(px, py, qx, qy, rx, ry);
   const d4 = orient(px, py, qx, qy, sx, sy);
-  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
+  if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) {
+    return true;
+  }
   if (d1 === 0 && d2 === 0) {
     const overlap = (u: number, v: number, w: number, z: number) =>
       Math.min(Math.max(u, v), Math.max(w, z)) - Math.max(Math.min(u, v), Math.min(w, z));
@@ -144,20 +146,30 @@ function segmentHitsBox(
   let t1 = 1;
   const ps = [-dx, dx, -dy, dy];
   const qs = [px - (cx - hx), cx + hx - px, py - (cy - hy), cy + hy - py];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 4; i += 1) {
     const p = ps[i]!;
     const q = qs[i]!;
     if (p === 0) {
-      if (q < 0) return false;
+      if (q < 0) {
+        return false;
+      }
       continue;
     }
     const r = q / p;
     if (p < 0) {
-      if (r > t1) return false;
-      if (r > t0) t0 = r;
+      if (r > t1) {
+        return false;
+      }
+      if (r > t0) {
+        t0 = r;
+      }
     } else {
-      if (r < t0) return false;
-      if (r < t1) t1 = r;
+      if (r < t0) {
+        return false;
+      }
+      if (r < t1) {
+        t1 = r;
+      }
     }
   }
   return t0 < t1;
@@ -169,7 +181,7 @@ function segmentHitsBox(
  * l'implémentation du tri, qui change quand le moteur JavaScript optimise le code.
  */
 function shuffle<T>(items: T[], rnd: () => number): T[] {
-  for (let i = items.length - 1; i > 0; i--) {
+  for (let i = items.length - 1; i > 0; i -= 1) {
     const j = Math.floor(rnd() * (i + 1));
     const tmp = items[i]!;
     items[i] = items[j]!;
@@ -182,11 +194,11 @@ function shuffle<T>(items: T[], rnd: () => number): T[] {
 function random(seed: number) {
   let a = seed >>> 0;
   return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
+    a = (a + 0x6d_2b_79_f5) >>> 0;
     let t = a;
     t = Math.imul(t ^ (t >>> 15), t | 1);
     t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
 }
 
@@ -259,7 +271,9 @@ class Problem {
     for (const e of edges) {
       const a = index.get(e.a);
       const b = index.get(e.b);
-      if (a === undefined || b === undefined || a === b) continue;
+      if (a === undefined || b === undefined || a === b) {
+        continue;
+      }
       const key = a < b ? `${a}:${b}` : `${b}:${a}`;
       const known = seen.get(key);
       if (known !== undefined) {
@@ -352,7 +366,11 @@ class State {
     this.rowY = new Float64Array(pb.rows);
     this.tmpW = new Float64Array(pb.cols);
     this.tmpH = new Float64Array(pb.rows);
-    if (!exact) for (let v = 0; v < pb.n; v++) this.locate(v);
+    if (!exact) {
+      for (let v = 0; v < pb.n; v += 1) {
+        this.locate(v);
+      }
+    }
   }
 
   private locate(v: number) {
@@ -378,10 +396,13 @@ class State {
   move(v: number, cell: number) {
     const w = this.nodeAt[cell]!;
     this.swap(v, cell);
-    if (this.exact) this.dirty = true;
-    else {
+    if (this.exact) {
+      this.dirty = true;
+    } else {
       this.locate(v);
-      if (w >= 0) this.locate(w);
+      if (w >= 0) {
+        this.locate(w);
+      }
     }
   }
 
@@ -389,9 +410,16 @@ class State {
   restore(cells: Int32Array) {
     this.cellOf.set(cells);
     this.nodeAt.fill(-1);
-    for (let v = 0; v < this.pb.n; v++) this.nodeAt[cells[v]!] = v;
-    if (this.exact) this.dirty = true;
-    else for (let v = 0; v < this.pb.n; v++) this.locate(v);
+    for (let v = 0; v < this.pb.n; v += 1) {
+      this.nodeAt[cells[v]!] = v;
+    }
+    if (this.exact) {
+      this.dirty = true;
+    } else {
+      for (let v = 0; v < this.pb.n; v += 1) {
+        this.locate(v);
+      }
+    }
   }
 
   /** Tailles des colonnes / lignes de la disposition courante, dans `w` et `h` (-1 : vide). */
@@ -399,20 +427,32 @@ class State {
     const { pb } = this;
     w.fill(-1);
     h.fill(-1);
-    for (let v = 0; v < pb.n; v++) {
+    for (let v = 0; v < pb.n; v += 1) {
       const c = this.cellOf[v]!;
       const col = c % pb.cols;
       const row = (c - col) / pb.cols;
-      if (pb.width[v]! > w[col]!) w[col] = pb.width[v]!;
-      if (pb.height[v]! > h[row]!) h[row] = pb.height[v]!;
+      if (pb.width[v]! > w[col]!) {
+        w[col] = pb.width[v]!;
+      }
+      if (pb.height[v]! > h[row]!) {
+        h[row] = pb.height[v]!;
+      }
     }
   }
 
   /** Les tailles des colonnes et des lignes sont-elles celles de la dernière géométrie calculée ? */
   private sameSizes(): boolean {
     this.measure(this.tmpW, this.tmpH);
-    for (let c = 0; c < this.pb.cols; c++) if (this.tmpW[c] !== this.colW[c]) return false;
-    for (let r = 0; r < this.pb.rows; r++) if (this.tmpH[r] !== this.rowH[r]) return false;
+    for (let c = 0; c < this.pb.cols; c += 1) {
+      if (this.tmpW[c] !== this.colW[c]) {
+        return false;
+      }
+    }
+    for (let r = 0; r < this.pb.rows; r += 1) {
+      if (this.tmpH[r] !== this.rowH[r]) {
+        return false;
+      }
+    }
     return true;
   }
 
@@ -433,21 +473,29 @@ class State {
 
   /** Géométrie exacte : centres MCD après ajustement des colonnes et des lignes. */
   refresh() {
-    if (!this.exact || !this.dirty) return;
+    if (!(this.exact && this.dirty)) {
+      return;
+    }
     const { pb, colW, rowH, colX, rowY } = this;
     const { origin, gapX, gapY } = pb.options;
     this.measure(colW, rowH);
     let x = origin.x;
-    for (let c = 0; c < pb.cols; c++) {
+    for (let c = 0; c < pb.cols; c += 1) {
       colX[c] = x;
-      if (colW[c]! >= 0) x += colW[c]! + gapX;
+      if (colW[c]! >= 0) {
+        x += colW[c]! + gapX;
+      }
     }
     let y = origin.y;
-    for (let r = 0; r < pb.rows; r++) {
+    for (let r = 0; r < pb.rows; r += 1) {
       rowY[r] = y;
-      if (rowH[r]! >= 0) y += rowH[r]! + gapY;
+      if (rowH[r]! >= 0) {
+        y += rowH[r]! + gapY;
+      }
     }
-    for (let v = 0; v < pb.n; v++) this.locateExact(v);
+    for (let v = 0; v < pb.n; v += 1) {
+      this.locateExact(v);
+    }
     this.dirty = false;
   }
 
@@ -464,7 +512,9 @@ class State {
       const cb = this.cellOf[b]!;
       if (ca % pb.cols === cb % pb.cols || Math.floor(ca / pb.cols) === Math.floor(cb / pb.cols)) {
         cost += WEIGHT.angle;
-        if (quality) quality.closeAngles++;
+        if (quality) {
+          quality.closeAngles += 1;
+        }
       }
     }
     return cost;
@@ -476,7 +526,9 @@ class State {
     const b = pb.eb[e]!;
     const c = pb.ea[f]!;
     const d = pb.eb[f]!;
-    if (a === c || a === d || b === c || b === d) return false;
+    if (a === c || a === d || b === c || b === d) {
+      return false;
+    }
     return segmentsCross(px[a]!, py[a]!, px[b]!, py[b]!, px[c]!, py[c]!, px[d]!, py[d]!);
   }
 
@@ -486,18 +538,24 @@ class State {
    */
   private cutsLoop(e: number, f: number): boolean {
     const { pb, px, py } = this;
-    if (!pb.double[e]) return false;
+    if (!pb.double[e]) {
+      return false;
+    }
     const a = pb.ea[e]!;
     const b = pb.eb[e]!;
     const c = pb.ea[f]!;
     const d = pb.eb[f]!;
-    if (c === a || d === a) return false;
+    if (c === a || d === a) {
+      return false;
+    }
     const cx = (px[a]! + px[b]!) / 2;
     const cy = (py[a]! + py[b]!) / 2;
     // Zone légèrement réduite : les centres (coins de la zone) restent dehors, seul un trait qui y entre compte.
     const hx = Math.abs(px[a]! - px[b]!) / 2 - 1;
     const hy = Math.abs(py[a]! - py[b]!) / 2 - 1;
-    if (hx <= 0 || hy <= 0) return false; // réflexive alignée : pénalisée par ailleurs
+    if (hx <= 0 || hy <= 0) {
+      return false; // réflexive alignée : pénalisée par ailleurs
+    }
     return segmentHitsBox(px[c]!, py[c]!, px[d]!, py[d]!, cx, cy, hx, hy);
   }
 
@@ -505,7 +563,9 @@ class State {
     const { pb, px, py } = this;
     const a = pb.ea[e]!;
     const b = pb.eb[e]!;
-    if (w === a || w === b) return false;
+    if (w === a || w === b) {
+      return false;
+    }
     return segmentHitsBox(px[a]!, py[a]!, px[b]!, py[b]!, px[w]!, py[w]!, pb.halfW[w]!, pb.halfH[w]!);
   }
 
@@ -520,8 +580,12 @@ class State {
     const wy = py[w]! - py[v]!;
     const norms = Math.sqrt((ux * ux + uy * uy) * (wx * wx + wy * wy));
     const cos = norms > 0 ? (ux * wx + uy * wy) / norms : 1;
-    if (cos <= COS_MIN_ANGLE) return 0;
-    if (quality) quality.closeAngles++;
+    if (cos <= COS_MIN_ANGLE) {
+      return 0;
+    }
+    if (quality) {
+      quality.closeAngles += 1;
+    }
     return WEIGHT.angle * ((cos - COS_MIN_ANGLE) / (1 - COS_MIN_ANGLE) + 0.2);
   }
 
@@ -531,25 +595,34 @@ class State {
     const { pb } = this;
     pb.work += (pb.m * (pb.m + 2 * pb.n)) / 2;
     let cost = 0;
-    for (let e = 0; e < pb.m; e++) cost += this.lengthTerm(e, quality);
-    for (let e = 0; e < pb.m; e++) {
-      for (let f = e + 1; f < pb.m; f++) {
+    for (let e = 0; e < pb.m; e += 1) {
+      cost += this.lengthTerm(e, quality);
+    }
+    for (let e = 0; e < pb.m; e += 1) {
+      for (let f = e + 1; f < pb.m; f += 1) {
         if (this.crosses(e, f) || this.cutsLoop(e, f) || this.cutsLoop(f, e)) {
           cost += WEIGHT.crossing;
-          if (quality) quality.crossings++;
+          if (quality) {
+            quality.crossings += 1;
+          }
         }
       }
-      for (let w = 0; w < pb.n; w++) {
+      for (let w = 0; w < pb.n; w += 1) {
         if (this.hits(e, w)) {
           cost += WEIGHT.through;
-          if (quality) quality.through++;
+          if (quality) {
+            quality.through += 1;
+          }
         }
       }
     }
-    for (let v = 0; v < pb.n; v++) {
+    for (let v = 0; v < pb.n; v += 1) {
       const list = pb.incident[v]!;
-      for (let i = 0; i < list.length; i++)
-        for (let j = i + 1; j < list.length; j++) cost += this.angleTerm(v, list[i]!, list[j]!, quality);
+      for (let i = 0; i < list.length; i += 1) {
+        for (let j = i + 1; j < list.length; j += 1) {
+          cost += this.angleTerm(v, list[i]!, list[j]!, quality);
+        }
+      }
     }
     return cost;
   }
@@ -561,49 +634,69 @@ class State {
   localCost(v: number, w: number): number {
     const { pb } = this;
     pb.work += (pb.incident[v]!.length + (w >= 0 ? pb.incident[w]!.length : 0) + 1) * (pb.m + pb.n);
-    const stamp = ++this.stamp;
+    this.stamp += 1;
+    const stamp = this.stamp;
     this.nodeMark[v] = stamp;
-    if (w >= 0) this.nodeMark[w] = stamp;
+    if (w >= 0) {
+      this.nodeMark[w] = stamp;
+    }
     let touchedCount = 0;
     let cornerCount = 0;
     const addCorner = (x: number) => {
       if (this.cornerMark[x] !== stamp) {
         this.cornerMark[x] = stamp;
-        this.corners[cornerCount++] = x;
+        this.corners[cornerCount] = x;
+        cornerCount += 1;
       }
     };
     for (const x of w >= 0 ? [v, w] : [v]) {
       addCorner(x);
       for (const e of pb.incident[x]!) {
-        if (this.edgeMark[e] === stamp) continue;
+        if (this.edgeMark[e] === stamp) {
+          continue;
+        }
         this.edgeMark[e] = stamp;
-        this.touched[touchedCount++] = e;
+        this.touched[touchedCount] = e;
+        touchedCount += 1;
         addCorner(pb.ea[e]!);
         addCorner(pb.eb[e]!);
       }
     }
     let cost = 0;
-    for (let i = 0; i < touchedCount; i++) {
+    for (let i = 0; i < touchedCount; i += 1) {
       const e = this.touched[i]!;
       cost += this.lengthTerm(e);
-      for (let f = 0; f < pb.m; f++) {
-        if (f === e || (this.edgeMark[f] === stamp && f < e)) continue;
-        if (this.crosses(e, f) || this.cutsLoop(e, f) || this.cutsLoop(f, e)) cost += WEIGHT.crossing;
+      for (let f = 0; f < pb.m; f += 1) {
+        if (f === e || (this.edgeMark[f] === stamp && f < e)) {
+          continue;
+        }
+        if (this.crosses(e, f) || this.cutsLoop(e, f) || this.cutsLoop(f, e)) {
+          cost += WEIGHT.crossing;
+        }
       }
-      for (let x = 0; x < pb.n; x++) if (this.hits(e, x)) cost += WEIGHT.through;
+      for (let x = 0; x < pb.n; x += 1) {
+        if (this.hits(e, x)) {
+          cost += WEIGHT.through;
+        }
+      }
     }
     for (const x of w >= 0 ? [v, w] : [v]) {
-      for (let e = 0; e < pb.m; e++) if (this.edgeMark[e] !== stamp && this.hits(e, x)) cost += WEIGHT.through;
+      for (let e = 0; e < pb.m; e += 1) {
+        if (this.edgeMark[e] !== stamp && this.hits(e, x)) {
+          cost += WEIGHT.through;
+        }
+      }
     }
-    for (let i = 0; i < cornerCount; i++) {
+    for (let i = 0; i < cornerCount; i += 1) {
       const x = this.corners[i]!;
       const list = pb.incident[x]!;
-      for (let a = 0; a < list.length; a++) {
-        for (let b = a + 1; b < list.length; b++) {
+      for (let a = 0; a < list.length; a += 1) {
+        for (let b = a + 1; b < list.length; b += 1) {
           const e = list[a]!;
           const f = list[b]!;
-          if (this.nodeMark[x] === stamp || this.edgeMark[e] === stamp || this.edgeMark[f] === stamp)
+          if (this.nodeMark[x] === stamp || this.edgeMark[e] === stamp || this.edgeMark[f] === stamp) {
             cost += this.angleTerm(x, e, f);
+          }
         }
       }
     }
@@ -621,11 +714,15 @@ class State {
       if (this.sameSizes()) {
         // Colonnes et lignes inchangées : seuls `v` et `w` bougent, le coût local suffit.
         this.locateExact(v);
-        if (w >= 0) this.locateExact(w);
+        if (w >= 0) {
+          this.locateExact(w);
+        }
         const after = this.localCost(v, w);
         this.swap(v, from);
         this.locateExact(v);
-        if (w >= 0) this.locateExact(w);
+        if (w >= 0) {
+          this.locateExact(w);
+        }
         return after - before;
       }
       // Sinon tout peut bouger : coût complet avant / après.
@@ -648,7 +745,7 @@ function fittedCorners(pb: Problem, cellOf: ArrayLike<number>): Point[] {
   const { origin, gapX, gapY } = pb.options;
   const colW = new Float64Array(pb.cols).fill(-1);
   const rowH = new Float64Array(pb.rows).fill(-1);
-  for (let v = 0; v < pb.n; v++) {
+  for (let v = 0; v < pb.n; v += 1) {
     const col = cellOf[v]! % pb.cols;
     const row = Math.floor(cellOf[v]! / pb.cols);
     colW[col] = Math.max(colW[col]!, pb.nodes[v]!.width);
@@ -656,15 +753,19 @@ function fittedCorners(pb: Problem, cellOf: ArrayLike<number>): Point[] {
   }
   const colX = new Float64Array(pb.cols);
   let x = origin.x;
-  for (let c = 0; c < pb.cols; c++) {
-    if (colW[c]! < 0) continue;
+  for (let c = 0; c < pb.cols; c += 1) {
+    if (colW[c]! < 0) {
+      continue;
+    }
     colX[c] = x;
     x += colW[c]! + gapX;
   }
   const rowY = new Float64Array(pb.rows);
   let y = origin.y;
-  for (let r = 0; r < pb.rows; r++) {
-    if (rowH[r]! < 0) continue;
+  for (let r = 0; r < pb.rows; r += 1) {
+    if (rowH[r]! < 0) {
+      continue;
+    }
     rowY[r] = y;
     y += rowH[r]! + gapY;
   }
@@ -685,14 +786,19 @@ function initialCells(pb: Problem, rnd: () => number, shuffled: boolean): number
   const seen = new Uint8Array(pb.n);
   const starts = pb.nodes.map((_, i) => i).sort((a, b) => pb.incident[b]!.length - pb.incident[a]!.length || a - b);
   for (const s of starts) {
-    if (seen[s]) continue;
+    if (seen[s]) {
+      continue;
+    }
     const queue = [s];
     seen[s] = 1;
-    for (let head = 0; head < queue.length; head++) {
+    // biome-ignore lint/style/useForOf: file de parcours en largeur, agrandie pendant la boucle (chemin critique du placement)
+    for (let head = 0; head < queue.length; head += 1) {
       const v = queue[head]!;
       order.push(v);
       const next = pb.incident[v]!.map((e) => pb.other(e, v)).filter((u) => !seen[u]);
-      if (shuffled) shuffle(next, rnd);
+      if (shuffled) {
+        shuffle(next, rnd);
+      }
       for (const u of next) {
         seen[u] = 1;
         queue.push(u);
@@ -723,7 +829,7 @@ function forceCells(pb: Problem, rnd: () => number): number[] {
   const n = pb.n;
   const x = new Float64Array(n);
   const y = new Float64Array(n);
-  for (let v = 0; v < n; v++) {
+  for (let v = 0; v < n; v += 1) {
     x[v] = rnd() * 2 - 1;
     y[v] = rnd() * 2 - 1;
   }
@@ -731,11 +837,11 @@ function forceCells(pb: Problem, rnd: () => number): number[] {
   const dx = new Float64Array(n);
   const dy = new Float64Array(n);
   const iterations = 300;
-  for (let it = 0; it < iterations; it++) {
+  for (let it = 0; it < iterations; it += 1) {
     dx.fill(0);
     dy.fill(0);
-    for (let u = 0; u < n; u++) {
-      for (let v = u + 1; v < n; v++) {
+    for (let u = 0; u < n; u += 1) {
+      for (let v = u + 1; v < n; v += 1) {
         const ex = x[u]! - x[v]!;
         const ey = y[u]! - y[v]!;
         const d2 = Math.max(ex * ex + ey * ey, 1e-6);
@@ -746,7 +852,7 @@ function forceCells(pb: Problem, rnd: () => number): number[] {
         dy[v] = dy[v]! - ey * f;
       }
     }
-    for (let e = 0; e < pb.m; e++) {
+    for (let e = 0; e < pb.m; e += 1) {
       const a = pb.ea[e]!;
       const b = pb.eb[e]!;
       const ex = x[a]! - x[b]!;
@@ -759,7 +865,7 @@ function forceCells(pb: Problem, rnd: () => number): number[] {
       dy[b] = dy[b]! + ey * f;
     }
     const temperature = 0.1 * (1 - it / iterations) + 0.002;
-    for (let v = 0; v < n; v++) {
+    for (let v = 0; v < n; v += 1) {
       const d = Math.max(Math.sqrt(dx[v]! * dx[v]! + dy[v]! * dy[v]!), 1e-9);
       const step = Math.min(d, temperature);
       x[v] = x[v]! + (dx[v]! / d) * step;
@@ -784,9 +890,11 @@ function forceCells(pb: Problem, rnd: () => number): number[] {
   );
   for (const v of byDegree) {
     let best = -1;
-    let bestD = Infinity;
-    for (let c = 0; c < pb.cells; c++) {
-      if (taken[c]) continue;
+    let bestD = Number.POSITIVE_INFINITY;
+    for (let c = 0; c < pb.cells; c += 1) {
+      if (taken[c]) {
+        continue;
+      }
       const dc = (c % pb.cols) - col[v]!;
       const dr = Math.floor(c / pb.cols) - row[v]!;
       const d = dc * dc + dr * dr;
@@ -806,7 +914,9 @@ function candidates(state: State, v: number, radius: number, out: number[]): num
   const { pb } = state;
   out.length = 0;
   if (!Number.isFinite(radius)) {
-    for (let c = 0; c < pb.cells; c++) out.push(c);
+    for (let c = 0; c < pb.cells; c += 1) {
+      out.push(c);
+    }
     return out;
   }
   const seen = new Set<number>();
@@ -814,8 +924,8 @@ function candidates(state: State, v: number, radius: number, out: number[]): num
   for (const c of centres) {
     const col = c % pb.cols;
     const row = Math.floor(c / pb.cols);
-    for (let r = Math.max(0, row - radius); r <= Math.min(pb.rows - 1, row + radius); r++) {
-      for (let k = Math.max(0, col - radius); k <= Math.min(pb.cols - 1, col + radius); k++) {
+    for (let r = Math.max(0, row - radius); r <= Math.min(pb.rows - 1, row + radius); r += 1) {
+      for (let k = Math.max(0, col - radius); k <= Math.min(pb.cols - 1, col + radius); k += 1) {
         const cell = r * pb.cols + k;
         if (!seen.has(cell)) {
           seen.add(cell);
@@ -832,14 +942,16 @@ function improve(state: State, rnd: () => number, radius: number, maxPasses: num
   const { pb } = state;
   const list: number[] = [];
   const order = pb.nodes.map((_, i) => i);
-  for (let pass = 0; pass < maxPasses; pass++) {
+  for (let pass = 0; pass < maxPasses; pass += 1) {
     let improved = false;
     shuffle(order, rnd);
     for (const v of order) {
       let best = -1e-9;
       let bestCell = -1;
       for (const cell of candidates(state, v, radius, list)) {
-        if (cell === state.cellOf[v]) continue;
+        if (cell === state.cellOf[v]) {
+          continue;
+        }
         const d = quantize(state.delta(v, cell));
         if (d < best) {
           best = d;
@@ -851,7 +963,9 @@ function improve(state: State, rnd: () => number, radius: number, maxPasses: num
         improved = true;
       }
     }
-    if (!improved) break;
+    if (!improved) {
+      break;
+    }
   }
 }
 
@@ -869,14 +983,16 @@ function improveCompound(state: State, rnd: () => number, radius: number, maxPas
   const cells: number[] = [];
   const near: number[] = [];
   const undo: number[] = []; // paires (objet, cellule d'origine), à rejouer à l'envers
-  for (let pass = 0; pass < maxPasses; pass++) {
+  for (let pass = 0; pass < maxPasses; pass += 1) {
     let improved = false;
     shuffle(hubs, rnd);
     for (const v of hubs) {
       let bestTotal = -1e-9;
       let bestCells: Int32Array | null = null;
       for (const cell of around(pb, state.cellOf[v]!, 2, cells).slice()) {
-        if (cell === state.cellOf[v]) continue;
+        if (cell === state.cellOf[v]) {
+          continue;
+        }
         // Variation totale = somme des variations locales de chaque étape (géométrie régulière).
         let total = quantize(state.delta(v, cell));
         undo.length = 0;
@@ -888,7 +1004,9 @@ function improveCompound(state: State, rnd: () => number, radius: number, maxPas
           let bestDelta = -1e-9;
           let bestCell = -1;
           for (const c of around(pb, idealCell(state, u), radius, near)) {
-            if (c === state.cellOf[u] || c === state.cellOf[v]) continue;
+            if (c === state.cellOf[u] || c === state.cellOf[v]) {
+              continue;
+            }
             const d = quantize(state.delta(u, c));
             if (d < bestDelta) {
               bestDelta = d;
@@ -905,14 +1023,18 @@ function improveCompound(state: State, rnd: () => number, radius: number, maxPas
           bestTotal = total;
           bestCells = Int32Array.from(state.cellOf);
         }
-        for (let k = undo.length - 2; k >= 0; k -= 2) state.move(undo[k]!, undo[k + 1]!);
+        for (let k = undo.length - 2; k >= 0; k -= 2) {
+          state.move(undo[k]!, undo[k + 1]!);
+        }
       }
       if (bestCells) {
         state.restore(bestCells);
         improved = true;
       }
     }
-    if (!improved) break;
+    if (!improved) {
+      break;
+    }
   }
 }
 
@@ -935,8 +1057,10 @@ function around(pb: Problem, cell: number, radius: number, out: number[]): numbe
   out.length = 0;
   const col = cell % pb.cols;
   const row = Math.floor(cell / pb.cols);
-  for (let r = Math.max(0, row - radius); r <= Math.min(pb.rows - 1, row + radius); r++) {
-    for (let k = Math.max(0, col - radius); k <= Math.min(pb.cols - 1, col + radius); k++) out.push(r * pb.cols + k);
+  for (let r = Math.max(0, row - radius); r <= Math.min(pb.rows - 1, row + radius); r += 1) {
+    for (let k = Math.max(0, col - radius); k <= Math.min(pb.cols - 1, col + radius); k += 1) {
+      out.push(r * pb.cols + k);
+    }
   }
   return out;
 }
@@ -956,16 +1080,17 @@ export function gridLayoutChunk(
   options: Partial<GridOptions> = {},
 ): ChunkResult {
   const opts = { ...DEFAULTS, ...options };
-  if (nodes.length === 0)
+  if (nodes.length === 0) {
     return { chunk, positions: [], cost: 0, quality: { through: 0, crossings: 0, closeAngles: 0 } };
+  }
   const pb = new Problem(nodes, edges, opts);
   const large = pb.n > LOCAL_SEARCH_ABOVE;
-  const radius = large ? RADIUS : Infinity;
+  const radius = large ? RADIUS : Number.POSITIVE_INFINITY;
   let best: { cells: Int32Array; cost: number; quality: GridQuality } | null = null;
 
-  for (let i = 0; i < RUNS_PER_CHUNK; i++) {
+  for (let i = 0; i < RUNS_PER_CHUNK; i += 1) {
     const run = chunk * RUNS_PER_CHUNK + i;
-    const rnd = random(0x5eed + run * 7919);
+    const rnd = random(0x5e_ed + run * 7919);
     // Départs alternés : par forces (déplie le graphe), puis en largeur depuis l'objet le plus relié.
     const start = run % 2 === 0 ? forceCells(pb, rnd) : initialCells(pb, rnd, run > 1);
     // 1. Recherche en géométrie régulière (coût incrémental).
@@ -982,9 +1107,13 @@ export function gridLayoutChunk(
 
     const quality: GridQuality = { through: 0, crossings: 0, closeAngles: 0 };
     const cost = quantize(exact.totalCost(quality));
-    if (!best || cost < best.cost - 1e-9) best = { cells: Int32Array.from(exact.cellOf), cost, quality };
+    if (!best || cost < best.cost - 1e-9) {
+      best = { cells: Int32Array.from(exact.cellOf), cost, quality };
+    }
     // Disposition sans défaut, ou budget du lot épuisé : on garde la meilleure trouvée.
-    if (perfect(quality) || pb.work > WORK_BUDGET) break;
+    if (perfect(quality) || pb.work > WORK_BUDGET) {
+      break;
+    }
   }
 
   const corners = fittedCorners(pb, best!.cells);
@@ -1003,22 +1132,31 @@ export function decidedChunk(results: ChunkResult[]): ChunkResult | undefined {
   const known = new Set(results.map((r) => r.chunk));
   const perfectOnes = results.filter((r) => perfect(r.quality)).sort((a, b) => a.chunk - b.chunk);
   const first = perfectOnes[0];
-  if (!first) return undefined;
-  for (let k = 0; k < first.chunk; k++) if (!known.has(k)) return undefined;
+  if (!first) {
+    return undefined;
+  }
+  for (let k = 0; k < first.chunk; k += 1) {
+    if (!known.has(k)) {
+      return undefined;
+    }
+  }
   return first;
 }
 
 /** Choix final : premier lot parfait par numéro, sinon coût le plus faible puis numéro (déterministe). */
 export function bestChunk(results: ChunkResult[]): GridLayoutResult {
   const best = decidedChunk(results) ?? [...results].sort((a, b) => a.cost - b.cost || a.chunk - b.chunk)[0];
-  if (!best) return { positions: new Map(), quality: { through: 0, crossings: 0, closeAngles: 0 } };
+  if (!best) {
+    return { positions: new Map(), quality: { through: 0, crossings: 0, closeAngles: 0 } };
+  }
   return { positions: new Map(best.positions), quality: best.quality };
 }
 
 /** Tous les lots, l'un après l'autre jusqu'à décision (tests, ou absence de Web Worker). */
 export function gridLayout(nodes: GridNode[], edges: GridEdge[], options: Partial<GridOptions> = {}): GridLayoutResult {
   const results: ChunkResult[] = [];
-  for (let chunk = 0; chunk < LAYOUT_CHUNKS && !decidedChunk(results); chunk++)
+  for (let chunk = 0; chunk < LAYOUT_CHUNKS && !decidedChunk(results); chunk += 1) {
     results.push(gridLayoutChunk(nodes, edges, chunk, options));
+  }
   return bestChunk(results);
 }

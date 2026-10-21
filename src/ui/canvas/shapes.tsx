@@ -57,7 +57,9 @@ export function ErrorBadge({
   layer?: ModelLayer;
 }) {
   // Rouge : au moins une erreur ; ambre : avertissements seulement (O-36).
-  if (!issues?.length) return null;
+  if (!issues?.length) {
+    return null;
+  }
   const error = issues.some((i) => i.severity === "error");
   const text = issues
     .map((i) => `${t(i.severity === "error" ? "common.error" : "common.warning")} : ${issueMessage(i, layer)}`)

@@ -16,14 +16,18 @@ export const useIsSessionTab = (doc: DocumentHandle) =>
  */
 export function usePresenceReporting(doc: DocumentHandle, active: boolean) {
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      return;
+    }
     const send = () => {
       const { view, selection } = doc.view.getState();
       reportPresence({ view, selection, cursor: cursor.get(doc.id) ?? null });
     };
     send();
     return doc.view.subscribe((s, p) => {
-      if (s.view !== p.view || s.selection !== p.selection) send();
+      if (s.view !== p.view || s.selection !== p.selection) {
+        send();
+      }
     });
   }, [doc, active]);
 }
@@ -49,7 +53,7 @@ export function RemoteCursors({ viewport }: { viewport: Viewport }) {
   // Rafraîchissement régulier : un curseur immobile depuis 30 s disparaît.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 5_000);
+    const timer = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(timer);
   }, []);
 
@@ -62,8 +66,9 @@ export function RemoteCursors({ viewport }: { viewport: Viewport }) {
           !state?.cursor ||
           state.view !== view ||
           Math.max(now, Date.now()) - state.movedAt > CURSOR_IDLE
-        )
+        ) {
           return null;
+        }
         const x = state.cursor.x * viewport.zoom + viewport.x;
         const y = state.cursor.y * viewport.zoom + viewport.y;
         return (

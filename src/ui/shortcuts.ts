@@ -43,9 +43,13 @@ const isEditable = (target: EventTarget | null) =>
 export function useShortcuts() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === ",") commaCode = e.code;
+      if (e.key === ",") {
+        commaCode = e.code;
+      }
       // Boîte modale ouverte : les raccourcis du schéma et des fichiers sont suspendus.
-      if (document.querySelector('[aria-modal="true"]')) return;
+      if (document.querySelector('[aria-modal="true"]')) {
+        return;
+      }
       const mod = isMac ? e.metaKey : e.ctrlKey;
       const key = e.key.toLowerCase();
       const doc = activeDocument();
@@ -111,12 +115,17 @@ export function useShortcuts() {
         return;
       }
 
-      if (isEditable(e.target)) return;
+      if (isEditable(e.target)) {
+        return;
+      }
       if (key === "delete" || key === "backspace") {
         e.preventDefault();
         // Un point de cassure sélectionné est supprimé seul, pas son lien (override O-10).
-        if (view.activeBend) removeBend(doc, view.activeBend.linkId, view.activeBend.index);
-        else deleteObjects(doc, view.selection);
+        if (view.activeBend) {
+          removeBend(doc, view.activeBend.linkId, view.activeBend.index);
+        } else {
+          deleteObjects(doc, view.selection);
+        }
       } else if (key === "escape") {
         ui.setTool("select");
         view.select([]);
@@ -140,12 +149,12 @@ export function useShortcuts() {
     // Relâcher les flèches (ou quitter la fenêtre) clôt le déplacement : une entrée d'historique.
     const onKeyUp = (e: KeyboardEvent) => ARROWS[e.key.toLowerCase()] && endNudge(activeDocument());
     const onBlur = () => endNudge(activeDocument());
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("keyup", onKeyUp);
+    globalThis.addEventListener("keydown", onKeyDown);
+    globalThis.addEventListener("keyup", onKeyUp);
     window.addEventListener("blur", onBlur);
     return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("keyup", onKeyUp);
+      globalThis.removeEventListener("keydown", onKeyDown);
+      globalThis.removeEventListener("keyup", onKeyUp);
       window.removeEventListener("blur", onBlur);
     };
   }, []);

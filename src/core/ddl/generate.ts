@@ -50,8 +50,9 @@ export interface SqlTarget extends Target {}
  * Les conversions fines du script (domaines, non-signés…) n'y figurent pas.
  */
 export function displayedSqlType(column: Pick<LogicalColumn, "type" | "sourceType">, target: Target): string | null {
-  if (column.sourceType && sameDialect(column.sourceType.dialect, target.dbms) && column.type?.kind !== "counter")
+  if (column.sourceType && sameDialect(column.sourceType.dialect, target.dbms) && column.type?.kind !== "counter") {
     return column.sourceType.sql;
+  }
   return column.type ? sqlType(column.type, target.dbms, target.version, target.custom?.types) : null;
 }
 
@@ -77,7 +78,9 @@ export function planOrder(
   while (order.length < tables.length) {
     const remaining = tables.filter((t) => !created.has(t));
     const next = remaining.find((t) => pending(t).length === 0) ?? remaining[0]!;
-    for (const fk of pending(next)) deferred.add(fk);
+    for (const fk of pending(next)) {
+      deferred.add(fk);
+    }
     created.add(next);
     order.push(next);
   }
@@ -93,27 +96,40 @@ function script(ctx: Context, model: LogicalModel): string {
   countSequenceUsers(ctx, tables);
   const alterAll = ctx.options.foreignKeysInAlter;
   const canAlter = supportsAlterForeignKey(ctx.target);
-  if (alterAll && !canAlter) ctx.report.add("option", "", MSG.lossAlterUnsupported());
+  if (alterAll && !canAlter) {
+    ctx.report.add("option", "", MSG.lossAlterUnsupported());
+  }
   const { order, deferred } = planOrder(tables, alterAll && canAlter);
   // SQLite accepte les références vers des tables créées plus loin : tout reste en ligne.
-  if (!canAlter) deferred.clear();
+  if (!canAlter) {
+    deferred.clear();
+  }
   const graph = ctx.dialect.constraints.singleCascadePath ? new CascadeGraph() : null;
 
   const statements = order.map((t) => createTable(ctx, tables, t, deferred, graph));
   for (const table of order) {
     for (const fk of table.foreignKeys) {
-      if (!deferred.has(fk)) continue;
+      if (!deferred.has(fk)) {
+        continue;
+      }
       const where = placement(ctx, table, "foreign", foreignKeyLabel(fk), fk.state);
       const alter = `ALTER TABLE ${tableName(ctx, table)} ADD ${foreignKey(ctx, tables, table, fk, graph)}`;
-      if (where === "comment") statements.push(`-- ${alter}; -- ${MSG.disabledComment(fk.state?.dialect)}`);
-      else statements.push(`${alter}${where === "after" ? notValidatedSuffix(ctx) : ""};`);
+      if (where === "comment") {
+        statements.push(`-- ${alter}; -- ${MSG.disabledComment(fk.state?.dialect)}`);
+      } else {
+        statements.push(`${alter}${where === "after" ? notValidatedSuffix(ctx) : ""};`);
+      }
     }
   }
   // Clauses de stockage : une ligne du rapport pour toutes les tables concernées (O-39).
   const storage = [...new Set(order.flatMap((t) => t.storage ?? []))];
-  if (storage.length)
-    for (const table of order)
-      if (table.storage?.length) ctx.report.add("physical", table.name, MSG.lossStorage(storage.join(", ")));
+  if (storage.length > 0) {
+    for (const table of order) {
+      if (table.storage?.length) {
+        ctx.report.add("physical", table.name, MSG.lossStorage(storage.join(", ")));
+      }
+    }
+  }
   const indexes = ctx.options.indexes
     ? order.flatMap((table) => table.indexes.flatMap((index) => keyIndex(ctx, table, index, false)))
     : [];
@@ -129,13 +145,17 @@ function header(target: Target, losses: Loss[]): string {
   const label = `${DBMS_LIST.find((d) => d.id === target.dbms)?.label ?? target.dbms}${target.version && target.version !== GENERIC_VERSION ? ` ${target.version}` : ""}`;
   // SGBD personnalisé : toujours annoncé, pour qu'on sache que ce n'est plus le SGBD tel quel (O-59).
   const custom = target.custom ? [`-- ${MSG.customDbmsHeader(target.custom.name, label)}`, ""] : [];
-  if (!losses.length) return custom.length ? [...custom, ""].join("\n") : "";
+  if (losses.length === 0) {
+    return custom.length > 0 ? [...custom, ""].join("\n") : "";
+  }
   const lines = groupLosses(losses).map((g) => `--   • ${formatLossGroup(g)}`);
   return [...custom, `-- ${MSG.lossHeader(target.custom?.name ?? label, losses.length)}`, ...lines, "", ""].join("\n");
 }
 
 export function generateDdl(model: LogicalModel, target: SqlTarget, options: Partial<DdlOptions> = {}): DdlResult {
-  if (hasErrors(model)) return { ok: false, error: MSG.sqlBlocked };
+  if (hasErrors(model)) {
+    return { ok: false, error: MSG.sqlBlocked };
+  }
   const ctx = createContext(target, { ...DEFAULT_OPTIONS, ...options });
   const body = script(ctx, model);
   const losses = ctx.report.entries;

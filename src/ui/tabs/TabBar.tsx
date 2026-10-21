@@ -24,7 +24,9 @@ export function TabBar() {
   const drag = useRef<{ id: string; startX: number; moved: boolean } | null>(null);
 
   function onPointerDown(e: PointerEvent<HTMLElement>, id: string) {
-    if (e.button !== 0 || (e.target as Element).closest("[data-tab-close]")) return;
+    if (e.button !== 0 || (e.target as Element).closest("[data-tab-close]")) {
+      return;
+    }
     activate(id);
     e.currentTarget.setPointerCapture(e.pointerId);
     drag.current = { id, startX: e.clientX, moved: false };
@@ -32,14 +34,22 @@ export function TabBar() {
 
   function onPointerMove(e: PointerEvent<HTMLElement>) {
     const current = drag.current;
-    if (!current) return;
-    if (!current.moved && Math.abs(e.clientX - current.startX) < DRAG_THRESHOLD) return;
+    if (!current) {
+      return;
+    }
+    if (!current.moved && Math.abs(e.clientX - current.startX) < DRAG_THRESHOLD) {
+      return;
+    }
     current.moved = true;
     const over = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-tab-index]");
-    if (!over) return;
+    if (!over) {
+      return;
+    }
     const target = Number(over.dataset.tabIndex);
     const from = useWorkspaceStore.getState().documents.findIndex((d) => d.id === current.id);
-    if (target !== from) moveTab(current.id, target);
+    if (target !== from) {
+      moveTab(current.id, target);
+    }
   }
 
   return (
@@ -98,7 +108,9 @@ function Tab({
   const shared = useCollabStore((s) => s.tabId === doc.id && (s.mode === "host" || s.mode === "guest"));
 
   useEffect(() => {
-    if (active) ref.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    if (active) {
+      ref.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
   }, [active]);
 
   return (

@@ -20,16 +20,22 @@ export function documentName(
   untitled = useWorkspaceStore.getState().untitled,
   titles = useWorkspaceStore.getState().titles,
 ): string {
-  if (titles[doc.id]) return titles[doc.id]!;
+  if (titles[doc.id]) {
+    return titles[doc.id]!;
+  }
   const path = doc.store.getState().filePath;
-  if (path) return fileName(path);
+  if (path) {
+    return fileName(path);
+  }
   const n = untitled[doc.id] ?? 1;
   return n === 1 ? t("app.untitled") : t("app.untitledN", { n });
 }
 
 // biome-ignore lint/suspicious/useAwait: renvoie toujours une promesse, même quand la réponse est immédiate
 export async function confirmLoseChanges(doc: DocumentHandle): Promise<boolean> {
-  if (!selectIsDirty(doc.store.getState())) return true;
+  if (!selectIsDirty(doc.store.getState())) {
+    return true;
+  }
   return confirmDialog({
     title: t("file.unsavedTitle"),
     message: t("file.unsaved", { name: documentName(doc) }),
@@ -45,9 +51,13 @@ export async function confirmLoseChanges(doc: DocumentHandle): Promise<boolean> 
  */
 export async function confirmLoseAllChanges(): Promise<boolean> {
   for (const doc of useWorkspaceStore.getState().documents) {
-    if (!selectIsDirty(doc.store.getState())) continue;
+    if (!selectIsDirty(doc.store.getState())) {
+      continue;
+    }
     activate(doc.id);
-    if (!(await confirmLoseChanges(doc))) return false;
+    if (!(await confirmLoseChanges(doc))) {
+      return false;
+    }
   }
   return true;
 }
@@ -64,9 +74,13 @@ export function newTab() {
 export async function openDocument() {
   try {
     const file = await openModelFile(t("file.modelFilter"));
-    if (!file) return;
+    if (!file) {
+      return;
+    }
     const already = findByPath(file.path);
-    if (already) return activate(already.id);
+    if (already) {
+      return activate(already.id);
+    }
     const { doc: model, warnings } = deserializeModel(file.content);
     openInTab((doc) => doc.store.getState().load(model, file.path));
     await showWarnings(warnings);
@@ -84,7 +98,9 @@ export async function saveDocument(doc: DocumentHandle, saveAs = false) {
       `${t("file.defaultName")}.${FILE_EXTENSION}`,
       t("file.modelFilter"),
     );
-    if (!path) return;
+    if (!path) {
+      return;
+    }
     markSaved(path);
     syncUntitled(doc);
     useUiStore.getState().notify({ kind: "info", text: t("file.saved", { file: fileName(path) }) });
@@ -95,6 +111,8 @@ export async function saveDocument(doc: DocumentHandle, saveAs = false) {
 
 /** Ferme l'onglet du document, après confirmation s'il est modifié (override O-44). */
 export async function closeDocument(doc: DocumentHandle) {
-  if (!(await confirmLoseChanges(doc))) return;
+  if (!(await confirmLoseChanges(doc))) {
+    return;
+  }
   closeTab(doc.id);
 }

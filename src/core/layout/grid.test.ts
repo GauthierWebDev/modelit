@@ -128,7 +128,7 @@ describe("placement sur grille (override O-30)", { timeout: 30_000 }, () => {
     let crossings = 0;
     let total = 0;
     let worst = 0;
-    for (let seed = 1; seed <= 20; seed++) {
+    for (let seed = 1; seed <= 20; seed += 1) {
       const { nodes, edges } = randomModel(seed);
       const { positions, quality, wall: elapsed } = layout(nodes, edges);
       total += elapsed;
@@ -147,13 +147,13 @@ describe("placement sur grille (override O-30)", { timeout: 30_000 }, () => {
 function randomModel(seed: number) {
   let state = seed;
   const r = () => {
-    state = (state * 1103515245 + 12345) % 2147483648;
-    return state / 2147483648;
+    state = (state * 1_103_515_245 + 12_345) % 2_147_483_648;
+    return state / 2_147_483_648;
   };
   const k = 5 + Math.floor(r() * 8);
   const nodes: GridNode[] = [];
   const edges: GridEdge[] = [];
-  for (let i = 0; i < k; i++)
+  for (let i = 0; i < k; i += 1) {
     nodes.push({
       id: `e${i}`,
       width: 330 + r() * 240,
@@ -161,19 +161,27 @@ function randomModel(seed: number) {
       mcdWidth: 110 + r() * 30,
       mcdHeight: 60 + r() * 90,
     });
+  }
   const associations = Math.round(k * (1 + r() * 0.8));
-  for (let j = 0; j < associations; j++) {
+  for (let j = 0; j < associations; j += 1) {
     const id = `a${j}`;
     nodes.push({ id, width: 110 + r() * 60, height: 36 });
     const a = Math.floor(r() * k);
     let b = Math.floor(r() * k);
     const kind = r();
-    if (kind < 0.1) b = a;
-    else while (b === a) b = Math.floor(r() * k);
+    if (kind < 0.1) {
+      b = a;
+    } else {
+      while (b === a) {
+        b = Math.floor(r() * k);
+      }
+    }
     edges.push({ a: id, b: `e${a}` }, { a: id, b: `e${b}` });
     if (kind > 0.9) {
       let c = Math.floor(r() * k);
-      while (c === a || c === b) c = Math.floor(r() * k);
+      while (c === a || c === b) {
+        c = Math.floor(r() * k);
+      }
       edges.push({ a: id, b: `e${c}` });
     }
   }

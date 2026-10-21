@@ -22,7 +22,7 @@ export function memoryNetwork() {
   let toLose = 0;
   const delivered = () => {
     if (toLose > 0) {
-      toLose--;
+      toLose -= 1;
       return false;
     }
     return true;
@@ -33,7 +33,11 @@ export function memoryNetwork() {
     send: (peer, m) =>
       queue.push(() => {
         const g = guests.get(peer);
-        if (g?.open) for (const h of g.handlers) h(clone(m));
+        if (g?.open) {
+          for (const h of g.handlers) {
+            h(clone(m));
+          }
+        }
       }),
     onMessage: (h) => {
       hostHandlers.add(h);
@@ -45,19 +49,29 @@ export function memoryNetwork() {
     },
     close: (peer) => {
       const g = guests.get(peer);
-      if (!g?.open) return;
+      if (!g?.open) {
+        return;
+      }
       queue.push(() => {
         g.open = false;
-        for (const h of g.close) h();
+        for (const h of g.close) {
+          h();
+        }
       });
     },
     sendDatagram: (peers, data) => {
       for (const peer of peers) {
-        if (!delivered()) continue;
+        if (!delivered()) {
+          continue;
+        }
         const copy = data.slice();
         queue.push(() => {
           const g = guests.get(peer);
-          if (g?.open) for (const h of g.datagrams) h(copy);
+          if (g?.open) {
+            for (const h of g.datagrams) {
+              h(copy);
+            }
+          }
         });
       }
     },
@@ -77,7 +91,11 @@ export function memoryNetwork() {
     return {
       send: (m) =>
         queue.push(() => {
-          if (g.open) for (const h of hostHandlers) h(peer, clone(m));
+          if (g.open) {
+            for (const h of hostHandlers) {
+              h(peer, clone(m));
+            }
+          }
         }),
       onMessage: (h) => {
         g.handlers.add(h);
@@ -89,13 +107,21 @@ export function memoryNetwork() {
       },
       close: () => {
         g.open = false;
-        for (const h of hostClose) h(peer);
+        for (const h of hostClose) {
+          h(peer);
+        }
       },
       sendDatagram: (data) => {
-        if (!delivered()) return;
+        if (!delivered()) {
+          return;
+        }
         const copy = data.slice();
         queue.push(() => {
-          if (g.open) for (const h of hostDatagrams) h(peer, copy);
+          if (g.open) {
+            for (const h of hostDatagrams) {
+              h(peer, copy);
+            }
+          }
         });
       },
       onDatagram: (h) => {
@@ -105,16 +131,20 @@ export function memoryNetwork() {
     };
   };
   const flush = () => {
-    while (queue.length) queue.shift()!();
+    while (queue.length > 0) {
+      queue.shift()!();
+    }
   };
   /** Livre tout, y compris ce qu'envoient les traitements asynchrones (vérification du mot de passe). */
   const settle = async () => {
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 50; i += 1) {
       flush();
       await new Promise((r) => setTimeout(r, 0));
-      if (!queue.length) {
+      if (queue.length === 0) {
         await new Promise((r) => setTimeout(r, 20));
-        if (!queue.length) return;
+        if (queue.length === 0) {
+          return;
+        }
       }
     }
   };

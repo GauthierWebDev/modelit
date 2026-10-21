@@ -38,7 +38,9 @@ import { fitToWindow } from "./viewport";
 export async function autoLayoutTables(handle: DocumentHandle) {
   let doc = handle.store.getState().doc;
   let nodes = diagramNodes(doc);
-  if (nodes.length === 0) return;
+  if (nodes.length === 0) {
+    return;
+  }
   const display = doc.settings.display;
   const mpd = new Map(tableLayouts(logicalModelOf(doc), doc, "mpd").map((t) => [t.sourceId, t]));
   const placed = await computeLayout(
@@ -58,7 +60,9 @@ export async function autoLayoutTables(handle: DocumentHandle) {
   // Repartir du document courant ; s'il a changé d'objets pendant le calcul, résultat abandonné.
   doc = handle.store.getState().doc;
   nodes = diagramNodes(doc);
-  if (nodes.length !== placed.size || nodes.some((n) => !placed.has(n.id))) return;
+  if (nodes.length !== placed.size || nodes.some((n) => !placed.has(n.id))) {
+    return;
+  }
 
   // Alignement sur la grille sans risque de chevauchement (décalage ≤ demi-pas, très inférieur aux écarts).
   const grid = doc.settings.grid.enabled && doc.settings.grid.size <= 20 ? doc.settings.grid.size : null;
@@ -78,7 +82,9 @@ export async function autoLayoutTables(handle: DocumentHandle) {
     if (reflexive) {
       // Seconde patte : contourne l'entité et l'association ; la première reste droite.
       if (link.id !== legs[1]!.id) {
-        if (bendsOf(doc.layout, link.id).length) bends.set(link.id, []);
+        if (bendsOf(doc.layout, link.id).length > 0) {
+          bends.set(link.id, []);
+        }
         continue;
       }
       const obstacles = [...positions.keys()].filter((id) => id !== link.entityId && id !== sourceId).map(mcdRect);
@@ -90,7 +96,9 @@ export async function autoLayoutTables(handle: DocumentHandle) {
       continue;
     }
     const linkBends = bendsOf(doc.layout, link.id);
-    if (linkBends.length === 0) continue;
+    if (linkBends.length === 0) {
+      continue;
+    }
     const node = (id: Id) => positionOf(doc.layout, id);
     const delta = (id: Id) => ({ x: positions.get(id)!.x - node(id).x, y: positions.get(id)!.y - node(id).y });
     const dE = delta(link.entityId);
@@ -156,7 +164,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 
 /** Workers arrêtés et oubliés : le prochain placement en recrée. */
 function resetPool() {
-  for (const worker of pool.splice(0)) worker.terminate();
+  for (const worker of pool.splice(0)) {
+    worker.terminate();
+  }
 }
 
 /**
@@ -166,7 +176,9 @@ function resetPool() {
  */
 async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<Map<string, Point>> {
   const workerCount = Math.max(1, Math.min(LAYOUT_CHUNKS, (navigator.hardwareConcurrency || 2) - 1));
-  while (pool.length < workerCount) pool.push(newWorker());
+  while (pool.length < workerCount) {
+    pool.push(newWorker());
+  }
   const workers = pool.slice(0, workerCount);
   const busy = new Set<Worker>();
   const results: ChunkResult[] = [];
@@ -176,16 +188,24 @@ async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<M
       let running = workers.length;
       const lane = async (worker: Worker) => {
         while (next < LAYOUT_CHUNKS) {
-          const chunk = next++;
+          const chunk = next;
+          next += 1;
           busy.add(worker);
           results.push(await runChunk(worker, nodes, edges, chunk));
           busy.delete(worker);
           // Décision certaine : inutile d'attendre les lots en cours ailleurs.
-          if (decidedChunk(results)) return resolve();
+          if (decidedChunk(results)) {
+            return resolve();
+          }
         }
-        if (--running === 0) resolve();
+        running -= 1;
+        if (running === 0) {
+          resolve();
+        }
       };
-      for (const worker of workers) lane(worker).catch(reject);
+      for (const worker of workers) {
+        lane(worker).catch(reject);
+      }
     });
   } finally {
     // Workers encore occupés (lots abandonnés, ou erreur) : arrêtés et remplacés.

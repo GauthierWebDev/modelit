@@ -37,7 +37,9 @@ export function versionOptions(dbms: Dbms): DbmsVersion[] {
 
 /** Version valide pour ce SGBD, sinon la plus récente. */
 export function resolveVersion(dbms: Dbms, version: string | undefined): string {
-  if (version === GENERIC_VERSION) return version;
+  if (version === GENERIC_VERSION) {
+    return version;
+  }
   return DBMS_VERSIONS[dbms].some((v) => v.id === version) ? version! : latestVersion(dbms);
 }
 

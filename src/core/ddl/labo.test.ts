@@ -27,7 +27,9 @@ function reverse(sql = SOURCE) {
 
 function generate(doc: ModelDocument, dbms: Dbms, version?: string, options: Partial<DdlOptions> = {}) {
   const result = generateDdl(toLogicalModel(doc), { dbms, version }, options);
-  if (!result.ok) throw new Error(result.error);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
   return result;
 }
 
@@ -105,7 +107,9 @@ function sqliteIntrospect(sql: string) {
       };
     });
     const groups = new Map<unknown, typeof fks>();
-    for (const f of fks) groups.set(f.id, [...(groups.get(f.id) ?? []), f]);
+    for (const f of fks) {
+      groups.set(f.id, [...(groups.get(f.id) ?? []), f]);
+    }
     const groupedFks = [...groups.values()].map((group) => ({
       table: group[0]!.table,
       from: group.map((f) => f.from),
@@ -146,18 +150,22 @@ async function pgProblems(sql: string): Promise<string[]> {
   const created: string[] = [];
   for (const statement of statements(sql)) {
     const create = /^CREATE TABLE ("?)(\w+)\1\(/i.exec(statement);
-    if (!create) continue;
+    if (!create) {
+      continue;
+    }
     for (const [, ref] of statement.matchAll(/REFERENCES "?(\w+)"?\s*\(/gi)) {
-      if (ref!.toLowerCase() !== create[2]!.toLowerCase() && !created.includes(ref!.toLowerCase()))
+      if (ref!.toLowerCase() !== create[2]!.toLowerCase() && !created.includes(ref!.toLowerCase())) {
         problems.push(`ordre : ${create[2]} référence ${ref} avant sa création`);
+      }
     }
     created.push(create[2]!.toLowerCase());
   }
   const announced = sql.match(/^-- {3}• .*$/gm) ?? [];
   for (const d of diffCatalogs(catalogOf(SOURCE, "sqlite"), catalogOf(sql, "postgresql"), true)) {
     const where = [d.table, d.column].filter(Boolean).join(".");
-    if (!announced.some((line) => line.toLowerCase().includes(where.toLowerCase())))
+    if (!announced.some((line) => line.toLowerCase().includes(where.toLowerCase()))) {
       problems.push(`non annoncé : ${where} ${d.category} ${d.detail}`);
+    }
   }
   return problems;
 }
@@ -317,7 +325,9 @@ describe("inter-dialectes (critère 3) : toute différence avec la source figure
     const differences = diffCatalogs(catalogOf(SOURCE, "sqlite"), catalogOf(sql, dbms), true);
     expect(uncovered(differences, losses)).toEqual([]);
     // Le rapport est aussi en tête du script.
-    if (losses.length) expect(sql.startsWith(`-- `)).toBe(true);
+    if (losses.length > 0) {
+      expect(sql.startsWith("-- ")).toBe(true);
+    }
   });
 });
 
@@ -350,10 +360,13 @@ describe("P0.1 — ordre de création et clés étrangères circulaires", () => 
     const created: string[] = [];
     for (const statement of statements(sql)) {
       const create = /^CREATE TABLE ("?)(\w+)\1\(/.exec(statement);
-      if (!create) continue;
+      if (!create) {
+        continue;
+      }
       const table = create[2]!;
-      for (const [, ref] of statement.matchAll(/REFERENCES "?(\w+)"?\(/g))
+      for (const [, ref] of statement.matchAll(/REFERENCES "?(\w+)"?\(/g)) {
         expect(ref === table || created.includes(ref!)).toBe(true);
+      }
       created.push(table);
     }
     // Comme dans la source : chercheur d'abord, sa référence en avant vers Laboratoire différée.
@@ -453,7 +466,9 @@ describe("P1.3 — colonnes partagées entre clés", () => {
 
   it("sans annotation : comportement Merise standard (colonne dupliquée)", () => {
     const doc = laboDoc();
-    for (const link of doc.links) delete link.sharedColumns;
+    for (const link of doc.links) {
+      delete link.sharedColumns;
+    }
     const table = toLogicalModel(doc).tables.find((t) => t.name === "phase")!;
     expect(table.columns.some((c) => c.name === "id_projet_2")).toBe(true);
   });

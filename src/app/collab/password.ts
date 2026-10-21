@@ -20,7 +20,7 @@ export const failureDelay = (failures: number) =>
 
 const hex = (bytes: ArrayBuffer | Uint8Array) =>
   [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
-const fromHex = (text: string) => Uint8Array.from(text.match(/../g) ?? [], (h) => parseInt(h, 16));
+const fromHex = (text: string) => Uint8Array.from(text.match(/../g) ?? [], (h) => Number.parseInt(h, 16));
 
 export const randomHex = (bytes = 16) => hex(crypto.getRandomValues(new Uint8Array(bytes)));
 

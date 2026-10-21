@@ -67,45 +67,63 @@ export const createDocumentStore = (initial: ModelDocument): DocumentStore =>
 
     change(label, recipe) {
       const { doc, past, transactionStart } = get();
-      if (transactionStart) throw new Error("change() appelé pendant une transaction");
+      if (transactionStart) {
+        throw new Error("change() appelé pendant une transaction");
+      }
       const next = produce(doc, recipe);
-      if (next === doc) return;
+      if (next === doc) {
+        return;
+      }
       set({ doc: next, past: pushPast(past, { doc, label }), future: [] });
     },
 
     begin() {
       const { doc, transactionStart } = get();
-      if (!transactionStart) set({ transactionStart: doc });
+      if (!transactionStart) {
+        set({ transactionStart: doc });
+      }
     },
 
     preview(recipe) {
-      if (!get().transactionStart) return;
+      if (!get().transactionStart) {
+        return;
+      }
       set({ doc: produce(get().doc, recipe) });
     },
 
     commit(label) {
       const { doc, past, transactionStart } = get();
-      if (!transactionStart) return;
-      if (doc === transactionStart) return set({ transactionStart: null });
+      if (!transactionStart) {
+        return;
+      }
+      if (doc === transactionStart) {
+        return set({ transactionStart: null });
+      }
       set({ transactionStart: null, past: pushPast(past, { doc: transactionStart, label }), future: [] });
     },
 
     cancel() {
       const { transactionStart } = get();
-      if (transactionStart) set({ doc: transactionStart, transactionStart: null });
+      if (transactionStart) {
+        set({ doc: transactionStart, transactionStart: null });
+      }
     },
 
     undo() {
       const { doc, past, future, transactionStart } = get();
       const entry = past.at(-1);
-      if (!entry || transactionStart) return;
+      if (!entry || transactionStart) {
+        return;
+      }
       set({ doc: entry.doc, past: past.slice(0, -1), future: [{ doc, label: entry.label }, ...future] });
     },
 
     redo() {
       const { doc, past, future, transactionStart } = get();
       const [entry, ...rest] = future;
-      if (!entry || transactionStart) return;
+      if (!entry || transactionStart) {
+        return;
+      }
       set({ doc: entry.doc, past: pushPast(past, { doc, label: entry.label }), future: rest });
     },
 

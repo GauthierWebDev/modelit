@@ -60,9 +60,13 @@ export function textWidth(text: string, style: TextStyle = {}): number {
   const { weight = 400, italic = false } = style;
   const key = `${weight}${italic ? "i" : "n"}${text}`;
   const cached = widthCache.get(key);
-  if (cached !== undefined) return cached;
+  if (cached !== undefined) {
+    return cached;
+  }
   // Hors navigateur (tests) : estimation, faute de canvas pour mesurer.
-  if (typeof document !== "undefined") context ??= document.createElement("canvas").getContext("2d");
+  if (typeof document !== "undefined") {
+    context ??= document.createElement("canvas").getContext("2d");
+  }
   let width = text.length * FONT_SIZE * (weight >= BOLD_WEIGHT ? 0.65 : 0.6);
   if (context) {
     context.font = `${italic ? "italic " : ""}${weight} ${FONT_SIZE}px ${FONT_FAMILY}`;
@@ -93,7 +97,9 @@ export interface AttributeMarks {
 /** Texte affiché à côté de la rubrique : AI1, « AI par parent », « AI = LOWER(email) » (O-39). */
 export function alternateText(alternate: NonNullable<AttributeMarks["alternate"]>): string {
   let text = alternate.scope ? t("mcd.alternateScope", { tag: alternate.tag, scope: alternate.scope }) : alternate.tag;
-  if (alternate.expression) text += ` = ${alternate.expression}`;
+  if (alternate.expression) {
+    text += ` = ${alternate.expression}`;
+  }
   return text;
 }
 
@@ -126,16 +132,26 @@ export function attributeMarks(
 ): Map<string, AttributeMarks> {
   // Rubrique unique à elle seule (UNIQUE, ou identifiant alternatif réduit à elle seule, entière) :
   // simplement en gras. Seuls les autres identifiants alternatifs reçoivent une étiquette AI.
-  type Group = { ids: string[]; prefixes: (number | null)[]; scope?: string; expression?: string; condition?: string };
+  interface Group {
+    ids: string[];
+    prefixes: (number | null)[];
+    scope?: string;
+    expression?: string;
+    condition?: string;
+  }
   const groups: Group[] = [];
   const unique = new Set(node.attributes.filter((a) => a.unique).map((a) => a.id));
   for (const key of node.alternateKeys ?? []) {
     // Unicité conditionnelle (index filtré à prédicat autre que IS NOT NULL) : pas un identifiant
     // alternatif ; elle est signalée par un avertissement (O-42).
-    if (key.where) continue;
+    if (key.where) {
+      continue;
+    }
     const ids = key.members.map((m) => ("attributeId" in m ? m.attributeId : null));
     const local = ids.filter((id): id is string => id !== null);
-    if (!local.length) continue;
+    if (local.length === 0) {
+      continue;
+    }
     if (ids.length === 1 && local.length === 1 && !key.prefixes?.[0] && !key.expression) {
       unique.add(local[0]!);
       continue;
@@ -156,17 +172,18 @@ export function attributeMarks(
     });
   }
   const marks = new Map<string, AttributeMarks>();
-  for (const a of node.attributes)
+  for (const a of node.attributes) {
     marks.set(a.id, {
       label: a.generated ? `/${a.name}` : a.name,
       derived: Boolean(a.generated),
       bold: a.identifier || unique.has(a.id),
     });
+  }
   groups.forEach((group, index) => {
     const tag = groups.length > 1 ? `AI${index + 1}` : "AI";
     group.ids.forEach((id, i) => {
       const mark = marks.get(id);
-      if (mark && !mark.alternate)
+      if (mark && !mark.alternate) {
         mark.alternate = {
           tag,
           ...(group.prefixes[i] ? { prefix: group.prefixes[i]! } : {}),
@@ -174,6 +191,7 @@ export function attributeMarks(
           ...(group.expression ? { expression: group.expression } : {}),
           ...(group.condition ? { condition: group.condition } : {}),
         };
+      }
     });
   });
   return marks;
@@ -187,9 +205,10 @@ export function attributeStyle(mark: AttributeMarks): TextStyle {
 /** Largeur d'une rubrique et de ses marques. */
 export function attributeWidth(mark: AttributeMarks): number {
   let width = textWidth(mark.label, attributeStyle(mark));
-  if (mark.alternate)
+  if (mark.alternate) {
     width +=
       6 + (textWidth(alternateText(mark.alternate)) * TAG_FONT_SIZE) / FONT_SIZE + (mark.alternate.prefix ? 12 : 0);
+  }
   return width;
 }
 
@@ -203,7 +222,9 @@ export function nodeLayout(
   display: DisplayOptions,
   linkNames?: Map<string, string>,
 ): NodeLayout {
-  if (node.kind === "inheritance") return { x: position.x, y: position.y, ...INHERITANCE_SIZE, rows: [] };
+  if (node.kind === "inheritance") {
+    return { x: position.x, y: position.y, ...INHERITANCE_SIZE, rows: [] };
+  }
   const attributes = display.showAttributes ? node.attributes : [];
   const rows = attributes.map((attribute, i) => ({ attribute, y: TITLE_HEIGHT + 4 + i * ROW_HEIGHT }));
   const marks = attributeMarks(node, linkNames);
@@ -223,10 +244,12 @@ export function clipToRect(r: Rect, toward: Point): Point {
   const c = center(r);
   const dx = toward.x - c.x;
   const dy = toward.y - c.y;
-  if (dx === 0 && dy === 0) return c;
+  if (dx === 0 && dy === 0) {
+    return c;
+  }
   const scale = Math.min(
-    dx !== 0 ? r.width / 2 / Math.abs(dx) : Infinity,
-    dy !== 0 ? r.height / 2 / Math.abs(dy) : Infinity,
+    dx === 0 ? Number.POSITIVE_INFINITY : r.width / 2 / Math.abs(dx),
+    dy === 0 ? Number.POSITIVE_INFINITY : r.height / 2 / Math.abs(dy),
   );
   return { x: c.x + dx * scale, y: c.y + dy * scale };
 }
@@ -266,7 +289,9 @@ function rolePosition(role: string, points: Point[], entity: Rect, association: 
       x: to.x - ux * distance + uy * (halfWidth * Math.abs(uy) + 8),
       y: to.y - uy * distance - ux * (halfWidth * Math.abs(uy) + 8),
     };
-    if (!touches(candidate, entity) && !touches(candidate, association)) return candidate;
+    if (!(touches(candidate, entity) || touches(candidate, association))) {
+      return candidate;
+    }
   }
   return candidate;
 }
@@ -283,7 +308,9 @@ export function linkGeometries(
 ): LinkGeometry[] {
   const groups = new Map<string, Link[]>();
   for (const link of links) {
-    if (allBends[link.id]?.length) continue;
+    if (allBends[link.id]?.length) {
+      continue;
+    }
     const key = `${link.associationId}|${link.entityId}`;
     groups.set(key, [...(groups.get(key) ?? []), link]);
   }
@@ -291,7 +318,9 @@ export function linkGeometries(
   for (const link of links) {
     const a = layouts.get(link.associationId);
     const e = layouts.get(link.entityId);
-    if (!a || !e) continue;
+    if (!(a && e)) {
+      continue;
+    }
     const bends = allBends[link.id] ?? [];
     let points: Point[];
     if (bends.length > 0) {
@@ -368,14 +397,18 @@ export function inheritanceGeometries(
   const triangles = new Map<string, Triangle>();
   for (const h of inheritances) {
     const rect = layouts.get(h.id);
-    if (rect) triangles.set(h.id, triangleOf(rect));
+    if (rect) {
+      triangles.set(h.id, triangleOf(rect));
+    }
   }
   const result: InheritanceLinkGeometry[] = [];
   for (const link of links) {
     const triangle = triangles.get(link.inheritanceId);
     const entity = layouts.get(link.entityId);
     const h = inheritances.find((x) => x.id === link.inheritanceId);
-    if (!triangle || !entity || !h) continue;
+    if (!(triangle && entity && h)) {
+      continue;
+    }
     const toParent = h.parentId === link.entityId;
     const start = toParent ? triangle.apex : triangle.base;
     const bends = allBends[link.id] ?? [];
@@ -391,13 +424,17 @@ export function inheritanceGeometries(
  */
 export function pathOf(points: Point[], smooth: boolean): string {
   const [first, ...rest] = points;
-  if (!first) return "";
-  if (!smooth || points.length < 3) return `M${first.x},${first.y}${rest.map((p) => ` L${p.x},${p.y}`).join("")}`;
+  if (!first) {
+    return "";
+  }
+  if (!smooth || points.length < 3) {
+    return `M${first.x},${first.y}${rest.map((p) => ` L${p.x},${p.y}`).join("")}`;
+  }
   const mid = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
   let d = `M${first.x},${first.y}`;
   const m0 = mid(points[0]!, points[1]!);
   d += ` L${m0.x},${m0.y}`;
-  for (let i = 1; i < points.length - 1; i++) {
+  for (let i = 1; i < points.length - 1; i += 1) {
     const m = mid(points[i]!, points[i + 1]!);
     d += ` Q${points[i]!.x},${points[i]!.y} ${m.x},${m.y}`;
   }
@@ -420,14 +457,18 @@ function crossings(points: Point[], obstacles: Rect[]): number {
     const hit = points.slice(1).some((p, i) => {
       const q = points[i]!;
       const steps = Math.max(2, Math.ceil(Math.hypot(p.x - q.x, p.y - q.y) / 6));
-      for (let k = 0; k <= steps; k++) {
+      for (let k = 0; k <= steps; k += 1) {
         const x = q.x + ((p.x - q.x) * k) / steps;
         const y = q.y + ((p.y - q.y) * k) / steps;
-        if (x > r.x && x < r.x + r.width && y > r.y && y < r.y + r.height) return true;
+        if (x > r.x && x < r.x + r.width && y > r.y && y < r.y + r.height) {
+          return true;
+        }
       }
       return false;
     });
-    if (hit) count++;
+    if (hit) {
+      count += 1;
+    }
   }
   return count;
 }
@@ -464,24 +505,26 @@ export function reflexiveBends(
       { x: ca.x, y },
       { x: ce.x, y },
     ]);
-    for (const x of sideX)
+    for (const x of sideX) {
       candidates.push([
         { x: ca.x, y },
         { x, y },
         { x, y: ce.y },
       ]);
+    }
   }
   for (const x of [left, right]) {
     candidates.push([
       { x, y: ca.y },
       { x, y: ce.y },
     ]);
-    for (const y of sideY)
+    for (const y of sideY) {
       candidates.push([
         { x, y: ca.y },
         { x, y },
         { x: ce.x, y },
       ]);
+    }
   }
 
   const all = [...obstacles, entity, association];

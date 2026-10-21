@@ -35,7 +35,23 @@
       "style": {
         "noNonNullAssertion": "off",
         "noProcessEnv": "error",
-        "noDefaultExport": "error"
+        "noDefaultExport": "error",
+        "useBlockStatements": "error",
+        "noIncrementDecrement": "error",
+        "useExplicitLengthCheck": "error",
+        "useNumericSeparators": "error",
+        "noImplicitBoolean": "error",
+        "noNegationElse": "error",
+        "useConsistentCurlyBraces": "error",
+        "noUnusedTemplateLiteral": "error",
+        "useCollapsedIf": "error",
+        "useForOf": "error",
+        "useGlobalThis": "error",
+        "useNumberNamespace": "error",
+        "useConsistentTypeDefinitions": "error",
+        "useConsistentMethodSignatures": "error",
+        "useConsistentMemberAccessibility": "error",
+        "useDefaultSwitchClause": "off"
       },
       "suspicious": {
         "noLeakedRender": "error",
@@ -64,6 +80,14 @@
       },
       "a11y": {
         "noNoninteractiveElementInteractions": "error"
+      },
+      "complexity": {
+        "noUselessReturn": "error",
+        "noUselessUndefined": "error",
+        "useSimplifiedLogicExpression": "error",
+        "noDivRegex": "error",
+        "noImplicitCoercions": "error",
+        "noForEach": "error"
       }
     }
   },

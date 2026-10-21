@@ -14,7 +14,9 @@ export function checkLogicalRename(
   name: string,
 ): string | null {
   const next = name.trim().toLowerCase();
-  if (!next) return null;
+  if (!next) {
+    return null;
+  }
   if (column === null) {
     const taken = model.tables.some((t) => t.name !== table && t.name.toLowerCase() === next);
     return taken ? MSG.tableNameTaken(name.trim()) : null;

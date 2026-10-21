@@ -249,8 +249,11 @@ export const bendsOf = (layout: DiagramLayout, id: Id): Point[] => layout.bends[
 
 /** Fixe les cassures d'un trait ; une liste vide retire l'entrée (trait droit). */
 export function setBends(layout: DiagramLayout, id: Id, bends: Point[]) {
-  if (bends.length) layout.bends[id] = bends;
-  else delete layout.bends[id];
+  if (bends.length > 0) {
+    layout.bends[id] = bends;
+  } else {
+    delete layout.bends[id];
+  }
 }
 
 /** Tout trait du schéma : patte d'association ou lien d'héritage. */
@@ -284,9 +287,14 @@ export function sourceDialects(doc: Pick<ModelDocument, "entities" | "associatio
   const found = new Set<SqlDialect>();
   for (const node of [...doc.entities, ...doc.associations]) {
     for (const a of node.attributes) {
-      for (const dialect of [a.sourceType?.dialect, a.defaultValue?.dialect, a.check?.dialect])
-        if (dialect) found.add(dialect);
-      if (a.unsigned) found.add("mysql");
+      for (const dialect of [a.sourceType?.dialect, a.defaultValue?.dialect, a.check?.dialect]) {
+        if (dialect) {
+          found.add(dialect);
+        }
+      }
+      if (a.unsigned) {
+        found.add("mysql");
+      }
     }
   }
   found.delete("generic");

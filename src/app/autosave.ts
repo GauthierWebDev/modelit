@@ -58,19 +58,24 @@ async function writeIndex() {
   const ids = documents()
     .map((d) => d.id)
     .filter((id) => stored.has(id));
-  if (ids.length) await store.set(INDEX_KEY, JSON.stringify(ids));
-  else await store.remove(INDEX_KEY);
+  if (ids.length > 0) {
+    await store.set(INDEX_KEY, JSON.stringify(ids));
+  } else {
+    await store.remove(INDEX_KEY);
+  }
 }
 
 async function write(doc: DocumentHandle) {
   const entry = tracked.get(doc.id);
   if (entry) {
-    window.clearTimeout(entry.timer);
+    globalThis.clearTimeout(entry.timer);
     entry.timer = undefined;
     entry.pending = false;
     entry.lastWrite = Date.now();
   }
-  if (!enabled()) return;
+  if (!enabled()) {
+    return;
+  }
   const state = doc.store.getState();
   try {
     if (selectIsDirty(state)) {
@@ -95,11 +100,16 @@ async function write(doc: DocumentHandle) {
 /** Programme une écriture en respectant le délai minimal entre deux sauvegardes du document. */
 function schedule(doc: DocumentHandle) {
   const entry = tracked.get(doc.id);
-  if (!entry) return;
+  if (!entry) {
+    return;
+  }
   entry.pending = true;
-  if (entry.timer !== undefined) return;
+  if (entry.timer !== undefined) {
+    return;
+  }
   const delay = usePreferencesStore.getState().autosaveDelay * 60_000;
   const wait = Math.max(0, entry.lastWrite + delay - Date.now());
+  // biome-ignore lint/style/useGlobalThis: minuterie du DOM (identifiant numérique), pas celle de Node
   entry.timer = window.setTimeout(() => void write(doc), wait);
 }
 
@@ -107,11 +117,17 @@ function track(doc: DocumentHandle) {
   const unsubscribe = doc.store.subscribe((state, previous) => {
     const changed = state.doc !== previous.doc || state.savedDoc !== previous.savedDoc;
     const transactionEnded = previous.transactionStart !== null && state.transactionStart === null;
-    if (!changed && !transactionEnded) return;
+    if (!(changed || transactionEnded)) {
+      return;
+    }
     // Pendant un glisser-déposer, une seule écriture, à la fin de l'opération.
-    if (state.transactionStart) return;
+    if (state.transactionStart) {
+      return;
+    }
     // Enregistrement ou retour à l'état enregistré : la copie est effacée sans attendre.
-    if (!selectIsDirty(state)) return void write(doc);
+    if (!selectIsDirty(state)) {
+      return void write(doc);
+    }
     schedule(doc);
   });
   tracked.set(doc.id, { unsubscribe, timer: undefined, pending: false, lastWrite: 0 });
@@ -122,10 +138,12 @@ async function untrack(id: string) {
   const entry = tracked.get(id);
   if (entry) {
     entry.unsubscribe();
-    window.clearTimeout(entry.timer);
+    globalThis.clearTimeout(entry.timer);
     tracked.delete(id);
   }
-  if (!stored.delete(id)) return;
+  if (!stored.delete(id)) {
+    return;
+  }
   try {
     await store.remove(entryKey(id));
     await writeIndex();
@@ -137,10 +155,20 @@ async function untrack(id: string) {
 /** Suit les onglets ouverts et fermés. */
 function syncTracked() {
   const open = new Set(documents().map((d) => d.id));
-  for (const doc of documents()) if (!tracked.has(doc.id)) track(doc);
-  for (const id of [...tracked.keys()]) if (!open.has(id)) void untrack(id);
+  for (const doc of documents()) {
+    if (!tracked.has(doc.id)) {
+      track(doc);
+    }
+  }
+  for (const id of [...tracked.keys()]) {
+    if (!open.has(id)) {
+      void untrack(id);
+    }
+  }
   // L'ordre des onglets a pu changer.
-  if (stored.size) void writeIndex().catch(reportError);
+  if (stored.size > 0) {
+    void writeIndex().catch(reportError);
+  }
 }
 
 /** Copies laissées par une session interrompue, dans l'ordre de ses onglets. */
@@ -153,7 +181,9 @@ export async function readCopies(from: LocalStore): Promise<{ keys: string[]; co
     for (const id of JSON.parse(index) as string[]) {
       const raw = await from.get(entryKey(id));
       keys.push(entryKey(id));
-      if (raw) copies.push(JSON.parse(raw) as AutosaveEntry);
+      if (raw) {
+        copies.push(JSON.parse(raw) as AutosaveEntry);
+      }
     }
   }
   const legacy = await from.get(LEGACY_KEY);
@@ -166,12 +196,16 @@ export async function readCopies(from: LocalStore): Promise<{ keys: string[]; co
 
 /** Propose de récupérer, en une fois, les documents laissés par une session interrompue. */
 async function offerRecovery() {
-  if (!enabled()) return;
+  if (!enabled()) {
+    return;
+  }
   let keys: string[] = [];
   try {
     const found = await readCopies(store);
     keys = found.keys;
-    if (found.copies.length === 0) return;
+    if (found.copies.length === 0) {
+      return;
+    }
     const detail = found.copies
       .map((c) => {
         const name = c.name ?? c.filePath?.split(/[\\/]/).pop() ?? t("app.untitled");
@@ -199,24 +233,34 @@ async function offerRecovery() {
   } catch {
     // Copie illisible : elle est abandonnée.
   }
-  for (const key of keys) await store.remove(key).catch(() => undefined);
+  for (const key of keys) {
+    await store.remove(key).catch(() => undefined);
+  }
 }
 
 /** Démarre la sauvegarde automatique (une fois par session). */
 export function startAutosave() {
-  if (started) return;
+  if (started) {
+    return;
+  }
   started = true;
   removeLegacyLocalStorageCopy(LEGACY_KEY);
 
   void offerRecovery().then(() => {
     syncTracked();
     useWorkspaceStore.subscribe((state, previous) => {
-      if (state.documents !== previous.documents) syncTracked();
+      if (state.documents !== previous.documents) {
+        syncTracked();
+      }
     });
   });
 
   const flush = () => {
-    for (const doc of documents()) if (tracked.get(doc.id)?.pending) void write(doc);
+    for (const doc of documents()) {
+      if (tracked.get(doc.id)?.pending) {
+        void write(doc);
+      }
+    }
   };
   document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flush());
   window.addEventListener("pagehide", flush);
@@ -224,19 +268,25 @@ export function startAutosave() {
   usePreferencesStore.subscribe((state, previous) => {
     if (state.autosave !== previous.autosave) {
       if (state.autosave === "off") {
-        for (const id of [...stored]) void store.remove(entryKey(id)).catch(() => undefined);
+        for (const id of [...stored]) {
+          void store.remove(entryKey(id)).catch(() => undefined);
+        }
         stored.clear();
         void store.remove(INDEX_KEY).catch(() => undefined);
       } else {
-        for (const doc of documents()) void write(doc);
+        for (const doc of documents()) {
+          void write(doc);
+        }
       }
     }
     // Nouveau délai : les prochaines écritures le respectent (écritures en attente replanifiées).
     if (state.autosaveDelay !== previous.autosaveDelay) {
       for (const doc of documents()) {
         const entry = tracked.get(doc.id);
-        if (entry?.timer === undefined) continue;
-        window.clearTimeout(entry.timer);
+        if (entry?.timer === undefined) {
+          continue;
+        }
+        globalThis.clearTimeout(entry.timer);
         entry.timer = undefined;
         schedule(doc);
       }

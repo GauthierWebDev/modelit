@@ -47,14 +47,18 @@ export function Modal({
       box.current?.querySelector<HTMLElement>("[data-autofocus]") ?? box.current?.querySelector<HTMLElement>(FOCUSABLE);
     (target ?? box.current)?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (stack.at(-1) !== id) return;
+      if (stack.at(-1) !== id) {
+        return;
+      }
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
         close.current();
       } else if (e.key === "Tab" && box.current) {
         const items = [...box.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
-        if (!items.length) return;
+        if (items.length === 0) {
+          return;
+        }
         const first = items[0]!;
         const last = items.at(-1)!;
         if (e.shiftKey && document.activeElement === first) {
@@ -66,11 +70,13 @@ export function Modal({
         }
       }
     };
-    window.addEventListener("keydown", onKey, true);
+    globalThis.addEventListener("keydown", onKey, true);
     return () => {
-      window.removeEventListener("keydown", onKey, true);
+      globalThis.removeEventListener("keydown", onKey, true);
       stack.splice(stack.indexOf(id), 1);
-      if (previous?.isConnected) previous.focus();
+      if (previous?.isConnected) {
+        previous.focus();
+      }
     };
   }, [id]);
 
@@ -78,7 +84,7 @@ export function Modal({
     // biome-ignore lint/a11y/noStaticElementInteractions: fond de la boîte, un clic à l'extérieur la ferme (Échap au clavier)
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: fond de la boîte, un clic à l'extérieur la ferme (Échap au clavier)
     <div
-      data-ui-only
+      data-ui-only={true}
       className={`fixed inset-0 ${layer} flex items-center justify-center bg-black/30`}
       onMouseDown={() => close.current()}
     >

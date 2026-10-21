@@ -98,7 +98,9 @@ export function startGuest({
   let pending: string | null = null;
 
   const answer = async (password: string) => {
-    if (!challenge) return;
+    if (!challenge) {
+      return;
+    }
     pending = password;
     const proof = await prove(password, challenge.salt, challenge.nonce);
     state.setState({ status: "connecting" });
@@ -112,7 +114,9 @@ export function startGuest({
         case "challenge": {
           const wrong = challenge !== null && pending !== null;
           challenge = { nonce: message.nonce, salt: message.salt };
-          if (accepted && !wrong) return void answer(accepted);
+          if (accepted && !wrong) {
+            return void answer(accepted);
+          }
           state.setState({ status: "password", password: { attemptsLeft: message.attemptsLeft, wrong } });
           return;
         }
@@ -132,7 +136,9 @@ export function startGuest({
             title: message.title ?? null,
           });
           // Reconnexion : l'hôte ne se souvient pas de l'état du vocal.
-          if (voice.joined) current.send({ type: "voice", ...voice });
+          if (voice.joined) {
+            current.send({ type: "voice", ...voice });
+          }
           return;
         case "ops":
           store.getState().applyRemote(message.ops);
@@ -158,7 +164,9 @@ export function startGuest({
             state.setState({ status: "ended", ended: message.reason, password: null });
           } else {
             // Modification refusée, déjà appliquée ici : retour à l'état de l'hôte.
-            if (message.doc) store.getState().reset(message.doc);
+            if (message.doc) {
+              store.getState().reset(message.doc);
+            }
             state.setState({ rejected: message.reason });
           }
           return;
@@ -168,11 +176,17 @@ export function startGuest({
       }
     });
     const offClose = target.onClose(() => {
-      if (state.getState().status !== "ended") state.setState({ status: "disconnected" });
+      if (state.getState().status !== "ended") {
+        state.setState({ status: "disconnected" });
+      }
     });
     const offDatagram = target.onDatagram((data) => {
       const packet = decodePacket(data);
-      if (packet) for (const h of audioHandlers) h(packet);
+      if (packet) {
+        for (const h of audioHandlers) {
+          h(packet);
+        }
+      }
     });
     target.send({ type: "hello", secret, ...identity });
     return () => {
@@ -192,22 +206,29 @@ export function startGuest({
     },
     answer,
     setPresence: (presence) => {
-      if (state.getState().status === "connected") current.send({ type: "presence", presence });
+      if (state.getState().status === "connected") {
+        current.send({ type: "presence", presence });
+      }
     },
     setVoice: (joined, muted) => {
       voice = { joined, muted };
-      if (state.getState().status === "connected") current.send({ type: "voice", joined, muted });
+      if (state.getState().status === "connected") {
+        current.send({ type: "voice", joined, muted });
+      }
     },
     sendAudio: (packet) => {
-      if (state.getState().status === "connected" && voice.joined && !voice.muted)
+      if (state.getState().status === "connected" && voice.joined && !voice.muted) {
         current.sendDatagram(encodePacket({ ...packet, speaker: "" }));
+      }
     },
     onAudio: (handler) => {
       audioHandlers.add(handler);
       return () => audioHandlers.delete(handler);
     },
     sendChat: (text) => {
-      if (state.getState().status === "connected" && text.trim()) current.send({ type: "chat", text });
+      if (state.getState().status === "connected" && text.trim()) {
+        current.send({ type: "chat", text });
+      }
     },
     reconnect: (target) => {
       detach();

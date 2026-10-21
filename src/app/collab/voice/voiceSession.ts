@@ -43,10 +43,14 @@ const inSession = () => {
 /** Rejoindre l'audio : micro demandé au système ; refusé, on écoute seulement (O-48). */
 export async function joinAudio() {
   const link = voiceLink();
-  if (!backend || !link || !inSession() || voice().status !== "off") return;
+  if (!(backend && link && inSession()) || voice().status !== "off") {
+    return;
+  }
   setVoiceState({ status: "starting", unavailable: null, micError: null });
   const support = await backend.support();
-  if (support === "no-codec") return setVoiceState({ status: "off", unavailable: support });
+  if (support === "no-codec") {
+    return setVoiceState({ status: "off", unavailable: support });
+  }
   const you = () => useCollabStore.getState().you ?? "";
   let started: Awaited<ReturnType<VoiceBackend["start"]>>;
   try {
@@ -58,9 +62,13 @@ export async function joinAudio() {
     return setVoiceState({ status: "off", micError: String(e) });
   }
   // Session terminée ou vocal quitté pendant l'ouverture du micro.
-  if (!inSession() || voice().status !== "starting") return started.engine.stop();
+  if (!inSession() || voice().status !== "starting") {
+    return started.engine.stop();
+  }
   engine = started.engine;
-  for (const [peer, gain] of Object.entries(voice().volumes)) engine.setVolume(peer, gain);
+  for (const [peer, gain] of Object.entries(voice().volumes)) {
+    engine.setVolume(peer, gain);
+  }
   offAudio = link.onAudio((packet) => {
     engine?.play(packet.speaker, packet);
     noteLevel(packet.speaker, packet.level);
@@ -87,7 +95,9 @@ function release() {
 }
 
 export function leaveAudio() {
-  if (voice().status === "off") return;
+  if (voice().status === "off") {
+    return;
+  }
   release();
   voiceLink()?.setVoice(false, false);
   setVoiceState({ status: "off", muted: false, mic: false });
@@ -95,11 +105,15 @@ export function leaveAudio() {
 
 export function setMuted(muted: boolean) {
   const state = voice();
-  if (state.status !== "on" || !state.mic || state.muted === muted) return;
+  if (state.status !== "on" || !state.mic || state.muted === muted) {
+    return;
+  }
   engine?.setMuted(muted);
   voiceLink()?.setVoice(true, muted);
   setVoiceState({ muted });
-  if (muted) clearSpeaking(useCollabStore.getState().you ?? undefined);
+  if (muted) {
+    clearSpeaking(useCollabStore.getState().you ?? undefined);
+  }
 }
 
 export const toggleMute = () => setMuted(!voice().muted);

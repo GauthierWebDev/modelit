@@ -31,7 +31,9 @@ export function McpBridge() {
   const { enabled, port, token } = usePreferencesStore((s) => s.mcp);
 
   useEffect(() => {
-    if (!mcpAvailable()) return;
+    if (!mcpAvailable()) {
+      return;
+    }
     let off: (() => void) | undefined;
     let disposed = false;
     void onMcpRequest((request, respond) => {
@@ -39,7 +41,7 @@ export function McpBridge() {
       try {
         message = JSON.parse(request.body);
       } catch {
-        return respond(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }));
+        return respond(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32_700, message: "Parse error" } }));
       }
       void handleMcpMessage(
         message,
@@ -57,18 +59,24 @@ export function McpBridge() {
             JSON.stringify({
               jsonrpc: "2.0",
               id,
-              error: { code: -32603, message: e instanceof Error ? e.message : String(e) },
+              error: { code: -32_603, message: e instanceof Error ? e.message : String(e) },
             }),
           );
         });
     }).then((f) => {
-      if (disposed) f();
-      else off = f;
+      if (disposed) {
+        f();
+      } else {
+        off = f;
+      }
     });
     let offReleased: (() => void) | undefined;
     void onMcpReleased(() => useMcpStore.setState({ status: "released", error: null })).then((f) => {
-      if (disposed) f();
-      else offReleased = f;
+      if (disposed) {
+        f();
+      } else {
+        offReleased = f;
+      }
     });
     return () => {
       disposed = true;
@@ -78,8 +86,10 @@ export function McpBridge() {
   }, []);
 
   useEffect(() => {
-    if (!mcpAvailable()) return;
-    if (!enabled || !token) {
+    if (!mcpAvailable()) {
+      return;
+    }
+    if (!(enabled && token)) {
       void stopMcp().then(() => useMcpStore.setState({ status: "off", error: null }));
       return;
     }

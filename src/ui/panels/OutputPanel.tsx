@@ -70,7 +70,7 @@ export function IssuesTitle() {
   const errors = issues.filter((i) => i.severity === "error").length;
   return (
     <span className={errors > 0 ? "text-red-600 dark:text-red-400" : undefined}>
-      {issues.length ? t("output.issuesCount", { n: issues.length }) : t("output.issues")}
+      {issues.length > 0 ? t("output.issuesCount", { n: issues.length }) : t("output.issues")}
     </span>
   );
 }
@@ -103,8 +103,7 @@ function SqlView({ sql, losses }: { sql: string; losses: Loss[] }) {
                   {g.message}
                   {g.places.length > 0 && (
                     <>
-                      {" — "}
-                      <span className="font-mono">{g.places.join(", ")}</span>
+                      —<span className="font-mono">{g.places.join(", ")}</span>
                     </>
                   )}
                 </li>
@@ -120,7 +119,9 @@ function SqlView({ sql, losses }: { sql: string; losses: Loss[] }) {
 
 function MldView() {
   const lines = mldLines(useLogicalModel());
-  if (lines.length === 0) return <p className="font-sans text-neutral-500">{t("output.mldEmpty")}</p>;
+  if (lines.length === 0) {
+    return <p className="font-sans text-neutral-500">{t("output.mldEmpty")}</p>;
+  }
   return (
     <div>
       {lines.map((line) => (
@@ -158,7 +159,9 @@ function IssuesView() {
   const { issues } = useLogicalModel();
   const select = useDocumentView((s) => s.select);
   const layer = useDocumentView((s) => (s.view === "mcd" ? "conceptual" : "logical"));
-  if (issues.length === 0) return <p className="font-sans text-neutral-500">{t("output.noIssues")}</p>;
+  if (issues.length === 0) {
+    return <p className="font-sans text-neutral-500">{t("output.noIssues")}</p>;
+  }
   return (
     <ul className="font-sans text-sm">
       {issues.map((issue, i) => (

@@ -53,7 +53,9 @@ export function CommentSection({
         defaultValue={value ?? ""}
         onBlur={(e) => {
           const next = e.target.value.trim() || undefined;
-          if (next !== value) onCommit(next);
+          if (next !== value) {
+            onCommit(next);
+          }
         }}
       />
     </Section>
@@ -96,7 +98,9 @@ export function KeyPatternField({
         className={inputClass}
         value={custom ? CUSTOM : value}
         onChange={(e) => {
-          if (e.target.value === CUSTOM) return setCustom(true);
+          if (e.target.value === CUSTOM) {
+            return setCustom(true);
+          }
           setCustom(false);
           onChange(e.target.value);
         }}
@@ -115,7 +119,9 @@ export function KeyPatternField({
             placeholder={t("pattern.customLabel")}
             onCommit={(input) => {
               const parsed = parsePattern(input, kind);
-              if (parsed.ok) return void onChange(parsed.pattern);
+              if (parsed.ok) {
+                return void onChange(parsed.pattern);
+              }
               return "empty" in parsed
                 ? t("pattern.empty")
                 : t("pattern.unknown", { variables: parsed.unknown.join(", ") });

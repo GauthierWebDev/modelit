@@ -99,7 +99,9 @@ export function addInheritanceLink(doc: DocumentHandle, inheritanceId: Id, entit
   change(doc, "history.createInheritanceLink", (d) => {
     d.inheritanceLinks.push(link);
     const inheritance = d.inheritances.find((h) => h.id === inheritanceId);
-    if (inheritance && !inheritance.parentId) inheritance.parentId = entityId;
+    if (inheritance && !inheritance.parentId) {
+      inheritance.parentId = entityId;
+    }
   });
   return { created: link.id };
 }
@@ -107,21 +109,27 @@ export function addInheritanceLink(doc: DocumentHandle, inheritanceId: Id, entit
 export function setInheritanceParent(doc: DocumentHandle, inheritanceId: Id, entityId: Id) {
   change(doc, "history.changeTarget", (d) => {
     const inheritance = d.inheritances.find((h) => h.id === inheritanceId);
-    if (inheritance) inheritance.parentId = entityId;
+    if (inheritance) {
+      inheritance.parentId = entityId;
+    }
   });
 }
 
 export function setInheritanceConstraint(doc: DocumentHandle, inheritanceId: Id, constraint: InheritanceConstraint) {
   change(doc, "history.changeConstraint", (d) => {
     const inheritance = d.inheritances.find((h) => h.id === inheritanceId);
-    if (inheritance) inheritance.constraint = constraint;
+    if (inheritance) {
+      inheritance.constraint = constraint;
+    }
   });
 }
 
 export function updateInheritance(doc: DocumentHandle, inheritanceId: Id, patch: { comment?: string }) {
   change(doc, "history.editInheritance", (d) => {
     const inheritance = d.inheritances.find((h) => h.id === inheritanceId);
-    if (inheritance) Object.assign(inheritance, patch);
+    if (inheritance) {
+      Object.assign(inheritance, patch);
+    }
   });
 }
 
@@ -157,10 +165,13 @@ export function addLink(doc: DocumentHandle, fromId: Id, toId: Id): ConnectResul
       : isEntity(fromId) && isAssociation(toId)
         ? [toId, fromId]
         : null;
-  if (!pair) return null;
+  if (!pair) {
+    return null;
+  }
   const [associationId, entityId] = pair as [Id, Id];
-  if (links.some((l) => l.associationId === associationId && l.entityId === entityId))
+  if (links.some((l) => l.associationId === associationId && l.entityId === entityId)) {
     return { error: MSG.alreadyLinked };
+  }
   const link = createLink(associationId, entityId);
   change(doc, "history.createLink", (d) => void d.links.push(link));
   return { created: link.id };
@@ -184,9 +195,15 @@ export function connectNodes(
   const { entities, inheritances } = current(doc);
   const isEntity = (id: Id) => entities.some((e) => e.id === id);
   const isInheritance = (id: Id) => inheritances.some((h) => h.id === id);
-  if (isInheritance(fromId) && isEntity(toId)) return addInheritanceLink(doc, fromId, toId);
-  if (isEntity(fromId) && isInheritance(toId)) return addInheritanceLink(doc, toId, fromId);
-  if (!isEntity(fromId) || !isEntity(toId)) return addLink(doc, fromId, toId);
+  if (isInheritance(fromId) && isEntity(toId)) {
+    return addInheritanceLink(doc, fromId, toId);
+  }
+  if (isEntity(fromId) && isInheritance(toId)) {
+    return addInheritanceLink(doc, toId, fromId);
+  }
+  if (!(isEntity(fromId) && isEntity(toId))) {
+    return addLink(doc, fromId, toId);
+  }
   const association = createAssociation(
     nextFreeName(
       t("default.association"),
@@ -199,7 +216,9 @@ export function connectNodes(
     d.associations.push(association);
     d.links.push(first, second);
     d.layout.positions[association.id] = placement.associationPosition;
-    if (fromId === toId) setBends(d.layout, second.id, placement.reflexiveBends ?? []);
+    if (fromId === toId) {
+      setBends(d.layout, second.id, placement.reflexiveBends ?? []);
+    }
   });
   return { created: association.id };
 }
@@ -213,11 +232,16 @@ export function renameForeignKey(doc: DocumentHandle, linkId: Id, attributeId: I
   const trimmed = name.trim();
   change(doc, "history.renameForeignKey", (d) => {
     const link = d.links.find((l) => l.id === linkId);
-    if (!link) return;
+    if (!link) {
+      return;
+    }
     const names = { ...link.foreignKeyNames };
-    if (trimmed) names[attributeId] = trimmed;
-    else delete names[attributeId];
-    link.foreignKeyNames = Object.keys(names).length ? names : undefined;
+    if (trimmed) {
+      names[attributeId] = trimmed;
+    } else {
+      delete names[attributeId];
+    }
+    link.foreignKeyNames = Object.keys(names).length > 0 ? names : undefined;
   });
   return null;
 }
@@ -235,21 +259,31 @@ export function renameLogical(
   name: string,
 ): Check {
   const trimmed = name.trim();
-  if (trimmed === (column ?? table).name) return null;
+  if (trimmed === (column ?? table).name) {
+    return null;
+  }
   const error = checkLogicalRename(logical, table.name, column?.name ?? null, trimmed);
-  if (error) return error;
+  if (error) {
+    return error;
+  }
   const value = trimmed || undefined;
   const ownerId = table.source.id;
   if (!column) {
     change(doc, "history.renameTable", (d) => {
       const node = findNode(d, ownerId);
-      if (node) node.logicalName = value;
+      if (node) {
+        node.logicalName = value;
+      }
     });
     return null;
   }
-  if (column.origin) return renameForeignKey(doc, column.origin.linkId, column.origin.attributeId, trimmed);
+  if (column.origin) {
+    return renameForeignKey(doc, column.origin.linkId, column.origin.attributeId, trimmed);
+  }
   const owner = [...current(doc).entities, ...current(doc).associations].find((n) => n.id === ownerId);
-  if (!owner || !column.attributeId) return null;
+  if (!(owner && column.attributeId)) {
+    return null;
+  }
   const attributes = owner.attributes.map((a) => (a.id === column.attributeId ? { ...a, logicalName: value } : a));
   return setAttributes(doc, ownerId, attributes, "history.renameColumn");
 }
@@ -279,7 +313,9 @@ export function removeBend(doc: DocumentHandle, linkId: Id, index: number) {
  * extrémités bougent suivent leur décalage moyen ; les autres restent en place.
  */
 export function offsetNodes(doc: DocumentHandle, offsets: Map<Id, Point>, label: MessageKey) {
-  if (!offsets.size) return;
+  if (offsets.size === 0) {
+    return;
+  }
   const model = current(doc);
   const positions = new Map<Id, Point>();
   for (const [id, o] of offsets) {
@@ -288,8 +324,9 @@ export function offsetNodes(doc: DocumentHandle, offsets: Map<Id, Point>, label:
   }
   const kept = new Map<Id, Point[]>();
   for (const link of diagramLinks(model)) {
-    if (!offsets.has(linkSourceId(link)) || !offsets.has(link.entityId))
+    if (!(offsets.has(linkSourceId(link)) && offsets.has(link.entityId))) {
       kept.set(link.id, bendsOf(model.layout, link.id));
+    }
   }
   moveNodes(doc, positions, kept, label);
 }
@@ -309,7 +346,9 @@ export function moveNodes(
     const delta = new Map<Id, Point>();
     for (const node of diagramNodes(d)) {
       const p = positions.get(node.id);
-      if (!p) continue;
+      if (!p) {
+        continue;
+      }
       const old = positionOf(d.layout, node.id);
       delta.set(node.id, { x: p.x - old.x, y: p.y - old.y });
       d.layout.positions[node.id] = p;
@@ -324,36 +363,48 @@ export function moveNodes(
       const e = delta.get(link.entityId) ?? { x: 0, y: 0 };
       const dx = (a.x + e.x) / 2;
       const dy = (a.y + e.y) / 2;
-      if (dx || dy)
+      if (dx || dy) {
         setBends(
           d.layout,
           link.id,
           bendsOf(d.layout, link.id).map((b) => ({ x: b.x + dx, y: b.y + dy })),
         );
+      }
     }
   });
 }
 
 export function deleteObjects(doc: DocumentHandle, ids: Id[], label: MessageKey = "history.delete") {
-  if (ids.length === 0) return;
+  if (ids.length === 0) {
+    return;
+  }
   const gone = new Set(ids);
   change(doc, label, (d) => {
     d.entities = d.entities.filter((e) => !gone.has(e.id));
     d.associations = d.associations.filter((a) => !gone.has(a.id));
-    d.links = d.links.filter((l) => !gone.has(l.id) && !gone.has(l.entityId) && !gone.has(l.associationId));
+    d.links = d.links.filter((l) => !(gone.has(l.id) || gone.has(l.entityId) || gone.has(l.associationId)));
     d.inheritances = d.inheritances.filter((h) => !gone.has(h.id));
     d.inheritanceLinks = d.inheritanceLinks.filter(
-      (l) => !gone.has(l.id) && !gone.has(l.entityId) && !gone.has(l.inheritanceId),
+      (l) => !(gone.has(l.id) || gone.has(l.entityId) || gone.has(l.inheritanceId)),
     );
     // Entité cible dont le lien a disparu : l'héritage n'a plus de cible.
     for (const h of d.inheritances) {
-      if (h.parentId && !d.inheritanceLinks.some((l) => l.inheritanceId === h.id && l.entityId === h.parentId))
+      if (h.parentId && !d.inheritanceLinks.some((l) => l.inheritanceId === h.id && l.entityId === h.parentId)) {
         h.parentId = undefined;
+      }
     }
     // Géométrie des objets et des traits disparus.
     const kept = new Set([...diagramNodes(d), ...diagramLinks(d)].map((o) => o.id));
-    for (const id of Object.keys(d.layout.positions)) if (!kept.has(id)) delete d.layout.positions[id];
-    for (const id of Object.keys(d.layout.bends)) if (!kept.has(id)) delete d.layout.bends[id];
+    for (const id of Object.keys(d.layout.positions)) {
+      if (!kept.has(id)) {
+        delete d.layout.positions[id];
+      }
+    }
+    for (const id of Object.keys(d.layout.bends)) {
+      if (!kept.has(id)) {
+        delete d.layout.bends[id];
+      }
+    }
   });
   doc.view.getState().select([]);
 }
@@ -363,10 +414,14 @@ export function renameNode(doc: DocumentHandle, id: Id, name: string): Check {
   const model = current(doc);
   const isEntity = model.entities.some((e) => e.id === id);
   const error = isEntity ? checkEntityName(model, trimmed, id) : checkAssociationName(model, trimmed, id);
-  if (error) return error;
+  if (error) {
+    return error;
+  }
   change(doc, "history.rename", (d) => {
     const node = findNode(d, id);
-    if (node) node.name = trimmed;
+    if (node) {
+      node.name = trimmed;
+    }
   });
   return null;
 }
@@ -378,7 +433,9 @@ export function updateEntity(
 ) {
   change(doc, "history.editEntity", (d) => {
     const entity = d.entities.find((e) => e.id === id);
-    if (entity) Object.assign(entity, patch);
+    if (entity) {
+      Object.assign(entity, patch);
+    }
   });
 }
 
@@ -388,12 +445,18 @@ export function updateAssociation(
   patch: Partial<Pick<Association, "logicalName" | "comment">>,
 ): Check {
   const existing = current(doc).associations.find((a) => a.id === id);
-  if (!existing) return null;
+  if (!existing) {
+    return null;
+  }
   const error = checkAssociation(current(doc), { ...existing, ...patch });
-  if (error) return error;
+  if (error) {
+    return error;
+  }
   change(doc, "history.editAssociation", (d) => {
     const association = d.associations.find((a) => a.id === id);
-    if (association) Object.assign(association, patch);
+    if (association) {
+      Object.assign(association, patch);
+    }
   });
   return null;
 }
@@ -406,15 +469,21 @@ export function setAttributes(
   label: MessageKey = "history.editAttributes",
 ): Check {
   const error = checkAttributes(attributes);
-  if (error) return error;
+  if (error) {
+    return error;
+  }
   const association = current(doc).associations.find((a) => a.id === ownerId);
   if (association) {
     const assocError = checkAssociation(current(doc), { ...association, attributes });
-    if (assocError) return assocError;
+    if (assocError) {
+      return assocError;
+    }
   }
   change(doc, label, (d) => {
     const owner = findNode(d, ownerId);
-    if (owner) owner.attributes = attributes;
+    if (owner) {
+      owner.attributes = attributes;
+    }
   });
   return null;
 }
@@ -423,7 +492,9 @@ export function setAttributes(
 export function renameAttribute(doc: DocumentHandle, ownerId: Id, attributeId: Id, name: string): Check {
   const owner = [...current(doc).entities, ...current(doc).associations].find((n) => n.id === ownerId);
   const attribute = owner?.attributes.find((a) => a.id === attributeId);
-  if (!owner || !attribute || attribute.name === name.trim()) return null;
+  if (!(owner && attribute) || attribute.name === name.trim()) {
+    return null;
+  }
   const attributes = owner.attributes.map((a) => (a.id === attributeId ? { ...a, name: name.trim() } : a));
   return setAttributes(doc, ownerId, attributes, "history.renameAttribute");
 }
@@ -431,10 +502,14 @@ export function renameAttribute(doc: DocumentHandle, ownerId: Id, attributeId: I
 /** Ajoute en fin de liste une rubrique au nom libre (« rubrique_N ») ; renvoie son identifiant. */
 export function addAttribute(doc: DocumentHandle, ownerId: Id): Id | null {
   const owner = [...current(doc).entities, ...current(doc).associations].find((node) => node.id === ownerId);
-  if (!owner) return null;
+  if (!owner) {
+    return null;
+  }
   const taken = new Set(owner.attributes.map((a) => a.name));
   let n = owner.attributes.length + 1;
-  while (taken.has(t("attribute.defaultName", { n }))) n++;
+  while (taken.has(t("attribute.defaultName", { n }))) {
+    n += 1;
+  }
   const created = createAttribute(t("attribute.defaultName", { n }));
   return setAttributes(doc, ownerId, [...owner.attributes, created], "history.addAttribute") ? null : created.id;
 }
@@ -442,17 +517,23 @@ export function addAttribute(doc: DocumentHandle, ownerId: Id): Id | null {
 export function addAutoIdentifier(doc: DocumentHandle, entityId: Id): Check {
   const model = current(doc);
   const entity = model.entities.find((e) => e.id === entityId);
-  if (!entity) return null;
+  if (!entity) {
+    return null;
+  }
   const id = createAutoIdentifier(model.settings.autoIdMask, entity.name);
   return setAttributes(doc, entityId, [id, ...entity.attributes], "history.autoIdentifier");
 }
 
 export function setLinkCardinality(doc: DocumentHandle, linkId: Id, cardinality: Cardinality): Check {
   const error = checkLinkCardinality(current(doc), linkId, cardinality);
-  if (error) return error;
+  if (error) {
+    return error;
+  }
   change(doc, "history.editCardinality", (d) => {
     const link = d.links.find((l) => l.id === linkId);
-    if (link) link.cardinality = cardinality;
+    if (link) {
+      link.cardinality = cardinality;
+    }
   });
   return null;
 }
@@ -464,7 +545,9 @@ export function updateLink(
 ) {
   change(doc, "history.editLink", (d) => {
     const link = d.links.find((l) => l.id === linkId);
-    if (link) Object.assign(link, patch);
+    if (link) {
+      Object.assign(link, patch);
+    }
   });
 }
 
@@ -472,7 +555,9 @@ export function updateLink(
 export function updatePhysical(doc: DocumentHandle, nodeId: Id, recipe: (node: Entity | Association) => void) {
   change(doc, "history.editPhysical", (d) => {
     const node = findNode(d, nodeId);
-    if (node) recipe(node as Entity | Association);
+    if (node) {
+      recipe(node as Entity | Association);
+    }
   });
 }
 
@@ -485,7 +570,9 @@ export function setTargetDbms(doc: DocumentHandle, dbms: Dbms, keepCustom = fals
   updateSettings(doc, "history.changeDbms", (s) => {
     s.dbms = dbms;
     s.dbmsVersion = resolveVersion(dbms, undefined);
-    if (!keepCustom) delete s.customDbms;
+    if (!keepCustom) {
+      delete s.customDbms;
+    }
   });
 }
 
@@ -520,9 +607,13 @@ export function applyCustomDbms(doc: DocumentHandle, dbms: LibraryDbms) {
 }
 
 export function renameCustomDbms(doc: DocumentHandle, name: string): Check {
-  if (!name.trim()) return MSG.emptyName;
+  if (!name.trim()) {
+    return MSG.emptyName;
+  }
   updateSettings(doc, "history.customizeDbms", (s) => {
-    if (s.customDbms) s.customDbms.name = name.trim();
+    if (s.customDbms) {
+      s.customDbms.name = name.trim();
+    }
   });
   return null;
 }
@@ -530,22 +621,35 @@ export function renameCustomDbms(doc: DocumentHandle, name: string): Check {
 /** Redéfinit le type SQL d'un type conceptuel ; vide, le type de la base revient. */
 export function setCustomType(doc: DocumentHandle, key: TypeKey, template: string): Check {
   const custom = current(doc).settings.customDbms;
-  if (!custom) return null;
+  if (!custom) {
+    return null;
+  }
   const value = template.trim();
-  if ((custom.types[key] ?? "") === value) return null;
+  if ((custom.types[key] ?? "") === value) {
+    return null;
+  }
   const invalid = value ? invalidTemplateVariable(key, value) : null;
-  if (invalid) return MSG.invalidTemplateVariable(invalid);
+  if (invalid) {
+    return MSG.invalidTemplateVariable(invalid);
+  }
   updateSettings(doc, "history.customType", (s) => {
-    if (!s.customDbms) return;
-    if (value) s.customDbms.types[key] = value;
-    else delete s.customDbms.types[key];
+    if (!s.customDbms) {
+      return;
+    }
+    if (value) {
+      s.customDbms.types[key] = value;
+    } else {
+      delete s.customDbms.types[key];
+    }
   });
   return null;
 }
 
 export function resetCustomTypes(doc: DocumentHandle) {
   updateSettings(doc, "history.customType", (s) => {
-    if (s.customDbms) s.customDbms.types = {};
+    if (s.customDbms) {
+      s.customDbms.types = {};
+    }
   });
 }
 
@@ -555,13 +659,17 @@ export function resetCustomTypes(doc: DocumentHandle) {
  */
 export function setColumnSqlType(doc: DocumentHandle, ownerId: Id, attributeId: Id, sql: string): Check {
   const owner = [...current(doc).entities, ...current(doc).associations].find((n) => n.id === ownerId);
-  if (!owner) return null;
+  if (!owner) {
+    return null;
+  }
   const dialect = current(doc).settings.dbms;
   const value = sql.trim();
   const attribute = owner.attributes.find((a) => a.id === attributeId);
   const mine = attribute?.sourceType && sameDialect(attribute.sourceType.dialect, dialect);
   // Vide : seul le type de ce dialecte est retiré ; celui d'un autre (rétroconception) reste.
-  if (!attribute || (!value && !mine) || (mine && attribute.sourceType!.sql === value)) return null;
+  if (!(attribute && (value || mine)) || (mine && attribute.sourceType!.sql === value)) {
+    return null;
+  }
   const attributes = owner.attributes.map((a) =>
     a.id === attributeId ? { ...a, sourceType: value ? { sql: value, dialect } : undefined } : a,
   );
@@ -582,7 +690,9 @@ export function updateSettings(doc: DocumentHandle, label: MessageKey, recipe: (
 export function setRelationLabel(doc: DocumentHandle, linkId: Id, text: string) {
   change(doc, "history.relationText", (d) => {
     const link = findDiagramLink(d, linkId);
-    if (link) link.relationLabel = text.trim() || undefined;
+    if (link) {
+      link.relationLabel = text.trim() || undefined;
+    }
   });
 }
 

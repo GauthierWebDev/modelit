@@ -21,7 +21,9 @@ const V1 = readFileSync("fixtures/hopital_pg_v1.sql", "utf8");
 function generate(dbms: Dbms = "postgresql", version: string | undefined = "18", options: Partial<DdlOptions> = {}) {
   const { doc } = reverseEngineer(SOURCE, emptyDocument());
   const result = generateDdl(toLogicalModel(doc), { dbms, version }, options);
-  if (!result.ok) throw new Error(result.error);
+  if (!result.ok) {
+    throw new Error(result.error);
+  }
   return result;
 }
 
@@ -429,7 +431,9 @@ describe("itération 9 — finitions (O-40)", () => {
     const { losses } = generate();
     const nls = losses.filter((l) => /NLS_LENGTH|BYTE/.test(l.message)).map((l) => l.column);
     // actif IN ('O', 'N'), fonction IN ('MEDECIN', …), type IN ('consult', …), sexe IN ('M', 'F', 'X').
-    for (const column of ["actif", "fonction", "type", "sexe"]) expect(nls).not.toContain(column);
+    for (const column of ["actif", "fonction", "type", "sexe"]) {
+      expect(nls).not.toContain(column);
+    }
     expect(nls).toEqual(expect.arrayContaining(["email", "nir", "motif"]));
   });
 

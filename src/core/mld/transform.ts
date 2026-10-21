@@ -76,14 +76,22 @@ const memberKey = (linkId: Id, originId: Id) => `${linkId}:${originId}`;
 
 function recordMembers(ctx: Context, table: LogicalTable, columns: (KeyColumn & { via: Migration })[]) {
   const map = ctx.members.get(table) ?? new Map<string, string>();
-  for (const c of columns) if (c.via.reference) map.set(memberKey(c.via.reference.id, c.originId), c.name);
+  for (const c of columns) {
+    if (c.via.reference) {
+      map.set(memberKey(c.via.reference.id, c.originId), c.name);
+    }
+  }
   ctx.members.set(table, map);
 }
 
 const byKeyOrder = <T extends { keyOrder?: number }>(items: T[]) =>
   items
     .map((item, index) => ({ item, index }))
-    .sort((a, b) => (a.item.keyOrder ?? Infinity) - (b.item.keyOrder ?? Infinity) || a.index - b.index)
+    .sort(
+      (a, b) =>
+        (a.item.keyOrder ?? Number.POSITIVE_INFINITY) - (b.item.keyOrder ?? Number.POSITIVE_INFINITY) ||
+        a.index - b.index,
+    )
     .map(({ item }) => item);
 
 const tableName = (ctx: Context, node: Entity | Association) => logicalName(node, ctx.doc.settings.naming);
@@ -143,10 +151,16 @@ function migrate(
 function relativeLinks(ctx: Context, entityId: Id): { link: Link; parent: Link }[] {
   const result: { link: Link; parent: Link }[] = [];
   for (const link of ctx.doc.links) {
-    if (link.entityId !== entityId || !link.relativeId) continue;
-    if (link.cardinality.min !== 1 || link.cardinality.max !== 1) continue;
+    if (link.entityId !== entityId || !link.relativeId) {
+      continue;
+    }
+    if (link.cardinality.min !== 1 || link.cardinality.max !== 1) {
+      continue;
+    }
     const others = linksOf(ctx.doc, link.associationId).filter((l) => l.id !== link.id);
-    if (others.length === 1) result.push({ link, parent: others[0]! });
+    if (others.length === 1) {
+      result.push({ link, parent: others[0]! });
+    }
   }
   return result;
 }
@@ -157,9 +171,13 @@ function relativeLinks(ctx: Context, entityId: Id): { link: Link; parent: Link }
  */
 function entityKey(ctx: Context, entityId: Id, visiting = new Set<Id>()): KeyColumn[] {
   const cached = ctx.keys.get(entityId);
-  if (cached) return cached;
+  if (cached) {
+    return cached;
+  }
   const entity = ctx.entities.get(entityId);
-  if (!entity) return [];
+  if (!entity) {
+    return [];
+  }
   if (visiting.has(entityId)) {
     ctx.issues.push({ severity: "error", message: MSG.circularReferences, target: { kind: "entity", id: entityId } });
     return [];
@@ -264,8 +282,12 @@ function attributeColumns(ctx: Context, owner: Entity | Association, table: stri
 
 /** Type d'origine d'une clé étrangère : celui de la colonne référencée, sans l'auto-incrément. */
 function foreignSourceType(k: KeyColumn): SourceType | undefined {
-  if (!k.sourceType) return undefined;
-  if (k.type?.kind !== "counter") return k.sourceType;
+  if (!k.sourceType) {
+    return undefined;
+  }
+  if (k.type?.kind !== "counter") {
+    return k.sourceType;
+  }
   const plain: Record<string, string> = {
     serial: "integer",
     serial4: "integer",
@@ -301,7 +323,9 @@ const migratedColumn = (k: KeyColumn & { via: Migration }, notNull: boolean): Lo
 function foreignKeysOf(columns: (KeyColumn & { via: Migration })[]): LogicalForeignKey[] {
   const groups = new Map<Id, LogicalForeignKey>();
   for (const { name, via } of columns) {
-    if (via.fictive) continue;
+    if (via.fictive) {
+      continue;
+    }
     const fk = groups.get(via.groupId) ?? {
       relationId: via.groupId,
       columns: [],
@@ -343,7 +367,9 @@ function addReference(
   );
   const added = columns.filter((k) => !k.via.reused);
   table.columns.push(...added.map((k) => migratedColumn(k, options.notNull && !options.inPrimaryKey)));
-  if (options.inPrimaryKey) table.primaryKey.push(...added.map((k) => k.name));
+  if (options.inPrimaryKey) {
+    table.primaryKey.push(...added.map((k) => k.name));
+  }
   table.foreignKeys.push(...foreignKeysOf(columns));
   recordMembers(ctx, table, columns);
   // Association 1:1 (patte référencée de cardinalité max 1) : les colonnes de la clé étrangère
@@ -351,8 +377,11 @@ function addReference(
   if (options.unique && columns.length > 0) {
     const names = columns.map((k) => k.name);
     const single = names.length === 1 ? table.columns.find((c) => c.name === names[0]) : undefined;
-    if (single) single.unique = true;
-    else table.uniques.push({ columns: names });
+    if (single) {
+      single.unique = true;
+    } else {
+      table.uniques.push({ columns: names });
+    }
   }
 }
 
@@ -363,7 +392,9 @@ function addReference(
 function referencedKey(ctx: Context, target: Entity, reference: Link): KeyColumn[] {
   const ids = reference.referencedAttributes;
   const attributes = ids?.map((id) => target.attributes.find((a) => a.id === id));
-  if (!attributes?.length || !attributes.every((a) => a !== undefined)) return entityKey(ctx, target.id);
+  if (!(attributes?.length && attributes.every((a) => a !== undefined))) {
+    return entityKey(ctx, target.id);
+  }
   const table = tableName(ctx, target);
   return attributes.map((a) => ({
     name: columnName(ctx, a!, table, target),
@@ -391,7 +422,9 @@ function applyPhysical(ctx: Context, table: LogicalTable, node: Entity | Associa
   };
   for (const key of node.alternateKeys ?? []) {
     const columns = resolveAll(key.members);
-    if (!columns) continue;
+    if (!columns) {
+      continue;
+    }
     const options = {
       ...(key.prefixes ? { prefixes: key.prefixes } : {}),
       ...(key.method ? { method: key.method } : {}),
@@ -404,24 +437,26 @@ function applyPhysical(ctx: Context, table: LogicalTable, node: Entity | Associa
     // Unicité sur expression ou conditionnelle : jamais confondue avec un UNIQUE sur les colonnes (O-39).
     const partial = Boolean(key.prefixes || key.expression || key.where);
     const same = (u: LogicalKey) =>
-      !partial &&
-      !u.prefixes &&
-      !u.expression &&
-      !u.where &&
+      !(partial || u.prefixes || u.expression || u.where) &&
       u.columns.length === columns.length &&
       u.columns.every((c) => columns.includes(c));
     const existing = table.uniques.find(same);
-    if (existing) Object.assign(existing, { name: existing.name ?? key.name, ...options });
-    else table.uniques.push({ name: key.name, columns, ...options });
+    if (existing) {
+      Object.assign(existing, { name: existing.name ?? key.name, ...options });
+    } else {
+      table.uniques.push({ name: key.name, columns, ...options });
+    }
     // UNIQUE nommé (ou avec méthode, ou état) sur une seule colonne : la contrainte de table remplace la mention en ligne.
     if (columns.length === 1 && (key.name || key.method || key.state) && !partial) {
       const column = table.columns.find((c) => c.name === columns[0]);
-      if (column) column.unique = false;
+      if (column) {
+        column.unique = false;
+      }
     }
   }
   for (const index of node.indexes ?? []) {
     const columns = resolveAll(index.members);
-    if (columns)
+    if (columns) {
       table.indexes.push({
         name: index.name,
         columns,
@@ -430,19 +465,36 @@ function applyPhysical(ctx: Context, table: LogicalTable, node: Entity | Associa
         ...(index.kind ? { kind: index.kind } : {}),
         ...(index.include && resolveAll(index.include) ? { include: resolveAll(index.include)! } : {}),
       });
+    }
   }
   table.checks.push(...(node.checks ?? []));
-  if (node.autoIncrementStart !== undefined) table.identityStart = node.autoIncrementStart;
-  if (node.autoIncrementStep !== undefined) table.identityStep = node.autoIncrementStep;
-  if (node.triggers?.length) table.triggers = node.triggers;
-  if (node.primaryKeyState) table.primaryKeyState = node.primaryKeyState;
-  if (node.sequences?.length) table.sequences = node.sequences;
-  if (node.partition) table.partition = node.partition;
-  if (node.storage?.length) table.storage = node.storage;
-  if (node.schema) table.schema = node.schema;
+  if (node.autoIncrementStart !== undefined) {
+    table.identityStart = node.autoIncrementStart;
+  }
+  if (node.autoIncrementStep !== undefined) {
+    table.identityStep = node.autoIncrementStep;
+  }
+  if (node.triggers?.length) {
+    table.triggers = node.triggers;
+  }
+  if (node.primaryKeyState) {
+    table.primaryKeyState = node.primaryKeyState;
+  }
+  if (node.sequences?.length) {
+    table.sequences = node.sequences;
+  }
+  if (node.partition) {
+    table.partition = node.partition;
+  }
+  if (node.storage?.length) {
+    table.storage = node.storage;
+  }
+  if (node.schema) {
+    table.schema = node.schema;
+  }
   if (ctx.doc.settings.ddl.sourceColumnOrder && node.columnOrder?.length) {
     const order = new Map(node.columnOrder.map((n, i) => [n.toLowerCase(), i]));
-    const position = (c: LogicalColumn) => order.get(c.name.toLowerCase()) ?? Infinity;
+    const position = (c: LogicalColumn) => order.get(c.name.toLowerCase()) ?? Number.POSITIVE_INFINITY;
     table.columns = table.columns
       .map((c, i) => ({ c, i }))
       .sort((a, b) => position(a.c) - position(b.c) || a.i - b.i)
@@ -494,7 +546,9 @@ function associationTable(ctx: Context, association: Association, links: Link[])
     checks: [],
     indexes: [],
   };
-  for (const link of links) addReference(ctx, table, link, link, { notNull: true, inPrimaryKey: true });
+  for (const link of links) {
+    addReference(ctx, table, link, link, { notNull: true, inPrimaryKey: true });
+  }
   table.columns.push(...attributeColumns(ctx, association, name));
   return table;
 }
@@ -508,10 +562,18 @@ function dependentSide(links: [Link, Link]): { child: Link; parent: Link } {
   const [a, b] = links;
   const aOne = a.cardinality.max === 1;
   const bOne = b.cardinality.max === 1;
-  if (aOne && !bOne) return { child: a, parent: b };
-  if (bOne && !aOne) return { child: b, parent: a };
-  if (a.foreignKeyHolder && !b.foreignKeyHolder) return { child: a, parent: b };
-  if (b.foreignKeyHolder && !a.foreignKeyHolder) return { child: b, parent: a };
+  if (aOne && !bOne) {
+    return { child: a, parent: b };
+  }
+  if (bOne && !aOne) {
+    return { child: b, parent: a };
+  }
+  if (a.foreignKeyHolder && !b.foreignKeyHolder) {
+    return { child: a, parent: b };
+  }
+  if (b.foreignKeyHolder && !a.foreignKeyHolder) {
+    return { child: b, parent: a };
+  }
   return b.cardinality.min === 1 && a.cardinality.min !== 1 ? { child: b, parent: a } : { child: a, parent: b };
 }
 
@@ -521,9 +583,13 @@ function checkAssociationModel(ctx: Context, association: Association, links: Li
     ctx.issues.push({ severity: "error", message, target });
     return false;
   };
-  if (links.length < 2) return error(MSG.associationNeedsTwoLegs);
+  if (links.length < 2) {
+    return error(MSG.associationNeedsTwoLegs);
+  }
   const oneOne = links.filter((l) => l.cardinality.min === 1 && l.cardinality.max === 1);
-  if (links.length === 2 && oneOne.length === 2) return error(MSG.bothSidesOneOne);
+  if (links.length === 2 && oneOne.length === 2) {
+    return error(MSG.bothSidesOneOne);
+  }
   if (association.attributes.length > 0 && !generatesTable(links)) {
     return error(oneOne.length > 0 ? MSG.oneOneForbiddenWithAttributes : MSG.attributesNeedTable);
   }
@@ -538,7 +604,9 @@ function checkAssociationModel(ctx: Context, association: Association, links: Li
 function checkConceptualModel(ctx: Context) {
   const duplicated = <T extends { name: string }>(items: T[]) => {
     const counts = new Map<string, number>();
-    for (const item of items) counts.set(item.name.trim(), (counts.get(item.name.trim()) ?? 0) + 1);
+    for (const item of items) {
+      counts.set(item.name.trim(), (counts.get(item.name.trim()) ?? 0) + 1);
+    }
     return items.filter((item) => counts.get(item.name.trim())! > 1);
   };
   for (const e of duplicated(ctx.doc.entities)) {
@@ -567,14 +635,17 @@ function checkConceptualModel(ctx: Context) {
   }
   // Référence déclarée en ligne, non appliquée par le SGBD d'origine (O-36).
   for (const link of ctx.doc.links) {
-    if (!link.sourceNotEnforced) continue;
+    if (!link.sourceNotEnforced) {
+      continue;
+    }
     const association = ctx.doc.associations.find((a) => a.id === link.associationId);
-    if (association)
+    if (association) {
       ctx.issues.push({
         severity: "warning",
         message: MSG.referenceNotEnforced(association.name),
         target: { kind: "association", id: association.id },
       });
+    }
   }
 }
 
@@ -585,36 +656,52 @@ function checkConceptualModel(ctx: Context) {
 function checkAtomicity(ctx: Context, owner: Entity | Association) {
   const target = { kind: owner.kind, id: owner.id };
   for (const a of owner.attributes) {
-    if (a.domain?.kind === "set")
+    if (a.domain?.kind === "set") {
       ctx.issues.push({ severity: "warning", message: MSG.multivaluedAttribute(owner.name, a.name), target });
+    }
     const json =
       (a.type?.kind === "free" && /^jsonb?$/i.test(a.type.sql.trim())) || /^jsonb?\b/i.test(a.sourceType?.sql ?? "");
-    if (json) ctx.issues.push({ severity: "warning", message: MSG.nonAtomicAttribute(owner.name, a.name), target });
+    if (json) {
+      ctx.issues.push({ severity: "warning", message: MSG.nonAtomicAttribute(owner.name, a.name), target });
+    }
   }
   // Annotations physiques que le MCD n'exprime pas (O-39).
   const disabled = (name: string | undefined, state: ConstraintState | undefined, fallback: string) => {
-    if (state?.disabled)
+    if (state?.disabled) {
       ctx.issues.push({
         severity: "warning",
         message: MSG.constraintDisabled(owner.name, name ?? fallback, state.dialect),
         target,
       });
-    if (state?.notValidated)
+    }
+    if (state?.notValidated) {
       ctx.issues.push({
         severity: "warning",
         message: MSG.constraintNotValidated(owner.name, name ?? fallback, state.dialect),
         target,
       });
+    }
   };
-  for (const a of owner.attributes) if (a.check) disabled(a.check.name, a.check.state, `CHECK (${a.check.expression})`);
-  for (const check of owner.checks ?? []) disabled(check.name, check.state, `CHECK (${check.expression})`);
-  for (const key of owner.alternateKeys ?? []) disabled(key.name, key.state, "UNIQUE");
-  for (const link of ctx.doc.links) {
-    if (link.entityId === owner.id && link.foreignKeyHolder)
-      disabled(link.foreignKeyConstraintName, link.foreignKeyState, "FOREIGN KEY");
+  for (const a of owner.attributes) {
+    if (a.check) {
+      disabled(a.check.name, a.check.state, `CHECK (${a.check.expression})`);
+    }
+  }
+  for (const check of owner.checks ?? []) {
+    disabled(check.name, check.state, `CHECK (${check.expression})`);
   }
   for (const key of owner.alternateKeys ?? []) {
-    if (!key.where) continue;
+    disabled(key.name, key.state, "UNIQUE");
+  }
+  for (const link of ctx.doc.links) {
+    if (link.entityId === owner.id && link.foreignKeyHolder) {
+      disabled(link.foreignKeyConstraintName, link.foreignKeyState, "FOREIGN KEY");
+    }
+  }
+  for (const key of owner.alternateKeys ?? []) {
+    if (!key.where) {
+      continue;
+    }
     const names = key.members.map(
       (m) =>
         ("attributeId" in m ? owner.attributes.find((a) => a.id === m.attributeId)?.name : keyMemberLabel(ctx, m)) ??
@@ -626,10 +713,14 @@ function checkAtomicity(ctx: Context, owner: Entity | Association) {
       target,
     });
   }
-  if (owner.partition) ctx.issues.push({ severity: "warning", message: MSG.partitionDropped(owner.name), target });
+  if (owner.partition) {
+    ctx.issues.push({ severity: "warning", message: MSG.partitionDropped(owner.name), target });
+  }
   // O-41 : UNIQUE à un seul NULL admis (SQL Server) sur une colonne facultative ; types spatiaux ; ROWVERSION.
   for (const key of owner.alternateKeys ?? []) {
-    if (key.nulls !== "not distinct") continue;
+    if (key.nulls !== "not distinct") {
+      continue;
+    }
     const optional = key.members.filter((m) => {
       if ("attributeId" in m) {
         const a = owner.attributes.find((x) => x.id === m.attributeId);
@@ -639,7 +730,7 @@ function checkAtomicity(ctx: Context, owner: Entity | Association) {
       const holder = link && ctx.doc.links.find((l) => l.associationId === link.associationId && l.id !== link.id);
       return holder?.cardinality.min === 0;
     });
-    if (optional.length) {
+    if (optional.length > 0) {
       const names = optional.map((m) =>
         "attributeId" in m
           ? owner.attributes.find((a) => a.id === m.attributeId)!.name
@@ -665,7 +756,9 @@ function checkAtomicity(ctx: Context, owner: Entity | Association) {
     }
   }
   for (const key of owner.alternateKeys ?? []) {
-    if (!key.prefixes?.some((p) => p !== null)) continue;
+    if (!key.prefixes?.some((p) => p !== null)) {
+      continue;
+    }
     const names = key.members.map((m, i) => {
       const attribute = "attributeId" in m ? owner.attributes.find((a) => a.id === m.attributeId)?.name : "#";
       return key.prefixes?.[i] ? `${attribute}(${key.prefixes[i]})` : attribute;
@@ -676,7 +769,9 @@ function checkAtomicity(ctx: Context, owner: Entity | Association) {
 
 /** Membre d'une clé venu d'une patte : nom de l'association (ex. « sejour_Patient »). */
 function keyMemberLabel(ctx: Context, member: KeyMember): string | undefined {
-  if ("attributeId" in member) return undefined;
+  if ("attributeId" in member) {
+    return undefined;
+  }
   const link = ctx.doc.links.find((l) => l.id === member.linkId);
   const association = link && ctx.doc.associations.find((a) => a.id === link.associationId);
   // Nom de la colonne de clé étrangère dans la table (vol_retour), pas celui de la clé référencée (O-41).
@@ -699,9 +794,15 @@ function checkInheritances(ctx: Context) {
     const parentId =
       inheritance.parentId && entityIds.includes(inheritance.parentId) ? inheritance.parentId : undefined;
     const children = entityIds.filter((id) => id !== parentId);
-    if (!parentId) ctx.issues.push({ severity: "error", message: MSG.inheritanceNeedsParent, target });
-    if (children.length < 1) ctx.issues.push({ severity: "error", message: MSG.inheritanceNeedsChild, target });
-    if (!parentId) continue;
+    if (!parentId) {
+      ctx.issues.push({ severity: "error", message: MSG.inheritanceNeedsParent, target });
+    }
+    if (children.length === 0) {
+      ctx.issues.push({ severity: "error", message: MSG.inheritanceNeedsChild, target });
+    }
+    if (!parentId) {
+      continue;
+    }
     for (const child of children) {
       if (ctx.parents.has(child)) {
         const entity = ctx.entities.get(child)!;
@@ -728,7 +829,9 @@ function checkTables(ctx: Context, tables: LogicalTable[]) {
       : ctx.doc.associations.find((a) => a.id === table.source.id)
     )?.name ?? table.name;
   const counts = new Map<string, number>();
-  for (const table of tables) counts.set(table.name, (counts.get(table.name) ?? 0) + 1);
+  for (const table of tables) {
+    counts.set(table.name, (counts.get(table.name) ?? 0) + 1);
+  }
   for (const table of tables) {
     if (counts.get(table.name)! > 1) {
       ctx.issues.push({
@@ -767,12 +870,16 @@ export function toLogicalModel(doc: ModelDocument): LogicalModel {
 
   const tables = new Map<Id, LogicalTable>();
   for (const entity of doc.entities) {
-    if (!entity.fictive) tables.set(entity.id, entityTable(ctx, entity));
+    if (!entity.fictive) {
+      tables.set(entity.id, entityTable(ctx, entity));
+    }
   }
 
   for (const association of doc.associations) {
     const links = linksOf(doc, association.id).filter((l) => ctx.entities.has(l.entityId));
-    if (!checkAssociationModel(ctx, association, links)) continue;
+    if (!checkAssociationModel(ctx, association, links)) {
+      continue;
+    }
 
     if (generatesTable(links) || links.length > 2) {
       if (!generatesTable(links)) {
@@ -788,7 +895,9 @@ export function toLogicalModel(doc: ModelDocument): LogicalModel {
 
     const { child, parent } = dependentSide(links as [Link, Link]);
     const childTable = tables.get(child.entityId);
-    if (!childTable || child.relativeId) continue; // entité fictive, ou FK déjà dans la clé
+    if (!childTable || child.relativeId) {
+      continue; // entité fictive, ou FK déjà dans la clé
+    }
     addReference(ctx, childTable, parent, child, {
       notNull: child.cardinality.min >= 1,
       inPrimaryKey: false,
@@ -803,7 +912,9 @@ export function toLogicalModel(doc: ModelDocument): LogicalModel {
       table.source.kind === "entity"
         ? ctx.entities.get(table.source.id)
         : doc.associations.find((a) => a.id === table.source.id);
-    if (node) applyPhysical(ctx, table, node);
+    if (node) {
+      applyPhysical(ctx, table, node);
+    }
   }
   checkTables(ctx, result);
   return { tables: result, issues: ctx.issues };

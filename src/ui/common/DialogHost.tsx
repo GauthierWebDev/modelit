@@ -26,7 +26,9 @@ const primary = {
 export function DialogHost() {
   const request = useDialogStore((s) => s.queue[0]);
   const descriptionId = useId();
-  if (!request) return null;
+  if (!request) {
+    return null;
+  }
   const { icon: Icon, className } = ICONS[request.tone];
   const cancel = () => settleDialog(request.id, false);
   const ok = () => settleDialog(request.id, true);
@@ -41,7 +43,7 @@ export function DialogHost() {
       describedBy={descriptionId}
       width="w-[28rem]"
       layer="z-[60]"
-      icon={<Icon size={18} className={`flex-none ${className}`} aria-hidden />}
+      icon={<Icon size={18} className={`flex-none ${className}`} aria-hidden={true} />}
       footer={
         <>
           <div className="flex-1" />

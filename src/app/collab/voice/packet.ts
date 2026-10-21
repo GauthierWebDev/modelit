@@ -25,7 +25,9 @@ const decoder = new TextDecoder();
 
 export function encodePacket({ speaker, seq, level, payload }: AudioPacket): Uint8Array {
   const id = encoder.encode(speaker);
-  if (id.length > 255 || payload.length > MAX_PAYLOAD) throw new Error("paquet audio trop grand");
+  if (id.length > 255 || payload.length > MAX_PAYLOAD) {
+    throw new Error("paquet audio trop grand");
+  }
   const out = new Uint8Array(2 + id.length + 3 + payload.length);
   out[0] = PACKET_VERSION;
   out[1] = id.length;
@@ -40,12 +42,18 @@ export function encodePacket({ speaker, seq, level, payload }: AudioPacket): Uin
 
 /** Paquet lu ; `null` s'il est malformé ou d'une autre version (ignoré). */
 export function decodePacket(data: Uint8Array): AudioPacket | null {
-  if (data.length < 5 || data[0] !== PACKET_VERSION) return null;
+  if (data.length < 5 || data[0] !== PACKET_VERSION) {
+    return null;
+  }
   const idLength = data[1]!;
   const at = 2 + idLength;
-  if (data.length < at + 3) return null;
+  if (data.length < at + 3) {
+    return null;
+  }
   const payload = data.slice(at + 3);
-  if (payload.length === 0 || payload.length > MAX_PAYLOAD) return null;
+  if (payload.length === 0 || payload.length > MAX_PAYLOAD) {
+    return null;
+  }
   return {
     speaker: decoder.decode(data.subarray(2, at)),
     seq: (data[at]! << 8) | data[at + 1]!,

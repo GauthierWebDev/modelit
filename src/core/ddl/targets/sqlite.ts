@@ -2,7 +2,7 @@ import { ALL_ACTIONS, type Dialect, reservedWords, standard } from "./dialect";
 
 /** Mots réservés propres au SGBD (les mots communs sont ajoutés par `reservedWords`). */
 const RESERVED = reservedWords(
-  `abort autoincrement commit deferrable escape except index isnull limit notnull raise transaction`,
+  "abort autoincrement commit deferrable escape except index isnull limit notnull raise transaction",
 );
 
 /** SQLite : affinités de types, clé primaire de compteur en ligne. */
@@ -20,7 +20,7 @@ export const sqlite = (): Dialect => ({
   // Pas d'ALTER TABLE … ADD CONSTRAINT : les références vers des tables créées plus loin sont admises.
   constraints: { ...standard.constraints, deferrable: (kind) => kind === "foreign", alterForeignKey: false },
   indexes: { ...standard.indexes, expressions: true, partial: "where", prefix: (ref, n) => `substr(${ref}, 1, ${n})` },
-  identifiers: { quotes: ['"', '"'], reserved: RESERVED, maxLength: Infinity },
+  identifiers: { quotes: ['"', '"'], reserved: RESERVED, maxLength: Number.POSITIVE_INFINITY },
   actions: { delete: ALL_ACTIONS, update: ALL_ACTIONS, implicit: [] },
   expressions: {
     booleanLiterals: true,

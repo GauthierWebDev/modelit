@@ -104,7 +104,9 @@ describe("géométrie du schéma", () => {
     const a = addEntity(doc, { x: 0, y: 0 });
     const b = addEntity(doc, { x: 400, y: 0 });
     const result = connectNodes(doc, a, b, { associationPosition: { x: 200, y: 0 } });
-    if (!result || !("created" in result)) throw new Error("association non créée");
+    if (!(result && "created" in result)) {
+      throw new Error("association non créée");
+    }
     const [leg] = doc.store.getState().doc.links;
     moveNodes(doc, new Map(), new Map([[leg!.id, [{ x: 100, y: 50 }]]]));
     expect(Object.keys(doc.store.getState().doc.layout.bends)).toEqual([leg!.id]);
