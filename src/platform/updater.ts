@@ -1,4 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import type { AvailableUpdate, UpdateSource } from "@/app/updateSource";
 
 /**
  * Mises à jour de l'application (plugin updater de Tauri) : la release GitHub publiée la plus
@@ -8,16 +9,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
  * de `latest.json` (ajoutée par la CI) : les autres builds ne peuvent pas se mettre à jour.
  */
 
-export interface AvailableUpdate {
-  version: string;
-  currentVersion: string;
-  /** Notes de version de la release. */
-  notes: string;
-  /** Télécharge, installe puis redémarre l'application ; `progress` : 0 → 1, ou `null` si taille inconnue. */
-  install: (progress: (ratio: number | null) => void) => Promise<void>;
-}
-
-export async function checkForUpdate(): Promise<AvailableUpdate | null> {
+async function checkForUpdate(): Promise<AvailableUpdate | null> {
   if (!isTauri()) {
     return null;
   }
@@ -51,6 +43,13 @@ export async function checkForUpdate(): Promise<AvailableUpdate | null> {
 export const updatesSupported = isTauri;
 
 /** Faux pour un build sans adresse de mise à jour (développement, installeur joint à un run de CI). */
-export async function updatesConfigured(): Promise<boolean> {
+async function updatesConfigured(): Promise<boolean> {
   return isTauri() && (await invoke<boolean>("updater_configured"));
 }
+
+/** Adaptateur du port `UpdateSource` (`app/updateSource.ts`). */
+export const platformUpdates: UpdateSource = {
+  supported: updatesSupported,
+  configured: updatesConfigured,
+  check: checkForUpdate,
+};

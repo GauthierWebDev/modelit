@@ -1,5 +1,7 @@
 import { setFileAccess } from "./app/fileAccess";
+import { setUpdateSource } from "./app/updateSource";
 import { platformFiles } from "./platform/files";
+import { platformUpdates } from "./platform/updater";
 
 /**
  * Point d'assemblage de la fenêtre principale (esprit hexagonal, audit A-01 / M-00 L3) : seul endroit qui
@@ -8,4 +10,5 @@ import { platformFiles } from "./platform/files";
  */
 export function bootstrapMain() {
   setFileAccess(platformFiles);
+  setUpdateSource(platformUpdates);
 }
