@@ -8,10 +8,11 @@ import { beginMove, type MoveSession } from "@/app/moveCommands";
 import type { StatusMessage, Tool } from "@/app/uiStore";
 import { hitId, hitIdAt } from "./CanvasSurface";
 import { logicalRenameTarget } from "./canvasRules";
-import { intersects, normalizeRect, snap } from "./geometry";
+import { snap } from "./geometry";
 import type { RenameTarget } from "./InlineRename";
 import type { LogicalViewMode, TableLayout } from "./logicalGeometry";
 import { openCanvasMenu } from "./objectActions";
+import { isDrag, marqueeSelection, showConnection } from "./sharedGestures";
 
 /** Déplacement des tables sélectionnées : point de départ du pointeur, transaction de déplacement. */
 export interface TableDrag {
@@ -66,15 +67,7 @@ function connect(c: LogicalContext, fromId: Id, toId: Id | null) {
     return;
   }
   // L'association (invisible ici) se place comme depuis le MCD (O-60).
-  const result = connectPlaced(c.docHandle, fromId, toId);
-  if (!result) {
-    return;
-  }
-  if ("error" in result) {
-    c.notify({ kind: "error", text: result.error });
-  } else {
-    c.select([result.created]);
-  }
+  showConnection(connectPlaced(c.docHandle, fromId, toId), c);
 }
 
 export function onPointerDown(c: LogicalContext, e: PointerEvent<SVGSVGElement>, point: Point): boolean {
@@ -158,9 +151,14 @@ export function onPointerMove(c: LogicalContext, point: Point) {
     c.setLink({ ...link, current: point });
   }
   if (marquee) {
-    const rect = normalizeRect(marquee.start, point);
-    const inside = c.layouts.filter((l) => intersects(rect, l)).map((l) => l.sourceId);
-    c.select([...new Set([...marquee.base, ...inside])]);
+    c.select(
+      marqueeSelection(
+        marquee.start,
+        point,
+        c.layouts.map((l) => [l.sourceId, l]),
+        marquee.base,
+      ),
+    );
     c.setMarquee({ ...marquee, current: point });
     return;
   }
@@ -175,7 +173,7 @@ export function onPointerUp(c: LogicalContext, e: PointerEvent<SVGSVGElement>, p
   const { link } = c;
   if (link && !link.pending) {
     // Glisser : relier à la table sous le pointeur ; simple clic : attendre le second clic.
-    const dragged = Math.hypot(point.x - link.start.x, point.y - link.start.y) > 4;
+    const dragged = isDrag(link.start, point);
     if (dragged) {
       connect(c, link.fromId, c.tableOf(hitIdAt(e))?.sourceId ?? null);
     } else {

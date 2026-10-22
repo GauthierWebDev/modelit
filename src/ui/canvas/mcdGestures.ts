@@ -9,6 +9,7 @@ import { beginMove, type MoveSession } from "@/app/moveCommands";
 import type { StatusMessage, Tool } from "@/app/uiStore";
 import { hitId } from "./CanvasSurface";
 import { INHERITANCE_SIZE, type NodeLayout, snap } from "./geometry";
+import { showConnection } from "./sharedGestures";
 
 export type Gesture =
   /** Déplacement en cours (une transaction, les cassures suivent). */
@@ -49,15 +50,7 @@ export function connect(c: McdContext, fromId: Id, toId: Id | null) {
   if (fromId === toId && !isEntity) {
     return;
   }
-  const result = connectPlaced(c.docHandle, fromId, toId);
-  if (!result) {
-    return;
-  }
-  if ("error" in result) {
-    c.notify({ kind: "error", text: result.error });
-  } else {
-    c.select([result.created]);
-  }
+  showConnection(connectPlaced(c.docHandle, fromId, toId), c);
 }
 
 export function onPointerDown(c: McdContext, e: PointerEvent<SVGSVGElement>, point: Point): boolean {

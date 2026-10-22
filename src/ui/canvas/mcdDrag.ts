@@ -2,11 +2,10 @@ import type { Point } from "@core/index";
 import type { MouseEvent, PointerEvent } from "react";
 import { removeBend } from "@/app/commands";
 import { hitIdAt } from "./CanvasSurface";
-import { intersects, normalizeRect, snap } from "./geometry";
+import { snap } from "./geometry";
 import { connect, type Gesture, type McdContext } from "./mcdGestures";
 import { openCanvasMenu } from "./objectActions";
-
-const DRAG_THRESHOLD = 4;
+import { isDrag, marqueeSelection } from "./sharedGestures";
 
 export function onPointerMove(c: McdContext, point: Point) {
   const { gesture, docHandle, grid } = c;
@@ -27,9 +26,7 @@ export function onPointerMove(c: McdContext, point: Point) {
       break;
     }
     case "marquee": {
-      const rect = normalizeRect(gesture.start, point);
-      const inside = [...c.layouts].filter(([, l]) => intersects(rect, l)).map(([id]) => id);
-      c.select([...new Set([...gesture.base, ...inside])]);
+      c.select(marqueeSelection(gesture.start, point, c.layouts, gesture.base));
       c.setGesture({ ...gesture, current: point });
       break;
     }
@@ -56,7 +53,7 @@ export function onPointerUp(c: McdContext, e: PointerEvent<SVGSVGElement>, point
     if (gesture.pending) {
       return;
     }
-    const dragged = Math.hypot(point.x - gesture.start.x, point.y - gesture.start.y) > DRAG_THRESHOLD;
+    const dragged = isDrag(gesture.start, point);
     // Simple clic : on attend le second clic. Glisser : on relie à l'objet sous le pointeur.
     if (!dragged) {
       return c.setGesture({ ...gesture, pending: true });
