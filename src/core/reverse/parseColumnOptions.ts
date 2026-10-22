@@ -1,6 +1,6 @@
-import { Cursor, isPunct, isWord, joinRaw } from "./cursor";
+import { Cursor, isPunct, isWord, joinRaw } from "../sql/cursor";
+import type { Token } from "../sql/tokenize";
 import type { ParsedColumn } from "./parse";
-import type { Token } from "./tokenize";
 
 /** AUTO_INCREMENT, IDENTITY, GENERATED …, AS (colonne calculée). */
 export function counterOption(c: Cursor, column: ParsedColumn): boolean {

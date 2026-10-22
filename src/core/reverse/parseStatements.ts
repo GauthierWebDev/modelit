@@ -1,4 +1,4 @@
-import { type Cursor, isName, isPunct, isWord, splitCommas } from "./cursor";
+import { type Cursor, isName, isPunct, isWord, splitCommas } from "../sql/cursor";
 import type { ParsedSchema } from "./parse";
 import { sequenceTrigger } from "./parseSequences";
 import { findTable } from "./parseTables";

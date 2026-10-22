@@ -5,10 +5,10 @@ import { mldPlainText } from "../mld/text";
 import { toLogicalModel } from "../mld/transform";
 import { sourceDialects } from "../model/document";
 import { emptyDocument } from "../model/factory";
+import { sqlTypeToDataType } from "../sql/types";
 import { model } from "../testing/builder";
 import { reverseEngineer } from "./build";
 import { parseSql } from "./parse";
-import { sqlTypeToDataType } from "./types";
 
 const reverse = (sql: string) => reverseEngineer(sql, emptyDocument());
 const mldOf = (sql: string) => mldPlainText(toLogicalModel(reverse(sql).doc));

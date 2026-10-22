@@ -3,7 +3,7 @@ import { parseCondition } from "../ddl/expressions";
 import type { DataType } from "../model/datatype";
 import type { ConstraintState, SequenceDefinition, SqlDialect } from "../model/physical";
 import type { NamedExpression, ParsedColumn, ParsedKey, ParsedTable } from "../reverse/parse";
-import { tokenize } from "../reverse/tokenize";
+import { tokenize } from "../sql/tokenize";
 import type { CatalogKey } from "./catalog";
 
 /** État d'une contrainte en texte stable (`undefined` : active, validée, immédiate). */

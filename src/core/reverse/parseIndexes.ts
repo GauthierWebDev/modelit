@@ -1,4 +1,4 @@
-import { type Cursor, isWord, joinRaw } from "./cursor";
+import { type Cursor, isWord, joinRaw } from "../sql/cursor";
 import type { ParsedKey, ParsedSchema, ParsedTable } from "./parse";
 import { columnList, indexBody } from "./parseKeys";
 import { findTable, STORAGE_CLAUSES } from "./parseTables";

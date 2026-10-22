@@ -1,8 +1,7 @@
-import type { Token } from "../reverse/tokenize";
+import { KEYWORDS } from "../sql/references";
+import type { Token } from "../sql/tokenize";
 import type { DateFunction, SpecialFunction } from "./dialects";
 import type { Operand } from "./expressions";
-
-export const KEYWORDS = new Set(["and", "or", "not", "in", "between", "is", "null", "like", "true", "false"]);
 
 /** Fonctions de date de tous les dialectes → forme canonique. */
 const DATE_FUNCTIONS: Record<string, DateFunction> = {

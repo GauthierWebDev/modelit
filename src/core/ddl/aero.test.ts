@@ -5,7 +5,7 @@ import { toLogicalModel } from "../mld/transform";
 import { emptyDocument } from "../model/factory";
 import { reverseEngineer } from "../reverse/build";
 import { parseSql } from "../reverse/parse";
-import { tokenize } from "../reverse/tokenize";
+import { tokenize } from "../sql/tokenize";
 import { attribute, doc, entity, generate, issues, report, SOURCE, unjustified } from "../testing/aeroFixture";
 import { catalogOf, diffCatalogs } from "../testing/catalog";
 import { generateDdl } from "./generate";

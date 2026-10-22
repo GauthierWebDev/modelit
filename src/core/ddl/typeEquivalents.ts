@@ -1,9 +1,9 @@
 import { sqlType } from "../dbms/typeMapping";
 import type { LogicalTable } from "../mld/logical";
 import type { DataType } from "../model/datatype";
+import { referencedColumns } from "../sql/references";
 import { MSG } from "../validation/messages";
 import type { Context } from "./context";
-import { referencedColumns } from "./expressions";
 import type { Usage } from "./targets";
 
 /**

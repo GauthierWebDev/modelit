@@ -1,6 +1,6 @@
 import type { DataType } from "../model/datatype";
 import type { SqlDialect } from "../model/physical";
-import { type Token, tokenize } from "../reverse/tokenize";
+import { type Token, tokenize } from "../sql/tokenize";
 import { quoteIdentifier, type Target } from "./dialects";
 
 /**

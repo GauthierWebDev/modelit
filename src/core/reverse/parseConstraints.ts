@@ -1,5 +1,5 @@
 import type { ConstraintState, ReferentialAction } from "../model/physical";
-import { type Cursor, isName, isPunct, isWord } from "./cursor";
+import { type Cursor, isName, isPunct, isWord } from "../sql/cursor";
 import type { ParsedForeignKey, ParsedTable } from "./parse";
 import { columnList } from "./parseKeys";
 

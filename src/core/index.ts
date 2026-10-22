@@ -30,6 +30,6 @@ export * from "./naming/typology";
 export * from "./reverse/build";
 export { detectDialect } from "./reverse/dialect";
 export { parseSql } from "./reverse/parse";
-export * from "./reverse/types";
+export * from "./sql/types";
 export * from "./validation/messages";
 export * from "./validation/rules";

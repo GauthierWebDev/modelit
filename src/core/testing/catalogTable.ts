@@ -3,7 +3,7 @@ import { sqliteAffinity } from "../ddl/dialects";
 import type { DataType } from "../model/datatype";
 import type { SequenceDefinition, SqlDialect } from "../model/physical";
 import type { ParsedColumn, ParsedKey, ParsedTable } from "../reverse/parse";
-import { integerRange, sqlTypeToDataType } from "../reverse/types";
+import { integerRange, sqlTypeToDataType } from "../sql/types";
 import type { CatalogColumn, CatalogForeignKey, CatalogKey, CatalogTable } from "./catalog";
 import { type CanonicalContext, canonicalCheck, canonicalDefault, compact } from "./catalogCanonical";
 import { type CheckFacts, checkFacts } from "./catalogChecks";
