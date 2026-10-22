@@ -63,7 +63,9 @@ describe("MCD de la médiathèque (O-36)", () => {
       ]),
     );
   });
+});
 
+describe("MCD de la médiathèque (O-36)", () => {
   it("4. identifiants alternatifs : isbn, num_carte, code_barre, email(100) sur préfixe ; vo → isbn", () => {
     const attr = (e: string, a: string) => entity(e).attributes.find((x) => x.name === a)!;
     expect(attr("oeuvre", "isbn").unique).toBe(true);
@@ -94,7 +96,9 @@ describe("MCD de la médiathèque (O-36)", () => {
     expect(on(entity("emprunt").id)).toEqual([expect.stringContaining("details")]);
     expect(toLogicalModel(doc).issues.filter((i) => i.severity === "error")).toEqual([]);
   });
+});
 
+describe("MCD de la médiathèque (O-36)", () => {
   it("laboratoire : rôles mentor et precedente sur les pattes 0,n ; « labo » écarté (abréviation de Laboratoire)", () => {
     const labo = reverseEngineer(readFileSync("fixtures/labo_sqlite.sql", "utf8"), emptyDocument()).doc;
     const names = labo.associations.map((a) => a.name);
@@ -117,19 +121,19 @@ describe("MCD de la médiathèque (O-36)", () => {
   });
 });
 
-describe("MCD de l'hôpital (O-39)", () => {
-  const { doc: hopital } = reverseEngineer(readFileSync("fixtures/hopital_oracle.sql", "utf8"), emptyDocument());
-  const names = hopital.associations.map((a) => a.name);
-  const links = (name: string) =>
-    hopital.links
-      .filter((l) => l.associationId === hopital.associations.find((a) => a.name === name)?.id)
-      .map((l) => ({
-        entity: hopital.entities.find((e) => e.id === l.entityId)!.name,
-        cardinality: `${l.cardinality.min},${l.cardinality.max}`,
-        role: l.role,
-      }));
-  const issues = toLogicalModel(hopital).issues.map((i) => i.message);
+const { doc: hopital } = reverseEngineer(readFileSync("fixtures/hopital_oracle.sql", "utf8"), emptyDocument());
+const names = hopital.associations.map((a) => a.name);
+const links = (name: string) =>
+  hopital.links
+    .filter((l) => l.associationId === hopital.associations.find((a) => a.name === name)?.id)
+    .map((l) => ({
+      entity: hopital.entities.find((e) => e.id === l.entityId)!.name,
+      cardinality: `${l.cardinality.min},${l.cardinality.max}`,
+      role: l.role,
+    }));
+const issues = toLogicalModel(hopital).issues.map((i) => i.message);
 
+describe("MCD de l'hôpital (O-39)", () => {
   it("17. nommage : pas de règle b) quand la colonne porte le nom de la colonne référencée ; repli table_table", () => {
     expect(names.sort(byCodeUnit)).toEqual(
       [
@@ -167,7 +171,9 @@ describe("MCD de l'hôpital (O-39)", () => {
       dialect: "oracle",
     });
   });
+});
 
+describe("MCD de l'hôpital (O-39)", () => {
   it("15 / 16. identifiants alternatifs : relatif à l'association (uq_service_libelle), sur expression (LOWER(email))", () => {
     const service = hopital.entities.find((e) => e.name === "service")!;
     const libelle = service.alternateKeys!.find((k) => k.name === "uq_service_libelle")!;

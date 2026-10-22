@@ -78,7 +78,9 @@ describe("tables du MLD et du MPD", () => {
     const l = table(tableLayouts(logical, doc, "mld"), "CONTENIR");
     expect(l.rows.map((r) => r.column.name)).toEqual([...contenir.primaryKey, "quantite"]);
   });
+});
 
+describe("tables du MLD et du MPD", () => {
   it("clé primaire simple : ni retrait ni trait", () => {
     const l = table(layoutsOf(setup(), "mld"), "CLIENT");
     expect(l.compositeKey).toBeNull();
@@ -170,7 +172,9 @@ describe("traits des clés étrangères", () => {
     const layouts = layoutsOf(setup(), "mld").filter((l) => l.table.name !== "CLIENT");
     expect(referenceGeometries(layouts).some((r) => r.fk.referencedTable === "CLIENT")).toBe(false);
   });
+});
 
+describe("traits des clés étrangères", () => {
   it("plusieurs clés étrangères entre les mêmes tables : traits distincts", () => {
     const doc = model()
       .entity("PERSONNE", ["id_personne*"])

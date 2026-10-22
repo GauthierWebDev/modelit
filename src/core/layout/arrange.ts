@@ -29,27 +29,39 @@ export function alignBoxes(boxes: Box[], alignment: Alignment): Map<string, Poin
   const top = Math.min(...boxes.map((b) => b.y));
   const bottom = Math.max(...boxes.map((b) => b.y + b.height));
   for (const b of boxes) {
-    const dx =
-      alignment === "left"
-        ? left - b.x
-        : alignment === "right"
-          ? right - b.x - b.width
-          : alignment === "center"
-            ? (left + right) / 2 - b.x - b.width / 2
-            : 0;
-    const dy =
-      alignment === "top"
-        ? top - b.y
-        : alignment === "bottom"
-          ? bottom - b.y - b.height
-          : alignment === "middle"
-            ? (top + bottom) / 2 - b.y - b.height / 2
-            : 0;
+    const dx = horizontalShift(b, alignment, left, right);
+    const dy = verticalShift(b, alignment, top, bottom);
     if (dx || dy) {
       offsets.set(b.id, { x: dx, y: dy });
     }
   }
   return offsets;
+}
+
+function horizontalShift(b: Box, alignment: Alignment, left: number, right: number): number {
+  switch (alignment) {
+    case "left":
+      return left - b.x;
+    case "right":
+      return right - b.x - b.width;
+    case "center":
+      return (left + right) / 2 - b.x - b.width / 2;
+    default:
+      return 0;
+  }
+}
+
+function verticalShift(b: Box, alignment: Alignment, top: number, bottom: number): number {
+  switch (alignment) {
+    case "top":
+      return top - b.y;
+    case "bottom":
+      return bottom - b.y - b.height;
+    case "middle":
+      return (top + bottom) / 2 - b.y - b.height / 2;
+    default:
+      return 0;
+  }
 }
 
 /**

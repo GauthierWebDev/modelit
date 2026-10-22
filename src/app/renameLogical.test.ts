@@ -4,29 +4,23 @@ import { describe, expect, it } from "vitest";
 import { renameLogical } from "./commands";
 import { createDocumentHandle } from "./document/handle";
 
+const setup = () =>
+  createDocumentHandle(
+    model()
+      .entity("Client", ["id_client*", "Nom client"])
+      .entity("Commande", ["id_commande*"])
+      .association("Passer", ["Client 0,n", "Commande 1,1"])
+      .build(),
+  );
+const logical = (doc: ReturnType<typeof setup>) => toLogicalModel(doc.store.getState().doc);
+const table = (doc: ReturnType<typeof setup>, name: string) => logical(doc).tables.find((t) => t.name === name)!;
+const rename = (doc: ReturnType<typeof setup>, tableName: string, column: string | null, name: string) => {
+  const t = table(doc, tableName);
+  return renameLogical(doc, logical(doc), t, column === null ? null : t.columns.find((c) => c.name === column)!, name);
+};
+
 /** Renommer depuis le MLD / MPD, traduit dans le MCD (override O-56). */
 describe("renommer une table ou une colonne du MLD", () => {
-  const setup = () =>
-    createDocumentHandle(
-      model()
-        .entity("Client", ["id_client*", "Nom client"])
-        .entity("Commande", ["id_commande*"])
-        .association("Passer", ["Client 0,n", "Commande 1,1"])
-        .build(),
-    );
-  const logical = (doc: ReturnType<typeof setup>) => toLogicalModel(doc.store.getState().doc);
-  const table = (doc: ReturnType<typeof setup>, name: string) => logical(doc).tables.find((t) => t.name === name)!;
-  const rename = (doc: ReturnType<typeof setup>, tableName: string, column: string | null, name: string) => {
-    const t = table(doc, tableName);
-    return renameLogical(
-      doc,
-      logical(doc),
-      t,
-      column === null ? null : t.columns.find((c) => c.name === column)!,
-      name,
-    );
-  };
-
   it("titre : nom logique de l'entité ; vide, le nom dérivé revient", () => {
     const doc = setup();
     expect(rename(doc, "Client", null, "acheteur")).toBeNull();

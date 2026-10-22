@@ -3,7 +3,7 @@
 #   scripts/sgbd.sh up [sgbd…]    démarre les SGBD (par défaut : postgres mysql oracle mssql)
 #   scripts/sgbd.sh wait [sgbd…]  attend qu'ils acceptent les connexions
 #   scripts/sgbd.sh down          arrête et supprime les conteneurs
-# Puis : pnpm test:sgbd   (SGBD_DOCKER=1 vitest run src/core/ddl/sgbd.test.ts)
+# Puis : pnpm test:sgbd   (SGBD_DOCKER=1 vitest run src/core/ddl/sgbd : sgbd.test.ts, sgbdPostgres.test.ts)
 # Exemple (CI) : scripts/sgbd.sh up postgres mysql && scripts/sgbd.sh wait postgres mysql
 set -euo pipefail
 

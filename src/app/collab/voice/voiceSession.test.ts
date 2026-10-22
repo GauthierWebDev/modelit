@@ -62,36 +62,36 @@ function fakeBackend(options: { mic?: boolean; support?: "ok" | "no-codec" | "no
   };
 }
 
+let net: ReturnType<typeof memoryNetwork>;
+let bob: GuestSession;
+let atBob: AudioPacket[];
+
+beforeEach(async () => {
+  resetWorkspace();
+  useCollabStore.setState({ mode: "idle", tabId: null, voice: VOICE_OFF, participants: [] });
+  net = memoryNetwork();
+  setCollabTransport({
+    startHost: async () => ({ addr: "{}", link: net.hostLink, stop: async () => undefined }),
+    connect: async () => net.connect("x"),
+  });
+  await shareActiveTab();
+  bob = startGuest({
+    link: net.connect("bob"),
+    secret: parseLink(useCollabStore.getState().links!.edit)!.secret,
+    name: "Bob",
+    color: "#111",
+  });
+  atBob = [];
+  bob.onAudio((p) => atBob.push(p));
+  await net.settle();
+});
+afterEach(async () => {
+  await stopSharing();
+});
+
+const hostAudio = () => useCollabStore.getState().participants.find((p) => p.id === "host")?.audio;
+
 describe("vocal en session (O-48)", () => {
-  let net: ReturnType<typeof memoryNetwork>;
-  let bob: GuestSession;
-  let atBob: AudioPacket[];
-
-  beforeEach(async () => {
-    resetWorkspace();
-    useCollabStore.setState({ mode: "idle", tabId: null, voice: VOICE_OFF, participants: [] });
-    net = memoryNetwork();
-    setCollabTransport({
-      startHost: async () => ({ addr: "{}", link: net.hostLink, stop: async () => undefined }),
-      connect: async () => net.connect("x"),
-    });
-    await shareActiveTab();
-    bob = startGuest({
-      link: net.connect("bob"),
-      secret: parseLink(useCollabStore.getState().links!.edit)!.secret,
-      name: "Bob",
-      color: "#111",
-    });
-    atBob = [];
-    bob.onAudio((p) => atBob.push(p));
-    await net.settle();
-  });
-  afterEach(async () => {
-    await stopSharing();
-  });
-
-  const hostAudio = () => useCollabStore.getState().participants.find((p) => p.id === "host")?.audio;
-
   it("personne dans le vocal par défaut ; rejoindre ouvre le micro et se voit dans la liste", async () => {
     const backend = fakeBackend();
     expect(hostAudio()).toBeUndefined();
@@ -127,7 +127,9 @@ describe("vocal en session (O-48)", () => {
     expect(backend.engines[0]!.muted).toBe(true);
     expect(bob.state.getState().participants.find((p) => p.id === "host")?.audio).toEqual({ muted: true });
   });
+});
 
+describe("vocal en session (O-48)", () => {
   it("micro refusé : écoute seule, avec la raison", async () => {
     fakeBackend({ mic: false });
     await joinAudio();
@@ -169,7 +171,9 @@ describe("vocal en session (O-48)", () => {
     expect(useCollabStore.getState().voice).toEqual(VOICE_OFF);
     expect(bob.state.getState().ended).toBe("stopped");
   });
+});
 
+describe("vocal en session (O-48)", () => {
   it("participant parti : sa lecture s'arrête", async () => {
     const backend = fakeBackend();
     await joinAudio();

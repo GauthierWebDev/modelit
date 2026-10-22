@@ -57,19 +57,7 @@ export function sqlserver(version: string | undefined): Dialect {
       update: ["no action", "cascade", "set null", "set default"],
       implicit: [],
     },
-    expressions: {
-      booleanLiterals: false,
-      // localtimestamp : heure locale ; utc_timestamp : heure UTC sans fuseau (O-39, O-42).
-      dates: {
-        current_date: "CAST(GETDATE() AS DATE)",
-        current_time: "CAST(GETDATE() AS TIME)",
-        current_timestamp: "CURRENT_TIMESTAMP",
-        localtimestamp: "SYSDATETIME()",
-        localtimestamp_seconds: "CAST(GETDATE() AS DATETIME2(0))",
-        utc_timestamp: "SYSUTCDATETIME()",
-      },
-      functions: { current_user: "CURRENT_USER", uuid: "NEWID()", uuid_sequential: "NEWSEQUENTIALID()" },
-    },
+    expressions: sqlserverExpressions(),
     collations: {
       sensitive: "COLLATE Latin1_General_100_CS_AS",
       binary: "COLLATE Latin1_General_BIN2",
@@ -78,5 +66,22 @@ export function sqlserver(version: string | undefined): Dialect {
         sql: klass === "ci" ? "COLLATE Latin1_General_100_CI_AS" : "COLLATE Latin1_General_100_CI_AI",
       }),
     },
+  };
+}
+
+/** Valeurs par défaut : dates et fonctions. */
+function sqlserverExpressions(): Dialect["expressions"] {
+  return {
+    booleanLiterals: false,
+    // localtimestamp : heure locale ; utc_timestamp : heure UTC sans fuseau (O-39, O-42).
+    dates: {
+      current_date: "CAST(GETDATE() AS DATE)",
+      current_time: "CAST(GETDATE() AS TIME)",
+      current_timestamp: "CURRENT_TIMESTAMP",
+      localtimestamp: "SYSDATETIME()",
+      localtimestamp_seconds: "CAST(GETDATE() AS DATETIME2(0))",
+      utc_timestamp: "SYSUTCDATETIME()",
+    },
+    functions: { current_user: "CURRENT_USER", uuid: "NEWID()", uuid_sequential: "NEWSEQUENTIALID()" },
   };
 }

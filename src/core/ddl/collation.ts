@@ -39,15 +39,25 @@ export function collationClass(name: string, declared?: Map<string, Record<strin
   if (n === "c" || n === "posix" || n === "binary" || n === "ucs_basic" || n.endsWith("_bin") || n.endsWith("_bin2")) {
     return "binary";
   }
-  const icu = declared?.get(n);
-  if (icu && icu.deterministic === "false") {
-    if (/ks-level1/.test(icu.locale ?? "")) {
-      return "ai_ci";
-    }
-    if (/ks-level2/.test(icu.locale ?? "")) {
-      return "ci";
-    }
+  return icuClass(declared?.get(n)) ?? namedClass(n) ?? mysqlClass(n) ?? "other";
+}
+
+/** Collation ICU non déterministe créée par le script : ks-level1 (accents et casse), ks-level2 (casse). */
+function icuClass(icu: Record<string, string> | undefined): CollationClass | undefined {
+  if (!(icu && icu.deterministic === "false")) {
+    return undefined;
   }
+  if (/ks-level1/.test(icu.locale ?? "")) {
+    return "ai_ci";
+  }
+  if (/ks-level2/.test(icu.locale ?? "")) {
+    return "ci";
+  }
+  return undefined;
+}
+
+/** Collations de ModelIt (PostgreSQL), SQL Server, Oracle et SQLite. */
+function namedClass(n: string): CollationClass | undefined {
   if (n === PG_COLLATIONS.ai_ci.name) {
     return "ai_ci";
   }
@@ -75,7 +85,11 @@ export function collationClass(name: string, declared?: Map<string, Record<strin
   if (n === "nocase") {
     return "ci";
   }
-  // MySQL / MariaDB : …_as_ci, …_ci (insensible aux accents par défaut), …_cs, …_as_cs
+  return undefined;
+}
+
+/** MySQL / MariaDB : …_as_ci, …_ci (insensible aux accents par défaut), …_cs, …_as_cs */
+function mysqlClass(n: string): CollationClass | undefined {
   if (n.endsWith("_as_ci")) {
     return "ci";
   }
@@ -85,7 +99,7 @@ export function collationClass(name: string, declared?: Map<string, Record<strin
   if (n.endsWith("_cs")) {
     return "sensitive";
   }
-  return "other";
+  return undefined;
 }
 
 /** Classe appliquée sans collation déclarée (`undefined` : inconnue, propre à l'installation). */

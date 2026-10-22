@@ -270,29 +270,39 @@ export function startAutosave() {
 
   usePreferencesStore.subscribe((state, previous) => {
     if (state.autosave !== previous.autosave) {
-      if (state.autosave === "off") {
-        for (const id of [...stored]) {
-          void store.remove(entryKey(id)).catch(() => undefined);
-        }
-        stored.clear();
-        void store.remove(INDEX_KEY).catch(() => undefined);
-      } else {
-        for (const doc of documents()) {
-          void write(doc);
-        }
-      }
+      autosaveSwitched(state.autosave === "off");
     }
     // Nouveau délai : les prochaines écritures le respectent (écritures en attente replanifiées).
     if (state.autosaveDelay !== previous.autosaveDelay) {
-      for (const doc of documents()) {
-        const entry = tracked.get(doc.id);
-        if (entry?.timer === undefined) {
-          continue;
-        }
-        globalThis.clearTimeout(entry.timer);
-        entry.timer = undefined;
-        schedule(doc);
-      }
+      reschedule();
     }
   });
+}
+
+/** Désactivée : copies effacées ; réactivée : une copie de chaque onglet. */
+function autosaveSwitched(off: boolean) {
+  if (off) {
+    for (const id of [...stored]) {
+      void store.remove(entryKey(id)).catch(() => undefined);
+    }
+    stored.clear();
+    void store.remove(INDEX_KEY).catch(() => undefined);
+  } else {
+    for (const doc of documents()) {
+      void write(doc);
+    }
+  }
+}
+
+/** Écritures en attente replanifiées avec le nouveau délai. */
+function reschedule() {
+  for (const doc of documents()) {
+    const entry = tracked.get(doc.id);
+    if (entry?.timer === undefined) {
+      continue;
+    }
+    globalThis.clearTimeout(entry.timer);
+    entry.timer = undefined;
+    schedule(doc);
+  }
 }

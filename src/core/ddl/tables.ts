@@ -2,18 +2,11 @@ import type { LogicalForeignKey, LogicalTable } from "../mld/logical";
 import { MSG } from "../validation/messages";
 import { check } from "./checks";
 import { columnLine } from "./columns";
-import {
-  type CascadeGraph,
-  foreignKey,
-  foreignKeyLabel,
-  place,
-  placement,
-  stateClause,
-  uniqueLine,
-} from "./constraints";
+import { type CascadeGraph, foreignKey, foreignKeyLabel, place, placement, stateClause } from "./constraints";
 import { type Context, INDENT, sqlString } from "./context";
 import { sameDialect } from "./dialects";
 import { columnRef, constraintName, declareSchema, q, tableName } from "./naming";
+import { uniqueLine } from "./uniques";
 
 /** CREATE TABLE, suivi des contraintes émises en commentaire (désactivées, non traduites). */
 export function createTable(
@@ -31,63 +24,14 @@ export function createTable(
     columnLine(ctx, table, c, Boolean(inlinePk && c.name === table.primaryKey[0]), after),
   );
   if (table.primaryKey.length > 0 && !inlinePk) {
-    const name = constraintName(ctx, table, table.primaryKeyName, "PK", []);
-    const label = table.primaryKeyName ?? "PRIMARY KEY";
-    const where = placement(ctx, table, "primary", label, table.primaryKeyState);
-    const columns = table.primaryKey.map((c) => columnRef(ctx, table, c)).join(", ");
-    const definition = `${name ? `CONSTRAINT ${q(ctx, name)} ` : ""}PRIMARY KEY(${columns})${stateClause(ctx, table, "primary", label, table.primaryKeyState)}`;
-    const line = place(
-      ctx,
-      table,
-      definition,
-      where,
-      after,
-      table.primaryKeyState,
-      () => constraintName(ctx, table, undefined, "PK", [], true)!,
-    );
-    if (line) {
-      lines.push(line);
-    }
+    lines.push(...present(primaryKeyLine(ctx, table, after)));
   }
   for (const unique of table.uniques) {
-    const line = uniqueLine(ctx, table, unique, after);
-    if (line) {
-      lines.push(line);
-    }
+    lines.push(...present(uniqueLine(ctx, table, unique, after)));
   }
-  table.checks.forEach((c, i) => {
-    const expression = check(ctx, table, c);
-    if (expression === null) {
-      after.push(`-- ${MSG.untranslatedCheck(table.name, c.expression)}`);
-      return;
-    }
-    const label = c.name ?? `CHECK (${c.expression})`;
-    const where = placement(ctx, table, "check", label, c.state);
-    const name = constraintName(ctx, table, c.name, "CK", [String(i + 1)], where === "after");
-    const definition = `${name ? `CONSTRAINT ${q(ctx, name)} ` : ""}CHECK (${expression})${stateClause(ctx, table, "check", label, c.state)}`;
-    const line = place(ctx, table, definition, where, after, c.state, () => name!);
-    if (line) {
-      lines.push(line);
-    }
-  });
-  for (const fk of table.foreignKeys) {
-    if (deferred.has(fk)) {
-      continue;
-    }
-    const where = placement(ctx, table, "foreign", foreignKeyLabel(fk), fk.state);
-    const definition = foreignKey(ctx, tables, table, fk, graph);
-    const line = place(
-      ctx,
-      table,
-      definition,
-      where,
-      after,
-      fk.state,
-      () => constraintName(ctx, table, undefined, "FK", [fk.referencedTable], true)!,
-    );
-    if (line) {
-      lines.push(line);
-    }
+  lines.push(...checkLines(ctx, table, after));
+  for (const fk of table.foreignKeys.filter((x) => !deferred.has(x))) {
+    lines.push(...present(foreignKeyLine(ctx, tables, table, fk, graph, after)));
   }
   // Partitionnement : abandonné, signalé (O-39).
   if (table.partition) {
@@ -101,6 +45,64 @@ export function createTable(
   comments(ctx, table);
   triggers(ctx, table);
   return [statement, ...after].join("\n");
+}
+
+/** Ligne émise dans le CREATE TABLE, s'il y en a une (sinon placée après ou en commentaire). */
+const present = (line: string | null) => (line ? [line] : []);
+
+function primaryKeyLine(ctx: Context, table: LogicalTable, after: string[]): string | null {
+  const name = constraintName(ctx, table, table.primaryKeyName, "PK", []);
+  const label = table.primaryKeyName ?? "PRIMARY KEY";
+  const where = placement(ctx, table, "primary", label, table.primaryKeyState);
+  const columns = table.primaryKey.map((c) => columnRef(ctx, table, c)).join(", ");
+  const definition = `${name ? `CONSTRAINT ${q(ctx, name)} ` : ""}PRIMARY KEY(${columns})${stateClause(ctx, table, "primary", label, table.primaryKeyState)}`;
+  return place(
+    ctx,
+    table,
+    definition,
+    where,
+    after,
+    table.primaryKeyState,
+    () => constraintName(ctx, table, undefined, "PK", [], true)!,
+  );
+}
+
+function checkLines(ctx: Context, table: LogicalTable, after: string[]): string[] {
+  const lines: string[] = [];
+  table.checks.forEach((c, i) => {
+    const expression = check(ctx, table, c);
+    if (expression === null) {
+      after.push(`-- ${MSG.untranslatedCheck(table.name, c.expression)}`);
+      return;
+    }
+    const label = c.name ?? `CHECK (${c.expression})`;
+    const where = placement(ctx, table, "check", label, c.state);
+    const name = constraintName(ctx, table, c.name, "CK", [String(i + 1)], where === "after");
+    const definition = `${name ? `CONSTRAINT ${q(ctx, name)} ` : ""}CHECK (${expression})${stateClause(ctx, table, "check", label, c.state)}`;
+    lines.push(...present(place(ctx, table, definition, where, after, c.state, () => name!)));
+  });
+  return lines;
+}
+
+function foreignKeyLine(
+  ctx: Context,
+  tables: LogicalTable[],
+  table: LogicalTable,
+  fk: LogicalForeignKey,
+  graph: CascadeGraph | null,
+  after: string[],
+): string | null {
+  const where = placement(ctx, table, "foreign", foreignKeyLabel(fk), fk.state);
+  const definition = foreignKey(ctx, tables, table, fk, graph);
+  return place(
+    ctx,
+    table,
+    definition,
+    where,
+    after,
+    fk.state,
+    () => constraintName(ctx, table, undefined, "FK", [fk.referencedTable], true)!,
+  );
 }
 
 /** Commentaires : instructions COMMENT ON, ou portés en ligne (MySQL) ; ailleurs signalés. */

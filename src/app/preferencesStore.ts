@@ -3,7 +3,9 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { type Locale, systemLocale } from "@/i18n";
 import { IDENTITY_COLORS, type IdentityPreferences, newIdentity } from "./collab/identity";
-import { type DockLayout, defaultLayout, sanitizeLayout } from "./dock/layout";
+import { defaultLayout } from "./dock/layout";
+import type { DockLayout } from "./dock/model";
+import { sanitizeLayout } from "./dock/sanitize";
 
 /**
  * Options générales (override O-21) : propres au poste, conservées dans le localStorage,

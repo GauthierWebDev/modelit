@@ -39,46 +39,7 @@ export function Modal({
   const close = useRef(onClose);
   close.current = onClose;
 
-  useEffect(() => {
-    stack.push(id);
-    const previous = document.activeElement as HTMLElement | null;
-    // Focus initial : élément marqué `data-autofocus`, sinon premier élément focalisable.
-    const target =
-      box.current?.querySelector<HTMLElement>("[data-autofocus]") ?? box.current?.querySelector<HTMLElement>(FOCUSABLE);
-    (target ?? box.current)?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (stack.at(-1) !== id) {
-        return;
-      }
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopPropagation();
-        close.current();
-      } else if (e.key === "Tab" && box.current) {
-        const items = [...box.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
-        if (items.length === 0) {
-          return;
-        }
-        const first = items[0]!;
-        const last = items.at(-1)!;
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    globalThis.addEventListener("keydown", onKey, true);
-    return () => {
-      globalThis.removeEventListener("keydown", onKey, true);
-      stack.splice(stack.indexOf(id), 1);
-      if (previous?.isConnected) {
-        previous.focus();
-      }
-    };
-  }, [id]);
+  useModalFocus(id, box, close);
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: fond de la boîte, un clic à l'extérieur la ferme (Échap au clavier)
@@ -117,4 +78,59 @@ export function Modal({
       </div>
     </div>
   );
+}
+
+interface Ref<T> {
+  current: T;
+}
+
+/** Pile des modales, focus initial et retour du focus ; Échap et Tab pour la modale du dessus. */
+function useModalFocus(id: string, box: Ref<HTMLDivElement | null>, close: Ref<() => void>) {
+  useEffect(() => {
+    stack.push(id);
+    const previous = document.activeElement as HTMLElement | null;
+    // Focus initial : élément marqué `data-autofocus`, sinon premier élément focalisable.
+    const target =
+      box.current?.querySelector<HTMLElement>("[data-autofocus]") ?? box.current?.querySelector<HTMLElement>(FOCUSABLE);
+    (target ?? box.current)?.focus();
+    const onKey = (e: KeyboardEvent) => modalKey(e, id, box, close);
+    globalThis.addEventListener("keydown", onKey, true);
+    return () => {
+      globalThis.removeEventListener("keydown", onKey, true);
+      stack.splice(stack.indexOf(id), 1);
+      if (previous?.isConnected) {
+        previous.focus();
+      }
+    };
+  }, [id, box, close]);
+}
+
+function modalKey(e: KeyboardEvent, id: string, box: Ref<HTMLDivElement | null>, close: Ref<() => void>) {
+  if (stack.at(-1) !== id) {
+    return;
+  }
+  if (e.key === "Escape") {
+    e.preventDefault();
+    e.stopPropagation();
+    close.current();
+  } else if (e.key === "Tab" && box.current) {
+    trapTab(e, box.current);
+  }
+}
+
+/** Le focus reste dans la boîte : Tab sur le dernier élément revient au premier, Maj+Tab l'inverse. */
+function trapTab(e: KeyboardEvent, box: HTMLDivElement) {
+  const items = [...box.querySelectorAll<HTMLElement>(FOCUSABLE)];
+  if (items.length === 0) {
+    return;
+  }
+  const first = items[0]!;
+  const last = items.at(-1)!;
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
 }

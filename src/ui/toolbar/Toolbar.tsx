@@ -18,6 +18,7 @@ import { setToolbar } from "@/app/dock/layout";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { selectRedoLabel, selectUndoLabel } from "@/app/document/documentStore";
 import type { ViewMode } from "@/app/document/documentView";
+import type { DocumentHandle } from "@/app/document/handle";
 import { type Tool, useUiStore } from "@/app/uiStore";
 import { chooseTool, showView, toolAvailable } from "@/app/viewCommands";
 import { type MessageKey, t } from "@/i18n";
@@ -109,58 +110,12 @@ export function Toolbar({
         <GripVertical size={14} />
       </span>
       <AppMenu />
+      <Group>{historyButtons(undoLabel, redoLabel, undo, redo)}</Group>
       <Group>
-        <IconButton
-          tooltip={undoLabel ? t("toolbar.undoAction", { label: t(undoLabel), key: `${MOD}Z` }) : t("toolbar.undo")}
-          disabled={!undoLabel}
-          onClick={undo}
-        >
-          <Undo2 size={16} />
-        </IconButton>
-        <IconButton
-          tooltip={redoLabel ? t("toolbar.redoAction", { label: t(redoLabel), key: `⇧${MOD}Z` }) : t("toolbar.redo")}
-          disabled={!redoLabel}
-          onClick={redo}
-        >
-          <Redo2 size={16} />
-        </IconButton>
-      </Group>
-      <Group>
-        <div role="tablist" className="flex overflow-hidden rounded border border-neutral-300 dark:border-neutral-600">
-          {views().map((v, i) => (
-            <button
-              key={v.id}
-              type="button"
-              role="tab"
-              aria-selected={view === v.id}
-              {...tip(`${v.title} (${MOD}${i + 1})`)}
-              onClick={() => showView(doc, v.id)}
-              className={`px-2.5 py-0.5 text-xs font-semibold ${
-                view === v.id
-                  ? "bg-blue-600 text-white"
-                  : "text-neutral-600 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
-              }`}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
+        {viewTabs(doc, view)}
         <DisplayMenu />
       </Group>
-      <Group>
-        {TOOLS.map((x) => (
-          <IconButton
-            key={x.id}
-            tooltip={t("tool.tooltip", { label: t(x.label), key: x.key })}
-            active={tool === x.id}
-            disabled={(!toolAvailable(x.id, view) || readOnly) && x.id !== "select"}
-            onClick={() => chooseTool(doc, x.id)}
-          >
-            {x.icon}
-            <span className="hidden text-xs whitespace-nowrap 2xl:inline">{t(x.label)}</span>
-          </IconButton>
-        ))}
-      </Group>
+      <Group>{toolButtons(doc, tool, view, readOnly)}</Group>
       <Group>
         <IconButton tooltip={t("toolbar.autoLayout")} onClick={() => mainCommand({ name: "autoLayout" })}>
           <LayoutDashboard size={16} />
@@ -196,6 +151,75 @@ export function Toolbar({
         )}
       </Menu>
     </div>
+  );
+}
+
+type HistoryLabel = ReturnType<typeof selectUndoLabel>;
+
+/** Annuler et rétablir, avec le libellé de l'action concernée. */
+function historyButtons(undoLabel: HistoryLabel, redoLabel: HistoryLabel, undo: () => void, redo: () => void) {
+  return (
+    <>
+      <IconButton
+        tooltip={undoLabel ? t("toolbar.undoAction", { label: t(undoLabel), key: `${MOD}Z` }) : t("toolbar.undo")}
+        disabled={!undoLabel}
+        onClick={undo}
+      >
+        <Undo2 size={16} />
+      </IconButton>
+      <IconButton
+        tooltip={redoLabel ? t("toolbar.redoAction", { label: t(redoLabel), key: `⇧${MOD}Z` }) : t("toolbar.redo")}
+        disabled={!redoLabel}
+        onClick={redo}
+      >
+        <Redo2 size={16} />
+      </IconButton>
+    </>
+  );
+}
+
+/** Onglets des vues MCD, MLD, MPD (⌘1 à ⌘3). */
+function viewTabs(doc: DocumentHandle, view: ViewMode) {
+  return (
+    <div role="tablist" className="flex overflow-hidden rounded border border-neutral-300 dark:border-neutral-600">
+      {views().map((v, i) => (
+        <button
+          key={v.id}
+          type="button"
+          role="tab"
+          aria-selected={view === v.id}
+          {...tip(`${v.title} (${MOD}${i + 1})`)}
+          onClick={() => showView(doc, v.id)}
+          className={`px-2.5 py-0.5 text-xs font-semibold ${
+            view === v.id
+              ? "bg-blue-600 text-white"
+              : "text-neutral-600 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
+          }`}
+        >
+          {v.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Outils de la fenêtre ; ceux sans objet dans la vue ou en lecture seule sont grisés (O-54). */
+function toolButtons(doc: DocumentHandle, tool: Tool, view: ViewMode, readOnly: boolean) {
+  return (
+    <>
+      {TOOLS.map((x) => (
+        <IconButton
+          key={x.id}
+          tooltip={t("tool.tooltip", { label: t(x.label), key: x.key })}
+          active={tool === x.id}
+          disabled={(!toolAvailable(x.id, view) || readOnly) && x.id !== "select"}
+          onClick={() => chooseTool(doc, x.id)}
+        >
+          {x.icon}
+          <span className="hidden text-xs whitespace-nowrap 2xl:inline">{t(x.label)}</span>
+        </IconButton>
+      ))}
+    </>
   );
 }
 

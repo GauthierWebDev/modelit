@@ -7,6 +7,24 @@ import { startOwner } from "./owner";
 import type { Channel, MainCommand, ToMain, ToReplica } from "./protocol";
 import { startReplica } from "./replica";
 
+let commands: MainCommand[];
+let channels: ReturnType<typeof memoryChannels>;
+let replica: ReturnType<typeof startReplica>;
+let stopOwner: () => void;
+
+beforeEach(() => {
+  resetWorkspace();
+  commands = [];
+  channels = memoryChannels();
+  stopOwner = startOwner(channels.owner, (c) => commands.push(c), { schedule: (f) => f() });
+  replica = startReplica(channels.replica);
+});
+
+afterEach(() => {
+  replica.stop();
+  stopOwner();
+});
+
 /** Canal en mémoire : ce qu'envoie un côté est reçu par l'autre, immédiatement. */
 function memoryChannels() {
   const toMain = new Set<(m: ToMain) => void>();
@@ -24,7 +42,7 @@ function memoryChannels() {
       return () => toMain.delete(h);
     },
   };
-  const replica: Channel<ToMain, ToReplica> = {
+  const replicaSide: Channel<ToMain, ToReplica> = {
     send: (m) => {
       for (const h of toMain) {
         h(structuredClone(m));
@@ -35,29 +53,11 @@ function memoryChannels() {
       return () => toReplica.delete(h);
     },
   };
-  return { owner, replica, sent };
+  return { owner, replica: replicaSide, sent };
 }
 
 /** Fenêtres flottantes synchronisées avec la principale (J-01, phase 4, D6). */
 describe("synchronisation entre fenêtres", () => {
-  let commands: MainCommand[];
-  let channels: ReturnType<typeof memoryChannels>;
-  let replica: ReturnType<typeof startReplica>;
-  let stopOwner: () => void;
-
-  beforeEach(() => {
-    resetWorkspace();
-    commands = [];
-    channels = memoryChannels();
-    stopOwner = startOwner(channels.owner, (c) => commands.push(c), { schedule: (f) => f() });
-    replica = startReplica(channels.replica);
-  });
-
-  afterEach(() => {
-    replica.stop();
-    stopOwner();
-  });
-
   it("la flottante reçoit le document actif dès son ouverture", () => {
     expect(replica.handle.store.getState().doc.entities).toEqual([]);
     addEntity(activeDocument(), { x: 0, y: 0 });
@@ -104,7 +104,9 @@ describe("synchronisation entre fenêtres", () => {
     expect(renameNode(stale, id, "X")).toBeNull();
     expect(activeDocument().store.getState().doc.entities).toEqual([]);
   });
+});
 
+describe("synchronisation entre fenêtres", () => {
   it("pendant un glisser-déposer, une seule diffusion, à la fin", () => {
     const id = addEntity(activeDocument(), { x: 0, y: 0 });
     const { store } = activeDocument();

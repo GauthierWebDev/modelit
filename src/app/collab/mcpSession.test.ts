@@ -28,40 +28,40 @@ const CREATE = {
 const EDIT = "e".repeat(32);
 const READ = "f".repeat(32);
 
+let net: ReturnType<typeof memoryNetwork>;
+let host: HostSession | null;
+
+beforeEach(() => {
+  resetWorkspace();
+  useCollabStore.setState({ mode: "idle", tabId: null, guest: null, error: null });
+  net = memoryNetwork();
+  host = null;
+  setCollabTransport({
+    startHost: async () => ({ addr: "{}", link: net.hostLink, stop: async () => undefined }),
+    connect: async () => net.connect("moi"),
+  });
+});
+afterEach(async () => {
+  await leaveSession();
+  await stopSharing();
+  host?.stop();
+});
+
+async function join(secret: string, aiAllowed: boolean) {
+  host = startHost({
+    link: net.hostLink,
+    doc: emptyDocument(),
+    secrets: { editor: EDIT, reader: READ },
+    me: { id: "alice", name: "Alice", color: "#000" },
+    aiAllowed,
+  });
+  await joinFromLink(buildLink("{}", secret));
+  await net.settle();
+  expect(useCollabStore.getState().mode).toBe("guest");
+}
+
 /** Assistants IA en session (O-05 §8) : MCP local à chaque participant, réglé par l'hôte. */
 describe("MCP en session", () => {
-  let net: ReturnType<typeof memoryNetwork>;
-  let host: HostSession | null;
-
-  beforeEach(() => {
-    resetWorkspace();
-    useCollabStore.setState({ mode: "idle", tabId: null, guest: null, error: null });
-    net = memoryNetwork();
-    host = null;
-    setCollabTransport({
-      startHost: async () => ({ addr: "{}", link: net.hostLink, stop: async () => undefined }),
-      connect: async () => net.connect("moi"),
-    });
-  });
-  afterEach(async () => {
-    await leaveSession();
-    await stopSharing();
-    host?.stop();
-  });
-
-  async function join(secret: string, aiAllowed: boolean) {
-    host = startHost({
-      link: net.hostLink,
-      doc: emptyDocument(),
-      secrets: { editor: EDIT, reader: READ },
-      me: { id: "alice", name: "Alice", color: "#000" },
-      aiAllowed,
-    });
-    await joinFromLink(buildLink("{}", secret));
-    await net.settle();
-    expect(useCollabStore.getState().mode).toBe("guest");
-  }
-
   it("IA interdite par l'hôte : modification refusée, lecture permise", async () => {
     await join(EDIT, false);
     const refused = await tool("apply_changes", CREATE);

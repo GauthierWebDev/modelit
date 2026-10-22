@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import type { SectionId } from "@/app/dock/layout";
+import type { SectionId } from "@/app/dock/model";
 import { t } from "@/i18n";
 import { SessionSection, SessionTitle } from "@/ui/collab/SessionSection";
 import { AttributesSection } from "@/ui/panels/AttributesSection";

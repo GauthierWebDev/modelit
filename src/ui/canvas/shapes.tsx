@@ -1,6 +1,4 @@
 import {
-  type Association,
-  type Entity,
   formatCardinality,
   type Id,
   type Inheritance,
@@ -12,25 +10,16 @@ import {
 import { memo } from "react";
 import { usePreferencesStore } from "@/app/preferencesStore";
 import { t } from "@/i18n";
-import { tip } from "@/ui/common/Tooltip";
 import {
-  alternateText,
-  attributeMarks,
-  attributeStyle,
   FONT_FAMILY,
   FONT_SIZE,
   type InheritanceLinkGeometry,
   type LinkGeometry,
   type NodeLayout,
-  PAD_X,
   pathOf,
-  ROW_HEIGHT,
   segmentMidpoints,
   TAG_FONT_SIZE,
-  TITLE_HEIGHT,
-  TITLE_WEIGHT,
   type Triangle,
-  textWidth,
 } from "./geometry";
 
 /**
@@ -80,160 +69,6 @@ export function ErrorBadge({
     </g>
   );
 }
-
-interface NodeShapeProps {
-  node: Entity | Association;
-  layout: NodeLayout;
-  selected: boolean;
-  issues?: Issue[];
-  /** Association porteuse d'une dépendance fonctionnelle (patte max 1). */
-  functional?: boolean;
-  /** Association qui référence un identifiant alternatif plutôt que la clé primaire (O-36). */
-  referencedKey?: { entity: string; attributes: string[] };
-  /** Nom de l'association de chaque patte (identifiants alternatifs relatifs, O-39). */
-  linkNames?: Map<string, string>;
-}
-
-// biome-ignore lint/suspicious/noShadow: nom de la fonction affiché par les outils de développement de React
-export const NodeShape = memo(function NodeShape({
-  node,
-  layout,
-  selected,
-  issues,
-  functional,
-  referencedKey,
-  linkNames,
-}: NodeShapeProps) {
-  const marks = attributeMarks(node, linkNames);
-  const { x, y, width, height, rows } = layout;
-  const isEntity = node.kind === "entity";
-  const variant = isEntity ? "entity" : functional ? "assoc-df" : "assoc";
-  const radius = isEntity ? 0 : 14;
-  const clipId = `clip-${node.id}`;
-
-  return (
-    <g data-id={node.id} className="cursor-move" fontFamily={FONT_FAMILY} fontSize={FONT_SIZE}>
-      <defs>
-        <clipPath id={clipId}>
-          <rect x={x} y={y} width={width} height={height} rx={radius} />
-        </clipPath>
-      </defs>
-      <rect x={x} y={y} width={width} height={height} rx={radius} fill={`var(--mcd-${variant}-body)`} />
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={TITLE_HEIGHT}
-        fill={`var(--mcd-${variant}-title)`}
-        clipPath={`url(#${clipId})`}
-      />
-      {rows.length > 0 && (
-        <line
-          x1={x}
-          x2={x + width}
-          y1={y + TITLE_HEIGHT}
-          y2={y + TITLE_HEIGHT}
-          stroke={`var(--mcd-${variant}-stroke)`}
-        />
-      )}
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        rx={radius}
-        fill="none"
-        stroke={selected ? "var(--mcd-selection)" : `var(--mcd-${variant}-stroke)`}
-        strokeWidth={selected ? 2.5 : 1.25}
-      />
-      <text
-        x={x + width / 2}
-        y={y + TITLE_HEIGHT / 2}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontWeight={TITLE_WEIGHT}
-        fill="var(--mcd-text)"
-      >
-        {node.name}
-      </text>
-      {rows.map(({ attribute, y: rowY }) => {
-        const mark = marks.get(attribute.id)!;
-        const baseline = y + rowY + ROW_HEIGHT / 2;
-        const style = attributeStyle(mark);
-        const labelWidth = textWidth(mark.label, style);
-        const { alternate } = mark;
-        return (
-          <g key={attribute.id}>
-            <text
-              x={x + PAD_X}
-              y={baseline}
-              dominantBaseline="central"
-              fill="var(--mcd-text)"
-              textDecoration={attribute.identifier ? "underline" : undefined}
-              fontWeight={style.weight}
-              fontStyle={style.italic ? "italic" : undefined}
-              {...(mark.derived ? tip(t("mcd.derived", { expression: attribute.generated!.expression })) : {})}
-            >
-              {mark.label}
-            </text>
-            {alternate ? (
-              <>
-                {/* Identifiant alternatif : souligné en pointillé, étiquette AI (O-36). */}
-                <line
-                  x1={x + PAD_X}
-                  x2={x + PAD_X + labelWidth}
-                  y1={baseline + 7}
-                  y2={baseline + 7}
-                  stroke={alternate.prefix ? "var(--mcd-warning)" : "var(--mcd-text)"}
-                  strokeDasharray="2 2"
-                  strokeWidth={1}
-                />
-                <text
-                  x={x + PAD_X + labelWidth + 5}
-                  y={baseline}
-                  dominantBaseline="central"
-                  fontSize={TAG_FONT_SIZE}
-                  fill={alternate.prefix ? "var(--mcd-warning)" : "var(--mcd-muted)"}
-                  className="cursor-help"
-                  {...tip(
-                    alternate.prefix
-                      ? t("mcd.alternatePrefix", { tag: alternate.tag, n: alternate.prefix })
-                      : alternate.condition
-                        ? t("mcd.alternateCondition", { tag: alternate.tag, condition: alternate.condition })
-                        : alternate.expression
-                          ? t("mcd.alternateExpression", { tag: alternate.tag, expression: alternate.expression })
-                          : alternate.scope
-                            ? t("mcd.alternateScopeTip", { tag: alternate.tag, scope: alternate.scope })
-                            : t("mcd.alternate", { tag: alternate.tag }),
-                  )}
-                >
-                  {alternateText(alternate)}
-                  {alternate.prefix ? " ⚠" : ""}
-                </text>
-              </>
-            ) : null}
-          </g>
-        );
-      })}
-      {referencedKey ? (
-        <text
-          x={x + width / 2}
-          y={y + height + 11}
-          textAnchor="middle"
-          fontSize={TAG_FONT_SIZE}
-          fill="var(--mcd-muted)"
-          className="cursor-help"
-          {...tip(
-            t("mcd.referencedKey", { entity: referencedKey.entity, attributes: referencedKey.attributes.join(", ") }),
-          )}
-        >
-          → {referencedKey.attributes.join(", ")}
-        </text>
-      ) : null}
-      <ErrorBadge x={x + width} y={y} issues={issues} />
-    </g>
-  );
-});
 
 interface LinkShapeProps {
   geometry: LinkGeometry;

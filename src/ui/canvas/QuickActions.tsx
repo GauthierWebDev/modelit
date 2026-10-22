@@ -1,11 +1,11 @@
 import { Ellipsis } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef, useState } from "react";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { tip } from "@/ui/common/Tooltip";
-import { quickActions } from "./objectActions";
+import { type Action, quickActions } from "./objectActions";
 import { objectRects } from "./viewport";
 
 /**
@@ -30,25 +30,7 @@ export function QuickActions() {
     id && (model.entities.some((e) => e.id === id) || model.associations.some((a) => a.id === id)) ? id : null;
   // biome-ignore lint/correctness/useExhaustiveDependencies: refermer le menu quand l'objet visé change
   useEffect(() => setOpen(false), [owner]);
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onPointer = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") {
-        return;
-      }
-      e.stopPropagation();
-      setOpen(false);
-    };
-    globalThis.addEventListener("pointerdown", onPointer, true);
-    globalThis.addEventListener("keydown", onKey, true);
-    return () => {
-      globalThis.removeEventListener("pointerdown", onPointer, true);
-      globalThis.removeEventListener("keydown", onKey, true);
-    };
-  }, [open]);
+  useDismiss(open, setOpen, ref);
 
   if (!owner || moving || tool !== "select" || readOnly) {
     return null;
@@ -71,23 +53,7 @@ export function QuickActions() {
       onPointerDown={(e) => e.stopPropagation()}
     >
       {open ? (
-        actions.map((a) =>
-          a.kind === "item" ? (
-            <button
-              key={a.id}
-              type="button"
-              aria-label={a.label}
-              {...tip(a.shortcut ? `${a.label} (${a.shortcut})` : a.label)}
-              onClick={() => {
-                setOpen(false);
-                a.run();
-              }}
-              className="flex size-6 items-center justify-center text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-700"
-            >
-              {a.icon}
-            </button>
-          ) : null,
-        )
+        quickButtons(actions, setOpen)
       ) : (
         <button
           type="button"
@@ -100,5 +66,49 @@ export function QuickActions() {
         </button>
       )}
     </div>
+  );
+}
+
+/** Un clic ailleurs ou Échap referment la rangée. */
+function useDismiss(open: boolean, setOpen: (open: boolean) => void, ref: RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const onPointer = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") {
+        return;
+      }
+      e.stopPropagation();
+      setOpen(false);
+    };
+    globalThis.addEventListener("pointerdown", onPointer, true);
+    globalThis.addEventListener("keydown", onKey, true);
+    return () => {
+      globalThis.removeEventListener("pointerdown", onPointer, true);
+      globalThis.removeEventListener("keydown", onKey, true);
+    };
+  }, [open, setOpen, ref]);
+}
+
+/** Rangée d'icônes, une par action. */
+function quickButtons(actions: Action[], setOpen: (open: boolean) => void) {
+  return actions.map((a) =>
+    a.kind === "item" ? (
+      <button
+        key={a.id}
+        type="button"
+        aria-label={a.label}
+        {...tip(a.shortcut ? `${a.label} (${a.shortcut})` : a.label)}
+        onClick={() => {
+          setOpen(false);
+          a.run();
+        }}
+        className="flex size-6 items-center justify-center text-neutral-600 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-700"
+      >
+        {a.icon}
+      </button>
+    ) : null,
   );
 }

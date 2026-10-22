@@ -36,34 +36,7 @@ export function McpBridge() {
     }
     let off: (() => void) | undefined;
     let disposed = false;
-    void onMcpRequest((request, respond) => {
-      let message: unknown;
-      try {
-        message = JSON.parse(request.body);
-      } catch {
-        return respond(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32_700, message: "Parse error" } }));
-      }
-      void handleMcpMessage(
-        message,
-        {
-          onActivity: () => useMcpStore.setState({ lastActivity: Date.now() }),
-          onApplied: (summary) => useUiStore.getState().notify({ kind: "info", text: t("mcp.applied", { summary }) }),
-          autoLayout: () => autoLayoutTables(activeDocument()),
-        },
-        request.method ?? undefined,
-      )
-        .then((response) => respond(response ? JSON.stringify(response) : null))
-        .catch((e: unknown) => {
-          const id = (message as { id?: unknown } | null)?.id ?? null;
-          respond(
-            JSON.stringify({
-              jsonrpc: "2.0",
-              id,
-              error: { code: -32_603, message: e instanceof Error ? e.message : String(e) },
-            }),
-          );
-        });
-    }).then((f) => {
+    void onMcpRequest(answerMcpRequest).then((f) => {
       if (disposed) {
         f();
       } else {
@@ -100,3 +73,35 @@ export function McpBridge() {
 
   return null;
 }
+
+type McpHandler = Parameters<typeof onMcpRequest>[0];
+
+/** Requête reçue par le point d'écoute : message JSON-RPC traité par le serveur MCP, réponse renvoyée. */
+const answerMcpRequest: McpHandler = (request, respond) => {
+  let message: unknown;
+  try {
+    message = JSON.parse(request.body);
+  } catch {
+    return respond(JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32_700, message: "Parse error" } }));
+  }
+  void handleMcpMessage(
+    message,
+    {
+      onActivity: () => useMcpStore.setState({ lastActivity: Date.now() }),
+      onApplied: (summary) => useUiStore.getState().notify({ kind: "info", text: t("mcp.applied", { summary }) }),
+      autoLayout: () => autoLayoutTables(activeDocument()),
+    },
+    request.method ?? undefined,
+  )
+    .then((response) => respond(response ? JSON.stringify(response) : null))
+    .catch((e: unknown) => {
+      const id = (message as { id?: unknown } | null)?.id ?? null;
+      respond(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id,
+          error: { code: -32_603, message: e instanceof Error ? e.message : String(e) },
+        }),
+      );
+    });
+};

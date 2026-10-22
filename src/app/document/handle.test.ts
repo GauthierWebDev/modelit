@@ -51,7 +51,9 @@ describe("documents instanciables", () => {
     expect(a.view.getState().view).toBe("mcd");
     expect(b.view.getState().view).toBe("mpd");
   });
+});
 
+describe("documents instanciables", () => {
   it("outil de la fenêtre : Association et Héritage seulement dans le MCD (O-54)", () => {
     const doc = createDocumentHandle(emptyDocument());
     chooseTool(doc, "entity");

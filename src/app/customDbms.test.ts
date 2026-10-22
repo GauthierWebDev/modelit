@@ -12,16 +12,16 @@ import {
 } from "./commands";
 import { createDocumentHandle } from "./document/handle";
 
+const setup = () => {
+  const doc = model().entity("Client", ["id_client*", "nom"]).build();
+  doc.settings.dbms = "postgresql";
+  doc.settings.dbmsVersion = "18";
+  return createDocumentHandle(doc);
+};
+const settings = (doc: ReturnType<typeof setup>) => doc.store.getState().doc.settings;
+
 /** SGBD personnalisés et type d'une colonne depuis le MPD (override O-59). */
 describe("SGBD personnalisé d'un modèle", () => {
-  const setup = () => {
-    const doc = model().entity("Client", ["id_client*", "nom"]).build();
-    doc.settings.dbms = "postgresql";
-    doc.settings.dbmsVersion = "18";
-    return createDocumentHandle(doc);
-  };
-  const settings = (doc: ReturnType<typeof setup>) => doc.store.getState().doc.settings;
-
   it("personnaliser, redéfinir, refuser une variable sans objet, revenir au standard", () => {
     const doc = setup();
     customizeTarget(doc);
@@ -56,7 +56,9 @@ describe("SGBD personnalisé d'un modèle", () => {
       customDbms: { id: "lib", name: "Maison", types: { boolean: "TINYINT(1)" } },
     });
   });
+});
 
+describe("SGBD personnalisé d'un modèle", () => {
   it("type d'une colonne pour ce dialecte : annotation, vidée sans toucher un autre dialecte", () => {
     const doc = setup();
     const client = () => doc.store.getState().doc.entities[0]!;

@@ -109,7 +109,9 @@ describe("placement sur grille (override O-30)", { timeout: 30_000 }, () => {
     const chunks = Array.from({ length: LAYOUT_CHUNKS }, (_, chunk) => gridLayoutChunk(nodes, edges, chunk)).reverse();
     expect([...bestChunk(chunks).positions]).toEqual(sequential);
   });
+});
 
+describe("placement sur grille (override O-30)", { timeout: 30_000 }, () => {
   it("grand modèle (80 objets) : sans chevauchement ni traversée, au plus 2 croisements, en moins de 0,8 s (parallèle)", () => {
     const nodes: GridNode[] = Array.from({ length: 80 }, (_, i) => ({
       id: `n${i}`,

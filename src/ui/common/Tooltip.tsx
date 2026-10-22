@@ -26,6 +26,27 @@ export function TooltipLayer({ outside = false }: { outside?: boolean }) {
   const [shown, setShown] = useState<Shown | null>(null);
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
   const bubble = useRef<HTMLDivElement>(null);
+  useTooltipTarget(setShown);
+
+  useTooltipPlacement(shown, outside, bubble, setPosition);
+
+  if (!shown) {
+    return null;
+  }
+  return (
+    <div
+      ref={bubble}
+      role="tooltip"
+      style={position ?? { left: -9999, top: -9999 }}
+      className="pointer-events-none fixed z-[100] max-w-sm rounded bg-neutral-900 px-2 py-1 text-xs whitespace-pre-line text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900"
+    >
+      {shown.text}
+    </div>
+  );
+}
+
+/** Élément survolé portant `data-tooltip` : affiché après un délai, masqué au clic, au clavier, au défilement. */
+function useTooltipTarget(setShown: (shown: Shown | null) => void) {
   const current = useRef<Element | null>(null);
   const timer = useRef<number | undefined>(undefined);
 
@@ -66,9 +87,16 @@ export function TooltipLayer({ outside = false }: { outside?: boolean }) {
       window.removeEventListener("blur", hide);
       globalThis.clearTimeout(timer.current);
     };
-  }, []);
+  }, [setShown]);
+}
 
-  // Placement sous l'élément (au-dessus s'il manque de place), sans sortir de la fenêtre.
+/** Placement sous l'élément (au-dessus s'il manque de place), sans sortir de la fenêtre. */
+function useTooltipPlacement(
+  shown: Shown | null,
+  outside: boolean,
+  bubble: { current: HTMLDivElement | null },
+  setPosition: (position: { left: number; top: number } | null) => void,
+) {
   useEffect(() => {
     if (!(shown && bubble.current)) {
       return setPosition(null);
@@ -85,19 +113,5 @@ export function TooltipLayer({ outside = false }: { outside?: boolean }) {
     }
     const left = Math.min(Math.max(GAP, centered), window.innerWidth - width - GAP);
     setPosition({ left, top: Math.max(GAP, top) });
-  }, [shown, outside]);
-
-  if (!shown) {
-    return null;
-  }
-  return (
-    <div
-      ref={bubble}
-      role="tooltip"
-      style={position ?? { left: -9999, top: -9999 }}
-      className="pointer-events-none fixed z-[100] max-w-sm rounded bg-neutral-900 px-2 py-1 text-xs whitespace-pre-line text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900"
-    >
-      {shown.text}
-    </div>
-  );
+  }, [shown, outside, bubble, setPosition]);
 }

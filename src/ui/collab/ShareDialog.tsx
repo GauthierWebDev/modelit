@@ -61,6 +61,7 @@ export function ShareDialog() {
   const [password, setPassword] = useState("");
   const [allowAi, setAllowAi] = useState(false);
   const [link, setLink] = useState("");
+  const form: StartForm = { mode, password, setPassword, allowAi, setAllowAi, link, setLink };
   if (!open) {
     return null;
   }
@@ -80,17 +81,71 @@ export function ShareDialog() {
     </button>
   );
 
-  let body: ReactNode;
-  let footer: ReactNode;
+  const { body, footer } = content({ mode, links, aiAllowed, hostName, closeButton, busy, tooShort, form });
+
+  return (
+    <Modal title={t("collab.title")} icon={<Users size={16} />} onClose={close} footer={footer}>
+      <ErrorBanner message={error} onClose={() => useCollabStore.setState({ error: null })} />
+      <div className="mt-2">{body}</div>
+    </Modal>
+  );
+}
+
+type Mode = ReturnType<typeof useCollabStore.getState>["mode"];
+type Links = ReturnType<typeof useCollabStore.getState>["links"];
+
+interface Content {
+  body: ReactNode;
+  footer: ReactNode;
+}
+
+/** Saisies du partage et de la jonction. */
+interface StartForm {
+  mode: Mode;
+  password: string;
+  setPassword: (password: string) => void;
+  allowAi: boolean;
+  setAllowAi: (allowAi: boolean) => void;
+  link: string;
+  setLink: (link: string) => void;
+}
+
+interface ContentScope {
+  mode: Mode;
+  links: Links;
+  aiAllowed: boolean;
+  hostName: string;
+  closeButton: ReactNode;
+  busy: boolean;
+  tooShort: boolean;
+  form: StartForm;
+}
+
+/** Contenu selon l'état : hôte (liens), invité, partage ou jonction possibles, indisponible. */
+function content({ mode, links, aiAllowed, hostName, closeButton, busy, tooShort, form }: ContentScope): Content {
   if (mode === "host" && links) {
-    body = (
+    return hostContent(links, aiAllowed, closeButton);
+  }
+  if (mode === "guest") {
+    return guestContent(hostName, closeButton);
+  }
+  if (collabAvailable()) {
+    return startContent(form, busy, tooShort, closeButton);
+  }
+  return unavailableContent(closeButton);
+}
+
+/** Hôte : liens d'invitation, assistants IA des invités, arrêt. */
+function hostContent(links: NonNullable<Links>, aiAllowed: boolean, closeButton: ReactNode): Content {
+  return {
+    body: (
       <div className="flex flex-col gap-3">
         <LinkRow label={t("collab.editLink")} value={links.edit} />
         <LinkRow label={t("collab.readLink")} value={links.read} />
         <Checkbox label={t("collab.allowAi")} checked={aiAllowed} onChange={setGuestsAi} />
       </div>
-    );
-    footer = (
+    ),
+    footer: (
       <>
         <button type="button" className={`${secondary} text-red-600`} onClick={() => void stopSharing()}>
           <Square size={14} /> {t("collab.stop")}
@@ -98,12 +153,15 @@ export function ShareDialog() {
         <div className="flex-1" />
         {closeButton}
       </>
-    );
-  } else if (mode === "guest") {
-    body = (
-      <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.inSession", { host: hostName })}</p>
-    );
-    footer = (
+    ),
+  };
+}
+
+/** Invité : hôte de la session, départ. */
+function guestContent(hostName: string, closeButton: ReactNode): Content {
+  return {
+    body: <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.inSession", { host: hostName })}</p>,
+    footer: (
       <>
         <button type="button" className={`${secondary} text-red-600`} onClick={() => void leaveSession()}>
           <LogOut size={14} /> {t("collab.leave")}
@@ -111,9 +169,19 @@ export function ShareDialog() {
         <div className="flex-1" />
         {closeButton}
       </>
-    );
-  } else if (collabAvailable()) {
-    body = (
+    ),
+  };
+}
+
+/** Partager l'onglet actif ou rejoindre par un lien collé. */
+function startContent(
+  { mode, password, setPassword, allowAi, setAllowAi, link, setLink }: StartForm,
+  busy: boolean,
+  tooShort: boolean,
+  closeButton: ReactNode,
+): Content {
+  return {
+    body: (
       <div className="flex flex-col gap-4">
         <section className="flex flex-col gap-2">
           <h3 className="text-sm font-semibold">{t("collab.shareTitle")}</h3>
@@ -169,27 +237,25 @@ export function ShareDialog() {
           </form>
         </section>
       </div>
-    );
-    footer = (
+    ),
+    footer: (
       <>
         <div className="flex-1" />
         {closeButton}
       </>
-    );
-  } else {
-    body = <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.unavailable")}</p>;
-    footer = (
-      <>
-        <div className="flex-1" />
-        {closeButton}
-      </>
-    );
-  }
+    ),
+  };
+}
 
-  return (
-    <Modal title={t("collab.title")} icon={<Users size={16} />} onClose={close} footer={footer}>
-      <ErrorBanner message={error} onClose={() => useCollabStore.setState({ error: null })} />
-      <div className="mt-2">{body}</div>
-    </Modal>
-  );
+/** Session collaborative indisponible (navigateur). */
+function unavailableContent(closeButton: ReactNode): Content {
+  return {
+    body: <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.unavailable")}</p>,
+    footer: (
+      <>
+        <div className="flex-1" />
+        {closeButton}
+      </>
+    ),
+  };
 }

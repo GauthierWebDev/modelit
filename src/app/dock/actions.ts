@@ -1,5 +1,6 @@
 import { usePreferencesStore } from "../preferencesStore";
-import { type DockLayout, groupOf, type SectionId, setActive, showSection } from "./layout";
+import { groupOf, setActive, showSection } from "./layout";
+import type { DockLayout, SectionId } from "./model";
 
 /** Opérations de disposition appliquées aux options du poste (overrides O-45, O-46). */
 

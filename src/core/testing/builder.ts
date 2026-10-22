@@ -1,5 +1,13 @@
 import type { DataType } from "../model/datatype";
-import type { Association, CardinalityMax, Entity, InheritanceConstraint, ModelDocument } from "../model/document";
+import type {
+  Association,
+  CardinalityMax,
+  Entity,
+  Id,
+  InheritanceConstraint,
+  Link,
+  ModelDocument,
+} from "../model/document";
 import {
   createAssociation,
   createAttribute,
@@ -9,6 +17,27 @@ import {
   createLink,
   emptyDocument,
 } from "../model/factory";
+
+/** Patte `ENTITE min,max[(R)]` de l'association `associationId`. */
+function parseLeg(doc: ModelDocument, associationId: Id, leg: string): Link {
+  const m = /^(\S+) (\d+),(\d+|n)(\(R\))?$/.exec(leg);
+  if (!m) {
+    throw new Error(`Patte invalide : ${leg}`);
+  }
+  const link = createLink(associationId, entityId(doc, m[1]!));
+  const max: CardinalityMax = m[3] === "n" ? "n" : Number(m[3]);
+  link.cardinality = { min: Number(m[2]), max };
+  link.relativeId = Boolean(m[4]);
+  return link;
+}
+
+function entityId(doc: ModelDocument, name: string): Id {
+  const e = doc.entities.find((x) => x.name === name);
+  if (!e) {
+    throw new Error(`Entité inconnue : ${name}`);
+  }
+  return e.id;
+}
 
 /**
  * Petit DSL de construction de modèles pour les tests.
@@ -41,31 +70,13 @@ export function model() {
       a.attributes = attributes.map(parseAttribute);
       doc.associations.push({ ...a, ...patch });
       for (const leg of legs) {
-        const m = /^(\S+) (\d+),(\d+|n)(\(R\))?$/.exec(leg);
-        if (!m) {
-          throw new Error(`Patte invalide : ${leg}`);
-        }
-        const entity = doc.entities.find((e) => e.name === m[1]);
-        if (!entity) {
-          throw new Error(`Entité inconnue : ${m[1]}`);
-        }
-        const link = createLink(a.id, entity.id);
-        const max: CardinalityMax = m[3] === "n" ? "n" : Number(m[3]);
-        link.cardinality = { min: Number(m[2]), max };
-        link.relativeId = Boolean(m[4]);
-        doc.links.push(link);
+        doc.links.push(parseLeg(doc, a.id, leg));
       }
       return api;
     },
     /** Héritage : `parent` = entité cible (surtype, `null` = non désignée), puis les sous-types. */
     inherit(parent: string | null, children: string[], constraint: InheritanceConstraint = "none") {
-      const id = (name: string) => {
-        const e = doc.entities.find((x) => x.name === name);
-        if (!e) {
-          throw new Error(`Entité inconnue : ${name}`);
-        }
-        return e.id;
-      };
+      const id = (name: string) => entityId(doc, name);
       const h = createInheritance();
       h.constraint = constraint;
       if (parent) {

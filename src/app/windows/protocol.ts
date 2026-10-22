@@ -2,7 +2,7 @@ import type { ModelDocument } from "@core/index";
 import type { Patch } from "immer";
 import type { MessageKey } from "@/i18n";
 import type { CollabAction, CollabMirror } from "../collab/session";
-import type { DockLayout, DragItem, Rect } from "../dock/layout";
+import type { DockLayout, DragItem, Rect } from "../dock/model";
 import type { DocumentViewState } from "../document/documentView";
 import type { AboutTab, Tool } from "../uiStore";
 

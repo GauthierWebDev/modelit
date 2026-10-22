@@ -57,6 +57,7 @@
         "noExportedImports": "error",
         "useErrorCause": "error",
         "noExcessiveClassesPerFile": "error",
+        "noExcessiveLinesPerFile": "error",
         "useFilenamingConvention": {
           "level": "error",
           "options": {
@@ -108,7 +109,9 @@
         "noImplicitCoercions": "error",
         "noForEach": "error",
         "noVoid": "off",
-        "useMaxParams": "off"
+        "useMaxParams": "off",
+        "noExcessiveCognitiveComplexity": "error",
+        "noExcessiveLinesPerFunction": "error"
       },
       "performance": {
         "noAwaitInLoops": "error",

@@ -2,6 +2,7 @@ import { DBMS_LIST, type Dbms, resolveVersion, versionOptions } from "@core/inde
 import type { ReactNode } from "react";
 import { applyDefaultsToCurrent } from "@/app/commands";
 import { useDocumentHandle } from "@/app/document/DocumentContext";
+import type { DocumentHandle } from "@/app/document/handle";
 import { type AutosaveBackend, type ThemePreference, usePreferencesStore } from "@/app/preferencesStore";
 import { useUiStore } from "@/app/uiStore";
 import { checkForUpdatesNow } from "@/app/updates";
@@ -29,9 +30,6 @@ export function OptionsDialog() {
     return null;
   }
 
-  const { defaults } = prefs;
-  const setDbms = (dbms: Dbms) => prefs.setDefaults({ dbms, dbmsVersion: resolveVersion(dbms, undefined) });
-
   return (
     <Modal
       title={t("options.title")}
@@ -49,6 +47,37 @@ export function OptionsDialog() {
         </>
       }
     >
+      {appearanceGroups(prefs)}
+
+      {defaultsGroup(prefs, doc)}
+
+      <Group title={t("customDbms.library")}>
+        <CustomDbmsLibrary />
+      </Group>
+
+      {autosaveGroup(prefs)}
+
+      <Group title={t("collab.title")}>
+        <IdentityOptions />
+      </Group>
+
+      {mcpAvailable() && (
+        <Group title={t("mcp.title")}>
+          <McpOptions />
+        </Group>
+      )}
+
+      {updatesGroup(prefs)}
+    </Modal>
+  );
+}
+
+type Prefs = ReturnType<typeof usePreferencesStore.getState>;
+
+/** Apparence (thème, langue) et tracé des liens. */
+function appearanceGroups(prefs: Prefs) {
+  return (
+    <>
       <Group title={t("options.appearance")}>
         <Field label={t("options.theme")}>
           <Segmented<ThemePreference>
@@ -70,128 +99,131 @@ export function OptionsDialog() {
         <Checkbox label={t("options.smoothBends")} checked={prefs.smoothBends} onChange={prefs.setSmoothBends} />
         <Help>{t("options.smoothBendsHelp")}</Help>
       </Group>
+    </>
+  );
+}
 
-      <Group title={t("options.defaults")}>
-        <Help>{t("options.defaultsHelp")}</Help>
-        <Field label={t("toolbar.dbms")}>
-          <div className="flex gap-1">
-            <select className={inputClass} value={defaults.dbms} onChange={(e) => setDbms(e.target.value as Dbms)}>
-              {DBMS_LIST.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-            <select
-              className={inputClass}
-              aria-label={t("toolbar.version")}
-              value={defaults.dbmsVersion}
-              onChange={(e) => prefs.setDefaults({ dbmsVersion: e.target.value })}
-            >
-              {versionOptions(defaults.dbms).map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </Field>
-        <Field label={t("inspector.autoIdMask")}>
-          <KeyPatternField
-            kind="discriminant"
-            value={defaults.autoIdMask}
-            onChange={(autoIdMask) => prefs.setDefaults({ autoIdMask })}
-          />
-        </Field>
-        <Field label={t("inspector.primaryKey")}>
-          <KeyPatternField
-            kind="primaryKey"
-            value={defaults.primaryKey}
-            onChange={(primaryKey) => prefs.setDefaults({ primaryKey })}
-          />
-        </Field>
-        <Field label={t("inspector.foreignKey")}>
-          <KeyPatternField
-            kind="foreignKey"
-            value={defaults.foreignKey}
-            onChange={(foreignKey) => prefs.setDefaults({ foreignKey })}
-          />
-        </Field>
+/** Réglages des nouveaux modèles : SGBD, schémas de clés ; application au modèle courant. */
+function defaultsGroup(prefs: Prefs, doc: DocumentHandle) {
+  const { defaults } = prefs;
+  const setDbms = (dbms: Dbms) => prefs.setDefaults({ dbms, dbmsVersion: resolveVersion(dbms, undefined) });
+  return (
+    <Group title={t("options.defaults")}>
+      <Help>{t("options.defaultsHelp")}</Help>
+      <Field label={t("toolbar.dbms")}>
+        <div className="flex gap-1">
+          <select className={inputClass} value={defaults.dbms} onChange={(e) => setDbms(e.target.value as Dbms)}>
+            {DBMS_LIST.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.label}
+              </option>
+            ))}
+          </select>
+          <select
+            className={inputClass}
+            aria-label={t("toolbar.version")}
+            value={defaults.dbmsVersion}
+            onChange={(e) => prefs.setDefaults({ dbmsVersion: e.target.value })}
+          >
+            {versionOptions(defaults.dbms).map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </Field>
+      <Field label={t("inspector.autoIdMask")}>
+        <KeyPatternField
+          kind="discriminant"
+          value={defaults.autoIdMask}
+          onChange={(autoIdMask) => prefs.setDefaults({ autoIdMask })}
+        />
+      </Field>
+      <Field label={t("inspector.primaryKey")}>
+        <KeyPatternField
+          kind="primaryKey"
+          value={defaults.primaryKey}
+          onChange={(primaryKey) => prefs.setDefaults({ primaryKey })}
+        />
+      </Field>
+      <Field label={t("inspector.foreignKey")}>
+        <KeyPatternField
+          kind="foreignKey"
+          value={defaults.foreignKey}
+          onChange={(foreignKey) => prefs.setDefaults({ foreignKey })}
+        />
+      </Field>
+      <button
+        type="button"
+        className="self-start text-sm text-blue-600 hover:underline dark:text-blue-400"
+        onClick={() => {
+          applyDefaultsToCurrent(doc);
+          useUiStore.getState().notify({ kind: "info", text: t("options.applied") });
+        }}
+      >
+        {t("options.applyToCurrent")}
+      </button>
+    </Group>
+  );
+}
+
+/** Sauvegarde automatique : stockage et délai (O-22). */
+function autosaveGroup(prefs: Prefs) {
+  return (
+    <Group title={t("options.autosave")}>
+      <Help>{t("options.autosaveHelp")}</Help>
+      <div role="radiogroup" className="flex flex-col gap-1 text-sm">
+        {(["indexeddb", "off"] as AutosaveBackend[]).map((backend) => (
+          <label key={backend} className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="autosave"
+              className="accent-blue-600"
+              checked={prefs.autosave === backend}
+              onChange={() => prefs.setAutosave(backend)}
+            />
+            {t(`options.autosave.${backend}`)}
+          </label>
+        ))}
+      </div>
+      {prefs.autosave === "indexeddb" && (
+        <>
+          <Field label={t("options.autosaveDelay")}>
+            <CommitInput
+              value={String(prefs.autosaveDelay)}
+              onCommit={(text) => {
+                const minutes = Number(text.replace(",", "."));
+                if (!Number.isFinite(minutes) || minutes < 0) {
+                  return t("common.positiveNumberExpected");
+                }
+                prefs.setAutosaveDelay(minutes);
+              }}
+            />
+          </Field>
+          <Help>{t("options.autosaveDelayHelp")}</Help>
+        </>
+      )}
+    </Group>
+  );
+}
+
+/** Mises à jour (application native uniquement). */
+function updatesGroup(prefs: Prefs) {
+  return (
+    updatesSupported() && (
+      <Group title={t("options.updates")}>
+        <Checkbox label={t("options.updateCheck")} checked={prefs.updateCheck} onChange={prefs.setUpdateCheck} />
+        <Help>{t("options.updateHelp")}</Help>
         <button
           type="button"
-          className="self-start text-sm text-blue-600 hover:underline dark:text-blue-400"
-          onClick={() => {
-            applyDefaultsToCurrent(doc);
-            useUiStore.getState().notify({ kind: "info", text: t("options.applied") });
-          }}
+          className="self-start rounded border border-neutral-300 px-2 py-0.5 text-sm hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800"
+          onClick={() => void checkForUpdatesNow()}
         >
-          {t("options.applyToCurrent")}
+          {t("options.checkNow")}
         </button>
       </Group>
-
-      <Group title={t("customDbms.library")}>
-        <CustomDbmsLibrary />
-      </Group>
-
-      <Group title={t("options.autosave")}>
-        <Help>{t("options.autosaveHelp")}</Help>
-        <div role="radiogroup" className="flex flex-col gap-1 text-sm">
-          {(["indexeddb", "off"] as AutosaveBackend[]).map((backend) => (
-            <label key={backend} className="flex items-center gap-2">
-              <input
-                type="radio"
-                name="autosave"
-                className="accent-blue-600"
-                checked={prefs.autosave === backend}
-                onChange={() => prefs.setAutosave(backend)}
-              />
-              {t(`options.autosave.${backend}`)}
-            </label>
-          ))}
-        </div>
-        {prefs.autosave === "indexeddb" && (
-          <>
-            <Field label={t("options.autosaveDelay")}>
-              <CommitInput
-                value={String(prefs.autosaveDelay)}
-                onCommit={(text) => {
-                  const minutes = Number(text.replace(",", "."));
-                  if (!Number.isFinite(minutes) || minutes < 0) {
-                    return t("common.positiveNumberExpected");
-                  }
-                  prefs.setAutosaveDelay(minutes);
-                }}
-              />
-            </Field>
-            <Help>{t("options.autosaveDelayHelp")}</Help>
-          </>
-        )}
-      </Group>
-
-      <Group title={t("collab.title")}>
-        <IdentityOptions />
-      </Group>
-
-      {mcpAvailable() && (
-        <Group title={t("mcp.title")}>
-          <McpOptions />
-        </Group>
-      )}
-
-      {updatesSupported() && (
-        <Group title={t("options.updates")}>
-          <Checkbox label={t("options.updateCheck")} checked={prefs.updateCheck} onChange={prefs.setUpdateCheck} />
-          <Help>{t("options.updateHelp")}</Help>
-          <button
-            type="button"
-            className="self-start rounded border border-neutral-300 px-2 py-0.5 text-sm hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800"
-            onClick={() => void checkForUpdatesNow()}
-          >
-            {t("options.checkNow")}
-          </button>
-        </Group>
-      )}
-    </Modal>
+    )
   );
 }
 

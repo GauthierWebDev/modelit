@@ -44,10 +44,10 @@ const ORDERS = [
   },
 ];
 
+beforeEach(resetWorkspace);
+
 /** Assistants IA par MCP (override O-47). */
 describe("serveur MCP", () => {
-  beforeEach(resetWorkspace);
-
   it("initialize : version négociée, outils annoncés", async () => {
     const init = await call("initialize", {
       protocolVersion: "2025-11-25",
@@ -74,7 +74,9 @@ describe("serveur MCP", () => {
     const mismatch = await handleMcpMessage({ jsonrpc: "2.0", id: 1, method: "tools/list" }, {}, "tools/call");
     expect(mismatch!.error?.code).toBe(-32_600);
   });
+});
 
+describe("serveur MCP", () => {
   it("apply_changes : crée le modèle en une seule entrée d'annulation", async () => {
     const applied: string[] = [];
     const response = await handleMcpMessage(
@@ -115,7 +117,9 @@ describe("serveur MCP", () => {
     expect(result.content[0]!.text).toMatch(/Nothing was applied\. operation 2 \(create_entity\)/);
     expect(activeDocument().store.getState().doc).toBe(before);
   });
+});
 
+describe("serveur MCP", () => {
   it("get_model : rubriques typées dans le SGBD cible, pattes et cardinalités", async () => {
     await tool("apply_changes", { operations: ORDERS });
     const model = json(await tool("get_model"));
@@ -161,7 +165,9 @@ describe("serveur MCP", () => {
     expect((await tool("get_mld")).isError).toBeUndefined();
     activeDocument().store.getState().cancel();
   });
+});
 
+describe("serveur MCP", () => {
   it("reverse_engineer : nouvel onglet actif", async () => {
     await tool("apply_changes", { operations: [{ op: "create_entity", name: "X" }] });
     const result = await tool("reverse_engineer", {

@@ -66,7 +66,9 @@ describe("opérations par identifiant", () => {
     expect(ops.map((o) => o.t)).toEqual(["order"]);
     roundTrip(before, doc.store.getState().doc);
   });
+});
 
+describe("opérations par identifiant", () => {
   it("deux participants modifient deux rubriques d'une même entité : les deux sont gardées", () => {
     const { doc, client } = sample();
     cmd.setAttributes(doc, client, [

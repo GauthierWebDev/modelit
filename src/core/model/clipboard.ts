@@ -92,6 +92,28 @@ export function parseFragment(text: string): ModelFragment | null {
  * autant de fois que nécessaire pour ne pas recouvrir un collage précédent.
  */
 export function pasteFragment(doc: ModelDocument, fragment: ModelFragment, at?: Point): Id[] {
+  const copy = remapIds(structuredClone(fragment), freshIds(fragment));
+  renameCopies(doc, copy);
+  const { links, inheritanceLinks, dropped } = reconnect(doc, copy);
+  const offset = at ? offsetTo(fragment, at) : pasteOffset(doc, fragment);
+  for (const [id, p] of Object.entries(copy.layout.positions)) {
+    doc.layout.positions[id] = { x: p.x + offset.x, y: p.y + offset.y };
+  }
+  for (const [id, bends] of Object.entries(copy.layout.bends)) {
+    if (!dropped.has(id)) {
+      doc.layout.bends[id] = bends.map((p) => ({ x: p.x + offset.x, y: p.y + offset.y }));
+    }
+  }
+  doc.entities.push(...copy.entities);
+  doc.associations.push(...copy.associations);
+  doc.inheritances.push(...copy.inheritances);
+  doc.links.push(...links);
+  doc.inheritanceLinks.push(...inheritanceLinks);
+  return [...copy.entities, ...copy.associations, ...copy.inheritances].map((n) => n.id);
+}
+
+/** Nouvel identifiant pour chaque objet, rubrique et trait du fragment. */
+function freshIds(fragment: ModelFragment): Map<Id, Id> {
   const ids = new Map<Id, Id>();
   for (const node of [...fragment.entities, ...fragment.associations, ...fragment.inheritances]) {
     ids.set(node.id, newId());
@@ -104,9 +126,11 @@ export function pasteFragment(doc: ModelDocument, fragment: ModelFragment, at?: 
   for (const link of [...fragment.links, ...fragment.inheritanceLinks]) {
     ids.set(link.id, newId());
   }
-  const copy = remapIds(structuredClone(fragment), ids);
+  return ids;
+}
 
-  // Noms libres : « Client » → « Client_2 », « Client_3 »…
+/** Noms libres : « Client » → « Client_2 », « Client_3 »… ; noms de contraintes retirés. */
+function renameCopies(doc: ModelDocument, copy: ModelFragment) {
   const entityNames = new Set(doc.entities.map((e) => e.name));
   const associationNames = new Set(doc.associations.map((a) => a.name));
   const logicalNames = new Set(
@@ -124,8 +148,10 @@ export function pasteFragment(doc: ModelDocument, fragment: ModelFragment, at?: 
     }
     withoutConstraintNames(n);
   }
+}
 
-  // Traits vers une entité non copiée : rattachés à l'original s'il existe, sinon abandonnés.
+/** Traits vers une entité non copiée : rattachés à l'original s'il existe, sinon abandonnés. */
+function reconnect(doc: ModelDocument, copy: ModelFragment) {
   const existing = new Set(doc.entities.map((e) => e.id));
   const pasted = new Set(copy.entities.map((e) => e.id));
   const reachable = (id: Id) => pasted.has(id) || existing.has(id);
@@ -147,22 +173,7 @@ export function pasteFragment(doc: ModelDocument, fragment: ModelFragment, at?: 
   for (const n of [...copy.entities, ...copy.associations]) {
     withoutLinks(n, dropped);
   }
-
-  const offset = at ? offsetTo(fragment, at) : pasteOffset(doc, fragment);
-  for (const [id, p] of Object.entries(copy.layout.positions)) {
-    doc.layout.positions[id] = { x: p.x + offset.x, y: p.y + offset.y };
-  }
-  for (const [id, bends] of Object.entries(copy.layout.bends)) {
-    if (!dropped.has(id)) {
-      doc.layout.bends[id] = bends.map((p) => ({ x: p.x + offset.x, y: p.y + offset.y }));
-    }
-  }
-  doc.entities.push(...copy.entities);
-  doc.associations.push(...copy.associations);
-  doc.inheritances.push(...copy.inheritances);
-  doc.links.push(...links);
-  doc.inheritanceLinks.push(...inheritanceLinks);
-  return [...copy.entities, ...copy.associations, ...copy.inheritances].map((n) => n.id);
+  return { links, inheritanceLinks, dropped };
 }
 
 /** Décalage qui amène le coin supérieur gauche des objets du fragment en `at`. */

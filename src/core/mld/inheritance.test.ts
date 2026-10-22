@@ -55,7 +55,9 @@ describe("héritage (override O-18)", () => {
     const none = toLogicalModel(personnes().inherit("PERSONNE", []).build());
     expect(none.issues.map((i) => i.message)).toContain(MSG.inheritanceNeedsChild);
   });
+});
 
+describe("héritage (override O-18)", () => {
   it("un sous-type ne peut dépendre que d'un surtype", () => {
     const doc = personnes()
       .entity("SOCIETE", ["siren*"])

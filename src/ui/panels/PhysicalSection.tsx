@@ -52,6 +52,21 @@ export function PhysicalSection({
         </Field>
       )}
 
+      {checksBlock(node, edit, doc.settings.dbms)}
+
+      {alternateKeysBlock(node, edit, memberName)}
+
+      {indexesBlock(node, edit, memberName)}
+    </Section>
+  );
+}
+
+type Edit = (recipe: (n: Entity | Association) => void) => void;
+
+/** Contraintes CHECK de table. */
+function checksBlock(node: Entity | Association, edit: Edit, dbms: ModelDocument["settings"]["dbms"]) {
+  return (
+    <>
       <SubTitle>{t("physical.checks")}</SubTitle>
       {(node.checks ?? []).map((check, i) => (
         <CheckRow
@@ -74,11 +89,18 @@ export function PhysicalSection({
         onClick={() =>
           edit((n) => {
             n.checks ??= [];
-            n.checks.push({ expression: "1 = 1", dialect: doc.settings.dbms });
+            n.checks.push({ expression: "1 = 1", dialect: dbms });
           })
         }
       />
+    </>
+  );
+}
 
+/** Identifiants alternatifs (UNIQUE). */
+function alternateKeysBlock(node: Entity | Association, edit: Edit, memberName: (member: KeyMember) => string) {
+  return (
+    <>
       <SubTitle>{t("physical.alternateKeys")}</SubTitle>
       {(node.alternateKeys ?? []).map((key, i) => (
         <KeyRow
@@ -104,7 +126,14 @@ export function PhysicalSection({
           })
         }
       />
+    </>
+  );
+}
 
+/** Index. */
+function indexesBlock(node: Entity | Association, edit: Edit, memberName: (member: KeyMember) => string) {
+  return (
+    <>
       <SubTitle>{t("physical.indexes")}</SubTitle>
       {(node.indexes ?? []).map((index, i) => (
         <KeyRow
@@ -130,7 +159,7 @@ export function PhysicalSection({
           })
         }
       />
-    </Section>
+    </>
   );
 }
 
