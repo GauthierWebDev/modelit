@@ -1,10 +1,11 @@
 import { deserializeModel, serializeModel } from "@core/index";
 import { t } from "@/i18n";
-import { indexedDbStore, type LocalStore, removeLegacyLocalStorageCopy } from "@/platform/localStore";
+import { indexedDbStore, removeLegacyLocalStorageCopy } from "@/platform/localStore";
 import { confirmDialog } from "./dialogStore";
 import { selectIsDirty } from "./document/documentStore";
 import type { DocumentHandle } from "./document/handle";
 import { documentName } from "./fileCommands";
+import type { LocalStore } from "./localStore";
 import { usePreferencesStore } from "./preferencesStore";
 import { useUiStore } from "./uiStore";
 import { openInTab, useWorkspaceStore } from "./workspace";

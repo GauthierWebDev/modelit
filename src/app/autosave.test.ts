@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { LocalStore } from "@/platform/localStore";
 import { type AutosaveEntry, readCopies } from "./autosave";
+import type { LocalStore } from "./localStore";
 
 const memoryStore = (data: Record<string, string>): LocalStore => ({
   get: async (key) => data[key] ?? null,

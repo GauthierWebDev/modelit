@@ -1,4 +1,3 @@
-import type { VoiceEngine, VoiceFrame } from "@/platform/voice";
 import {
   registerVoiceActions,
   useCollabStore,
@@ -8,6 +7,7 @@ import {
   voiceLink,
 } from "../session";
 import { clearSpeaking, noteLevel } from "./speaking";
+import type { VoiceEngine, VoiceFrame } from "./voiceEngine";
 
 /**
  * Vocal d'une session (O-48, D18) : relie le moteur audio (micro, Opus, lecture) au canal de la

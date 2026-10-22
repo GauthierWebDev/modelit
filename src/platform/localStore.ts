@@ -1,12 +1,9 @@
+import type { LocalStore } from "@/app/localStore";
+
 /**
- * Stockage local clé → texte de la sauvegarde automatique (override O-22) : IndexedDB, la base
- * de données du navigateur (et de la webview Tauri), sans la limite de quelques Mo du localStorage.
+ * Stockage local de la sauvegarde automatique (override O-22) : IndexedDB, la base de données du
+ * navigateur (et de la webview Tauri), sans la limite de quelques Mo du localStorage.
  */
-export interface LocalStore {
-  get: (key: string) => Promise<string | null>;
-  set: (key: string, value: string) => Promise<void>;
-  remove: (key: string) => Promise<void>;
-}
 
 const DB_NAME = "modelit";
 const STORE = "autosave";
