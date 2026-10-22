@@ -1,6 +1,5 @@
 import {
   createAssociation,
-  createInheritance,
   emptyDocument,
   type Id,
   type ModelDocument,
@@ -11,22 +10,14 @@ import { model } from "@core/testing/builder";
 import { describe, expect, it } from "vitest";
 import { connectNodes } from "@/app/commands";
 import { createDocumentHandle } from "@/app/document/handle";
-import {
-  betweenSlot,
-  logicalRenameTarget,
-  mcdRenameTarget,
-  newAssociationSize,
-  placementBoxes,
-  placeNewAssociation,
-  reflexiveSlot,
-} from "./canvasRules";
-import { center, intersects, type NodeLayout, nodeLayout, type Rect, ROW_HEIGHT, TITLE_HEIGHT } from "./geometry";
+import { betweenSlot, newAssociationSize, placementBoxes, placeNewAssociation, reflexiveSlot } from "./canvasRules";
+import { center, intersects, type NodeLayout, nodeLayout, type Rect } from "./geometry";
 import { tableLayouts } from "./logicalGeometry";
 import { layoutsOf } from "./viewport";
 
 /**
- * Règles des canevas : placement des associations créées à l'outil Lien (O-02, O-08, O-60) et cible
- * du renommage au double-clic (O-56, O-58, O-59).
+ * Règles des canevas : placement des associations créées à l'outil Lien (O-02, O-08, O-60). Cible du
+ * renommage au double-clic (O-56, O-58, O-59) : canvasRenameTargets.test.ts.
  */
 
 const EMPTY_DOC = emptyDocument();
@@ -114,31 +105,48 @@ describe("association entre deux entités : centrée, sinon décalée de côté 
   });
 });
 
-describe("dimensions de la vue la plus large (O-60)", () => {
-  /** Entités aux tables du MPD bien plus larges que leurs boîtes du MCD (types longs). */
-  function wide(): ModelDocument {
-    const doc = model()
-      .entity("CLIENT", ["id_client*", "adresse"])
-      .entity("COMMANDE", ["id_commande*"])
-      .entity("PRODUIT", ["id_produit*"])
-      .typed("CLIENT", "adresse", { kind: "text", encoding: "unicode", length: "variable", size: 255 })
-      .build();
-    const [client, commande, produit] = doc.entities;
-    // PRODUIT au milieu du segment CLIENT–COMMANDE : l'emplacement central est occupé.
-    doc.layout.positions[client!.id] = { x: 100, y: 100 };
-    doc.layout.positions[produit!.id] = { x: 700, y: 100 };
-    doc.layout.positions[commande!.id] = { x: 1300, y: 100 };
-    for (const e of doc.entities) {
-      for (const at of e.attributes) {
-        at.type ??= { kind: "integer", bits: 32 };
-      }
+/** Entités aux tables du MPD bien plus larges que leurs boîtes du MCD (types longs). */
+function wide(): ModelDocument {
+  const doc = model()
+    .entity("CLIENT", ["id_client*", "adresse"])
+    .entity("COMMANDE", ["id_commande*"])
+    .entity("PRODUIT", ["id_produit*"])
+    .typed("CLIENT", "adresse", { kind: "text", encoding: "unicode", length: "variable", size: 255 })
+    .build();
+  const [client, commande, produit] = doc.entities;
+  // PRODUIT au milieu du segment CLIENT–COMMANDE : l'emplacement central est occupé.
+  doc.layout.positions[client!.id] = { x: 100, y: 100 };
+  doc.layout.positions[produit!.id] = { x: 700, y: 100 };
+  doc.layout.positions[commande!.id] = { x: 1300, y: 100 };
+  for (const e of doc.entities) {
+    for (const at of e.attributes) {
+      at.type ??= { kind: "integer", bits: 32 };
     }
-    // Complément long : la table du MPD s'élargit nettement au-delà de la boîte du MCD.
-    client!.attributes[1]!.complement = "DEFAULT 'adresse inconnue'";
-    return doc;
   }
-  const byId = (d: ModelDocument, name: string) => d.entities.find((e) => e.name === name)!.id;
+  // Complément long : la table du MPD s'élargit nettement au-delà de la boîte du MCD.
+  client!.attributes[1]!.complement = "DEFAULT 'adresse inconnue'";
+  return doc;
+}
 
+/** Crée l'association avec la vraie commande, placée par `placeNewAssociation`. */
+function create(d: ModelDocument, from: Id, to: Id) {
+  const handle = createDocumentHandle(structuredClone(d));
+  const placement = placeNewAssociation(d, from, to, 10);
+  connectNodes(handle, from, to, placement);
+  return { after: handle.store.getState().doc, placement };
+}
+
+/** Aucune paire d'objets ne se chevauche, ni dans le MCD, ni dans le MPD. */
+function noOverlap(d: ModelDocument) {
+  const mcd = [...layoutsOf(d).values()];
+  const mpd = tableLayouts(toLogicalModel(d), d, "mpd");
+  const clash = (rects: Rect[]) => rects.some((r, i) => rects.slice(i + 1).some((s) => overlaps(r, s)));
+  return !(clash(mcd) || clash(mpd));
+}
+
+const byId = (d: ModelDocument, name: string) => d.entities.find((e) => e.name === name)!.id;
+
+describe("dimensions de la vue la plus large (O-60)", () => {
   it("chaque objet occupe la plus grande de ses boîtes, MCD ou table du MPD", () => {
     const d = wide();
     const id = byId(d, "CLIENT");
@@ -176,22 +184,9 @@ describe("dimensions de la vue la plus large (O-60)", () => {
     const table = tableLayouts(toLogicalModel(after), after, "mpd").find((t) => t.sourceId === created)!;
     expect(reserved).toEqual({ width: Math.max(mcd.width, table.width), height: Math.max(mcd.height, table.height) });
   });
+});
 
-  /** Crée l'association avec la vraie commande, placée par `placeNewAssociation`. */
-  function create(d: ModelDocument, from: Id, to: Id) {
-    const handle = createDocumentHandle(structuredClone(d));
-    const placement = placeNewAssociation(d, from, to, 10);
-    connectNodes(handle, from, to, placement);
-    return { after: handle.store.getState().doc, placement };
-  }
-  /** Aucune paire d'objets ne se chevauche, ni dans le MCD, ni dans le MPD. */
-  function noOverlap(d: ModelDocument) {
-    const mcd = [...layoutsOf(d).values()];
-    const mpd = tableLayouts(toLogicalModel(d), d, "mpd");
-    const clash = (rects: Rect[]) => rects.some((r, i) => rects.slice(i + 1).some((s) => overlaps(r, s)));
-    return !(clash(mcd) || clash(mpd));
-  }
-
+describe("dimensions de la vue la plus large (O-60)", () => {
   it("réflexive : aucun chevauchement dans le MCD ni dans le MPD, la seconde patte contournée", () => {
     const d = wide();
     expect(noOverlap(d)).toBe(true);
@@ -239,7 +234,9 @@ describe("dimensions de la vue la plus large (O-60)", () => {
       expect(after.layout.positions[key]).toEqual(p);
     }
   });
+});
 
+describe("dimensions de la vue la plus large (O-60)", () => {
   it("patte ou lien d'héritage : aucun placement calculé (connectNodes ne crée pas d'association)", () => {
     const d = model()
       .entity("CLIENT", ["id*"])
@@ -250,100 +247,5 @@ describe("dimensions de la vue la plus large (O-60)", () => {
     expect(placeNewAssociation(d, association, byId(d, "COMMANDE"), 10)).toEqual({
       associationPosition: { x: 0, y: 0 },
     });
-  });
-});
-
-describe("double-clic dans le MCD (O-58)", () => {
-  const entity = { ...box(100, 100, 120, TITLE_HEIGHT + 4 + 2 * ROW_HEIGHT + 6) };
-  entity.rows = [
-    { attribute: { id: "code" } as never, y: TITLE_HEIGHT + 4 },
-    { attribute: { id: "nom" } as never, y: TITLE_HEIGHT + 4 + ROW_HEIGHT },
-  ];
-  const inheritance = { ...createInheritance(), id: "h" };
-  const layouts = new Map<Id, NodeLayout>([
-    ["client", entity],
-    ["h", box(400, 100, 56, 56)],
-  ]);
-  const target = (x: number, y: number) => mcdRenameTarget({ inheritances: [inheritance] }, layouts, { x, y });
-
-  it("sur le titre : le nom de l'objet", () => {
-    expect(target(130, 110)).toEqual({ nodeId: "client", attributeId: null });
-  });
-
-  it("sur une rubrique : cette rubrique", () => {
-    expect(target(130, 100 + TITLE_HEIGHT + 4 + 2)).toEqual({ nodeId: "client", attributeId: "code" });
-    expect(target(130, 100 + TITLE_HEIGHT + 4 + ROW_HEIGHT + 2)).toEqual({ nodeId: "client", attributeId: "nom" });
-  });
-
-  it("dans la marge sous les rubriques, hors de l'objet, ou sur un héritage : rien", () => {
-    expect(target(130, entity.y + entity.height - 2)).toBeNull();
-    expect(target(50, 50)).toBeNull();
-    expect(target(420, 120)).toBeNull();
-  });
-});
-
-describe("double-clic dans le MLD et le MPD (O-56, O-59)", () => {
-  function setup() {
-    const doc = model()
-      .entity("CLIENT", ["id_client*", "nom"])
-      .entity("COMMANDE", ["id_commande*"])
-      .association("PASSER", ["CLIENT 0,n", "COMMANDE 1,1"])
-      .typed("CLIENT", "id_client", { kind: "counter" })
-      .typed("CLIENT", "nom", { kind: "text", encoding: "unicode", length: "variable", size: 50 })
-      .typed("COMMANDE", "id_commande", { kind: "integer", bits: 32 })
-      .build();
-    doc.layout.positions[doc.entities[1]!.id] = { x: 400, y: 0 };
-    return { doc, logical: toLogicalModel(doc) };
-  }
-  const at = (mode: "mld" | "mpd", tableName: string, columnName: string | null, part: "name" | "type" = "name") => {
-    const { doc, logical } = setup();
-    const layouts = tableLayouts(logical, doc, mode);
-    const l = layouts.find((layout) => layout.table.name === tableName)!;
-    const row = columnName ? l.rows.find((r) => r.column.name === columnName)! : null;
-    const y = l.y + (row ? row.y + ROW_HEIGHT / 2 : TITLE_HEIGHT / 2);
-    const x = l.x + (part === "type" ? l.typeX + 2 : 14);
-    return { target: logicalRenameTarget(layouts, mode, { x, y }), doc, l };
-  };
-
-  it("sur le titre d'une table : la table", () => {
-    const { target, l } = at("mld", "CLIENT", null);
-    expect(target).toEqual({ sourceId: l.sourceId, column: null });
-  });
-
-  it("sur une colonne propre : sa rubrique", () => {
-    const { target, doc, l } = at("mld", "CLIENT", "nom");
-    const nom = doc.entities[0]!.attributes.find((a) => a.name === "nom")!;
-    expect(target).toEqual({ sourceId: l.sourceId, column: { attributeId: nom.id } });
-  });
-
-  it("sur une clé étrangère : la clé, par sa patte d'origine (O-07)", () => {
-    const { target, l } = at("mld", "COMMANDE", "id_client");
-    const fk = l.rows.find((r) => r.column.name === "id_client")!.column;
-    expect(target).toEqual({
-      sourceId: l.sourceId,
-      column: { linkId: fk.origin!.linkId, originId: fk.origin!.attributeId },
-    });
-  });
-
-  it("MPD, sur le type d'une colonne propre : son type (O-59)", () => {
-    const { target, doc, l } = at("mpd", "CLIENT", "nom", "type");
-    const nom = doc.entities[0]!.attributes.find((a) => a.name === "nom")!;
-    expect(target).toEqual({ sourceId: l.sourceId, column: { attributeId: nom.id }, part: "type" });
-  });
-
-  it("MPD, sur le type d'un compteur ou d'une clé étrangère : rien (O-59)", () => {
-    expect(at("mpd", "CLIENT", "id_client", "type").target).toBeNull();
-    expect(at("mpd", "COMMANDE", "id_client", "type").target).toBeNull();
-  });
-
-  it("MPD, sur le nom d'une colonne : son nom, comme dans le MLD", () => {
-    const { target } = at("mpd", "CLIENT", "nom");
-    expect(target).not.toBeNull();
-    expect(target!.part).toBeUndefined();
-  });
-
-  it("hors de toute table : rien", () => {
-    const { doc, logical } = setup();
-    expect(logicalRenameTarget(tableLayouts(logical, doc, "mld"), "mld", { x: 1000, y: 1000 })).toBeNull();
   });
 });
