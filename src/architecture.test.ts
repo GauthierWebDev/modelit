@@ -36,7 +36,6 @@ const UI_PLATFORM_FLAGS = [
 
 /** TEMPORAIRE — à supprimer en M-00 L3 (point d'assemblage unique, ports fichiers / mises à jour / stockage). */
 const TEMPORARY = [
-  "app/autosave.ts → platform/localStore",
   "ui/collab/CollabBridge.tsx → platform/collab",
   "ui/collab/CollabBridge.tsx → platform/voice",
   "ui/mcp/McpBridge.tsx → platform/mcp",

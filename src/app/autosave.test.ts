@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type AutosaveEntry, readCopies } from "./autosave";
+import { type AutosaveEntry, readCopies } from "./autosaveCopies";
 import type { LocalStore } from "./localStore";
 
 const memoryStore = (data: Record<string, string>): LocalStore => ({

@@ -36,12 +36,3 @@ export const indexedDbStore: LocalStore = {
   set: async (key, value) => void (await run("readwrite", (s) => s.put(value, key))),
   remove: async (key) => void (await run("readwrite", (s) => s.delete(key))),
 };
-
-/** Copie laissée dans le localStorage par une version précédente : à supprimer. */
-export function removeLegacyLocalStorageCopy(key: string) {
-  try {
-    globalThis.localStorage.removeItem(key);
-  } catch {
-    // localStorage indisponible : rien à nettoyer.
-  }
-}

@@ -1,6 +1,9 @@
+import { flushAutosave } from "./app/autosave";
 import { setFileAccess } from "./app/fileAccess";
+import { setLocalStore } from "./app/localStore";
 import { setUpdateSource } from "./app/updateSource";
 import { platformFiles } from "./platform/files";
+import { indexedDbStore } from "./platform/localStore";
 import { platformUpdates } from "./platform/updater";
 
 /**
@@ -11,4 +14,8 @@ import { platformUpdates } from "./platform/updater";
 export function bootstrapMain() {
   setFileAccess(platformFiles);
   setUpdateSource(platformUpdates);
+  setLocalStore(indexedDbStore);
+  // Sauvegarde automatique : copies en attente écrites quand la fenêtre passe en arrière-plan ou se ferme.
+  document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushAutosave());
+  globalThis.addEventListener("pagehide", flushAutosave);
 }
