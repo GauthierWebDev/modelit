@@ -19,6 +19,7 @@
     "typecheck": "tsc -b",
     "lint": "biome check",
     "lint:fix": "biome check --write",
+    "lint:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:sgbd": "SGBD_DOCKER=1 vitest run src/core/ddl/sgbd",
