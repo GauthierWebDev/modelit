@@ -2,22 +2,15 @@ import { TOOLS } from "./tools";
 
 export { TOOLS } from "./tools";
 
-import {
-  detectDialect,
-  issueMessage,
-  type ModelDocument,
-  mldPlainText,
-  reverseEngineer,
-  type SqlDialect,
-} from "@core/index";
+import { issueMessage, type ModelDocument, mldPlainText } from "@core/index";
 import { APP_INFO } from "../appInfo";
 import { aiWriteRefusal } from "../collab/session";
 import { ddlOf, logicalModelOf } from "../derived";
 import type { DocumentHandle } from "../document/handle";
 import { documentName } from "../documentNames";
 import { modalOpen } from "../modal";
-import { newModelDocument } from "../modelDefaults";
-import { activeDocument, openInTab, useWorkspaceStore } from "../workspace";
+import { reverseIntoNewTab } from "../reverseCommands";
+import { activeDocument, useWorkspaceStore } from "../workspace";
 import { applyChanges, type Operation } from "./apply";
 import { describeModel } from "./describe";
 
@@ -143,14 +136,13 @@ async function writeTool(name: string, args: Record<string, unknown>, doc: Docum
 }
 
 async function reverseTool(sql: string, hooks: McpHooks) {
-  const result = reverseEngineer(sql, newModelDocument(), detectDialect(sql) as SqlDialect);
-  if (result.report.tables === 0) {
+  const { doc: opened, report } = reverseIntoNewTab(sql);
+  if (!opened) {
     return failure("No table found in the script.");
   }
-  const opened = openInTab((d) => d.store.getState().load(result.doc, null, true));
   await hooks.autoLayout?.();
-  hooks.onApplied?.(`reverse engineering: ${result.report.tables} table(s)`);
-  return text({ document: documentName(opened), report: result.report });
+  hooks.onApplied?.(`reverse engineering: ${report.tables} table(s)`);
+  return text({ document: documentName(opened), report });
 }
 
 /**
