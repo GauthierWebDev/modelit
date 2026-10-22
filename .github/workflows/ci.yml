@@ -114,6 +114,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.rust-targets }}
+          components: clippy, rustfmt
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
@@ -126,6 +127,10 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Format et lint du code Rust (rustfmt, clippy pedantic) sur chaque OS : le code propre à une
+      # plateforme y est compilé. `generate_context!` exige l'interface construite (frontendDist).
+      - name: Rust (rustfmt, clippy)
+        run: pnpm build && pnpm lint:rust
 
       # Section de la version dans CHANGELOG.md : texte de la release et notes de la mise à jour.
       - name: Notes de version

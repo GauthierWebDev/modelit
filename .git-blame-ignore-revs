@@ -6,3 +6,6 @@
 
 # style: braces around every statement body (useBlockStatements)
 4db0e12ab2183734299033c786266b5cbb3c9aab
+
+# style(tauri): format Rust code with rustfmt
+760b5c19784cfef8d968ccb871b04df71e313c61

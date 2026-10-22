@@ -17,6 +17,11 @@ fn updater_configured(app: tauri::AppHandle) -> bool {
         .is_some_and(|endpoints| !endpoints.is_empty())
 }
 
+/// Lance l'application.
+///
+/// # Panics
+///
+/// Si Tauri ne peut pas démarrer (configuration invalide, fenêtre impossible à créer).
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -64,9 +69,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init());
     #[cfg(target_os = "macos")]
     let builder = builder.menu(macos::menu).on_menu_event(macos::on_menu_event);
-    builder
-        .run(tauri::generate_context!())
-        .expect("erreur au lancement de l'application");
+    builder.run(tauri::generate_context!()).expect("erreur au lancement de l'application");
 }
 
 /// Menu de l'application sous macOS : celui de Tauri par défaut, à trois éléments près.
@@ -115,7 +118,8 @@ mod macos {
                 if predefined.text()?.starts_with("Close Window") {
                     submenu.remove(predefined)?;
                     let tab = MenuItem::with_id(app, CLOSE_TAB_ID, "Close Tab", true, Some("CmdOrCtrl+W"))?;
-                    let window = MenuItem::with_id(app, CLOSE_WINDOW_ID, "Close Window", true, Some("CmdOrCtrl+Shift+W"))?;
+                    let window =
+                        MenuItem::with_id(app, CLOSE_WINDOW_ID, "Close Window", true, Some("CmdOrCtrl+Shift+W"))?;
                     submenu.insert(&tab, position)?;
                     submenu.insert(&window, position + 1)?;
                     return Ok(());

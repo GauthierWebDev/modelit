@@ -32,3 +32,10 @@ tauri-plugin-opener = "~2.7" # même mineure que @tauri-apps/plugin-opener
 tauri-plugin-process = "2"
 tauri-plugin-updater = "~2.13" # même mineure que @tauri-apps/plugin-updater (vérifié par `tauri build`)
 
+
+[lints.clippy]
+# Jeu par défaut et « pedantic » (CI : `cargo clippy -- -D warnings`) ; « nursery » non retenu (instable).
+pedantic = { level = "warn", priority = -1 }
+# Tauri impose des paramètres possédés aux commandes (arguments désérialisés, `State`, `AppHandle`)
+# et aux rappels de menu ; `Host::send_datagram` garde son `Bytes` (copie de référence seulement).
+needless_pass_by_value = "allow"

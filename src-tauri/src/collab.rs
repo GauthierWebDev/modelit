@@ -30,14 +30,24 @@ const MAX_FRAME: usize = 8 * 1024 * 1024;
 const ONLINE_TIMEOUT: Duration = Duration::from_secs(8);
 
 type Sink = Arc<dyn Fn(Event) + Send + Sync>;
+/// Invités de l'hôte : file d'envoi du flux et connexion (datagrammes), par identifiant.
+type Peers = Arc<Mutex<HashMap<String, (mpsc::UnboundedSender<String>, Connection)>>>;
 
 /// Ce que le transport signale à l'interface.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Event {
-    Message { peer: String, data: String },
+    Message {
+        peer: String,
+        data: String,
+    },
     /// Datagramme reçu (vocal) : perdu ou désordonné sans conséquence pour le reste.
-    Datagram { peer: String, data: Vec<u8> },
-    Closed { peer: String },
+    Datagram {
+        peer: String,
+        data: Vec<u8>,
+    },
+    Closed {
+        peer: String,
+    },
 }
 
 async fn write_frame(send: &mut SendStream, data: &[u8]) -> Result<(), String> {
@@ -60,7 +70,13 @@ async fn read_frame(recv: &mut RecvStream) -> Option<String> {
 }
 
 /// Relie un flux à l'interface : lecture vers `sink`, écriture depuis le canal renvoyé.
-fn pump(peer: String, connection: Connection, mut send: SendStream, mut recv: RecvStream, sink: Sink) -> mpsc::UnboundedSender<String> {
+fn pump(
+    peer: String,
+    connection: Connection,
+    mut send: SendStream,
+    mut recv: RecvStream,
+    sink: Sink,
+) -> mpsc::UnboundedSender<String> {
     let (sender, mut outgoing) = mpsc::unbounded_channel::<String>();
     tokio::spawn(async move {
         while let Some(data) = outgoing.recv().await {
@@ -89,22 +105,19 @@ fn pump(peer: String, connection: Connection, mut send: SendStream, mut recv: Re
 /// Hôte : accepte les invités et leur parle, un flux par invité.
 pub struct Host {
     endpoint: Endpoint,
-    peers: Arc<Mutex<HashMap<String, (mpsc::UnboundedSender<String>, Connection)>>>,
+    peers: Peers,
 }
 
 impl Host {
     /// Ouvre le point d'accès ; renvoie l'hôte et son adresse, à placer dans le lien d'invitation.
     pub async fn start(sink: Sink) -> Result<(Self, EndpointAddr), String> {
-        let endpoint = Endpoint::builder(presets::N0)
-            .alpns(vec![ALPN.to_vec()])
-            .bind()
-            .await
-            .map_err(|e| e.to_string())?;
+        let endpoint =
+            Endpoint::builder(presets::N0).alpns(vec![ALPN.to_vec()]).bind().await.map_err(|e| e.to_string())?;
         // Rattachement à un relais (joignabilité depuis un autre réseau) ; sans lui, l'adresse ne
         // contient que les adresses directes, ce qui suffit sur un même réseau.
         let _ = tokio::time::timeout(ONLINE_TIMEOUT, endpoint.online()).await;
         let addr = endpoint.addr();
-        let peers: Arc<Mutex<HashMap<String, (mpsc::UnboundedSender<String>, Connection)>>> = Arc::default();
+        let peers: Peers = Arc::default();
         let next = Arc::new(AtomicU64::new(1));
         let (accepting, table) = (endpoint.clone(), peers.clone());
         tokio::spawn(async move {
@@ -210,7 +223,9 @@ fn sink(app: AppHandle, prefix: &'static str) -> Sink {
     Arc::new(move |event| {
         let (name, payload) = match event {
             Event::Message { peer, data } => (format!("{prefix}-message"), Payload { peer, data: Some(data) }),
-            Event::Datagram { peer, data } => (format!("{prefix}-datagram"), Payload { peer, data: Some(BASE64.encode(data)) }),
+            Event::Datagram { peer, data } => {
+                (format!("{prefix}-datagram"), Payload { peer, data: Some(BASE64.encode(data)) })
+            }
             Event::Closed { peer } => (format!("{prefix}-close"), Payload { peer, data: None }),
         };
         let _ = app.emit_to("main", &name, payload);
@@ -238,7 +253,11 @@ pub async fn collab_host_send(state: State<'_, CollabState>, peer: String, data:
 
 /// Datagramme (base64) vers les invités `peers` : vocal de l'hôte, ou relais d'un invité (O-48).
 #[tauri::command]
-pub async fn collab_host_datagram(state: State<'_, CollabState>, peers: Vec<String>, data: String) -> Result<(), String> {
+pub async fn collab_host_datagram(
+    state: State<'_, CollabState>,
+    peers: Vec<String>,
+    data: String,
+) -> Result<(), String> {
     let bytes = BASE64.decode(data).map_err(|e| e.to_string())?;
     if let Some(host) = state.host.lock().await.as_ref() {
         host.send_datagram(&peers, Bytes::from(bytes));
@@ -316,33 +335,44 @@ mod tests {
         .await
         .expect("hôte");
         let (guest_tx, mut guest_events) = unbounded_channel::<Event>();
-        let guest = Guest::connect(addr, Arc::new(move |e| {
-            let _ = guest_tx.send(e);
-        }))
+        let guest = Guest::connect(
+            addr,
+            Arc::new(move |e| {
+                let _ = guest_tx.send(e);
+            }),
+        )
         .await
         .expect("connexion");
 
         guest.send("{\"type\":\"hello\"}".into());
-        let Some(Event::Message { peer, data }) = tokio::time::timeout(Duration::from_secs(10), events.recv()).await.expect("délai") else {
+        let Some(Event::Message { peer, data }) =
+            tokio::time::timeout(Duration::from_secs(10), events.recv()).await.expect("délai")
+        else {
             panic!("message attendu");
         };
         assert_eq!(data, "{\"type\":\"hello\"}");
 
         let big = "x".repeat(2 * 1024 * 1024);
         host.send(&peer, big.clone());
-        let Some(Event::Message { data, .. }) = tokio::time::timeout(Duration::from_secs(10), guest_events.recv()).await.expect("délai") else {
+        let Some(Event::Message { data, .. }) =
+            tokio::time::timeout(Duration::from_secs(10), guest_events.recv()).await.expect("délai")
+        else {
             panic!("réponse attendue");
         };
         assert_eq!(data.len(), big.len());
 
         // Datagrammes (vocal, O-48) dans les deux sens.
         guest.send_datagram(Bytes::from_static(b"\x01audio"));
-        let Some(Event::Datagram { data, .. }) = tokio::time::timeout(Duration::from_secs(10), events.recv()).await.expect("délai") else {
+        let Some(Event::Datagram { data, .. }) =
+            tokio::time::timeout(Duration::from_secs(10), events.recv()).await.expect("délai")
+        else {
             panic!("datagramme attendu");
         };
         assert_eq!(data, b"\x01audio");
-        host.send_datagram(&[peer.clone()], Bytes::from_static(b"\x01retour"));
-        let Some(Event::Datagram { data, .. }) = tokio::time::timeout(Duration::from_secs(10), guest_events.recv()).await.expect("délai") else {
+        host.send_datagram(std::slice::from_ref(&peer), Bytes::from_static(b"\x01retour"));
+        let Some(Event::Datagram { data, .. }) =
+            tokio::time::timeout(Duration::from_secs(10), guest_events.recv()).await.expect("délai")
+        else {
             panic!("datagramme attendu");
         };
         assert_eq!(data, b"\x01retour");
