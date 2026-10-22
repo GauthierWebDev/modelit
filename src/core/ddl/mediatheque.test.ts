@@ -15,7 +15,8 @@ import { generateDdl } from "./generate";
 // ---------------------------------------------------------------------------------------------
 
 describe("critères d'acceptation", () => {
-  it("la sortie s'exécute sur PostgreSQL 18 (PGlite 18) ; la v1 échouait", async () => {
+  // Premier test du fichier : deux démarrages de PGlite et la génération à froid (≈ 5 s, suite complète).
+  it("la sortie s'exécute sur PostgreSQL 18 (PGlite 18) ; la v1 échouait", { timeout: 15_000 }, async () => {
     expect(await execute(generate().sql)).toBeNull();
     expect(await execute(V1)).toMatch(/boolean but default expression is of type integer/);
   });
