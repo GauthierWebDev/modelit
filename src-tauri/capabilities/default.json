@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions de la fenêtre principale. Les fichiers ne sont accessibles qu'après sélection par l'utilisateur dans un dialogue (le plugin dialog étend alors la portée du plugin fs). Liens externes : dépôt GitHub et texte de la licence uniquement. Fenêtres flottantes (O-45, O-46) : création, géométrie, affichage et fermeture des fenêtres float-*.",
+  "description": "Permissions de la fenêtre principale. Les fichiers ne sont accessibles qu'après sélection par l'utilisateur dans un dialogue (le plugin dialog étend alors la portée du plugin fs). Liens externes : dépôt GitHub et texte de la licence uniquement. Fenêtres flottantes (O-45, O-46) : création, géométrie, affichage et fermeture des fenêtres float-*. Commandes de l'application (MCP, session collaborative, mises à jour) : fenêtre principale seulement.",
   "windows": [
     "main"
   ],
@@ -35,6 +35,20 @@
         }
       ]
     },
-    "deep-link:default"
+    "deep-link:default",
+    "allow-mcp-start",
+    "allow-mcp-stop",
+    "allow-mcp-reply",
+    "allow-mcp-release-others",
+    "allow-collab-host-start",
+    "allow-collab-host-send",
+    "allow-collab-host-datagram",
+    "allow-collab-host-close",
+    "allow-collab-host-stop",
+    "allow-collab-guest-connect",
+    "allow-collab-guest-send",
+    "allow-collab-guest-datagram",
+    "allow-collab-guest-close",
+    "allow-updater-configured"
   ]
 }
