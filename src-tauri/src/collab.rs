@@ -69,13 +69,15 @@ async fn read_frame(recv: &mut RecvStream) -> Option<String> {
     String::from_utf8(data).ok()
 }
 
-/// Relie un flux à l'interface : lecture vers `sink`, écriture depuis le canal renvoyé.
+/// Relie un flux à l'interface : lecture vers `sink`, écriture depuis le canal renvoyé. `on_end` s'exécute
+/// quand le flux se termine, avant l'événement `Closed` (l'hôte y oublie l'invité).
 fn pump(
     peer: String,
     connection: Connection,
     mut send: SendStream,
     mut recv: RecvStream,
     sink: Sink,
+    on_end: Box<dyn FnOnce() + Send>,
 ) -> mpsc::UnboundedSender<String> {
     let (sender, mut outgoing) = mpsc::unbounded_channel::<String>();
     tokio::spawn(async move {
@@ -97,6 +99,7 @@ fn pump(
             sink(Event::Message { peer: peer.clone(), data });
         }
         connection.close(0u32.into(), b"bye");
+        on_end();
         sink(Event::Closed { peer });
     });
     sender
@@ -128,8 +131,15 @@ impl Host {
                     // L'invité ouvre le flux en envoyant son premier message (« hello »).
                     let Ok((send, recv)) = connection.accept_bi().await else { return };
                     let peer = format!("p{}", next.fetch_add(1, Ordering::Relaxed));
-                    let sender = pump(peer.clone(), connection.clone(), send, recv, sink);
-                    table.lock().expect("verrou").insert(peer, (sender, connection));
+                    // Invité parti : retiré de la table (audit A-01, P-5). Inscription sous le verrou, pour
+                    // qu'un flux terminé aussitôt ne laisse pas d'entrée orpheline.
+                    let mut peers = table.lock().expect("verrou");
+                    let (forget_table, forget_peer) = (table.clone(), peer.clone());
+                    let forget = Box::new(move || {
+                        forget_table.lock().expect("verrou").remove(&forget_peer);
+                    });
+                    let sender = pump(peer.clone(), connection.clone(), send, recv, sink, forget);
+                    peers.insert(peer, (sender, connection));
                 });
             }
         });
@@ -185,7 +195,7 @@ impl Guest {
         let endpoint = Endpoint::bind(presets::N0).await.map_err(|e| e.to_string())?;
         let connection = endpoint.connect(addr, ALPN).await.map_err(|e| e.to_string())?;
         let (send, recv) = connection.open_bi().await.map_err(|e| e.to_string())?;
-        let sender = pump("host".into(), connection.clone(), send, recv, sink);
+        let sender = pump("host".into(), connection.clone(), send, recv, sink, Box::new(|| {}));
         Ok(Self { endpoint, sender, connection })
     }
 
@@ -380,6 +390,8 @@ mod tests {
         guest.close().await;
         let closed = tokio::time::timeout(Duration::from_secs(10), events.recv()).await.expect("délai");
         assert_eq!(closed, Some(Event::Closed { peer }));
+        // L'invité parti n'est plus gardé par l'hôte (P-5).
+        assert!(host.peers.lock().expect("verrou").is_empty());
         host.stop().await;
     }
 }

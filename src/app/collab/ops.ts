@@ -1,4 +1,11 @@
-import type { Attribute, Id, ModelDocument, Point } from "@core/index";
+import {
+  type Attribute,
+  type Id,
+  MODEL_COLLECTIONS,
+  type ModelCollection,
+  type ModelDocument,
+  type Point,
+} from "@core/index";
 import { type Draft, produce } from "immer";
 
 /**
@@ -11,8 +18,7 @@ import { type Draft, produce } from "immer";
  * champ, la dernière opération appliquée l'emporte (l'hôte les applique dans l'ordre reçu).
  */
 
-export type CollectionName = "entities" | "associations" | "links" | "inheritances" | "inheritanceLinks";
-const COLLECTIONS: CollectionName[] = ["entities", "associations", "links", "inheritances", "inheritanceLinks"];
+export type CollectionName = ModelCollection;
 /** Collections dont les objets portent des rubriques (sous-collection `attributes`). */
 const WITH_ATTRIBUTES = new Set<CollectionName>(["entities", "associations"]);
 
@@ -109,7 +115,7 @@ export function diff(before: ModelDocument, after: ModelDocument): Op[] {
       }
     }
   }
-  for (const coll of COLLECTIONS) {
+  for (const coll of MODEL_COLLECTIONS) {
     if (before[coll] !== after[coll]) {
       diffItems(before[coll] as unknown as Item[], after[coll] as unknown as Item[], coll, undefined, ops);
     }

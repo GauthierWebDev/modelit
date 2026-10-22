@@ -1,7 +1,7 @@
 import { updateDock } from "../dock/actions";
 import { groupOf, hideSection, setActive, showSection } from "../dock/layout";
 import type { ViewMode } from "../document/documentView";
-import { documentName } from "../fileCommands";
+import { documentName } from "../documentNames";
 import { usePreferencesStore } from "../preferencesStore";
 import { useWorkspaceStore } from "../workspace";
 import type { HostSession } from "./host";

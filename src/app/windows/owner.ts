@@ -3,7 +3,8 @@ import { applyPatches, type Draft, enablePatches } from "immer";
 import { collabMirror, sameCollabMirror, useCollabStore } from "../collab/session";
 import { useDialogStore } from "../dialogStore";
 import { selectIsDirty, selectRedoLabel, selectUndoLabel } from "../document/documentStore";
-import { documentName } from "../fileCommands";
+import { documentName } from "../documentNames";
+import { modalOpen } from "../modal";
 import { usePreferencesStore } from "../preferencesStore";
 import { useUiStore } from "../uiStore";
 import { activeDocument, useWorkspaceStore } from "../workspace";
@@ -34,14 +35,7 @@ export function snapshot(): MirrorState {
     redoLabel: selectRedoLabel(state),
     view: { view: view.view, selection: view.selection, viewport: view.viewport, activeBend: view.activeBend },
     ui: { tool: ui.tool },
-    modal:
-      useDialogStore.getState().queue.length > 0 ||
-      ui.exportOpen ||
-      ui.optionsOpen ||
-      ui.modelSettingsOpen ||
-      ui.reverseOpen ||
-      ui.shareOpen ||
-      ui.about !== null,
+    modal: modalOpen(),
     collab: collabMirror(),
   };
 }

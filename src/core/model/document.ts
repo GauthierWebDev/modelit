@@ -238,6 +238,23 @@ export interface ModelDocument {
   layout: DiagramLayout;
 }
 
+/** Collections d'objets du modèle : tous les champs de `ModelDocument` hors paramètres et géométrie. */
+export type ModelCollection = Exclude<keyof ModelDocument, "settings" | "layout">;
+
+/**
+ * Seule liste de référence des collections (recalcul du MLD et du SQL, opérations de session…), dans cet
+ * ordre. Le type exige chaque collection : un champ ajouté à `ModelDocument` sans y figurer ne compile
+ * pas (audit A-01, A-1).
+ */
+const COLLECTION_ORDER: Record<ModelCollection, number> = {
+  entities: 0,
+  associations: 1,
+  links: 2,
+  inheritances: 3,
+  inheritanceLinks: 4,
+};
+export const MODEL_COLLECTIONS = Object.keys(COLLECTION_ORDER) as readonly ModelCollection[];
+
 const ORIGIN: Point = { x: 0, y: 0 };
 const STRAIGHT: Point[] = [];
 

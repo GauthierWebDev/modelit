@@ -4,7 +4,7 @@ import { indexedDbStore, removeLegacyLocalStorageCopy } from "@/platform/localSt
 import { confirmDialog } from "./dialogStore";
 import { selectIsDirty } from "./document/documentStore";
 import type { DocumentHandle } from "./document/handle";
-import { documentName } from "./fileCommands";
+import { documentName } from "./documentNames";
 import type { LocalStore } from "./localStore";
 import { usePreferencesStore } from "./preferencesStore";
 import { useUiStore } from "./uiStore";

@@ -1,11 +1,10 @@
-import { DBMS_LIST, detectDialect, type ReverseReport, reverseEngineer, type SqlDialect } from "@core/index";
+import { DBMS_LIST, detectDialect, type ReverseReport, type SqlDialect } from "@core/index";
 import { FileUp } from "lucide-react";
 import { useId, useState } from "react";
 import { showError } from "@/app/dialogStore";
-import { newModelDocument } from "@/app/modelDefaults";
+import { reverseIntoNewTab } from "@/app/reverseCommands";
 import { useUiStore } from "@/app/uiStore";
 import { showView } from "@/app/viewCommands";
-import { openInTab } from "@/app/workspace";
 import { t } from "@/i18n";
 import { openTextFile } from "@/platform/files";
 import { autoLayoutTables } from "@/ui/canvas/autoLayout";
@@ -76,16 +75,14 @@ interface Run {
 
 /** Rétroconception du script, ouverte dans un nouvel onglet et placée automatiquement. */
 function generate({ sql, setReport, dialect }: Run) {
-  const result = reverseEngineer(sql, newModelDocument(), dialect === "auto" ? detectDialect(sql) : dialect);
-  setReport(result.report);
-  if (result.report.tables === 0) {
+  const { doc, report } = reverseIntoNewTab(sql, dialect === "auto" ? undefined : dialect);
+  setReport(report);
+  if (!doc) {
     return;
   }
-  // Nouvel onglet (override O-44) : le document affiché n'est plus remplacé.
-  const doc = openInTab((d) => d.store.getState().load(result.doc, null, true));
   showView(doc, "mcd");
   void autoLayoutTables(doc);
-  useUiStore.getState().notify({ kind: "info", text: t("reverse.done", { tables: result.report.tables }) });
+  useUiStore.getState().notify({ kind: "info", text: t("reverse.done", { tables: report.tables }) });
 }
 
 /** Ouvrir un fichier, fermer, lancer. */

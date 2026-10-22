@@ -3,7 +3,7 @@ import { showError } from "@/app/dialogStore";
 import { useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import type { ViewMode } from "@/app/document/documentView";
 import type { DocumentHandle } from "@/app/document/handle";
-import { fileName } from "@/app/fileCommands";
+import { fileName } from "@/app/documentNames";
 import { usePreferencesStore } from "@/app/preferencesStore";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
