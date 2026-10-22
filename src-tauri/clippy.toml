@@ -1,0 +1,2 @@
+# Noms propres écrits sans backticks dans la documentation ; « .. » garde la liste par défaut.
+doc-valid-idents = ["ModelIt", ".."]

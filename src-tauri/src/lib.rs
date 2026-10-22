@@ -17,6 +17,11 @@ fn updater_configured(app: tauri::AppHandle) -> bool {
         .is_some_and(|endpoints| !endpoints.is_empty())
 }
 
+/// Lance l'application.
+///
+/// # Panics
+///
+/// Si Tauri ne peut pas démarrer (configuration invalide, fenêtre impossible à créer).
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();

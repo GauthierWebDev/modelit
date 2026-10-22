@@ -30,6 +30,8 @@ const MAX_FRAME: usize = 8 * 1024 * 1024;
 const ONLINE_TIMEOUT: Duration = Duration::from_secs(8);
 
 type Sink = Arc<dyn Fn(Event) + Send + Sync>;
+/// Invités de l'hôte : file d'envoi du flux et connexion (datagrammes), par identifiant.
+type Peers = Arc<Mutex<HashMap<String, (mpsc::UnboundedSender<String>, Connection)>>>;
 
 /// Ce que le transport signale à l'interface.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,7 +105,7 @@ fn pump(
 /// Hôte : accepte les invités et leur parle, un flux par invité.
 pub struct Host {
     endpoint: Endpoint,
-    peers: Arc<Mutex<HashMap<String, (mpsc::UnboundedSender<String>, Connection)>>>,
+    peers: Peers,
 }
 
 impl Host {
@@ -115,7 +117,7 @@ impl Host {
         // contient que les adresses directes, ce qui suffit sur un même réseau.
         let _ = tokio::time::timeout(ONLINE_TIMEOUT, endpoint.online()).await;
         let addr = endpoint.addr();
-        let peers: Arc<Mutex<HashMap<String, (mpsc::UnboundedSender<String>, Connection)>>> = Arc::default();
+        let peers: Peers = Arc::default();
         let next = Arc::new(AtomicU64::new(1));
         let (accepting, table) = (endpoint.clone(), peers.clone());
         tokio::spawn(async move {
@@ -367,7 +369,7 @@ mod tests {
             panic!("datagramme attendu");
         };
         assert_eq!(data, b"\x01audio");
-        host.send_datagram(&[peer.clone()], Bytes::from_static(b"\x01retour"));
+        host.send_datagram(std::slice::from_ref(&peer), Bytes::from_static(b"\x01retour"));
         let Some(Event::Datagram { data, .. }) =
             tokio::time::timeout(Duration::from_secs(10), guest_events.recv()).await.expect("délai")
         else {

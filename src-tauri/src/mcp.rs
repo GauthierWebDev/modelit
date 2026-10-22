@@ -172,9 +172,8 @@ pub fn mcp_stop(state: State<'_, McpState>) {
 #[tauri::command]
 pub fn mcp_release_others(port: u16, token: String) -> Result<bool, String> {
     let address = SocketAddr::from(([127, 0, 0, 1], port));
-    let mut stream = match TcpStream::connect_timeout(&address, Duration::from_secs(2)) {
-        Ok(stream) => stream,
-        Err(_) => return Ok(false),
+    let Ok(mut stream) = TcpStream::connect_timeout(&address, Duration::from_secs(2)) else {
+        return Ok(false);
     };
     stream.set_read_timeout(Some(Duration::from_secs(5))).map_err(|e| e.to_string())?;
     let request = format!(
