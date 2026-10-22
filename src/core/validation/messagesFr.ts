@@ -71,6 +71,7 @@ export const FR = {
   fileUnreadable: "Le fichier n'est pas un modèle valide (JSON illisible).",
   fileNotModel: "Le fichier n'est pas un modèle de cette application.",
   noMigration: (version: number) => `Aucune migration depuis la version ${version}.`,
+  fileUnknownDbms: (dbms: string) => `Fichier abîmé ou d'une version plus récente : SGBD « ${dbms} » inconnu.`,
   // rétroconception (O-28)
   reverseUnreadable: (text: string) => `Instruction de table illisible, ignorée : ${text}…`,
   reverseUnknownTable: (table: string, referenced: string) =>

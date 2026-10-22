@@ -62,6 +62,7 @@ export const EN: Messages = {
   fileUnreadable: "The file is not a valid model (unreadable JSON).",
   fileNotModel: "The file is not a model of this application.",
   noMigration: (version) => `No migration from version ${version}.`,
+  fileUnknownDbms: (dbms) => `Damaged file or from a newer version: unknown DBMS “${dbms}”.`,
   reverseUnreadable: (text) => `Unreadable table statement, ignored: ${text}…`,
   reverseUnknownTable: (table, referenced) =>
     `The foreign key of “${table}” references “${referenced}”, which is not in the script: it is ignored.`,

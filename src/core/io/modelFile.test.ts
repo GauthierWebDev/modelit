@@ -88,4 +88,19 @@ describe("format de fichier natif", () => {
     const text = JSON.stringify({ format: FILE_FORMAT, version: CURRENT_VERSION, model: { entities: [] } });
     expect(deserializeModel(text).doc.layout).toEqual({ positions: {}, bends: {} });
   });
+
+  it("SGBD inconnu (fichier abîmé ou plus récent) : refusé avec un message, jamais remplacé en silence (A-01, C-6)", () => {
+    const text = JSON.stringify({
+      format: FILE_FORMAT,
+      version: CURRENT_VERSION,
+      model: { settings: { dbms: "duckdb" } },
+    });
+    expect(() => deserializeModel(text)).toThrow(ModelFileError);
+    expect(() => deserializeModel(text)).toThrow(/duckdb/);
+  });
+
+  it("SGBD absent : celui des paramètres par défaut", () => {
+    const text = JSON.stringify({ format: FILE_FORMAT, version: CURRENT_VERSION, model: { settings: {} } });
+    expect(deserializeModel(text).doc.settings.dbms).toBe(model().build().settings.dbms);
+  });
 });

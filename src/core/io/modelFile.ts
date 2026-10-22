@@ -1,3 +1,4 @@
+import { DBMS_LIST } from "../dbms/dbms";
 import { TYPE_KEYS, type TypeTemplates } from "../dbms/typeMapping";
 import { resolveVersion } from "../dbms/versions";
 import type { ModelDocument } from "../model/document";
@@ -117,6 +118,11 @@ export function deserializeModel(text: string): LoadResult {
 function normalize(model: RawModel): ModelDocument {
   const raw = isRecord(model.settings) ? model.settings : {};
   const settings = deepMerge(defaultSettings(), raw) as DocumentSettings;
+  // SGBD inconnu (fichier abîmé ou d'une version plus récente) : refusé plutôt que remplacé en silence
+  // (audit A-01, C-6) ; absent, celui des paramètres par défaut.
+  if (!DBMS_LIST.some((d) => d.id === settings.dbms)) {
+    throw new ModelFileError(MSG.fileUnknownDbms(String(settings.dbms)));
+  }
   // Version absente ou étrangère au SGBD du fichier : la plus récente de ce SGBD.
   delete (settings.display as { showTypes?: unknown }).showTypes; // retiré (override O-11)
   // Schémas de clés : syntaxe [Classe] / [Table]… des versions précédentes → <entity> / <table>… (O-26).
