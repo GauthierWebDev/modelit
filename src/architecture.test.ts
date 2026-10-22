@@ -35,11 +35,7 @@ const UI_PLATFORM_FLAGS = [
 ];
 
 /** TEMPORAIRE — à supprimer en M-00 L3 (point d'assemblage unique, ports fichiers / mises à jour / stockage). */
-const TEMPORARY = [
-  "ui/collab/CollabBridge.tsx → platform/collab",
-  "ui/collab/CollabBridge.tsx → platform/voice",
-  "ui/mcp/McpBridge.tsx → platform/mcp",
-];
+const TEMPORARY = ["ui/mcp/McpBridge.tsx → platform/mcp"];
 
 /** TEMPORAIRE — cycle entre sous-dossiers de `core`, dû au catalogue `MSG` de `validation` : M-02 (A-01, C-5). */
 const CORE_CYCLES = ["dbms, model, naming, validation"];

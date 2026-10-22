@@ -1,11 +1,7 @@
 import { KeyRound } from "lucide-react";
-import { useEffect, useId, useState } from "react";
-import { answerPassword, joinFromLink, leaveSession, setCollabTransport, useCollabStore } from "@/app/collab/session";
-import { setVoiceBackend } from "@/app/collab/voice/voiceSession";
-import { useUiStore } from "@/app/uiStore";
+import { useId, useState } from "react";
+import { answerPassword, leaveSession, useCollabStore } from "@/app/collab/session";
 import { t } from "@/i18n";
-import { collabAvailable, connectGuestTransport, onOpenLink, startHostTransport } from "@/platform/collab";
-import { startVoice, voiceSupport } from "@/platform/voice";
 import { inputClass } from "@/ui/common/controls";
 import { Modal } from "@/ui/common/Modal";
 
@@ -77,32 +73,9 @@ function PasswordPrompt() {
 }
 
 /**
- * Raccorde les sessions collaboratives au transport natif et aux liens `modelit://` ouverts depuis
- * le système (O-05 §4.2) : un lien reçu ouvre la boîte de session, qui en montre l'avancement.
+ * Boîtes des sessions collaboratives propres à la fenêtre principale : mot de passe demandé par l'hôte
+ * (O-05 §4.2). Le transport, le vocal et les liens `modelit://` sont branchés par `src/bootstrap.ts`.
  */
 export function CollabBridge() {
-  useEffect(() => {
-    if (!collabAvailable()) {
-      return;
-    }
-    setCollabTransport({ startHost: startHostTransport, connect: connectGuestTransport });
-    setVoiceBackend({ support: voiceSupport, start: startVoice });
-    let off: (() => void) | undefined;
-    let disposed = false;
-    void onOpenLink((url) => {
-      useUiStore.getState().setShareOpen(true);
-      void joinFromLink(url);
-    }).then((f) => {
-      if (disposed) {
-        f();
-      } else {
-        off = f;
-      }
-    });
-    return () => {
-      disposed = true;
-      off?.();
-    };
-  }, []);
   return <PasswordPrompt />;
 }
