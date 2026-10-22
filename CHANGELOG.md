@@ -4,6 +4,16 @@ Une section `## X.Y.Z — AAAA-MM-JJ` par version, la plus récente en haut. La 
 taguée devient le texte de la release GitHub et les notes proposées par la mise à jour ; tout
 l'historique est affiché dans l'application (À propos → Nouveautés).
 
+## 0.6.0 — 2026-10-22
+
+### Nouveautés
+
+- Nom logique des rubriques : dans le détail d'une rubrique, le champ « Nom logique » donne le nom de la colonne dans le MLD, le MPD et le script SQL ; le MCD garde le nom conceptuel. Laissé vide, le nom est dérivé du nom conceptuel selon les paramètres du modèle.
+
+### Corrections
+
+- Les cardinalités ne sont plus masquées par une entité quand la patte arrive en biais près d'un coin ou d'un bord : elles s'écartent le long du trait jusqu'à être entièrement visibles.
+
 ## 0.5.0 — 2026-10-22
 
 ### Nouveautés
