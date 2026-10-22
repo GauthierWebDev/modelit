@@ -26,7 +26,6 @@ import { DialogHost } from "./common/DialogHost";
 import { TooltipLayer } from "./common/Tooltip";
 import { DockZone, DragGhost, FloatingGroups } from "./dock/Dock";
 import { ExportDialog } from "./export/ExportDialog";
-import { McpBridge } from "./mcp/McpBridge";
 import { McpIndicator } from "./mcp/McpIndicator";
 import { OptionsDialog } from "./options/OptionsDialog";
 import { ReverseDialog } from "./reverse/ReverseDialog";
@@ -120,7 +119,6 @@ function Workbench() {
       </div>
       <FloatingGroups />
       <FloatManager />
-      <McpBridge />
       <DragGhost />
       <ExportDialog />
       <OptionsDialog />

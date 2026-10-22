@@ -34,9 +34,6 @@ const UI_PLATFORM_FLAGS = [
   "ui/options/OptionsDialog.tsx → platform/updater",
 ];
 
-/** TEMPORAIRE — à supprimer en M-00 L3 (point d'assemblage unique, ports fichiers / mises à jour / stockage). */
-const TEMPORARY = ["ui/mcp/McpBridge.tsx → platform/mcp"];
-
 /** TEMPORAIRE — cycle entre sous-dossiers de `core`, dû au catalogue `MSG` de `validation` : M-02 (A-01, C-5). */
 const CORE_CYCLES = ["dbms, model, naming, validation"];
 
@@ -109,16 +106,14 @@ describe("architecture des couches", () => {
     expect(offenders.map(edge)).toEqual([]);
   });
 
-  it("app n'importe pas platform ; ui seulement l'enveloppe de l'interface (exceptions temporaires à part)", () => {
+  it("app n'importe pas platform ; ui seulement l'enveloppe de l'interface", () => {
     const toPlatform = IMPORTS.filter((i) => ["app", "ui"].includes(layerOf(i.from)) && i.layer === "platform");
     const permitted = (i: Import) =>
-      (layerOf(i.from) === "ui" && UI_PLATFORM_SHELL.includes(i.target)) ||
-      UI_PLATFORM_FLAGS.includes(fileEdge(i)) ||
-      TEMPORARY.includes(fileEdge(i));
+      (layerOf(i.from) === "ui" && UI_PLATFORM_SHELL.includes(i.target)) || UI_PLATFORM_FLAGS.includes(fileEdge(i));
     expect(toPlatform.filter((i) => !permitted(i)).map(fileEdge)).toEqual([]);
-    // Cliquet : une exception temporaire qui ne sert plus doit être retirée de la liste.
+    // Une exception qui ne sert plus doit être retirée de la liste.
     const used = new Set(toPlatform.map(fileEdge));
-    expect([...TEMPORARY, ...UI_PLATFORM_FLAGS].filter((e) => !used.has(e))).toEqual([]);
+    expect(UI_PLATFORM_FLAGS.filter((e) => !used.has(e))).toEqual([]);
   });
 
   it("Tauri n'est connu que de platform", () => {
