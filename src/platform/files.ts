@@ -1,5 +1,6 @@
 import { FILE_EXTENSION } from "@core/index";
 import { isTauri } from "@tauri-apps/api/core";
+import type { FileAccess, FileFilter, OpenedFile } from "@/app/fileAccess";
 
 /**
  * Accès aux fichiers, isolé ici pour que le reste de l'application ignore la plateforme.
@@ -7,15 +8,10 @@ import { isTauri } from "@tauri-apps/api/core";
  * - Navigateur (`pnpm dev` sans Tauri) : sélecteur de fichier et téléchargement.
  */
 
-export interface OpenedFile {
-  path: string;
-  content: string;
-}
-
 /** Filtre des dialogues natifs ; `name` est le libellé traduit (« Modèle »). */
 const filters = (name: string) => [{ name, extensions: [FILE_EXTENSION] }];
 
-export async function openModelFile(filterName: string): Promise<OpenedFile | null> {
+async function openModelFile(filterName: string): Promise<OpenedFile | null> {
   if (isTauri()) {
     const { open } = await import("@tauri-apps/plugin-dialog");
     const { readTextFile } = await import("@tauri-apps/plugin-fs");
@@ -29,7 +25,7 @@ export async function openModelFile(filterName: string): Promise<OpenedFile | nu
 }
 
 /** Ouvre un fichier texte quelconque (ex. script SQL pour la rétroconception). */
-export async function openTextFile(filter: { name: string; extensions: string[] }): Promise<OpenedFile | null> {
+async function openTextFile(filter: FileFilter): Promise<OpenedFile | null> {
   if (isTauri()) {
     const { open } = await import("@tauri-apps/plugin-dialog");
     const { readTextFile } = await import("@tauri-apps/plugin-fs");
@@ -46,7 +42,7 @@ export async function openTextFile(filter: { name: string; extensions: string[] 
  * Enregistre `content`. Sans `path` (ou pour « Enregistrer sous »), demande un emplacement.
  * Renvoie le chemin utilisé, ou `null` si l'utilisateur a annulé.
  */
-export async function saveModelFile(
+async function saveModelFile(
   content: string,
   path: string | null,
   suggestedName: string,
@@ -71,11 +67,7 @@ export async function saveModelFile(
  * Enregistre un fichier exporté (image, script…) : dialogue natif sous Tauri,
  * téléchargement dans le navigateur. Renvoie le chemin, ou `null` si annulé.
  */
-export async function saveExportFile(
-  data: Blob,
-  suggestedName: string,
-  filter: { name: string; extensions: string[] },
-): Promise<string | null> {
+async function saveExportFile(data: Blob, suggestedName: string, filter: FileFilter): Promise<string | null> {
   if (isTauri()) {
     const { save } = await import("@tauri-apps/plugin-dialog");
     const { writeFile } = await import("@tauri-apps/plugin-fs");
@@ -113,3 +105,11 @@ function browserDownload(name: string, content: string) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+/** Adaptateur du port `FileAccess` (`app/fileAccess.ts`). */
+export const platformFiles: FileAccess = {
+  openModel: openModelFile,
+  openText: openTextFile,
+  saveModel: saveModelFile,
+  saveExport: saveExportFile,
+};

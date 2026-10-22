@@ -37,13 +37,10 @@ const UI_PLATFORM_FLAGS = [
 /** TEMPORAIRE — à supprimer en M-00 L3 (point d'assemblage unique, ports fichiers / mises à jour / stockage). */
 const TEMPORARY = [
   "app/autosave.ts → platform/localStore",
-  "app/fileCommands.ts → platform/files",
   "app/updates.ts → platform/updater",
   "ui/collab/CollabBridge.tsx → platform/collab",
   "ui/collab/CollabBridge.tsx → platform/voice",
   "ui/mcp/McpBridge.tsx → platform/mcp",
-  "ui/export/ExportDialog.tsx → platform/files",
-  "ui/reverse/ReverseDialog.tsx → platform/files",
 ];
 
 /** TEMPORAIRE — cycle entre sous-dossiers de `core`, dû au catalogue `MSG` de `validation` : M-02 (A-01, C-5). */
