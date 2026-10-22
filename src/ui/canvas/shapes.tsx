@@ -1,35 +1,24 @@
 import {
   formatCardinality,
-  issueMessage,
-  type Association,
-  type Entity,
   type Id,
   type Inheritance,
   type Issue,
+  issueMessage,
   type ModelLayer,
   type Point,
 } from "@core/index";
 import { memo } from "react";
 import { usePreferencesStore } from "@/app/preferencesStore";
 import { t } from "@/i18n";
-import { tip } from "@/ui/common/Tooltip";
 import {
-  alternateText,
-  attributeMarks,
-  attributeStyle,
   FONT_FAMILY,
   FONT_SIZE,
-  PAD_X,
-  ROW_HEIGHT,
-  segmentMidpoints,
-  TAG_FONT_SIZE,
-  textWidth,
-  TITLE_HEIGHT,
-  TITLE_WEIGHT,
   type InheritanceLinkGeometry,
   type LinkGeometry,
-  pathOf,
   type NodeLayout,
+  pathOf,
+  segmentMidpoints,
+  TAG_FONT_SIZE,
   type Triangle,
 } from "./geometry";
 
@@ -57,14 +46,23 @@ export function ErrorBadge({
   layer?: ModelLayer;
 }) {
   // Rouge : au moins une erreur ; ambre : avertissements seulement (O-36).
-  if (!issues?.length) return null;
+  if (!issues?.length) {
+    return null;
+  }
   const error = issues.some((i) => i.severity === "error");
   const text = issues
     .map((i) => `${t(i.severity === "error" ? "common.error" : "common.warning")} : ${issueMessage(i, layer)}`)
     .join("\n");
   return (
     <g data-badge="" data-tooltip={text} className="cursor-help">
-      <circle cx={x} cy={y} r={7} fill={error ? "var(--mcd-error)" : "var(--mcd-warning)"} stroke="var(--mcd-canvas)" strokeWidth={1.5} />
+      <circle
+        cx={x}
+        cy={y}
+        r={7}
+        fill={error ? "var(--mcd-error)" : "var(--mcd-warning)"}
+        stroke="var(--mcd-canvas)"
+        strokeWidth={1.5}
+      />
       <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize={10} fontWeight={700} fill="#fff">
         !
       </text>
@@ -72,148 +70,22 @@ export function ErrorBadge({
   );
 }
 
-interface NodeShapeProps {
-  node: Entity | Association;
-  layout: NodeLayout;
-  selected: boolean;
-  issues?: Issue[];
-  /** Association porteuse d'une dépendance fonctionnelle (patte max 1). */
-  functional?: boolean;
-  /** Association qui référence un identifiant alternatif plutôt que la clé primaire (O-36). */
-  referencedKey?: { entity: string; attributes: string[] };
-  /** Nom de l'association de chaque patte (identifiants alternatifs relatifs, O-39). */
-  linkNames?: Map<string, string>;
-}
-
-export const NodeShape = memo(function NodeShape({ node, layout, selected, issues, functional, referencedKey, linkNames }: NodeShapeProps) {
-  const marks = attributeMarks(node, linkNames);
-  const { x, y, width, height, rows } = layout;
-  const isEntity = node.kind === "entity";
-  const variant = isEntity ? "entity" : functional ? "assoc-df" : "assoc";
-  const radius = isEntity ? 0 : 14;
-  const clipId = `clip-${node.id}`;
-
-  return (
-    <g data-id={node.id} className="cursor-move" fontFamily={FONT_FAMILY} fontSize={FONT_SIZE}>
-      <defs>
-        <clipPath id={clipId}>
-          <rect x={x} y={y} width={width} height={height} rx={radius} />
-        </clipPath>
-      </defs>
-      <rect x={x} y={y} width={width} height={height} rx={radius} fill={`var(--mcd-${variant}-body)`} />
-      <rect x={x} y={y} width={width} height={TITLE_HEIGHT} fill={`var(--mcd-${variant}-title)`} clipPath={`url(#${clipId})`} />
-      {rows.length > 0 && (
-        <line x1={x} x2={x + width} y1={y + TITLE_HEIGHT} y2={y + TITLE_HEIGHT} stroke={`var(--mcd-${variant}-stroke)`} />
-      )}
-      <rect
-        x={x}
-        y={y}
-        width={width}
-        height={height}
-        rx={radius}
-        fill="none"
-        stroke={selected ? "var(--mcd-selection)" : `var(--mcd-${variant}-stroke)`}
-        strokeWidth={selected ? 2.5 : 1.25}
-      />
-      <text
-        x={x + width / 2}
-        y={y + TITLE_HEIGHT / 2}
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontWeight={TITLE_WEIGHT}
-        fill="var(--mcd-text)"
-      >
-        {node.name}
-      </text>
-      {rows.map(({ attribute, y: rowY }) => {
-        const mark = marks.get(attribute.id)!;
-        const baseline = y + rowY + ROW_HEIGHT / 2;
-        const style = attributeStyle(mark);
-        const labelWidth = textWidth(mark.label, style);
-        const alternate = mark.alternate;
-        return (
-          <g key={attribute.id}>
-            <text
-              x={x + PAD_X}
-              y={baseline}
-              dominantBaseline="central"
-              fill="var(--mcd-text)"
-              textDecoration={attribute.identifier ? "underline" : undefined}
-              fontWeight={style.weight}
-              fontStyle={style.italic ? "italic" : undefined}
-              {...(mark.derived ? tip(t("mcd.derived", { expression: attribute.generated!.expression })) : {})}
-            >
-              {mark.label}
-            </text>
-            {alternate && (
-              <>
-                {/* Identifiant alternatif : souligné en pointillé, étiquette AI (O-36). */}
-                <line
-                  x1={x + PAD_X}
-                  x2={x + PAD_X + labelWidth}
-                  y1={baseline + 7}
-                  y2={baseline + 7}
-                  stroke={alternate.prefix ? "var(--mcd-warning)" : "var(--mcd-text)"}
-                  strokeDasharray="2 2"
-                  strokeWidth={1}
-                />
-                <text
-                  x={x + PAD_X + labelWidth + 5}
-                  y={baseline}
-                  dominantBaseline="central"
-                  fontSize={TAG_FONT_SIZE}
-                  fill={alternate.prefix ? "var(--mcd-warning)" : "var(--mcd-muted)"}
-                  className="cursor-help"
-                  {...tip(
-                    alternate.prefix
-                      ? t("mcd.alternatePrefix", { tag: alternate.tag, n: alternate.prefix })
-                      : alternate.condition
-                        ? t("mcd.alternateCondition", { tag: alternate.tag, condition: alternate.condition })
-                        : alternate.expression
-                          ? t("mcd.alternateExpression", { tag: alternate.tag, expression: alternate.expression })
-                          : alternate.scope
-                            ? t("mcd.alternateScopeTip", { tag: alternate.tag, scope: alternate.scope })
-                            : t("mcd.alternate", { tag: alternate.tag }),
-                  )}
-                >
-                  {alternateText(alternate)}
-                  {alternate.prefix ? " ⚠" : ""}
-                </text>
-              </>
-            )}
-          </g>
-        );
-      })}
-      {referencedKey && (
-        <text
-          x={x + width / 2}
-          y={y + height + 11}
-          textAnchor="middle"
-          fontSize={TAG_FONT_SIZE}
-          fill="var(--mcd-muted)"
-          className="cursor-help"
-          {...tip(t("mcd.referencedKey", { entity: referencedKey.entity, attributes: referencedKey.attributes.join(", ") }))}
-        >
-          → {referencedKey.attributes.join(", ")}
-        </text>
-      )}
-      <ErrorBadge x={x + width} y={y} issues={issues} />
-    </g>
-  );
-});
-
 interface LinkShapeProps {
   geometry: LinkGeometry;
   selected: boolean;
 }
 
 /** Patte entre une association et une entité (tracé, cassures, cardinalité). */
+// biome-ignore lint/suspicious/noShadow: nom de la fonction affiché par les outils de développement de React
 export const LinkShape = memo(function LinkShape({ geometry, selected }: LinkShapeProps) {
   const { link, points, label } = geometry;
   const text = formatCardinality(link.cardinality) + (link.relativeId ? "(R)" : "");
   const role = "role" in link ? link.role?.trim() : undefined;
   const rolePoint = geometry.role ?? { x: label.x, y: label.y + 13 };
-  const d = pathOf(points, usePreferencesStore((s) => s.smoothBends));
+  const d = pathOf(
+    points,
+    usePreferencesStore((s) => s.smoothBends),
+  );
   return (
     <g data-id={link.id} className="cursor-pointer" fontFamily={FONT_FAMILY} fontSize={FONT_SIZE}>
       {/* Zone de clic élargie */}
@@ -237,7 +109,7 @@ export const LinkShape = memo(function LinkShape({ geometry, selected }: LinkSha
       >
         {text}
       </text>
-      {role && (
+      {role ? (
         /* Rôle de la patte (réflexives : parrain, originale…) (O-36). */
         <text
           x={rolePoint.x}
@@ -253,7 +125,7 @@ export const LinkShape = memo(function LinkShape({ geometry, selected }: LinkSha
         >
           {role}
         </text>
-      )}
+      ) : null}
     </g>
   );
 });
@@ -290,6 +162,7 @@ export function LinkHandles({
       ))}
       {bends.map((b, index) => (
         <circle
+          // biome-ignore lint/suspicious/noArrayIndexKey: une cassure est désignée par sa place (data-index)
           key={`bend-${index}`}
           data-handle="bend"
           data-index={index}
@@ -313,6 +186,7 @@ const CONSTRAINT_SYMBOL: Record<Inheritance["constraint"], string> = { none: "",
  * Triangle d'héritage (overrides O-18, O-27) : toujours droit, pointe en haut ;
  * symbole de la contrainte au centre (X, T, XT, ou vide).
  */
+// biome-ignore lint/suspicious/noShadow: nom de la fonction affiché par les outils de développement de React
 export const InheritanceShape = memo(function InheritanceShape({
   inheritance,
   layout,
@@ -355,6 +229,7 @@ export const InheritanceShape = memo(function InheritanceShape({
 });
 
 /** Lien d'héritage ; celui de l'entité générique est plus épais et fléché (non désactivable, O-27). */
+// biome-ignore lint/suspicious/noShadow: nom de la fonction affiché par les outils de développement de React
 export const InheritanceLinkShape = memo(function InheritanceLinkShape({
   geometry,
   selected,
@@ -362,7 +237,10 @@ export const InheritanceLinkShape = memo(function InheritanceLinkShape({
   geometry: InheritanceLinkGeometry;
   selected: boolean;
 }) {
-  const d = pathOf(geometry.points, usePreferencesStore((s) => s.smoothBends));
+  const d = pathOf(
+    geometry.points,
+    usePreferencesStore((s) => s.smoothBends),
+  );
   return (
     <g data-id={geometry.link.id} className="cursor-pointer">
       <path d={d} fill="none" stroke="transparent" strokeWidth={12} />

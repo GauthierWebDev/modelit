@@ -5,19 +5,28 @@ import { startHost } from "./host";
 import { memoryNetwork } from "./memoryNetwork";
 import type { Presence } from "./protocol";
 
-const at = (x: number, y: number, view: Presence["view"] = "mcd"): Presence => ({ view, cursor: { x, y }, selection: [] });
+const at = (x: number, y: number, view: Presence["view"] = "mcd"): Presence => ({
+  view,
+  cursor: { x, y },
+  selection: [],
+});
+
+function session() {
+  const net = memoryNetwork();
+  const host = startHost({
+    link: net.hostLink,
+    doc: emptyDocument(),
+    secrets: { editor: "e", reader: "r" },
+    me: { id: "host", name: "Alice", color: "#000" },
+  });
+  const bob = startGuest({ link: net.connect("bob"), secret: "e", name: "Bob", color: "#111" });
+  const carol = startGuest({ link: net.connect("carol"), secret: "r", name: "Carol", color: "#222" });
+  net.flush();
+  return { net, host, bob, carol };
+}
 
 /** Présence (O-05 §5) : relayée par l'hôte à tous les autres, jamais renvoyée à son auteur. */
 describe("présence", () => {
-  function session() {
-    const net = memoryNetwork();
-    const host = startHost({ link: net.hostLink, doc: emptyDocument(), secrets: { editor: "e", reader: "r" }, me: { id: "host", name: "Alice", color: "#000" } });
-    const bob = startGuest({ link: net.connect("bob"), secret: "e", name: "Bob", color: "#111" });
-    const carol = startGuest({ link: net.connect("carol"), secret: "r", name: "Carol", color: "#222" });
-    net.flush();
-    return { net, host, bob, carol };
-  }
-
   it("le curseur d'un invité parvient à l'hôte et aux autres invités, pas à lui-même", () => {
     const { net, host, bob, carol } = session();
     bob.setPresence(at(120, 80));
@@ -56,10 +65,17 @@ describe("présence", () => {
     net.flush();
     expect(host.state.getState().presence).toEqual({});
   });
+});
 
+describe("présence", () => {
   it("un invité qui attend le mot de passe n'envoie rien", () => {
     const net = memoryNetwork();
-    const host = startHost({ link: net.hostLink, doc: emptyDocument(), secrets: { editor: "e", reader: "r" }, me: { id: "host", name: "A", color: "#000" } });
+    const host = startHost({
+      link: net.hostLink,
+      doc: emptyDocument(),
+      secrets: { editor: "e", reader: "r" },
+      me: { id: "host", name: "A", color: "#000" },
+    });
     const eve = startGuest({ link: net.connect("eve"), secret: "inconnu", name: "Eve", color: "#444" });
     eve.setPresence(at(9, 9));
     net.flush();

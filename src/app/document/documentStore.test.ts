@@ -2,7 +2,9 @@ import { emptyDocument } from "@core/index";
 import { describe, expect, it } from "vitest";
 import { createDocumentStore, selectIsDirty, selectRedoLabel, selectUndoLabel } from "./documentStore";
 
-const rename = (name: string) => (d: { settings: { naming: { typology: string } } }) => void (d.settings.naming.typology = name);
+const rename = (name: string) => (d: { settings: { naming: { typology: string } } }) => {
+  d.settings.naming.typology = name;
+};
 const typology = (store: ReturnType<typeof createDocumentStore>) => store.getState().doc.settings.naming.typology;
 
 describe("store de document", () => {
@@ -46,10 +48,14 @@ describe("store de document", () => {
     expect(typology(store)).toBe("b");
     expect(store.getState().past).toHaveLength(1);
   });
+});
 
+describe("store de document", () => {
   it("historique limité à 200 entrées", () => {
     const store = createDocumentStore(emptyDocument());
-    for (let i = 0; i < 205; i++) store.getState().change("history.typology", rename(`v${i}`));
+    for (let i = 0; i < 205; i += 1) {
+      store.getState().change("history.typology", rename(`v${i}`));
+    }
     expect(store.getState().past).toHaveLength(200);
   });
 

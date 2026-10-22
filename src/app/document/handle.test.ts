@@ -1,4 +1,5 @@
 import { emptyDocument } from "@core/index";
+import { byCodeUnit } from "@core/testing/order";
 import { describe, expect, it } from "vitest";
 import { addEntity, connectNodes, deleteObjects, moveNodes, renameNode } from "../commands";
 import { ddlOf, logicalModelOf } from "../derived";
@@ -50,7 +51,9 @@ describe("documents instanciables", () => {
     expect(a.view.getState().view).toBe("mcd");
     expect(b.view.getState().view).toBe("mpd");
   });
+});
 
+describe("documents instanciables", () => {
   it("outil de la fenêtre : Association et Héritage seulement dans le MCD (O-54)", () => {
     const doc = createDocumentHandle(emptyDocument());
     chooseTool(doc, "entity");
@@ -103,14 +106,16 @@ describe("géométrie du schéma", () => {
     const a = addEntity(doc, { x: 0, y: 0 });
     const b = addEntity(doc, { x: 400, y: 0 });
     const result = connectNodes(doc, a, b, { associationPosition: { x: 200, y: 0 } });
-    if (!result || !("created" in result)) throw new Error("association non créée");
+    if (!(result && "created" in result)) {
+      throw new Error("association non créée");
+    }
     const [leg] = doc.store.getState().doc.links;
     moveNodes(doc, new Map(), new Map([[leg!.id, [{ x: 100, y: 50 }]]]));
     expect(Object.keys(doc.store.getState().doc.layout.bends)).toEqual([leg!.id]);
 
     deleteObjects(doc, [a]);
     const { layout } = doc.store.getState().doc;
-    expect(Object.keys(layout.positions).sort()).toEqual([b, result.created].sort());
+    expect(Object.keys(layout.positions).sort(byCodeUnit)).toEqual([b, result.created].sort());
     expect(layout.bends).toEqual({});
   });
 });

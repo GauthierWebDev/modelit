@@ -1,5 +1,5 @@
-import type { Association, Attribute, Entity, Id, Inheritance, InheritanceLink, Link, ModelDocument } from "./document";
 import { applyPattern } from "../naming/patterns";
+import type { Association, Attribute, Entity, Id, Inheritance, InheritanceLink, Link, ModelDocument } from "./document";
 import type { KeyPattern } from "./settings";
 import { defaultSettings } from "./settings";
 
@@ -51,9 +51,11 @@ export function createLink(associationId: Id, entityId: Id): Link {
 /** Premier nom libre de la forme « <base> <n> » parmi `existing`. */
 export function nextFreeName(base: string, existing: Iterable<string>): string {
   const taken = new Set(existing);
-  for (let i = 1; ; i++) {
+  for (let i = 1; ; i += 1) {
     const candidate = `${base} ${i}`;
-    if (!taken.has(candidate)) return candidate;
+    if (!taken.has(candidate)) {
+      return candidate;
+    }
   }
 }
 

@@ -12,7 +12,9 @@ export async function setWindowTitle(title: string) {
 
 /** Thème de la barre de titre native ; `null` = suivre le système. */
 export async function setNativeTheme(theme: "light" | "dark" | null) {
-  if (!isTauri()) return;
+  if (!isTauri()) {
+    return;
+  }
   const { getCurrentWindow } = await import("@tauri-apps/api/window");
   await getCurrentWindow().setTheme(theme);
 }
@@ -25,7 +27,9 @@ export async function setNativeTheme(theme: "light" | "dark" | null) {
 export function onCloseRequested(canClose: () => Promise<boolean>, isDirty: () => boolean): () => void {
   if (!isTauri()) {
     const handler = (e: BeforeUnloadEvent) => {
-      if (isDirty()) e.preventDefault();
+      if (isDirty()) {
+        e.preventDefault();
+      }
     };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
@@ -34,10 +38,15 @@ export function onCloseRequested(canClose: () => Promise<boolean>, isDirty: () =
   let disposed = false;
   void import("@tauri-apps/api/window").then(async ({ getCurrentWindow }) => {
     const off = await getCurrentWindow().onCloseRequested(async (event) => {
-      if (!(await canClose())) event.preventDefault();
+      if (!(await canClose())) {
+        event.preventDefault();
+      }
     });
-    if (disposed) off();
-    else unlisten = off;
+    if (disposed) {
+      off();
+    } else {
+      unlisten = off;
+    }
   });
   return () => {
     disposed = true;
@@ -47,13 +56,20 @@ export function onCloseRequested(canClose: () => Promise<boolean>, isDirty: () =
 
 /** Événement émis par un élément du menu natif (macOS, `src-tauri/src/lib.rs`) ; renvoie la désinscription. */
 function onMenuEvent(event: string, handler: () => void): () => void {
-  if (!isTauri()) return () => {};
+  if (!isTauri()) {
+    return () => {
+      // Hors de Tauri, pas de menu natif : rien à désabonner.
+    };
+  }
   let unlisten: (() => void) | undefined;
   let disposed = false;
   void import("@tauri-apps/api/event").then(async ({ listen }) => {
     const off = await listen(event, handler);
-    if (disposed) off();
-    else unlisten = off;
+    if (disposed) {
+      off();
+    } else {
+      unlisten = off;
+    }
   });
   return () => {
     disposed = true;

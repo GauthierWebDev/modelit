@@ -15,15 +15,19 @@ export const MAX_ATTEMPTS = 3;
  * les 3 premières erreurs de la session, puis 1 s, 2 s, 4 s… plafonnée à 30 s. Comptée sur toute
  * la session, une nouvelle connexion ne la remet pas à zéro ; une bonne réponse n'attend jamais.
  */
-export const failureDelay = (failures: number) => (failures <= MAX_ATTEMPTS ? 0 : Math.min(30_000, 1000 * 2 ** (failures - MAX_ATTEMPTS - 1)));
+export const failureDelay = (failures: number) =>
+  failures <= MAX_ATTEMPTS ? 0 : Math.min(30_000, 1000 * 2 ** (failures - MAX_ATTEMPTS - 1));
 
-const hex = (bytes: ArrayBuffer | Uint8Array) => [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
-const fromHex = (text: string) => Uint8Array.from(text.match(/../g) ?? [], (h) => parseInt(h, 16));
+const hex = (bytes: ArrayBuffer | Uint8Array) =>
+  [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
+const fromHex = (text: string) => Uint8Array.from(text.match(/../g) ?? [], (h) => Number.parseInt(h, 16));
 
 export const randomHex = (bytes = 16) => hex(crypto.getRandomValues(new Uint8Array(bytes)));
 
 async function deriveKey(password: string, salt: string): Promise<CryptoKey> {
-  const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"]);
+  const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, [
+    "deriveKey",
+  ]);
   return crypto.subtle.deriveKey(
     { name: "PBKDF2", hash: "SHA-256", salt: fromHex(salt), iterations: ITERATIONS },
     material,
@@ -40,7 +44,9 @@ export async function prove(password: string, salt: string, nonce: string): Prom
 }
 
 /** Vérificateur de l'hôte : la clé est dérivée une fois, au démarrage de la session. */
-export async function verifier(password: string): Promise<{ salt: string; verify: (nonce: string, proof: string) => Promise<boolean> }> {
+export async function verifier(
+  password: string,
+): Promise<{ salt: string; verify: (nonce: string, proof: string) => Promise<boolean> }> {
   const salt = randomHex();
   const key = await deriveKey(password, salt);
   return {

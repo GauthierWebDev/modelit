@@ -1,4 +1,10 @@
-import { bendsOf, type Inheritance, type InheritanceConstraint, type InheritanceLink, type ModelDocument } from "@core/index";
+import {
+  bendsOf,
+  type Inheritance,
+  type InheritanceConstraint,
+  type InheritanceLink,
+  type ModelDocument,
+} from "@core/index";
 import * as cmd from "@/app/commands";
 import { useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { t } from "@/i18n";
@@ -28,8 +34,12 @@ export function InheritancePanel({ doc, inheritance }: { doc: ModelDocument; inh
         <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("inheritance.help")}</p>
       </Section>
       <Section title={t("inheritance.constraint")}>
-        <div role="radiogroup" className="grid grid-cols-4 overflow-hidden rounded border border-neutral-300 dark:border-neutral-600">
+        <div
+          role="radiogroup"
+          className="grid grid-cols-4 overflow-hidden rounded border border-neutral-300 dark:border-neutral-600"
+        >
           {CONSTRAINTS.map((c) => (
+            // biome-ignore lint/a11y/useSemanticElements: bouton radio stylé (motif ARIA radiogroup)
             <button
               key={c.id}
               type="button"
@@ -38,7 +48,9 @@ export function InheritancePanel({ doc, inheritance }: { doc: ModelDocument; inh
               {...tip(t(`inheritance.${c.id}`))}
               onClick={() => cmd.setInheritanceConstraint(handle, inheritance.id, c.id)}
               className={`flex flex-col items-center py-1 text-xs ${
-                inheritance.constraint === c.id ? "bg-blue-600 text-white" : "hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                inheritance.constraint === c.id
+                  ? "bg-blue-600 text-white"
+                  : "hover:bg-neutral-100 dark:hover:bg-neutral-700"
               }`}
             >
               <span className="h-4 font-mono font-bold">{c.symbol || "△"}</span>
@@ -67,7 +79,9 @@ export function InheritancePanel({ doc, inheritance }: { doc: ModelDocument; inh
         )}
       </Section>
       <Section title={t("inheritance.subtypes", { n: children.length })}>
-        {children.length < 1 && <p className="text-xs text-amber-700 dark:text-amber-400">{t("inheritance.needChild")}</p>}
+        {children.length === 0 && (
+          <p className="text-xs text-amber-700 dark:text-amber-400">{t("inheritance.needChild")}</p>
+        )}
         {children.map((l) => (
           <button
             key={l.id}
@@ -79,7 +93,10 @@ export function InheritancePanel({ doc, inheritance }: { doc: ModelDocument; inh
           </button>
         ))}
       </Section>
-      <CommentSection value={inheritance.comment} onCommit={(comment) => cmd.updateInheritance(handle, inheritance.id, { comment })} />
+      <CommentSection
+        value={inheritance.comment}
+        onCommit={(comment) => cmd.updateInheritance(handle, inheritance.id, { comment })}
+      />
     </>
   );
 }

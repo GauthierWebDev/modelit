@@ -48,7 +48,9 @@ export function createSessionStore(
   return createStore<SessionDocumentState>()((set, get) => {
     const record = (label: MessageKey, before: ModelDocument, after: ModelDocument) => {
       const redo = diff(before, after);
-      if (!redo.length) return;
+      if (redo.length === 0) {
+        return;
+      }
       const undo = diff(after, before);
       const past = [...(get().past as SessionEntry[]), { doc: after, label, undo, redo }].slice(-HISTORY_LIMIT);
       set({ past, future: [] });
@@ -67,71 +69,130 @@ export function createSessionStore(
       past: [],
       future: [],
       transactionStart: null,
-
-      change(label, recipe) {
-        if (!canEdit()) return;
-        const { doc, transactionStart } = get();
-        if (transactionStart) throw new Error("change() appelé pendant une transaction");
-        const next = produce(doc, recipe);
-        if (next === doc) return;
-        set({ doc: next });
-        record(label, doc, next);
-      },
-
-      begin() {
-        if (!canEdit() || get().transactionStart) return;
-        set({ transactionStart: get().doc });
-      },
-
-      preview(recipe) {
-        if (!get().transactionStart) return;
-        set({ doc: produce(get().doc, recipe) });
-      },
-
-      commit(label) {
-        const { doc, transactionStart } = get();
-        if (!transactionStart) return;
-        set({ transactionStart: null });
-        record(label, transactionStart, doc);
-      },
-
-      cancel() {
-        const { transactionStart } = get();
-        if (transactionStart) set({ doc: transactionStart, transactionStart: null });
-      },
-
-      undo() {
-        const past = get().past as SessionEntry[];
-        const entry = past.at(-1);
-        if (!entry || get().transactionStart || !canEdit()) return;
-        set({ past: past.slice(0, -1), future: [entry, ...(get().future as SessionEntry[])] });
-        replay(entry.label, entry.undo);
-      },
-
-      redo() {
-        const [entry, ...rest] = get().future as SessionEntry[];
-        if (!entry || get().transactionStart || !canEdit()) return;
-        set({ future: rest, past: [...(get().past as SessionEntry[]), entry].slice(-HISTORY_LIMIT) });
-        replay(entry.label, entry.redo);
-      },
-
-      applyRemote(ops) {
-        const { doc, transactionStart } = get();
-        // Pendant un glisser-déposer local, l'état de départ suit aussi : la transaction s'appuie
-        // sur la dernière version commune.
-        set({ doc: apply(doc, ops), ...(transactionStart ? { transactionStart: apply(transactionStart, ops) } : {}) });
-      },
-
-      reset(doc) {
-        set({ doc, savedDoc: doc, past: [], future: [], transactionStart: null });
-      },
-
-      // Fichiers : seul l'hôte enregistre (O-05 §4.3) ; l'indicateur suit son enregistrement.
-      load() {},
-      restore() {},
-      markSaved(filePath) {
-        set({ savedDoc: get().doc, filePath });
-      },
+      ...sessionEditing({ set, get, canEdit, record }),
+      ...sessionHistory({ set, get, canEdit, replay }),
+      ...sessionSync(set, get),
     };
   });
+}
+
+type SetState = SessionStore["setState"];
+type GetState = SessionStore["getState"];
+
+interface Editing {
+  set: SetState;
+  get: GetState;
+  canEdit: () => boolean;
+  /** Entrée d'historique (opérations aller et retour), diffusée. */
+  record: (label: MessageKey, before: ModelDocument, after: ModelDocument) => void;
+}
+
+function sessionEditing({
+  set,
+  get,
+  canEdit,
+  record,
+}: Editing): Pick<SessionDocumentState, "change" | "begin" | "preview" | "commit" | "cancel"> {
+  return {
+    change(label, recipe) {
+      if (!canEdit()) {
+        return;
+      }
+      const { doc, transactionStart } = get();
+      if (transactionStart) {
+        throw new Error("change() appelé pendant une transaction");
+      }
+      const next = produce(doc, recipe);
+      if (next === doc) {
+        return;
+      }
+      set({ doc: next });
+      record(label, doc, next);
+    },
+    begin() {
+      if (!canEdit() || get().transactionStart) {
+        return;
+      }
+      set({ transactionStart: get().doc });
+    },
+    preview(recipe) {
+      if (!get().transactionStart) {
+        return;
+      }
+      set({ doc: produce(get().doc, recipe) });
+    },
+    commit(label) {
+      const { doc, transactionStart } = get();
+      if (!transactionStart) {
+        return;
+      }
+      set({ transactionStart: null });
+      record(label, transactionStart, doc);
+    },
+    cancel() {
+      const { transactionStart } = get();
+      if (transactionStart) {
+        set({ doc: transactionStart, transactionStart: null });
+      }
+    },
+  };
+}
+
+interface History {
+  set: SetState;
+  get: GetState;
+  canEdit: () => boolean;
+  /** Opérations rejouées localement, puis diffusées. */
+  replay: (label: MessageKey, ops: Op[]) => void;
+}
+
+/** Historique personnel : annuler / rétablir rejoue les opérations inverses (O-05). */
+function sessionHistory({ set, get, canEdit, replay }: History): Pick<SessionDocumentState, "undo" | "redo"> {
+  return {
+    undo() {
+      const past = get().past as SessionEntry[];
+      const entry = past.at(-1);
+      if (!entry || get().transactionStart || !canEdit()) {
+        return;
+      }
+      set({ past: past.slice(0, -1), future: [entry, ...(get().future as SessionEntry[])] });
+      replay(entry.label, entry.undo);
+    },
+    redo() {
+      const [entry, ...rest] = get().future as SessionEntry[];
+      if (!entry || get().transactionStart || !canEdit()) {
+        return;
+      }
+      set({ future: rest, past: [...(get().past as SessionEntry[]), entry].slice(-HISTORY_LIMIT) });
+      replay(entry.label, entry.redo);
+    },
+  };
+}
+
+/** Opérations reçues, document de départ, fichiers (seul l'hôte enregistre). */
+function sessionSync(
+  set: SetState,
+  get: GetState,
+): Pick<SessionDocumentState, "applyRemote" | "reset" | "load" | "restore" | "markSaved"> {
+  return {
+    applyRemote(ops) {
+      const { doc, transactionStart } = get();
+      // Pendant un glisser-déposer local, l'état de départ suit aussi : la transaction s'appuie
+      // sur la dernière version commune.
+      set({ doc: apply(doc, ops), ...(transactionStart ? { transactionStart: apply(transactionStart, ops) } : {}) });
+    },
+    reset(doc) {
+      set({ doc, savedDoc: doc, past: [], future: [], transactionStart: null });
+    },
+    // Fichiers : seul l'hôte enregistre (O-05 §4.3) ; l'indicateur suit son enregistrement.
+    load() {
+      // Seul l'hôte ouvre ou enregistre le fichier (O-05 §4.3).
+    },
+    restore() {
+      // Seul l'hôte récupère une sauvegarde automatique (O-05 §4.3).
+    },
+    markSaved(filePath) {
+      set({ savedDoc: get().doc, filePath });
+    },
+  };
 }

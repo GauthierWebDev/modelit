@@ -33,7 +33,8 @@ let nextId = 1;
 
 function enqueue(request: Omit<DialogRequest, "id" | "resolve">): Promise<boolean> {
   return new Promise((resolve) => {
-    const id = nextId++;
+    const id = nextId;
+    nextId += 1;
     useDialogStore.setState((s) => ({ queue: [...s.queue, { ...request, id, resolve }] }));
   });
 }
@@ -51,24 +52,35 @@ export function confirmDialog(options: {
 }
 
 /** Affiche un message ; la promesse se résout à la fermeture. */
-export async function alertDialog(options: { title: string; message: string; detail?: string; okLabel: string; tone?: DialogTone }): Promise<void> {
+export async function alertDialog(options: {
+  title: string;
+  message: string;
+  detail?: string;
+  okLabel: string;
+  tone?: DialogTone;
+}): Promise<void> {
   await enqueue({ kind: "alert", tone: "error", ...options });
 }
 
 /** Clôt une boîte (réponse de l'utilisateur) et passe à la suivante. */
 export function settleDialog(id: number, ok: boolean) {
   const request = useDialogStore.getState().queue.find((r) => r.id === id);
-  if (!request) return;
+  if (!request) {
+    return;
+  }
   useDialogStore.setState((s) => ({ queue: s.queue.filter((r) => r.id !== id) }));
   request.resolve(ok);
 }
 
 /** Erreur (ouverture, enregistrement, export…). */
-export const showError = (message: string) => alertDialog({ title: t("common.error"), message, okLabel: t("common.ok") });
+export const showError = (message: string) =>
+  alertDialog({ title: t("common.error"), message, okLabel: t("common.ok") });
 
 /** Avertissements groupés en une seule boîte (ex. à l'ouverture d'un fichier). */
 export async function showWarnings(messages: string[]) {
-  if (!messages.length) return;
+  if (messages.length === 0) {
+    return;
+  }
   await alertDialog({
     title: t("common.warning"),
     tone: "warning",

@@ -1,6 +1,6 @@
 import { t } from "@/i18n";
+import { type AvailableUpdate, checkForUpdate, updatesConfigured, updatesSupported } from "@/platform/updater";
 import { APP_INFO, CHANGELOG } from "./appInfo";
-import { checkForUpdate, updatesConfigured, updatesSupported, type AvailableUpdate } from "@/platform/updater";
 import { alertDialog, confirmDialog, showError } from "./dialogStore";
 import { confirmLoseAllChanges } from "./fileCommands";
 import { usePreferencesStore } from "./preferencesStore";
@@ -21,22 +21,37 @@ let busy = false;
 
 /** Vérification automatique, à appeler au lancement ; silencieuse si rien n'est disponible ou en cas d'erreur. */
 export function scheduleUpdateCheck(): () => void {
-  if (!updatesSupported()) return () => {};
-  const timer = window.setTimeout(() => {
-    if (usePreferencesStore.getState().updateCheck) void run(false);
+  if (!updatesSupported()) {
+    return () => {
+      // Aucune vérification programmée : rien à annuler.
+    };
+  }
+  const timer = globalThis.setTimeout(() => {
+    if (usePreferencesStore.getState().updateCheck) {
+      void run(false);
+    }
   }, STARTUP_DELAY);
-  return () => window.clearTimeout(timer);
+  return () => globalThis.clearTimeout(timer);
 }
 
 /** Vérification demandée par l'utilisateur : le résultat est toujours signalé. */
 export const checkForUpdatesNow = () => run(true);
 
 async function run(manual: boolean) {
-  if (busy) return;
+  if (busy) {
+    return;
+  }
   busy = true;
   try {
     if (!(await updatesConfigured())) {
-      if (manual) await alertDialog({ title: t("update.title"), message: t("update.notConfigured"), okLabel: t("common.ok"), tone: "info" });
+      if (manual) {
+        await alertDialog({
+          title: t("update.title"),
+          message: t("update.notConfigured"),
+          okLabel: t("common.ok"),
+          tone: "info",
+        });
+      }
       return;
     }
     let update: AvailableUpdate | null;
@@ -44,11 +59,20 @@ async function run(manual: boolean) {
       update = await checkForUpdate();
     } catch (e) {
       // Hors ligne, GitHub indisponible… : sans conséquence pour une vérification automatique.
-      if (manual) await showError(t("update.checkFailed", { error: String(e) }));
+      if (manual) {
+        await showError(t("update.checkFailed", { error: String(e) }));
+      }
       return;
     }
     if (!update) {
-      if (manual) await alertDialog({ title: t("update.title"), message: t("update.upToDate"), okLabel: t("common.ok"), tone: "info" });
+      if (manual) {
+        await alertDialog({
+          title: t("update.title"),
+          message: t("update.upToDate"),
+          okLabel: t("common.ok"),
+          tone: "info",
+        });
+      }
       return;
     }
     await offer(update);
@@ -68,16 +92,23 @@ async function offer(update: AvailableUpdate) {
     tone: "info",
   });
   // L'application redémarre : le modèle non enregistré serait perdu.
-  if (!accepted || !(await confirmLoseAllChanges())) return;
+  if (!(accepted && (await confirmLoseAllChanges()))) {
+    return;
+  }
 
   const ui = useUiStore.getState();
   let shown = -1;
   try {
     await update.install((ratio) => {
       const percent = ratio === null ? null : Math.floor(ratio * 100);
-      if (percent === shown) return;
+      if (percent === shown) {
+        return;
+      }
       shown = percent ?? -1;
-      ui.notify({ kind: "info", text: percent === null ? t("update.downloading") : t("update.downloadingPercent", { percent }) });
+      ui.notify({
+        kind: "info",
+        text: percent === null ? t("update.downloading") : t("update.downloadingPercent", { percent }),
+      });
     });
   } catch (e) {
     ui.notify(null);
@@ -89,7 +120,11 @@ async function offer(update: AvailableUpdate) {
 export function showWhatsNew() {
   const prefs = usePreferencesStore.getState();
   const previous = prefs.lastSeenVersion;
-  if (previous === APP_INFO.version) return;
+  if (previous === APP_INFO.version) {
+    return;
+  }
   prefs.setLastSeenVersion(APP_INFO.version);
-  if (previous && CHANGELOG.some((e) => e.version === APP_INFO.version)) useUiStore.getState().setAbout("changes");
+  if (previous && CHANGELOG.some((e) => e.version === APP_INFO.version)) {
+    useUiStore.getState().setAbout("changes");
+  }
 }

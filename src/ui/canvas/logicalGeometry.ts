@@ -1,7 +1,5 @@
 import {
   displayedSqlType,
-  targetOf,
-  uniqueColumnNames,
   type Id,
   type LogicalColumn,
   type LogicalForeignKey,
@@ -9,8 +7,21 @@ import {
   type LogicalTable,
   type ModelDocument,
   type Point,
+  targetOf,
+  uniqueColumnNames,
 } from "@core/index";
-import { BOLD_WEIGHT, center, clipToRect, PAD_X, ROW_HEIGHT, textWidth, TITLE_HEIGHT, TITLE_WEIGHT, type Rect, type TextStyle } from "./geometry";
+import {
+  BOLD_WEIGHT,
+  center,
+  clipToRect,
+  PAD_X,
+  type Rect,
+  ROW_HEIGHT,
+  type TextStyle,
+  TITLE_HEIGHT,
+  TITLE_WEIGHT,
+  textWidth,
+} from "./geometry";
 
 /**
  * Mise en page des vues MLD et MPD (override O-01).
@@ -81,7 +92,9 @@ function rowsOf(table: LogicalTable, mode: LogicalViewMode, doc: ModelDocument):
     const unique = uniqueColumns.has(column.name);
     const indent = composite && primaryKey ? KEY_INDENT : 0;
     const label = `${column.foreign ? "#" : ""}${column.name}`;
-    if (mode === "mld") return { column, primaryKey, unique, label, indent, type: null, constraints: null };
+    if (mode === "mld") {
+      return { column, primaryKey, unique, label, indent, type: null, constraints: null };
+    }
     const constraints = [
       // Une colonne de clé primaire est NOT NULL de fait : le MPD le montre.
       column.notNull || primaryKey ? "NOT NULL" : null,
@@ -95,13 +108,13 @@ function rowsOf(table: LogicalTable, mode: LogicalViewMode, doc: ModelDocument):
       label,
       indent,
       type: displayedSqlType(column, target),
-      constraints: constraints.length ? constraints.join(" ") : null,
+      constraints: constraints.length > 0 ? constraints.join(" ") : null,
     };
   });
 }
 
 export function tableLayouts(model: LogicalModel, doc: ModelDocument, mode: LogicalViewMode): TableLayout[] {
-  const positions = doc.layout.positions;
+  const { positions } = doc.layout;
   return model.tables.map((table) => {
     const raw = rowsOf(table, mode, doc);
     const nameWidth = Math.max(0, ...raw.map((r) => r.indent + textWidth(r.label, columnStyle(r))));
@@ -110,7 +123,9 @@ export function tableLayouts(model: LogicalModel, doc: ModelDocument, mode: Logi
     const typeX = PAD_X + nameWidth + COLUMN_GAP;
     const constraintsX = typeX + (typeWidth ? typeWidth + COLUMN_GAP : 0);
     const contentWidth = mode === "mpd" ? constraintsX + constraintsWidth + PAD_X : nameWidth + 2 * PAD_X;
-    const width = Math.ceil(Math.max(MIN_WIDTH, contentWidth, textWidth(table.name, { weight: TITLE_WEIGHT }) + 2 * PAD_X));
+    const width = Math.ceil(
+      Math.max(MIN_WIDTH, contentWidth, textWidth(table.name, { weight: TITLE_WEIGHT }) + 2 * PAD_X),
+    );
     const rows = raw.map((r, i) => ({ ...r, y: TITLE_HEIGHT + 4 + i * ROW_HEIGHT }));
     const height = TITLE_HEIGHT + 4 + Math.max(1, rows.length) * ROW_HEIGHT + 6;
     const position = positions[table.source.id] ?? { x: 0, y: 0 };
@@ -144,7 +159,9 @@ export function referenceGeometries(layouts: TableLayout[]): ReferenceGeometry[]
   for (const from of layouts) {
     from.table.foreignKeys.forEach((fk, i) => {
       const to = byName.get(fk.referencedTable);
-      if (!to) return;
+      if (!to) {
+        return;
+      }
       const key = `${from.table.name}->${to.table.name}`;
       const index = counts.get(key) ?? 0;
       counts.set(key, index + 1);

@@ -42,7 +42,9 @@ const normalize = (alias: string) =>
     .toLowerCase();
 
 /** Table alias normalisé → variable, alias ambigus exclus. */
-export function aliasIndex(aliases: Record<PatternVariable, Record<string, string[]>> = PATTERN_ALIASES): Map<string, PatternVariable> {
+export function aliasIndex(
+  aliases: Record<PatternVariable, Record<string, string[]>> = PATTERN_ALIASES,
+): Map<string, PatternVariable> {
   const owners = new Map<string, Set<PatternVariable>>();
   for (const [variable, byLanguage] of Object.entries(aliases) as [PatternVariable, Record<string, string[]>][]) {
     // Le nom canonique est toujours un alias de sa variable.
@@ -52,30 +54,39 @@ export function aliasIndex(aliases: Record<PatternVariable, Record<string, strin
     }
   }
   const index = new Map<string, PatternVariable>();
-  for (const [alias, variables] of owners) if (variables.size === 1) index.set(alias, [...variables][0]!);
+  for (const [alias, variables] of owners) {
+    if (variables.size === 1) {
+      index.set(alias, [...variables][0]!);
+    }
+  }
   return index;
 }
 
 const INDEX = aliasIndex();
 const VARIABLE = /<([^<>]+)>/g;
 
-export type ParsedPattern = { ok: true; pattern: string } | { ok: false; empty: true } | { ok: false; unknown: string[] };
+export type ParsedPattern =
+  | { ok: true; pattern: string }
+  | { ok: false; empty: true }
+  | { ok: false; unknown: string[] };
 
 /** Schéma saisi (alias de toute langue) → schéma canonique, en vérifiant les variables permises. */
 export function parsePattern(input: string, kind: PatternKind, index = INDEX): ParsedPattern {
   const text = input.trim();
-  if (!text) return { ok: false, empty: true };
+  if (!text) {
+    return { ok: false, empty: true };
+  }
   const allowed = PATTERN_VARIABLES[kind];
   const unknown: string[] = [];
   const pattern = text.replace(VARIABLE, (match, alias: string) => {
     const variable = index.get(normalize(alias));
-    if (!variable || !allowed.includes(variable)) {
+    if (!(variable && allowed.includes(variable))) {
       unknown.push(match);
       return match;
     }
     return `<${variable}>`;
   });
-  return unknown.length ? { ok: false, unknown } : { ok: true, pattern };
+  return unknown.length > 0 ? { ok: false, unknown } : { ok: true, pattern };
 }
 
 /** Schéma canonique affiché dans une langue. */

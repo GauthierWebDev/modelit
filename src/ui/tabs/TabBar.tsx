@@ -1,11 +1,11 @@
 import { Plus, Users, X } from "lucide-react";
-import { useEffect, useRef, type PointerEvent } from "react";
+import { type PointerEvent, useEffect, useRef } from "react";
 import { useStore } from "zustand";
+import { useCollabStore } from "@/app/collab/session";
 import { selectIsDirty } from "@/app/document/documentStore";
 import type { DocumentHandle } from "@/app/document/handle";
 import { closeDocument, documentName, newTab } from "@/app/fileCommands";
 import { activate, moveTab, useWorkspaceStore } from "@/app/workspace";
-import { useCollabStore } from "@/app/collab/session";
 import { t } from "@/i18n";
 import { tip } from "@/ui/common/Tooltip";
 import { MOD } from "@/ui/shortcuts";
@@ -24,22 +24,32 @@ export function TabBar() {
   const drag = useRef<{ id: string; startX: number; moved: boolean } | null>(null);
 
   function onPointerDown(e: PointerEvent<HTMLElement>, id: string) {
-    if (e.button !== 0 || (e.target as Element).closest("[data-tab-close]")) return;
+    if (e.button !== 0 || (e.target as Element).closest("[data-tab-close]")) {
+      return;
+    }
     activate(id);
     e.currentTarget.setPointerCapture(e.pointerId);
     drag.current = { id, startX: e.clientX, moved: false };
   }
 
   function onPointerMove(e: PointerEvent<HTMLElement>) {
-    const current = drag.current;
-    if (!current) return;
-    if (!current.moved && Math.abs(e.clientX - current.startX) < DRAG_THRESHOLD) return;
+    const { current } = drag;
+    if (!current) {
+      return;
+    }
+    if (!current.moved && Math.abs(e.clientX - current.startX) < DRAG_THRESHOLD) {
+      return;
+    }
     current.moved = true;
     const over = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>("[data-tab-index]");
-    if (!over) return;
+    if (!over) {
+      return;
+    }
     const target = Number(over.dataset.tabIndex);
     const from = useWorkspaceStore.getState().documents.findIndex((d) => d.id === current.id);
-    if (target !== from) moveTab(current.id, target);
+    if (target !== from) {
+      moveTab(current.id, target);
+    }
   }
 
   return (
@@ -56,7 +66,9 @@ export function TabBar() {
           active={doc.id === activeId}
           onPointerDown={(e) => onPointerDown(e, doc.id)}
           onPointerMove={onPointerMove}
-          onPointerUp={() => (drag.current = null)}
+          onPointerUp={() => {
+            drag.current = null;
+          }}
         />
       ))}
       <button
@@ -96,7 +108,9 @@ function Tab({
   const shared = useCollabStore((s) => s.tabId === doc.id && (s.mode === "host" || s.mode === "guest"));
 
   useEffect(() => {
-    if (active) ref.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    if (active) {
+      ref.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
   }, [active]);
 
   return (

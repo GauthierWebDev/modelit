@@ -8,8 +8,18 @@ import { getLocale } from "@/i18n";
 
 /** 12 couleurs lisibles en thème clair comme sombre. */
 export const IDENTITY_COLORS = [
-  "#e11d48", "#ea580c", "#d97706", "#65a30d", "#16a34a", "#0d9488",
-  "#0891b2", "#2563eb", "#4f46e5", "#7c3aed", "#c026d3", "#db2777",
+  "#e11d48",
+  "#ea580c",
+  "#d97706",
+  "#65a30d",
+  "#16a34a",
+  "#0d9488",
+  "#0891b2",
+  "#2563eb",
+  "#4f46e5",
+  "#7c3aed",
+  "#c026d3",
+  "#db2777",
 ];
 
 /** Animaux (genre grammatical pour l'accord de l'adjectif en français). */

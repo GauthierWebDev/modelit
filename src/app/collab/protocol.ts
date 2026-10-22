@@ -14,6 +14,8 @@ export interface Participant {
   name: string;
   color: string;
   role: Role;
+  /** Dans le vocal (O-48) ; absent : pas dans le vocal. */
+  audio?: { muted: boolean };
 }
 
 /**
@@ -56,6 +58,8 @@ export type ToHost =
   | { type: "identity"; name: string; color: string }
   | { type: "presence"; presence: Presence }
   | { type: "chat"; text: string }
+  /** Vocal (O-48) : rejoint ou quitté, micro coupé ou ouvert. */
+  | { type: "voice"; joined: boolean; muted: boolean }
   | { type: "leave" };
 
 /** Hôte → invité. */
@@ -96,16 +100,21 @@ export const MAX_DOCUMENT_BYTES = 5 * 1024 * 1024;
 
 /** Côté hôte : un canal par invité, désigné par un identifiant de connexion. */
 export interface HostLink {
-  send(peer: string, message: ToGuest): void;
-  onMessage(handler: (peer: string, message: ToHost) => void): () => void;
-  onClose(handler: (peer: string) => void): () => void;
-  close(peer: string): void;
+  send: (peer: string, message: ToGuest) => void;
+  onMessage: (handler: (peer: string, message: ToHost) => void) => () => void;
+  onClose: (handler: (peer: string) => void) => () => void;
+  close: (peer: string) => void;
+  /** Datagramme (vocal) vers plusieurs invités : non fiable, sans ordre garanti. */
+  sendDatagram: (peers: string[], data: Uint8Array) => void;
+  onDatagram: (handler: (peer: string, data: Uint8Array) => void) => () => void;
 }
 
 /** Côté invité : le canal vers l'hôte. */
 export interface GuestLink {
-  send(message: ToHost): void;
-  onMessage(handler: (message: ToGuest) => void): () => void;
-  onClose(handler: () => void): () => void;
-  close(): void;
+  send: (message: ToHost) => void;
+  onMessage: (handler: (message: ToGuest) => void) => () => void;
+  onClose: (handler: () => void) => () => void;
+  close: () => void;
+  sendDatagram: (data: Uint8Array) => void;
+  onDatagram: (handler: (data: Uint8Array) => void) => () => void;
 }

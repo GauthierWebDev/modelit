@@ -9,28 +9,38 @@ import { MSG } from "./messages";
 export type Check = string | null;
 
 export function checkEntityName(doc: ModelDocument, name: string, selfId?: Id): Check {
-  if (!name.trim()) return MSG.emptyName;
+  if (!name.trim()) {
+    return MSG.emptyName;
+  }
   const taken = doc.entities.some((e) => e.id !== selfId && e.name === name.trim());
   return taken ? MSG.entityNameTaken : null;
 }
 
 export function checkAssociationName(doc: ModelDocument, name: string, selfId?: Id): Check {
-  if (!name.trim()) return MSG.emptyName;
+  if (!name.trim()) {
+    return MSG.emptyName;
+  }
   const taken = doc.associations.some((a) => a.id !== selfId && a.name === name.trim());
   return taken ? MSG.associationNameTaken : null;
 }
 
 export function checkAttributes(attributes: Attribute[]): Check {
   const names = attributes.map((a) => a.name.trim());
-  if (names.some((n) => !n)) return MSG.emptyName;
-  return new Set(names).size !== names.length ? MSG.duplicateAttributes : null;
+  if (names.some((n) => !n)) {
+    return MSG.emptyName;
+  }
+  return new Set(names).size === names.length ? null : MSG.duplicateAttributes;
 }
 
 /** Cardinalité saisie librement dans la boîte Lien. */
 export function checkCardinality(c: Cardinality): Check {
   const maxOk = c.max === "n" || (Number.isInteger(c.max) && c.max >= 1);
-  if (!Number.isInteger(c.min) || c.min < 0 || !maxOk) return MSG.incoherentCardinalities;
-  if (c.max !== "n" && c.max < c.min) return MSG.maxLowerThanMin;
+  if (!Number.isInteger(c.min) || c.min < 0 || !maxOk) {
+    return MSG.incoherentCardinalities;
+  }
+  if (c.max !== "n" && c.max < c.min) {
+    return MSG.maxLowerThanMin;
+  }
   return null;
 }
 
@@ -53,14 +63,22 @@ export function generatesTable(links: Link[]): boolean {
  */
 export function checkLinkCardinality(doc: ModelDocument, linkId: Id, c: Cardinality): Check {
   const own = checkCardinality(c);
-  if (own) return own;
+  if (own) {
+    return own;
+  }
   const link = doc.links.find((l) => l.id === linkId);
   const association = link && doc.associations.find((a) => a.id === link.associationId);
-  if (!link || !association || !isOneOne(c)) return null;
+  if (!(link && association && isOneOne(c))) {
+    return null;
+  }
 
-  if (association.attributes.length > 0) return MSG.oneOneForbiddenWithAttributes;
+  if (association.attributes.length > 0) {
+    return MSG.oneOneForbiddenWithAttributes;
+  }
   const others = linksOf(doc, association.id).filter((l) => l.id !== linkId);
-  if (others.length === 1 && isOneOne(others[0]!.cardinality)) return MSG.bothSidesOneOne;
+  if (others.length === 1 && isOneOne(others[0]!.cardinality)) {
+    return MSG.bothSidesOneOne;
+  }
   return null;
 }
 
@@ -68,8 +86,12 @@ export function checkLinkCardinality(doc: ModelDocument, linkId: Id, c: Cardinal
 export function checkAssociation(doc: ModelDocument, association: Pick<Association, "id" | "attributes">): Check {
   const links = linksOf(doc, association.id);
   if (association.attributes.length > 0) {
-    if (links.some((l) => isOneOne(l.cardinality))) return MSG.oneOneForbiddenWithAttributes;
-    if (links.some((l) => hasMaxOne(l.cardinality))) return MSG.attributesNeedTable;
+    if (links.some((l) => isOneOne(l.cardinality))) {
+      return MSG.oneOneForbiddenWithAttributes;
+    }
+    if (links.some((l) => hasMaxOne(l.cardinality))) {
+      return MSG.attributesNeedTable;
+    }
   }
   return null;
 }

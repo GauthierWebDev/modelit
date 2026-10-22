@@ -2,13 +2,7 @@
  * Transformation des noms conceptuels en identifiants logiques.
  */
 
-export type Typology =
-  | "standard"
-  | "snake"
-  | "screamingSnake"
-  | "camel"
-  | "pascal"
-  | "conceptual";
+export type Typology = "standard" | "snake" | "screamingSnake" | "camel" | "pascal" | "conceptual";
 
 /** Typologies proposées (libellés : traduits par l'interface). */
 export const TYPOLOGIES: Typology[] = ["standard", "snake", "screamingSnake", "camel", "pascal", "conceptual"];
@@ -45,12 +39,11 @@ export function applyTypology(name: string, typology: Typology): string {
 }
 
 /** Nom logique : le nom logique saisi prime ; sinon le nom conceptuel transformé. */
-export function logicalName(
-  item: { name: string; logicalName?: string },
-  options: NamingOptions,
-): string {
+export function logicalName(item: { name: string; logicalName?: string }, options: NamingOptions): string {
   const explicit = item.logicalName?.trim();
-  if (explicit) return explicit;
+  if (explicit) {
+    return explicit;
+  }
   // Ordre accents → typologie : non documenté, choix provisoire.
   const base = options.stripAccents ? stripAccents(item.name) : item.name;
   return applyTypology(base, options.typology);

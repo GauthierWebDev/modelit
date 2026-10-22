@@ -17,6 +17,11 @@ fn updater_configured(app: tauri::AppHandle) -> bool {
         .is_some_and(|endpoints| !endpoints.is_empty())
 }
 
+/// Lance l'application.
+///
+/// # Panics
+///
+/// Si Tauri ne peut pas démarrer (configuration invalide, fenêtre impossible à créer).
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -35,6 +40,12 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .manage(mcp::McpState::default())
         .manage(collab::CollabState::default())
+        // Micro : demandé par le vocal d'une session (O-48, D18), seulement après « Rejoindre
+        // l'audio ». Le système garde sa propre autorisation (macOS : Info.plist, invite TCC).
+        .on_permission_request(|_, kind| match kind {
+            tauri::webview::PermissionKind::Microphone => tauri::webview::PermissionResponse::Allow,
+            _ => tauri::webview::PermissionResponse::Default,
+        })
         .invoke_handler(tauri::generate_handler![
             mcp::mcp_start,
             mcp::mcp_stop,
@@ -42,10 +53,12 @@ pub fn run() {
             mcp::mcp_release_others,
             collab::collab_host_start,
             collab::collab_host_send,
+            collab::collab_host_datagram,
             collab::collab_host_close,
             collab::collab_host_stop,
             collab::collab_guest_connect,
             collab::collab_guest_send,
+            collab::collab_guest_datagram,
             collab::collab_guest_close,
             updater_configured
         ])
@@ -56,9 +69,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init());
     #[cfg(target_os = "macos")]
     let builder = builder.menu(macos::menu).on_menu_event(macos::on_menu_event);
-    builder
-        .run(tauri::generate_context!())
-        .expect("erreur au lancement de l'application");
+    builder.run(tauri::generate_context!()).expect("erreur au lancement de l'application");
 }
 
 /// Menu de l'application sous macOS : celui de Tauri par défaut, à trois éléments près.
@@ -107,7 +118,8 @@ mod macos {
                 if predefined.text()?.starts_with("Close Window") {
                     submenu.remove(predefined)?;
                     let tab = MenuItem::with_id(app, CLOSE_TAB_ID, "Close Tab", true, Some("CmdOrCtrl+W"))?;
-                    let window = MenuItem::with_id(app, CLOSE_WINDOW_ID, "Close Window", true, Some("CmdOrCtrl+Shift+W"))?;
+                    let window =
+                        MenuItem::with_id(app, CLOSE_WINDOW_ID, "Close Window", true, Some("CmdOrCtrl+Shift+W"))?;
                     submenu.insert(&tab, position)?;
                     submenu.insert(&window, position + 1)?;
                     return Ok(());

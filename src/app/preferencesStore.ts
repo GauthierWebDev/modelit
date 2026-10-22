@@ -1,9 +1,11 @@
-import { latestVersion, migrateLegacyPattern, type CustomDbms, type Dbms, type KeyPattern } from "@core/index";
+import { type CustomDbms, type Dbms, type KeyPattern, latestVersion, migrateLegacyPattern } from "@core/index";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { systemLocale, type Locale } from "@/i18n";
-import { defaultLayout, sanitizeLayout, type DockLayout } from "./dock/layout";
-import { IDENTITY_COLORS, newIdentity, type IdentityPreferences } from "./collab/identity";
+import { type Locale, systemLocale } from "@/i18n";
+import { IDENTITY_COLORS, type IdentityPreferences, newIdentity } from "./collab/identity";
+import { defaultLayout } from "./dock/layout";
+import type { DockLayout } from "./dock/model";
+import { sanitizeLayout } from "./dock/sanitize";
 
 /**
  * Options générales (override O-21) : propres au poste, conservées dans le localStorage,
@@ -118,7 +120,7 @@ const initial: Preferences = {
   disclosures: {},
   modelSettingsTab: "naming",
   customDbms: [],
-  mcp: { enabled: false, port: 47321, token: "" },
+  mcp: { enabled: false, port: 47_321, token: "" },
   identity: newIdentity(),
 };
 
@@ -138,17 +140,27 @@ export const usePreferencesStore = create<PreferencesState>()(
       setDisclosure: (id, open) => set((s) => ({ disclosures: { ...s.disclosures, [id]: open } })),
       setModelSettingsTab: (modelSettingsTab) => set({ modelSettingsTab }),
       saveCustomDbms: (dbms) =>
-        set((s) => ({ customDbms: s.customDbms.some((d) => d.id === dbms.id) ? s.customDbms.map((d) => (d.id === dbms.id ? dbms : d)) : [...s.customDbms, dbms] })),
-      renameCustomDbms: (id, name) => set((s) => ({ customDbms: s.customDbms.map((d) => (d.id === id ? { ...d, name } : d)) })),
+        set((s) => ({
+          customDbms: s.customDbms.some((d) => d.id === dbms.id)
+            ? s.customDbms.map((d) => (d.id === dbms.id ? dbms : d))
+            : [...s.customDbms, dbms],
+        })),
+      renameCustomDbms: (id, name) =>
+        set((s) => ({ customDbms: s.customDbms.map((d) => (d.id === id ? { ...d, name } : d)) })),
       duplicateCustomDbms: (id, name) =>
         set((s) => {
           const source = s.customDbms.find((d) => d.id === id);
-          return source ? { customDbms: [...s.customDbms, { ...source, types: { ...source.types }, id: crypto.randomUUID(), name }] } : {};
+          return source
+            ? {
+                customDbms: [...s.customDbms, { ...source, types: { ...source.types }, id: crypto.randomUUID(), name }],
+              }
+            : {};
         }),
       deleteCustomDbms: (id) => set((s) => ({ customDbms: s.customDbms.filter((d) => d.id !== id) })),
       updateDock: (change) => set((s) => ({ dock: change(s.dock) })),
       setMcp: (patch) => set((s) => ({ mcp: { ...s.mcp, ...patch } })),
-      setIdentity: (patch) => set((s) => ({ identity: { ...s.identity, ...patch, name: (patch.name ?? s.identity.name).slice(0, 40) } })),
+      setIdentity: (patch) =>
+        set((s) => ({ identity: { ...s.identity, ...patch, name: (patch.name ?? s.identity.name).slice(0, 40) } })),
     }),
     {
       name: "modelit/preferences",
@@ -171,11 +183,17 @@ export const usePreferencesStore = create<PreferencesState>()(
           export: { ...current.export, ...saved.export },
           dock: saved.dock ? sanitizeLayout(saved.dock) : current.dock,
           mcp: { ...current.mcp, ...saved.mcp },
-          customDbms: Array.isArray(saved.customDbms) ? saved.customDbms.filter((d) => d && typeof d.id === "string" && typeof d.name === "string" && d.types) : [],
+          customDbms: Array.isArray(saved.customDbms)
+            ? saved.customDbms.filter((d) => d && typeof d.id === "string" && typeof d.name === "string" && d.types)
+            : [],
           identity: {
             ...current.identity,
             ...saved.identity,
-            color: IDENTITY_COLORS.includes(saved.identity?.color ?? "") || /^#[0-9a-f]{6}$/i.test(saved.identity?.color ?? "") ? saved.identity!.color : current.identity.color,
+            color:
+              IDENTITY_COLORS.includes(saved.identity?.color ?? "") ||
+              /^#[0-9a-f]{6}$/i.test(saved.identity?.color ?? "")
+                ? saved.identity!.color
+                : current.identity.color,
           },
         };
       },
@@ -186,8 +204,11 @@ export const usePreferencesStore = create<PreferencesState>()(
 
 // Fenêtres flottantes (J-01, phase 4) : les options écrites par une autre fenêtre de l'application
 // (thème, langue, disposition) sont relues dès qu'elles changent.
+// biome-ignore lint/style/useGlobalThis: présence d'une fenêtre (absente sous Node, dans les tests)
 if (typeof window !== "undefined") {
-  window.addEventListener("storage", (e) => {
-    if (e.key === "modelit/preferences") void usePreferencesStore.persist.rehydrate();
+  globalThis.addEventListener("storage", (e) => {
+    if (e.key === "modelit/preferences") {
+      void usePreferencesStore.persist.rehydrate();
+    }
   });
 }

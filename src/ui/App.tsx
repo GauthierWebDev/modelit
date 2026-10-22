@@ -11,31 +11,31 @@ import { activeDocument, useActiveDocument, useWorkspaceStore } from "@/app/work
 import { t } from "@/i18n";
 import { closeAllFloats, nativeWindows } from "@/platform/floatWindows";
 import { onCloseRequested, onMenuAbout, onMenuCloseTab, onMenuModelSettings, setWindowTitle } from "@/platform/window";
-import { FloatManager } from "./windows/FloatManager";
-import { McpBridge } from "./mcp/McpBridge";
-import { CollabBridge } from "./collab/CollabBridge";
-import { CollabIndicator } from "./collab/CollabIndicator";
-import { DbmsTarget } from "./status/DbmsTarget";
-import { IssuesStatus, SelectionStatus, ZoomStatus } from "./status/StatusItems";
-import { ShareDialog } from "./collab/ShareDialog";
-import { McpIndicator } from "./mcp/McpIndicator";
 import { AboutDialog } from "./about/AboutDialog";
+import { blockNativeContextMenu, ContextMenuLayer } from "./canvas/ContextMenu";
 import { LogicalCanvas } from "./canvas/LogicalCanvas";
 import { McdCanvas } from "./canvas/McdCanvas";
+import { QuickActions } from "./canvas/QuickActions";
+import { useClipboard } from "./clipboard";
+import { CollabBridge } from "./collab/CollabBridge";
+import { CollabIndicator } from "./collab/CollabIndicator";
+import { ShareDialog } from "./collab/ShareDialog";
 import { DialogHost } from "./common/DialogHost";
 import { TooltipLayer } from "./common/Tooltip";
-import { ExportDialog } from "./export/ExportDialog";
-import { OptionsDialog } from "./options/OptionsDialog";
-import { ModelSettingsDialog } from "./settings/ModelSettingsDialog";
-import { ReverseDialog } from "./reverse/ReverseDialog";
-import { TabBar } from "./tabs/TabBar";
 import { DockZone, DragGhost, FloatingGroups } from "./dock/Dock";
+import { ExportDialog } from "./export/ExportDialog";
+import { McpBridge } from "./mcp/McpBridge";
+import { McpIndicator } from "./mcp/McpIndicator";
+import { OptionsDialog } from "./options/OptionsDialog";
+import { ReverseDialog } from "./reverse/ReverseDialog";
+import { ModelSettingsDialog } from "./settings/ModelSettingsDialog";
 import { useShortcuts } from "./shortcuts";
-import { useClipboard } from "./clipboard";
-import { blockNativeContextMenu, ContextMenuLayer } from "./canvas/ContextMenu";
-import { QuickActions } from "./canvas/QuickActions";
+import { DbmsTarget } from "./status/DbmsTarget";
+import { IssuesStatus, SelectionStatus, ZoomStatus } from "./status/StatusItems";
+import { TabBar } from "./tabs/TabBar";
 import { useApplyTheme } from "./theme";
 import { ToolbarHost } from "./toolbar/ToolbarHost";
+import { FloatManager } from "./windows/FloatManager";
 
 const anyDocumentDirty = () => useWorkspaceStore.getState().documents.some((d) => selectIsDirty(d.store.getState()));
 
@@ -81,16 +81,22 @@ function Workbench() {
     () =>
       onCloseRequested(async () => {
         const ok = await confirmLoseAllChanges();
-        if (ok) await endSessionOnExit();
+        if (ok) {
+          await endSessionOnExit();
+        }
         // Les fenêtres flottantes se ferment avec la principale (O-45, O-46).
-        if (ok && nativeWindows()) await closeAllFloats();
+        if (ok && nativeWindows()) {
+          await closeAllFloats();
+        }
         return ok;
       }, anyDocumentDirty),
     [],
   );
 
   useEffect(() => {
-    if (!status) return;
+    if (!status) {
+      return;
+    }
     const timer = setTimeout(() => notify(null), 3000);
     return () => clearTimeout(timer);
   }, [status, notify]);

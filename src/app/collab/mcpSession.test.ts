@@ -3,48 +3,65 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { selectUndoLabel } from "../document/documentStore";
 import { handleMcpMessage } from "../mcp/server";
 import { activeDocument, resetWorkspace } from "../workspace";
-import { startHost, type HostSession } from "./host";
+import { type HostSession, startHost } from "./host";
 import { buildLink } from "./link";
 import { memoryNetwork } from "./memoryNetwork";
 import { joinFromLink, leaveSession, setCollabTransport, shareActiveTab, stopSharing, useCollabStore } from "./session";
 
 let nextId = 1;
 const tool = async (name: string, args: Record<string, unknown> = {}) => {
-  const response = await handleMcpMessage({ jsonrpc: "2.0", id: nextId++, method: "tools/call", params: { name, arguments: args } });
+  const id = nextId;
+  nextId += 1;
+  const response = await handleMcpMessage({
+    jsonrpc: "2.0",
+    id,
+    method: "tools/call",
+    params: { name, arguments: args },
+  });
   return response!.result as { content: { text: string }[]; isError?: boolean };
 };
-const CREATE = { operations: [{ op: "create_entity", name: "CLIENT", attributes: [{ name: "id_client", type: "INT", identifier: true }] }] };
+const CREATE = {
+  operations: [
+    { op: "create_entity", name: "CLIENT", attributes: [{ name: "id_client", type: "INT", identifier: true }] },
+  ],
+};
 const EDIT = "e".repeat(32);
 const READ = "f".repeat(32);
 
+let net: ReturnType<typeof memoryNetwork>;
+let host: HostSession | null;
+
+beforeEach(() => {
+  resetWorkspace();
+  useCollabStore.setState({ mode: "idle", tabId: null, guest: null, error: null });
+  net = memoryNetwork();
+  host = null;
+  setCollabTransport({
+    startHost: async () => ({ addr: "{}", link: net.hostLink, stop: async () => undefined }),
+    connect: async () => net.connect("moi"),
+  });
+});
+afterEach(async () => {
+  await leaveSession();
+  await stopSharing();
+  host?.stop();
+});
+
+async function join(secret: string, aiAllowed: boolean) {
+  host = startHost({
+    link: net.hostLink,
+    doc: emptyDocument(),
+    secrets: { editor: EDIT, reader: READ },
+    me: { id: "alice", name: "Alice", color: "#000" },
+    aiAllowed,
+  });
+  await joinFromLink(buildLink("{}", secret));
+  await net.settle();
+  expect(useCollabStore.getState().mode).toBe("guest");
+}
+
 /** Assistants IA en session (O-05 §8) : MCP local à chaque participant, réglé par l'hôte. */
 describe("MCP en session", () => {
-  let net: ReturnType<typeof memoryNetwork>;
-  let host: HostSession | null;
-
-  beforeEach(() => {
-    resetWorkspace();
-    useCollabStore.setState({ mode: "idle", tabId: null, guest: null, error: null });
-    net = memoryNetwork();
-    host = null;
-    setCollabTransport({
-      startHost: async () => ({ addr: "{}", link: net.hostLink, stop: async () => undefined }),
-      connect: async () => net.connect("moi"),
-    });
-  });
-  afterEach(async () => {
-    await leaveSession();
-    await stopSharing();
-    host?.stop();
-  });
-
-  async function join(secret: string, aiAllowed: boolean) {
-    host = startHost({ link: net.hostLink, doc: emptyDocument(), secrets: { editor: EDIT, reader: READ }, me: { id: "alice", name: "Alice", color: "#000" }, aiAllowed });
-    await joinFromLink(buildLink("{}", secret));
-    await net.settle();
-    expect(useCollabStore.getState().mode).toBe("guest");
-  }
-
   it("IA interdite par l'hôte : modification refusée, lecture permise", async () => {
     await join(EDIT, false);
     const refused = await tool("apply_changes", CREATE);

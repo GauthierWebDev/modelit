@@ -1,10 +1,10 @@
 import type { ComponentType } from "react";
-import type { SectionId } from "@/app/dock/layout";
+import type { SectionId } from "@/app/dock/model";
 import { t } from "@/i18n";
+import { SessionSection, SessionTitle } from "@/ui/collab/SessionSection";
 import { AttributesSection } from "@/ui/panels/AttributesSection";
 import { PropertiesSection } from "@/ui/panels/Inspector";
 import { IssuesSection, IssuesTitle, MldSection, MldTitle, SqlSection, SqlTitle } from "@/ui/panels/OutputPanel";
-import { SessionSection, SessionTitle } from "@/ui/collab/SessionSection";
 
 /** Contenu et libellé d'onglet de chaque section (override O-46). */
 export const SECTION_VIEWS: Record<SectionId, { Title: ComponentType; Body: ComponentType }> = {

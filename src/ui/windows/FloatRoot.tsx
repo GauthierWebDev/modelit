@@ -1,22 +1,22 @@
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { blockNativeContextMenu } from "@/ui/canvas/ContextMenu";
+import { type PointerEvent as ReactPointerEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { updateDock } from "@/app/dock/actions";
 import { closeGroup, findGroup, setToolbar } from "@/app/dock/layout";
 import { DocumentProvider } from "@/app/document/DocumentContext";
 import { usePreferencesStore } from "@/app/preferencesStore";
 import type { ToMain, ToReplica } from "@/app/windows/protocol";
-import { startReplica, useMirrorStore, type Replica } from "@/app/windows/replica";
+import { type Replica, startReplica, useMirrorStore } from "@/app/windows/replica";
 import {
   currentInnerRect,
-  floatKind,
+  type floatKind,
   focusMain,
-  onGeometryChange,
-  replicaChannel,
   moveOwnWindow,
+  onGeometryChange,
+  type ResizeEdge,
+  replicaChannel,
   setOwnSize,
   startWindowResize,
-  type ResizeEdge,
 } from "@/platform/floatWindows";
+import { blockNativeContextMenu } from "@/ui/canvas/ContextMenu";
 import { TooltipLayer } from "@/ui/common/Tooltip";
 import { GroupView } from "@/ui/dock/Dock";
 import { setDropDelegate, setScreenOrigin } from "@/ui/dock/drag";
@@ -63,7 +63,9 @@ export function FloatRoot({ kind }: { kind: Kind }) {
     let disposed = false;
     void (async () => {
       const channel = await replicaChannel<ToMain, ToReplica>();
-      if (disposed) return;
+      if (disposed) {
+        return;
+      }
       const r = startReplica(channel);
       offs.push(r.stop);
       setMainCommandRelay(r.command);
@@ -75,9 +77,14 @@ export function FloatRoot({ kind }: { kind: Kind }) {
       const report = async () => {
         self.rect = await currentInnerRect();
         setScreenOrigin(self.rect);
-        if (self.dragging) return;
+        if (self.dragging) {
+          return;
+        }
         clearTimeout(settle);
-        settle = setTimeout(() => channel.send({ type: "moved", float: self.float!, rect: self.rect, pointer: null, final: true }), SETTLE);
+        settle = setTimeout(
+          () => channel.send({ type: "moved", float: self.float!, rect: self.rect, pointer: null, final: true }),
+          SETTLE,
+        );
       };
       self.rect = await currentInnerRect();
       setScreenOrigin(self.rect);
@@ -86,11 +93,15 @@ export function FloatRoot({ kind }: { kind: Kind }) {
     })();
     return () => {
       disposed = true;
-      offs.forEach((off) => off());
+      for (const off of offs) {
+        off();
+      }
     };
   }, [kind]);
 
-  if (!replica) return null;
+  if (!replica) {
+    return null;
+  }
   return (
     <DocumentProvider handle={replica.handle}>
       {kind.kind === "toolbar" ? <FloatToolbar /> : <FloatGroup id={kind.id} />}
@@ -103,7 +114,9 @@ export function FloatRoot({ kind }: { kind: Kind }) {
 /** Boîte modale ouverte dans la fenêtre principale : la flottante est désactivée (O-45). */
 function ModalShield() {
   const modal = useMirrorStore((s) => s.state?.modal ?? false);
-  if (!modal) return null;
+  if (!modal) {
+    return null;
+  }
   return <div className="fixed inset-0 z-50 cursor-not-allowed rounded-lg bg-white/50 dark:bg-neutral-900/50" />;
 }
 
@@ -115,7 +128,9 @@ function ModalShield() {
 function useGrip(onDoubleClick: () => void) {
   const last = useRef(0);
   return (e: ReactPointerEvent<HTMLElement>) => {
-    if (e.button !== 0) return;
+    if (e.button !== 0) {
+      return;
+    }
     e.preventDefault();
     const now = Date.now();
     if (now - last.current < 350) {
@@ -129,9 +144,15 @@ function useGrip(onDoubleClick: () => void) {
     const origin = { ...self.rect };
     let moved = false;
     let frame = 0;
-    const at = (ev: PointerEvent) => ({ ...origin, x: origin.x + ev.screenX - start.x, y: origin.y + ev.screenY - start.y });
+    const at = (ev: PointerEvent) => ({
+      ...origin,
+      x: origin.x + ev.screenX - start.x,
+      y: origin.y + ev.screenY - start.y,
+    });
     const move = (ev: PointerEvent) => {
-      if (!moved && Math.hypot(ev.screenX - start.x, ev.screenY - start.y) < DRAG_THRESHOLD) return;
+      if (!moved && Math.hypot(ev.screenX - start.x, ev.screenY - start.y) < DRAG_THRESHOLD) {
+        return;
+      }
       moved = true;
       self.dragging = true;
       const rect = at(ev);
@@ -147,7 +168,9 @@ function useGrip(onDoubleClick: () => void) {
       grip.removeEventListener("pointerup", up);
       grip.removeEventListener("pointercancel", up);
       cancelAnimationFrame(frame);
-      if (!moved) return;
+      if (!moved) {
+        return;
+      }
       const rect = at(ev);
       void moveOwnWindow(rect.x, rect.y);
       self.rect = rect;
@@ -168,22 +191,30 @@ function FloatToolbar() {
   // temps qu'un menu déroulant est ouvert. Redimensionnée seulement si la taille change.
   useEffect(() => {
     let last = "";
-    const fit = () => {
+    const fitWindow = () => {
       const bar = ref.current?.getBoundingClientRect();
-      if (!bar) return;
+      if (!bar) {
+        return;
+      }
       // Menus déroulants et infobulles débordent de la barre : la fenêtre les englobe.
-      const menus = [...document.querySelectorAll('[role="menu"], [role="tooltip"]')].map((m) => m.getBoundingClientRect());
+      const menus = [...document.querySelectorAll('[role="menu"], [role="tooltip"]')].map((m) =>
+        m.getBoundingClientRect(),
+      );
       const width = Math.ceil(Math.max(bar.right, ...menus.map((m) => m.right)) + 8);
       const height = Math.ceil(Math.max(bar.bottom, ...menus.map((m) => m.bottom)) + 8);
       const size = `${width}x${height}`;
-      if (size === last) return;
+      if (size === last) {
+        return;
+      }
       last = size;
       void setOwnSize(width, height);
     };
-    fit();
-    const resize = new ResizeObserver(fit);
-    if (ref.current) resize.observe(ref.current);
-    const mutations = new MutationObserver(fit);
+    fitWindow();
+    const resize = new ResizeObserver(fitWindow);
+    if (ref.current) {
+      resize.observe(ref.current);
+    }
+    const mutations = new MutationObserver(fitWindow);
     // Ajout d'un menu ou d'une infobulle, et leur placement (style) une fois mesurés.
     mutations.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
     return () => {
@@ -196,16 +227,18 @@ function FloatToolbar() {
   // le temps de choisir.
   useEffect(() => {
     const giveBack = (e: PointerEvent) => {
-      if ((e.target as Element).closest("select")) return;
+      if ((e.target as Element).closest("select")) {
+        return;
+      }
       setTimeout(() => void focusMain(), 0);
     };
-    window.addEventListener("pointerup", giveBack);
-    return () => window.removeEventListener("pointerup", giveBack);
+    globalThis.addEventListener("pointerup", giveBack);
+    return () => globalThis.removeEventListener("pointerup", giveBack);
   }, []);
 
   return (
     <div ref={ref} className="w-max p-1">
-      <Toolbar floating onGripDown={onGripDown} />
+      <Toolbar floating={true} onGripDown={onGripDown} />
     </div>
   );
 }
@@ -218,10 +251,17 @@ function FloatGroup({ id }: { id: string }) {
     void startWindowResize(edge);
   };
   // Groupe disparu de la disposition (ancré, fermé) : la principale va fermer la fenêtre.
-  if (!group) return null;
+  if (!group) {
+    return null;
+  }
   return (
     <div className="fixed inset-0 overflow-hidden rounded-lg border border-neutral-300 dark:border-neutral-600">
-      <GroupView group={group} zone={null} onClose={() => updateDock((l) => closeGroup(l, id))} onGripDown={onGripDown} />
+      <GroupView
+        group={group}
+        zone={null}
+        onClose={() => updateDock((l) => closeGroup(l, id))}
+        onGripDown={onGripDown}
+      />
       <div className="absolute top-0 right-0 h-full w-1.5 cursor-col-resize" onPointerDown={resize("East")} />
       <div className="absolute bottom-0 left-0 h-1.5 w-full cursor-row-resize" onPointerDown={resize("South")} />
       <div className="absolute right-0 bottom-0 size-3 cursor-nwse-resize" onPointerDown={resize("SouthEast")} />

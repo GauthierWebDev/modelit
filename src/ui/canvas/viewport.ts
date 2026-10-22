@@ -1,8 +1,8 @@
-import { diagramNodes, positionOf, type ModelDocument, type Point } from "@core/index";
+import { diagramNodes, type ModelDocument, type Point, positionOf } from "@core/index";
 import { logicalModelOf } from "@/app/derived";
 import type { ViewMode } from "@/app/document/documentView";
 import type { DocumentHandle } from "@/app/document/handle";
-import { associationNamesByLink, nodeLayout, type NodeLayout, type Rect } from "./geometry";
+import { associationNamesByLink, type NodeLayout, nodeLayout, type Rect } from "./geometry";
 import { tableLayouts } from "./logicalGeometry";
 
 /**
@@ -12,9 +12,13 @@ import { tableLayouts } from "./logicalGeometry";
 
 let observedSize = { width: 800, height: 600 };
 let canvasElement: Element | null = null;
-export const setCanvasSize = (size: { width: number; height: number }) => (observedSize = size);
+export const setCanvasSize = (size: { width: number; height: number }) => {
+  observedSize = size;
+};
 /** Élément du canevas affiché, mesuré directement au moment de zoomer ou de cadrer. */
-export const setCanvasElement = (element: Element | null) => (canvasElement = element);
+export const setCanvasElement = (element: Element | null) => {
+  canvasElement = element;
+};
 
 /**
  * Taille réelle du canevas. La valeur relevée par ResizeObserver peut manquer (moteur qui ne la
@@ -26,7 +30,7 @@ function canvasSizeNow() {
 }
 
 export function layoutsOf(doc: ModelDocument): Map<string, NodeLayout> {
-  const display = doc.settings.display;
+  const { display } = doc.settings;
   const linkNames = associationNamesByLink(doc);
   return new Map(diagramNodes(doc).map((n) => [n.id, nodeLayout(n, positionOf(doc.layout, n.id), display, linkNames)]));
 }
@@ -43,7 +47,9 @@ export function zoomTo(
   setViewport({ zoom, x: anchor.x - modelX * zoom, y: anchor.y - modelY * zoom });
   // Le zoom peut avoir été borné : recaler sur la valeur effective.
   const effective = doc.view.getState().viewport.zoom;
-  if (effective !== zoom) setViewport({ zoom: effective, x: anchor.x - modelX * effective, y: anchor.y - modelY * effective });
+  if (effective !== zoom) {
+    setViewport({ zoom: effective, x: anchor.x - modelX * effective, y: anchor.y - modelY * effective });
+  }
 }
 
 export const zoomBy = (doc: DocumentHandle, factor: number, anchor?: Point) =>
@@ -51,8 +57,12 @@ export const zoomBy = (doc: DocumentHandle, factor: number, anchor?: Point) =>
 
 /** Emprise de la vue : objets, et en MCD les cassures des liens (boucles des réflexives, qui débordent). */
 function rectsOf(doc: ModelDocument, view: ViewMode): Rect[] {
-  if (view !== "mcd") return tableLayouts(logicalModelOf(doc), doc, view);
-  const bends = Object.values(doc.layout.bends).flatMap((points) => points.map((b) => ({ x: b.x, y: b.y, width: 0, height: 0 })));
+  if (view !== "mcd") {
+    return tableLayouts(logicalModelOf(doc), doc, view);
+  }
+  const bends = Object.values(doc.layout.bends).flatMap((points) =>
+    points.map((b) => ({ x: b.x, y: b.y, width: 0, height: 0 })),
+  );
   return [...layoutsOf(doc).values(), ...bends];
 }
 
@@ -64,7 +74,9 @@ export function fitToWindow(doc: DocumentHandle, maxZoom?: number) {
 /** Cadre les rectangles donnés, sans dépasser le zoom `maxZoom`. */
 export function fitToRects(doc: DocumentHandle, layouts: Rect[], maxZoom = 1.5) {
   const { setViewport } = doc.view.getState();
-  if (layouts.length === 0) return setViewport({ x: 40, y: 40, zoom: 1 });
+  if (layouts.length === 0) {
+    return setViewport({ x: 40, y: 40, zoom: 1 });
+  }
   const canvasSize = canvasSizeNow();
   const minX = Math.min(...layouts.map((l) => l.x));
   const minY = Math.min(...layouts.map((l) => l.y));
@@ -86,7 +98,7 @@ export function fitToRects(doc: DocumentHandle, layouts: Rect[], maxZoom = 1.5) 
 /** Rectangles (coordonnées du modèle) des objets `ids` dans la vue courante : objets du MCD ou tables. */
 export function objectRects(doc: DocumentHandle, ids: string[]): Rect[] {
   const model = doc.store.getState().doc;
-  const view = doc.view.getState().view;
+  const { view } = doc.view.getState();
   const wanted = new Set(ids);
   return view === "mcd"
     ? [...layoutsOf(model).entries()].filter(([id]) => wanted.has(id)).map(([, r]) => r)
@@ -97,7 +109,10 @@ export function objectRects(doc: DocumentHandle, ids: string[]): Rect[] {
 export function clientToModel(doc: DocumentHandle, client: Point): Point {
   const rect = canvasElement?.getBoundingClientRect() ?? { left: 0, top: 0 };
   const { viewport } = doc.view.getState();
-  return { x: (client.x - rect.left - viewport.x) / viewport.zoom, y: (client.y - rect.top - viewport.y) / viewport.zoom };
+  return {
+    x: (client.x - rect.left - viewport.x) / viewport.zoom,
+    y: (client.y - rect.top - viewport.y) / viewport.zoom,
+  };
 }
 
 /**
@@ -107,14 +122,22 @@ export function clientToModel(doc: DocumentHandle, client: Point): Point {
 export function revealObjects(doc: DocumentHandle, ids: string[]) {
   const { viewport, setViewport } = doc.view.getState();
   const rects = objectRects(doc, ids);
-  if (!rects.length) return;
+  if (rects.length === 0) {
+    return;
+  }
   const size = canvasSizeNow();
   const minX = Math.min(...rects.map((r) => r.x));
   const minY = Math.min(...rects.map((r) => r.y));
   const maxX = Math.max(...rects.map((r) => r.x + r.width));
   const maxY = Math.max(...rects.map((r) => r.y + r.height));
   const z = viewport.zoom;
-  const visible = minX * z + viewport.x >= 0 && minY * z + viewport.y >= 0 && maxX * z + viewport.x <= size.width && maxY * z + viewport.y <= size.height;
-  if (visible) return;
+  const visible =
+    minX * z + viewport.x >= 0 &&
+    minY * z + viewport.y >= 0 &&
+    maxX * z + viewport.x <= size.width &&
+    maxY * z + viewport.y <= size.height;
+  if (visible) {
+    return;
+  }
   setViewport({ zoom: z, x: size.width / 2 - ((minX + maxX) / 2) * z, y: size.height / 2 - ((minY + maxY) / 2) * z });
 }

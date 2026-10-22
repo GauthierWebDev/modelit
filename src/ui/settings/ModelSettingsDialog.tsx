@@ -1,11 +1,11 @@
-import { sourceDialects, TYPOLOGIES, type DdlOptions, type SqlDialect } from "@core/index";
+import { type DdlOptions, type SqlDialect, sourceDialects, TYPOLOGIES } from "@core/index";
 import { ChevronRight } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import * as cmd from "@/app/commands";
 import { useDocument, useDocumentHandle } from "@/app/document/DocumentContext";
-import { usePreferencesStore, type ModelSettingsTab } from "@/app/preferencesStore";
+import { type ModelSettingsTab, usePreferencesStore } from "@/app/preferencesStore";
 import { useUiStore } from "@/app/uiStore";
-import { t, type MessageKey } from "@/i18n";
+import { type MessageKey, t } from "@/i18n";
 import { Checkbox, Select } from "@/ui/common/controls";
 import { Modal } from "@/ui/common/Modal";
 import { ReadOnly } from "@/ui/panels/Inspector";
@@ -24,7 +24,9 @@ export function ModelSettingsDialog() {
   const setOpen = useUiStore((s) => s.setModelSettingsOpen);
   const stored = usePreferencesStore((s) => s.modelSettingsTab);
   const setTab = usePreferencesStore((s) => s.setModelSettingsTab);
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
   const tab = TABS.includes(stored) ? stored : "naming";
 
   return (
@@ -33,7 +35,11 @@ export function ModelSettingsDialog() {
       width="w-[44rem]"
       onClose={() => setOpen(false)}
       footer={
-        <button type="button" className="ml-auto rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700" onClick={() => setOpen(false)}>
+        <button
+          type="button"
+          className="ml-auto rounded bg-blue-600 px-3 py-1 text-sm font-medium text-white hover:bg-blue-700"
+          onClick={() => setOpen(false)}
+        >
           {t("common.close")}
         </button>
       }
@@ -71,12 +77,12 @@ export function ModelSettingsDialog() {
 function Group({ title, children, aside }: { title?: string; children: ReactNode; aside?: ReactNode }) {
   return (
     <section className="border-b border-neutral-200 py-3 first:pt-0 last:border-b-0 dark:border-neutral-700">
-      {title && (
+      {title ? (
         <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:text-neutral-400">
           {title}
           {aside}
         </h3>
-      )}
+      ) : null}
       <div className="flex flex-col gap-2">{children}</div>
     </section>
   );
@@ -85,6 +91,7 @@ function Group({ title, children, aside }: { title?: string; children: ReactNode
 /** Ligne libellé / valeur, plus large que dans une section : les listes ne sont pas tronquées. */
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: le champ est passé en children
     <label className="grid grid-cols-[14rem_1fr] items-start gap-3 text-sm">
       <span className="pt-0.5 text-neutral-500 dark:text-neutral-400">{label}</span>
       {children}
@@ -92,7 +99,9 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const Help = ({ children }: { children: ReactNode }) => <p className="text-xs text-neutral-500 dark:text-neutral-400">{children}</p>;
+const Help = ({ children }: { children: ReactNode }) => (
+  <p className="text-xs text-neutral-500 dark:text-neutral-400">{children}</p>
+);
 
 function NamingTab() {
   const handle = useDocumentHandle();
@@ -104,13 +113,21 @@ function NamingTab() {
           <Select
             value={s.naming.typology}
             options={TYPOLOGIES.map((id) => ({ id, label: t(`typology.${id}`) }))}
-            onChange={(typology) => cmd.updateSettings(handle, "history.typology", (d) => void (d.naming.typology = typology))}
+            onChange={(typology) =>
+              cmd.updateSettings(handle, "history.typology", (d) => {
+                d.naming.typology = typology;
+              })
+            }
           />
         </Row>
         <Checkbox
           label={t("inspector.stripAccents")}
           checked={s.naming.stripAccents}
-          onChange={(v) => cmd.updateSettings(handle, "history.stripAccents", (d) => void (d.naming.stripAccents = v))}
+          onChange={(v) =>
+            cmd.updateSettings(handle, "history.stripAccents", (d) => {
+              d.naming.stripAccents = v;
+            })
+          }
         />
       </Group>
       <Group title={t("inspector.keys")}>
@@ -118,21 +135,33 @@ function NamingTab() {
           <KeyPatternField
             kind="discriminant"
             value={s.autoIdMask}
-            onChange={(pattern) => cmd.updateSettings(handle, "history.autoIdMask", (d) => void (d.autoIdMask = pattern))}
+            onChange={(pattern) =>
+              cmd.updateSettings(handle, "history.autoIdMask", (d) => {
+                d.autoIdMask = pattern;
+              })
+            }
           />
         </Row>
         <Row label={t("inspector.primaryKey")}>
           <KeyPatternField
             kind="primaryKey"
             value={s.keys.primary}
-            onChange={(pattern) => cmd.updateSettings(handle, "history.primaryKeyMask", (d) => void (d.keys.primary = pattern))}
+            onChange={(pattern) =>
+              cmd.updateSettings(handle, "history.primaryKeyMask", (d) => {
+                d.keys.primary = pattern;
+              })
+            }
           />
         </Row>
         <Row label={t("inspector.foreignKey")}>
           <KeyPatternField
             kind="foreignKey"
             value={s.keys.foreign}
-            onChange={(pattern) => cmd.updateSettings(handle, "history.foreignKeyMask", (d) => void (d.keys.foreign = pattern))}
+            onChange={(pattern) =>
+              cmd.updateSettings(handle, "history.foreignKeyMask", (d) => {
+                d.keys.foreign = pattern;
+              })
+            }
           />
         </Row>
         <Help>{t("inspector.keysHelp")}</Help>
@@ -146,12 +175,20 @@ function useDdlOption() {
   const handle = useDocumentHandle();
   const ddl = useDocument((d) => d.doc.settings.ddl);
   const set = <K extends keyof DdlOptions>(key: K, value: DdlOptions[K]) =>
-    cmd.updateSettings(handle, "history.ddlOptions", (d) => void (d.ddl[key] = value));
+    cmd.updateSettings(handle, "history.ddlOptions", (d) => {
+      d.ddl[key] = value;
+    });
   return { ddl, set };
 }
 
 /** Liste d'une option à valeurs énumérées : libellés `ddl.<option>.<valeur>`. */
-function OptionSelect<K extends keyof DdlOptions>({ option, values }: { option: K; values: readonly (DdlOptions[K] & string)[] }) {
+function OptionSelect<K extends keyof DdlOptions>({
+  option,
+  values,
+}: {
+  option: K;
+  values: readonly (DdlOptions[K] & string)[];
+}) {
   const { ddl, set } = useDdlOption();
   return (
     <Row label={t(`ddl.${option}` as MessageKey)}>
@@ -248,13 +285,16 @@ function SourceGroup({ id, present, children }: { id: "all" | SqlDialect; presen
   return (
     <section className="border-b border-neutral-200 py-2 last:border-b-0 dark:border-neutral-700">
       {/* Pas un <button> : il reste utilisable en lecture seule, où l'on consulte sans modifier. */}
+      {/* biome-ignore lint/a11y/useSemanticElements: voir ci-dessus, utilisable en lecture seule */}
       <span
         role="button"
         tabIndex={0}
         aria-expanded={open}
         onClick={() => setOpen(!open)}
         onKeyDown={(e) => {
-          if (e.key !== "Enter" && e.key !== " ") return;
+          if (e.key !== "Enter" && e.key !== " ") {
+            return;
+          }
           e.preventDefault();
           setOpen(!open);
         }}
@@ -268,7 +308,7 @@ function SourceGroup({ id, present, children }: { id: "all" | SqlDialect; presen
           </span>
         )}
       </span>
-      {open && <div className="mt-2 flex flex-col gap-2 pl-4">{children}</div>}
+      {open ? <div className="mt-2 flex flex-col gap-2 pl-4">{children}</div> : null}
     </section>
   );
 }

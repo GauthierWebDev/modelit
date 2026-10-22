@@ -13,7 +13,9 @@ const FORBIDDEN = /from\s+["'](react|react-dom|zustand|immer|@tauri-apps\/[^"']+
 function sources(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const path = join(dir, entry.name);
-    if (entry.isDirectory()) return sources(path);
+    if (entry.isDirectory()) {
+      return sources(path);
+    }
     return /\.tsx?$/.test(entry.name) && !entry.name.endsWith(".test.ts") ? [path] : [];
   });
 }
@@ -25,9 +27,13 @@ describe("architecture", () => {
       const text = readFileSync(file, "utf8");
       for (const match of text.matchAll(/from\s+["'](\.\.?\/[^"']+)["']/g)) {
         const resolved = relative(CORE, join(file, "..", match[1]!));
-        if (resolved.startsWith("..")) offenders.push(`${relative(CORE, file)} → ${match[1]}`);
+        if (resolved.startsWith("..")) {
+          offenders.push(`${relative(CORE, file)} → ${match[1]}`);
+        }
       }
-      if (FORBIDDEN.test(text)) offenders.push(`${relative(CORE, file)} → ${FORBIDDEN.exec(text)![1]}`);
+      if (FORBIDDEN.test(text)) {
+        offenders.push(`${relative(CORE, file)} → ${FORBIDDEN.exec(text)![1]}`);
+      }
     }
     expect(offenders).toEqual([]);
   });

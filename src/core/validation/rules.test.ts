@@ -38,11 +38,7 @@ describe("contrôles de saisie", () => {
   });
 
   it("1,1 interdite sur une association porteuse", () => {
-    const doc = model()
-      .entity("A", ["a*"])
-      .entity("B", ["b*"])
-      .association("R", ["A 0,n", "B 0,n"], ["qte"])
-      .build();
+    const doc = model().entity("A", ["a*"]).entity("B", ["b*"]).association("R", ["A 0,n", "B 0,n"], ["qte"]).build();
     expect(checkLinkCardinality(doc, doc.links[0]!.id, { min: 1, max: 1 })).toBe(MSG.oneOneForbiddenWithAttributes);
   });
 

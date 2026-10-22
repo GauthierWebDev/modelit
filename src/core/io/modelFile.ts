@@ -1,9 +1,9 @@
 import { TYPE_KEYS, type TypeTemplates } from "../dbms/typeMapping";
 import { resolveVersion } from "../dbms/versions";
+import type { ModelDocument } from "../model/document";
+import { type DocumentSettings, defaultSettings } from "../model/settings";
 import { migrateLegacyPattern } from "../naming/patterns";
 import { MSG } from "../validation/messages";
-import type { ModelDocument } from "../model/document";
-import { defaultSettings, type DocumentSettings } from "../model/settings";
 
 /**
  * Format de fichier natif : JSON textuel, versionné, lisible et compatible git (NF5).
@@ -23,7 +23,9 @@ const MIGRATIONS: Record<number, (model: RawModel) => RawModel> = {
   1: (model) => ({
     ...model,
     links: asArray(model.links).map((link) => {
-      if (!isRecord(link)) return link;
+      if (!isRecord(link)) {
+        return link;
+      }
       const { onDeleteCascade, onUpdateCascade, ...rest } = link;
       return {
         ...rest,
@@ -38,16 +40,24 @@ const MIGRATIONS: Record<number, (model: RawModel) => RawModel> = {
     const bends: RawModel = {};
     const withoutPosition = (list: unknown) =>
       asArray(list).map((node) => {
-        if (!isRecord(node)) return node;
+        if (!isRecord(node)) {
+          return node;
+        }
         const { position, ...rest } = node;
-        if (typeof rest.id === "string" && isRecord(position)) positions[rest.id] = position;
+        if (typeof rest.id === "string" && isRecord(position)) {
+          positions[rest.id] = position;
+        }
         return rest;
       });
     const withoutBends = (list: unknown) =>
       asArray(list).map((link) => {
-        if (!isRecord(link)) return link;
+        if (!isRecord(link)) {
+          return link;
+        }
         const { bends: points, ...rest } = link;
-        if (typeof rest.id === "string" && Array.isArray(points) && points.length) bends[rest.id] = points;
+        if (typeof rest.id === "string" && Array.isArray(points) && points.length > 0) {
+          bends[rest.id] = points;
+        }
         return rest;
       });
     return {
@@ -77,15 +87,15 @@ export function deserializeModel(text: string): LoadResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
-  } catch {
-    throw new ModelFileError(MSG.fileUnreadable);
+  } catch (e) {
+    throw new ModelFileError(MSG.fileUnreadable, { cause: e });
   }
   if (!isRecord(parsed) || parsed.format !== FILE_FORMAT || typeof parsed.version !== "number") {
     throw new ModelFileError(MSG.fileNotModel);
   }
 
   const warnings: string[] = [];
-  let version = parsed.version;
+  let { version } = parsed;
   let model = isRecord(parsed.model) ? parsed.model : {};
 
   if (version > CURRENT_VERSION) {
@@ -93,9 +103,11 @@ export function deserializeModel(text: string): LoadResult {
   }
   while (version < CURRENT_VERSION) {
     const migrate = MIGRATIONS[version];
-    if (!migrate) throw new ModelFileError(MSG.noMigration(version));
+    if (!migrate) {
+      throw new ModelFileError(MSG.noMigration(version));
+    }
     model = migrate(model);
-    version++;
+    version += 1;
   }
 
   return { doc: normalize(model), warnings };
@@ -111,16 +123,23 @@ function normalize(model: RawModel): ModelDocument {
   settings.autoIdMask = migrateLegacyPattern(settings.autoIdMask);
   settings.keys.primary = migrateLegacyPattern(settings.keys.primary);
   settings.keys.foreign = migrateLegacyPattern(settings.keys.foreign);
-  settings.dbmsVersion = resolveVersion(settings.dbms, typeof raw.dbmsVersion === "string" ? raw.dbmsVersion : undefined);
+  settings.dbmsVersion = resolveVersion(
+    settings.dbms,
+    typeof raw.dbmsVersion === "string" ? raw.dbmsVersion : undefined,
+  );
   settings.customDbms = readCustomDbms(raw.customDbms);
-  if (!settings.customDbms) delete settings.customDbms;
-  const layout = model.layout;
+  if (!settings.customDbms) {
+    delete settings.customDbms;
+  }
+  const { layout } = model;
   return {
     settings,
     entities: asArray(model.entities),
     // `forceTable` retiré (override O-19) : ignoré dans les anciens fichiers.
     associations: asArray(model.associations).map((a) => {
-      if (!isRecord(a)) return a;
+      if (!isRecord(a)) {
+        return a;
+      }
       const { forceTable: _ignored, ...rest } = a;
       return rest;
     }),
@@ -139,9 +158,17 @@ const asArray = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 
 /** SGBD personnalisé relu (O-59) : champ facultatif ; illisible, il est ignoré (cible standard). */
 function readCustomDbms(raw: unknown): DocumentSettings["customDbms"] {
-  if (!isRecord(raw) || typeof raw.id !== "string" || typeof raw.name !== "string") return undefined;
+  if (!isRecord(raw) || typeof raw.id !== "string" || typeof raw.name !== "string") {
+    return undefined;
+  }
   const types: TypeTemplates = {};
-  if (isRecord(raw.types)) for (const key of TYPE_KEYS) if (typeof raw.types[key] === "string" && raw.types[key].trim()) types[key] = raw.types[key];
+  if (isRecord(raw.types)) {
+    for (const key of TYPE_KEYS) {
+      if (typeof raw.types[key] === "string" && raw.types[key].trim()) {
+        types[key] = raw.types[key];
+      }
+    }
+  }
   return { id: raw.id, name: raw.name, types };
 }
 

@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 import { APP_INFO, APP_NAME, CHANGELOG, COPYRIGHT, LICENSE_URL } from "@/app/appInfo";
-import { useUiStore, type AboutTab } from "@/app/uiStore";
+import { type AboutTab, useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { openExternal } from "@/platform/links";
 import { Modal } from "@/ui/common/Modal";
@@ -13,7 +13,9 @@ import { Modal } from "@/ui/common/Modal";
 export function AboutDialog() {
   const tab = useUiStore((s) => s.about);
   const setAbout = useUiStore((s) => s.setAbout);
-  if (!tab) return null;
+  if (!tab) {
+    return null;
+  }
 
   const tabs: { id: AboutTab; label: string }[] = [
     { id: "about", label: t("about.tab.about") },
@@ -87,14 +89,16 @@ function About() {
 }
 
 function Changes() {
-  if (!CHANGELOG.length) return <p className="text-sm text-neutral-500">{t("about.noChanges")}</p>;
+  if (CHANGELOG.length === 0) {
+    return <p className="text-sm text-neutral-500">{t("about.noChanges")}</p>;
+  }
   return (
     <div className="flex max-h-[24rem] flex-col gap-4 overflow-auto pr-1 text-sm select-text">
       {CHANGELOG.map((entry) => (
         <section key={entry.version}>
           <h3 className="flex items-baseline gap-2">
             <span className="font-semibold">{entry.version}</span>
-            {entry.date && <span className="text-xs text-neutral-500 dark:text-neutral-400">{entry.date}</span>}
+            {entry.date ? <span className="text-xs text-neutral-500 dark:text-neutral-400">{entry.date}</span> : null}
             {entry.version === APP_INFO.version && (
               <span className="rounded bg-blue-100 px-1.5 text-xs text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                 {t("about.installed")}
@@ -102,10 +106,14 @@ function Changes() {
             )}
           </h3>
           {entry.sections.map((section, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, jamais réordonnée
             <div key={i} className="mt-1.5">
-              {section.title && <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">{section.title}</p>}
+              {section.title ? (
+                <p className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">{section.title}</p>
+              ) : null}
               <ul className="ml-4 list-disc">
                 {section.items.map((item, j) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, jamais réordonnée
                   <li key={j}>
                     <Inline text={item} />
                   </li>
@@ -125,10 +133,12 @@ function Inline({ text }: { text: string }) {
     <>
       {text.split(/(`[^`]+`|\*\*[^*]+\*\*)/).map((part, i) =>
         part.startsWith("`") && part.endsWith("`") && part.length > 1 ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, jamais réordonnée
           <code key={i} className="rounded bg-neutral-100 px-1 text-[0.85em] dark:bg-neutral-800">
             {part.slice(1, -1)}
           </code>
         ) : part.startsWith("**") && part.endsWith("**") && part.length > 3 ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, jamais réordonnée
           <strong key={i}>{part.slice(2, -2)}</strong>
         ) : (
           part
@@ -146,7 +156,7 @@ function Link({ url, children }: { url: string; children: ReactNode }) {
       onClick={() => void openExternal(url)}
     >
       {children}
-      <ExternalLink size={12} aria-hidden />
+      <ExternalLink size={12} aria-hidden={true} />
     </button>
   );
 }

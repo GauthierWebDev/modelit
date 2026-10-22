@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import { useStore } from "zustand";
 import type { DocumentState } from "./documentStore";
 import type { DocumentViewState } from "./documentView";
@@ -13,7 +13,9 @@ export function DocumentProvider({ handle, children }: { handle: DocumentHandle;
 
 export function useDocumentHandle(): DocumentHandle {
   const handle = useContext(DocumentContext);
-  if (!handle) throw new Error("useDocumentHandle() hors d'un <DocumentProvider>");
+  if (!handle) {
+    throw new Error("useDocumentHandle() hors d'un <DocumentProvider>");
+  }
   return handle;
 }
 

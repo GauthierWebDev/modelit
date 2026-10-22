@@ -1,10 +1,10 @@
-import { emptyDocument, resolveVersion, type DocumentSettings, type ModelDocument } from "@core/index";
+import { type DocumentSettings, emptyDocument, type ModelDocument, resolveVersion } from "@core/index";
 import type { Draft } from "immer";
 import { usePreferencesStore } from "./preferencesStore";
 
 /** Réglages des options générales (override O-21) appliqués aux paramètres d'un document. */
 export function applyModelDefaults(settings: Draft<DocumentSettings> | DocumentSettings) {
-  const defaults = usePreferencesStore.getState().defaults;
+  const { defaults } = usePreferencesStore.getState();
   settings.dbms = defaults.dbms;
   settings.dbmsVersion = resolveVersion(defaults.dbms, defaults.dbmsVersion);
   settings.autoIdMask = defaults.autoIdMask;

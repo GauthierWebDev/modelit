@@ -1,8 +1,9 @@
 import { emptyDocument, type ModelDocument } from "@core/index";
 import { create } from "zustand";
-import { prove } from "./password";
+import { answer, attach, type Guest } from "./guestMessages";
 import type { ChatMessage, GuestLink, Participant, Presence, RejectReason, Role } from "./protocol";
 import { createSessionStore, type SessionStore } from "./sessionStore";
+import { type AudioPacket, encodePacket } from "./voice/packet";
 
 /**
  * Invité d'une session (O-05 ; J-01, phase 5a, D11) : document miroir de l'onglet partagé. Ses
@@ -41,6 +42,12 @@ export interface GuestSession {
   answer: (password: string) => Promise<void>;
   setPresence: (presence: Presence) => void;
   sendChat: (text: string) => void;
+  /** Vocal (O-48) : rejoint ou quitté, micro coupé ou ouvert ; renvoyé après une reconnexion. */
+  setVoice: (joined: boolean, muted: boolean) => void;
+  /** 20 ms de ma voix, vers l'hôte qui la relaie. */
+  sendAudio: (packet: Omit<AudioPacket, "speaker">) => void;
+  /** Voix des autres participants (identifiant posé par l'hôte). */
+  onAudio: (handler: (packet: AudioPacket) => void) => () => void;
   /** Connexion retrouvée (O-05 §4.4) : nouveau canal vers le même hôte. */
   reconnect: (link: GuestLink) => void;
   leave: () => void;
@@ -48,130 +55,104 @@ export interface GuestSession {
   snapshot: () => ModelDocument;
 }
 
-const createGuestState = () =>
-  create<GuestState>(() => ({ status: "connecting", role: null, you: null, participants: [], aiAllowed: false, ended: null, rejected: null, password: null, presence: {}, chat: [], title: null }));
+export const createGuestState = () =>
+  create<GuestState>(() => ({
+    status: "connecting",
+    role: null,
+    you: null,
+    participants: [],
+    aiAllowed: false,
+    ended: null,
+    rejected: null,
+    password: null,
+    presence: {},
+    chat: [],
+    title: null,
+  }));
 
-export function startGuest({ link, secret, name, color }: { link: GuestLink; secret: string; name: string; color: string }): GuestSession {
+export function startGuest({
+  link,
+  secret,
+  name,
+  color,
+}: {
+  link: GuestLink;
+  secret: string;
+  name: string;
+  color: string;
+}): GuestSession {
   const state = createGuestState();
-  let current = link;
   const canEdit = () => state.getState().status === "connected" && state.getState().role === "editor";
-  const store = createSessionStore(emptyDocument(), {
-    canEdit,
-    publish: (ops, label) => current.send({ type: "ops", ops, ...(label === "history.ai" ? { ai: true } : {}) }),
-  });
-
-  let challenge: { nonce: string; salt: string } | null = null;
-  let identity = { name, color };
-  /** Mot de passe accepté, gardé en mémoire le temps de la session : reconnexion sans le redemander. */
-  let accepted: string | null = null;
-  let pending: string | null = null;
-
-  const answer = async (password: string) => {
-    if (!challenge) return;
-    pending = password;
-    const proof = await prove(password, challenge.salt, challenge.nonce);
-    state.setState({ status: "connecting" });
-    current.send({ type: "hello", secret, ...identity, proof });
+  const g: Guest = {
+    secret,
+    state,
+    store: createSessionStore(emptyDocument(), {
+      canEdit,
+      publish: (ops, label) => g.current.send({ type: "ops", ops, ...(label === "history.ai" ? { ai: true } : {}) }),
+    }),
+    audioHandlers: new Set(),
+    current: link,
+    challenge: null,
+    identity: { name, color },
+    voice: { joined: false, muted: false },
+    accepted: null,
+    pending: null,
+    detach: () => undefined,
   };
+  g.detach = attach(g, link);
+  return guestApi(g);
+}
 
-  /** Branche un canal : messages de l'hôte, fin de connexion, puis entrée dans la session. */
-  const attach = (target: GuestLink) => {
-    const offMessage = target.onMessage((message) => {
-      switch (message.type) {
-        case "challenge": {
-          const wrong = challenge !== null && pending !== null;
-          challenge = { nonce: message.nonce, salt: message.salt };
-          if (accepted && !wrong) return void answer(accepted);
-          state.setState({ status: "password", password: { attemptsLeft: message.attemptsLeft, wrong } });
-          return;
-        }
-        case "welcome":
-          accepted = pending ?? accepted;
-          challenge = null;
-          pending = null;
-          store.getState().reset(message.doc);
-          state.setState({
-            status: "connected",
-            role: message.role,
-            you: message.you,
-            participants: message.participants,
-            aiAllowed: message.aiAllowed,
-            password: null,
-            chat: message.chat,
-            title: message.title ?? null,
-          });
-          return;
-        case "ops":
-          store.getState().applyRemote(message.ops);
-          return;
-        case "participants": {
-          // Présence des participants partis : effacée.
-          const ids = new Set(message.participants.map((p) => p.id));
-          const presence = Object.fromEntries(Object.entries(state.getState().presence).filter(([id]) => ids.has(id)));
-          state.setState({ participants: message.participants, presence });
-          return;
-        }
-        case "presence":
-          state.setState((s) => ({ presence: { ...s.presence, [message.id]: message.presence } }));
-          return;
-        case "chat":
-          state.setState((s) => ({ chat: [...s.chat, message.message] }));
-          return;
-        case "settings":
-          state.setState({ aiAllowed: message.aiAllowed });
-          return;
-        case "rejected":
-          if (message.reason === "unknown-link" || message.reason === "bad-password" || message.reason === "full") {
-            state.setState({ status: "ended", ended: message.reason, password: null });
-          } else {
-            // Modification refusée, déjà appliquée ici : retour à l'état de l'hôte.
-            if (message.doc) store.getState().reset(message.doc);
-            state.setState({ rejected: message.reason });
-          }
-          return;
-        case "ended":
-          state.setState({ status: "ended", ended: message.reason });
-          return;
-      }
-    });
-    const offClose = target.onClose(() => {
-      if (state.getState().status !== "ended") state.setState({ status: "disconnected" });
-    });
-    target.send({ type: "hello", secret, ...identity });
-    return () => {
-      offMessage();
-      offClose();
-    };
-  };
-  let detach = attach(link);
-
+/** Commandes de l'invité, pour l'interface. */
+function guestApi(g: Guest): GuestSession {
+  const { state } = g;
+  const connected = () => state.getState().status === "connected";
   return {
-    store,
+    store: g.store,
     state,
     setIdentity: (n, c) => {
-      identity = { name: n, color: c };
-      current.send({ type: "identity", name: n, color: c });
+      g.identity = { name: n, color: c };
+      g.current.send({ type: "identity", name: n, color: c });
     },
-    answer,
+    answer: (password) => answer(g, password),
     setPresence: (presence) => {
-      if (state.getState().status === "connected") current.send({ type: "presence", presence });
+      if (connected()) {
+        g.current.send({ type: "presence", presence });
+      }
+    },
+    setVoice: (joined, muted) => {
+      g.voice = { joined, muted };
+      if (connected()) {
+        g.current.send({ type: "voice", joined, muted });
+      }
+    },
+    sendAudio: (packet) => {
+      if (connected() && g.voice.joined && !g.voice.muted) {
+        g.current.sendDatagram(encodePacket({ ...packet, speaker: "" }));
+      }
+    },
+    onAudio: (handler) => {
+      g.audioHandlers.add(handler);
+      return () => g.audioHandlers.delete(handler);
     },
     sendChat: (text) => {
-      if (state.getState().status === "connected" && text.trim()) current.send({ type: "chat", text });
+      if (connected() && text.trim()) {
+        g.current.send({ type: "chat", text });
+      }
     },
     reconnect: (target) => {
-      detach();
-      current = target;
-      challenge = null;
+      g.detach();
+      g.current = target;
+      g.challenge = null;
       state.setState({ status: "connecting" });
-      detach = attach(target);
+      g.detach = attach(g, target);
     },
     leave: () => {
-      current.send({ type: "leave" });
+      g.current.send({ type: "leave" });
       state.setState({ status: "ended", ended: null });
-      detach();
-      current.close();
+      g.detach();
+      g.current.close();
     },
-    snapshot: () => store.getState().doc,
+    snapshot: () => g.store.getState().doc,
   };
 }

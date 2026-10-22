@@ -1,62 +1,16 @@
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, describe, expect, it } from "vitest";
-import type { Dbms } from "../dbms/dbms";
 import { toLogicalModel } from "../mld/transform";
 import { emptyDocument } from "../model/factory";
-import type { DdlOptions } from "../model/settings";
 import { reverseEngineer } from "../reverse/build";
 import { parseSql } from "../reverse/parse";
 import { tokenize } from "../reverse/tokenize";
-import { catalogOf, diffCatalogs, type Difference } from "../testing/catalog";
-import { generateDdl, type Loss } from "./generate";
+import { attribute, doc, entity, generate, issues, report, SOURCE, unjustified } from "../testing/aeroFixture";
+import { catalogOf, diffCatalogs } from "../testing/catalog";
+import { generateDdl } from "./generate";
 
 /** Itération 10 (override O-41) : script SQL Server réel (fixtures/aero_sqlserver.sql) → MCD → PostgreSQL 18. */
-
-const SOURCE = readFileSync("fixtures/aero_sqlserver.sql", "utf8");
-const { doc, report } = reverseEngineer(SOURCE, emptyDocument());
-const entity = (name: string) => doc.entities.find((e) => e.name === name)!;
-const attribute = (owner: string, name: string) =>
-  [...doc.entities, ...doc.associations].find((e) => e.name === owner)!.attributes.find((a) => a.name === name)!;
-const issues = toLogicalModel(doc).issues.map((i) => i.message);
-
-function generate(dbms: Dbms = "postgresql", version: string | undefined = "18", options: Partial<DdlOptions> = {}) {
-  const result = generateDdl(toLogicalModel(doc), { dbms, version }, options);
-  if (!result.ok) throw new Error(result.error);
-  return result;
-}
-
-function unjustified(differences: Difference[], losses: Loss[]): Difference[] {
-  const categories: Partial<Record<Difference["category"], Loss["category"][]>> = {
-    type: ["type", "autoIncrement", "unsigned", "domain", "generated"],
-    range: ["unsigned", "type", "generated"],
-    autoIncrement: ["autoIncrement", "type"],
-    default: ["default"],
-    action: ["action"],
-    check: ["check"],
-    name: ["name"],
-    domain: ["domain"],
-    collation: ["collation"],
-    generated: ["generated"],
-    comment: ["comment"],
-    trigger: ["trigger"],
-    index: ["index", "physical"],
-    unique: ["index"],
-    state: ["check", "index", "action"],
-    physical: ["physical"],
-    sequence: ["default", "autoIncrement"],
-    emptyString: ["domain"],
-  };
-  const same = (a?: string, b?: string) => a === undefined || b === undefined || a.toLowerCase() === b.toLowerCase();
-  return differences.filter(
-    (d) =>
-      !losses.some(
-        (l) =>
-          categories[d.category]?.includes(l.category) &&
-          [{ table: d.table, column: d.column }, ...(d.references ?? [])].some((r) => l.table.toLowerCase() === r.table.toLowerCase() && same(r.column, l.column)),
-      ),
-  );
-}
 
 let shared: PGlite | undefined;
 afterAll(async () => shared?.close());
@@ -112,26 +66,51 @@ describe("P0 — tokenizer", () => {
 describe("P1 — sémantique", () => {
   it("3. index unique filtré « c IS NOT NULL » = UNIQUE ordinaire : réflexive « retour » en 0,1 / 0,1", () => {
     const retour = doc.associations.find((a) => a.name === "retour")!;
-    expect(doc.links.filter((l) => l.associationId === retour.id).map((l) => `${l.cardinality.min},${l.cardinality.max}`)).toEqual(["0,1", "0,1"]);
-    expect(entity("vol").alternateKeys).toContainEqual(expect.objectContaining({ name: "ux_vol_retour", nulls: "distinct" }));
+    expect(
+      doc.links.filter((l) => l.associationId === retour.id).map((l) => `${l.cardinality.min},${l.cardinality.max}`),
+    ).toEqual(["0,1", "0,1"]);
+    expect(entity("vol").alternateKeys).toContainEqual(
+      expect.objectContaining({ name: "ux_vol_retour", nulls: "distinct" }),
+    );
     expect(issues.some((m) => /« vol » : unicité conditionnelle/.test(m))).toBe(false);
     // Vers PostgreSQL : UNIQUE ordinaire (plusieurs NULL admis) ; vers SQL Server : le même index filtré.
     expect(generate().sql).toContain("CONSTRAINT ux_vol_retour UNIQUE(vol_retour)");
-    expect(generate("sqlserver", "2022").sql).toContain("CREATE UNIQUE INDEX ux_vol_retour ON dbo.vol(vol_retour) WHERE vol_retour IS NOT NULL;");
+    expect(generate("sqlserver", "2022").sql).toContain(
+      "CREATE UNIQUE INDEX ux_vol_retour ON dbo.vol(vol_retour) WHERE vol_retour IS NOT NULL;",
+    );
   });
 
   it("3. avertissement d'unicité conditionnelle : la colonne indexée, pas la clé primaire", () => {
-    expect(issues).toContainEqual("« reservation » : unicité conditionnelle (id_vol (reservation), siege), seulement si siege IS NOT NULL AND annule = 0 — le MCD ne l'exprime pas");
+    expect(issues).toContainEqual(
+      "« reservation » : unicité conditionnelle (id_vol (reservation), siege), seulement si siege IS NOT NULL AND annule = 0 — le MCD ne l'exprime pas",
+    );
   });
+});
 
+describe("P1 — sémantique", () => {
   it("4. colonnes calculées : dérivées, persistées ou non, type déduit de l'expression", () => {
-    expect(attribute("vol", "duree")).toMatchObject({ type: { kind: "integer", bits: 32 }, generated: { expression: "DATEDIFF(MINUTE, heure_depart, heure_arrivee)", stored: false } });
+    expect(attribute("vol", "duree")).toMatchObject({
+      type: { kind: "integer", bits: 32 },
+      generated: { expression: "DATEDIFF(MINUTE, heure_depart, heure_arrivee)", stored: false },
+    });
     // MONEY × 1.10 : décimal prioritaire sur le monétaire → DECIMAL(19+3+1, 4+2).
-    expect(attribute("reservation", "prix_ttc")).toMatchObject({ type: { kind: "decimal", precision: 23, scale: 6 }, generated: { expression: "prix * 1.10", stored: true } });
+    expect(attribute("reservation", "prix_ttc")).toMatchObject({
+      type: { kind: "decimal", precision: 23, scale: 6 },
+      generated: { expression: "prix * 1.10", stored: true },
+    });
     // Type non déductible : avertissement non bloquant invitant à le saisir.
-    const { doc: other } = reverseEngineer("CREATE TABLE t (id INT PRIMARY KEY, c AS dbo.f(id));", emptyDocument(), "sqlserver");
+    const { doc: other } = reverseEngineer(
+      "CREATE TABLE t (id INT PRIMARY KEY, c AS dbo.f(id));",
+      emptyDocument(),
+      "sqlserver",
+    );
     const model = toLogicalModel(other);
-    expect(model.issues).toContainEqual(expect.objectContaining({ severity: "warning", message: expect.stringContaining("« c » de « t » n'a pas de type : il n'a pas pu être déduit") }));
+    expect(model.issues).toContainEqual(
+      expect.objectContaining({
+        severity: "warning",
+        message: expect.stringContaining("« c » de « t » n'a pas de type : il n'a pas pu être déduit"),
+      }),
+    );
     expect(generateDdl(model, { dbms: "postgresql", version: "18" }).ok).toBe(true);
   });
 
@@ -150,149 +129,62 @@ describe("P1 — sémantique", () => {
   });
 });
 
-describe("itération 11 — SQL Server → PostgreSQL 18 (O-42)", () => {
-  const { sql, losses } = generate();
-  const create = (name: string) => {
-    const chunk = sql.split(/;\s*\n/).find((x) => new RegExp(`^CREATE TABLE (ref\\.)?${name}\\(`, "m").test(x))!;
-    return chunk.slice(chunk.indexOf("CREATE TABLE"));
-  };
-  const lines = sql.match(/^-- {3}• .*$/gm) ?? [];
-
-  it("1. types spatiaux : CREATE EXTENSION postgis en tête de script (option par défaut)", () => {
-    expect(sql.split("\n\n").find((x) => !x.startsWith("--"))).toBe("CREATE EXTENSION IF NOT EXISTS postgis;");
-    expect(create("aeroport")).toContain("position GEOGRAPHY");
-  });
-
-  it("2. MONEY → NUMERIC(19,4), SMALLMONEY → NUMERIC(10,4), jamais MONEY", () => {
-    expect(create("reservation")).toContain("prix NUMERIC(19,4) NOT NULL");
-    expect(sql).not.toMatch(/\bMONEY\b/);
-    expect(losses.some((l) => /MONEY/.test(l.message))).toBe(false);
-    const { doc: small } = reverseEngineer("CREATE TABLE t (id INT PRIMARY KEY, m SMALLMONEY);", emptyDocument(), "sqlserver");
-    const result = generateDdl(toLogicalModel(small), { dbms: "postgresql", version: "18" });
-    expect(result.ok && result.sql).toContain("m NUMERIC(10,4)");
-  });
-
-  it("3. DEFAULT : SYSUTCDATETIME / GETUTCDATE → heure UTC, GETDATE / SYSDATETIME → LOCALTIMESTAMP, SYSDATETIMEOFFSET → CURRENT_TIMESTAMP", () => {
-    expect(create("reservation")).toContain("reserve_le TIMESTAMP(3) DEFAULT (now() AT TIME ZONE 'UTC') NOT NULL");
-    expect(create("passager")).toContain("cree_le TIMESTAMP(3) DEFAULT LOCALTIMESTAMP NOT NULL");
-    const { doc: other } = reverseEngineer(
-      "CREATE TABLE t (id INT PRIMARY KEY, a DATETIME2 DEFAULT SYSDATETIME(), b DATETIME DEFAULT GETUTCDATE(), c DATETIMEOFFSET DEFAULT SYSDATETIMEOFFSET());",
-      emptyDocument(),
-      "sqlserver",
-    );
-    const result = generateDdl(toLogicalModel(other), { dbms: "postgresql", version: "18" });
-    expect(result.ok && result.sql).toContain("a TIMESTAMP DEFAULT LOCALTIMESTAMP");
-    expect(result.ok && result.sql).toContain("b TIMESTAMP(3) DEFAULT (now() AT TIME ZONE 'UTC')");
-    expect(result.ok && result.sql).toContain("c TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP");
-  });
-
-  it("3. règle générale : un DEFAULT abandonné sur une colonne NOT NULL est une entrée P0 explicite", () => {
-    const { doc: other } = reverseEngineer("CREATE TABLE t (id INT PRIMARY KEY, a VARCHAR(10) NOT NULL DEFAULT dbo.f());", emptyDocument(), "sqlserver");
-    const result = generateDdl(toLogicalModel(other), { dbms: "postgresql", version: "18" });
-    expect(result.ok && result.losses).toContainEqual(expect.objectContaining({ priority: "P0", column: "a", message: expect.stringContaining("un INSERT sans valeur") }));
-    expect(result.ok && result.sql).toMatch(/^-- {3}• \[P0\] t\.a — DEFAULT/m);
-  });
-
-  it("4. collation par défaut supposée CI_AS → ICU und-u-ks-level2 ; *_CS_AS déterministe ; hypothèse au rapport", () => {
-    expect(sql).toContain("CREATE COLLATION IF NOT EXISTS merise_ci (provider = icu, locale = 'und-u-ks-level2', deterministic = false);");
-    expect(create("aeroport")).toContain("code_iata CHAR(3) COLLATE merise_ci");
-    expect(create("vol")).toContain("numero VARCHAR(7) NOT NULL"); // Latin1_General_CS_AS
-    expect(lines).toContain("--   • hypothèse : collation par défaut de la base SQL Server Latin1_General_CI_AS (absente du script), appliquée aux textes sans collation déclarée");
-    const csas = generate("postgresql", "18", { sqlServerCollation: "cs_as" });
-    expect(csas.sql).not.toContain("merise_ci");
-  });
-
-  it("5. schémas : CREATE SCHEMA ref (créé par EXEC dynamique), tables et séquences qualifiées ; dbo → public (option)", () => {
-    expect(sql).toContain("CREATE SCHEMA IF NOT EXISTS ref;");
-    expect(sql).toContain("CREATE SEQUENCE ref.seq_client AS INTEGER START WITH 10000 INCREMENT BY 1 CACHE 1;");
-    expect(sql).toContain("CREATE TABLE ref.aeroport(");
-    expect(sql).toContain("REFERENCES ref.aeroport(code_iata)");
-    expect(sql).toContain("DEFAULT nextval('ref.seq_client')");
-    expect(sql).toContain("CREATE TABLE vol(");
-    const dbo = generate("postgresql", "18", { dboSchema: "dbo" });
-    expect(dbo.sql).toContain("CREATE SCHEMA IF NOT EXISTS dbo;");
-    expect(dbo.sql).toContain("CREATE TABLE dbo.vol(");
-  });
-
-  it("6. CHECK : LEN → char_length, LIKE à classes → expression rationnelle (~*, COLLATE \"C\"), ISJSON → IS JSON", () => {
-    expect(create("aeroport")).toContain(`CONSTRAINT ck_aeroport_iata CHECK (char_length(code_iata) = 3 AND code_iata COLLATE "C" !~* '^.*[^A-Z].*$')`);
-    expect(create("passager")).toContain("CONSTRAINT ck_passager_json CHECK (preferences IS JSON)");
-    expect(losses.some((l) => l.category === "check" && /len|ISJSON/i.test(l.message))).toBe(false);
-  });
-
-  it("7. TINYINT → SMALLINT + CHECK (BETWEEN 0 AND 255), même avec un autre CHECK (désactivé)", () => {
-    expect(create("passager")).toContain(`"Remise [%]" SMALLINT DEFAULT 0 NOT NULL CHECK ("Remise [%]" BETWEEN 0 AND 255)`);
-  });
-
-  it("8. rapport : DATETIMEOFFSET, DATETIME (1/300 s), NOT FOR REPLICATION, ROWGUIDCOL (une ligne chacun)", () => {
-    expect(lines).toEqual(
-      expect.arrayContaining([
-        expect.stringMatching(/DATETIMEOFFSET → TIMESTAMPTZ\(0\) : le décalage horaire d'origine est perdu.* : vol\.heure_depart, vol\.heure_arrivee$/),
-        expect.stringMatching(/passager\.cree_le — DATETIME → TIMESTAMP\(3\) : arrondi d'origine au 1\/300 s/),
-        expect.stringMatching(/vol\.id_vol — NOT FOR REPLICATION/),
-        expect.stringMatching(/passager\.id_passager — ROWGUIDCOL/),
-      ]),
-    );
-  });
-
-  it("9. NEWSEQUENTIALID() → uuidv7() en PostgreSQL 18, gen_random_uuid() avant (signalé)", () => {
-    expect(create("passager")).toContain("id_passager UUID DEFAULT uuidv7()");
-    expect(losses.some((l) => /NEWSEQUENTIALID/.test(l.message))).toBe(false);
-    const pg17 = generate("postgresql", "17");
-    expect(pg17.sql).toContain("id_passager UUID DEFAULT gen_random_uuid()");
-    expect(pg17.losses).toContainEqual(expect.objectContaining({ column: "id_passager", message: expect.stringContaining("NEWSEQUENTIALID()") }));
-  });
-
-  it("10. INCLUDE conservé (PostgreSQL 11+), plus classé en stockage", () => {
-    expect(sql).toContain("CREATE UNIQUE INDEX ux_resa_siege ON reservation(id_vol, siege) INCLUDE (classe) WHERE siege IS NOT NULL AND annule = FALSE;");
-    expect(lines.find((l) => /clauses de stockage/.test(l))).not.toMatch(/INCLUDE/);
-  });
-
-  it("11. IDENTITY(100, 10) → GENERATED ALWAYS AS IDENTITY (START WITH 100 INCREMENT BY 10)", () => {
-    expect(create("vol")).toContain("id_vol INTEGER GENERATED ALWAYS AS IDENTITY (START WITH 100 INCREMENT BY 10)");
-  });
-
-  it("12. vocabulaire du dialecte source dans le rapport et le script (NOCHECK CONSTRAINT)", () => {
-    expect(lines).toContain("--   • passager — contrainte ck_passager_remise désactivée (NOCHECK CONSTRAINT) dans la source : émise en commentaire, non appliquée");
-    expect(sql).toContain(`-- CONSTRAINT ck_passager_remise CHECK ("Remise [%]" <= 100) -- désactivée (NOCHECK CONSTRAINT) dans la source : non appliquée`);
-  });
-
-  it("13. index filtré à autre terme que IS NOT NULL : unicité conditionnelle, pas d'identifiant alternatif", () => {
-    const reservation = doc.associations.find((a) => a.name === "reservation")!;
-    expect(reservation.alternateKeys).toEqual([expect.objectContaining({ name: "ux_resa_siege", where: expect.anything() })]);
-    expect(issues).toContainEqual(expect.stringContaining("« reservation » : unicité conditionnelle"));
-  });
-});
+/** Script de repli (sans PostGIS) exécuté : unicité, CHECK, IDENTITY, DEFAULT et TINYINT respectés. */
+async function exerciseFallbackScript(pg: PGlite) {
+  // Un seul NULL admis (SQL Server), conservé : un second aéroport sans code OACI est refusé.
+  await pg.exec(
+    "INSERT INTO ref.aeroport (code_iata, code_oaci, nom, ville, pays) VALUES ('CDG', 'LFPG', 'Roissy', 'Paris', 'FR'), ('ORY', NULL, 'Orly', 'Paris', 'FR');",
+  );
+  await expect(
+    pg.exec("INSERT INTO ref.aeroport (code_iata, nom, ville, pays) VALUES ('BVA', 'Beauvais', 'Tillé', 'FR');"),
+  ).rejects.toThrow(/uq_aeroport_oaci/);
+  // CHECK traduit : code IATA de 3 lettres (LEN, LIKE '%[^A-Z]%').
+  await expect(
+    pg.exec(
+      "INSERT INTO ref.aeroport (code_iata, code_oaci, nom, ville, pays) VALUES ('C1G', 'LFXX', 'X', 'X', 'FR');",
+    ),
+  ).rejects.toThrow(/ck_aeroport_iata/);
+  await pg.exec("INSERT INTO passager (nom) VALUES ('A');");
+  const { rows } = await pg.query<{ num_client: number }>("SELECT num_client FROM passager;");
+  expect(rows[0]!.num_client).toBe(10_000);
+  // IDENTITY(100, 10) → GENERATED ALWAYS : valeur fournie refusée.
+  await pg.exec(
+    "INSERT INTO vol (numero, depart, arrivee, heure_depart, heure_arrivee) VALUES ('AF1', 'CDG', 'ORY', now(), now() + interval '1 hour'), ('AF2', 'ORY', 'CDG', now(), now() + interval '2 hours');",
+  );
+  expect((await pg.query<{ id_vol: number }>("SELECT id_vol FROM vol ORDER BY 1;")).rows.map((r) => r.id_vol)).toEqual([
+    100, 110,
+  ]);
+  await expect(
+    pg.exec(
+      "INSERT INTO vol (id_vol, numero, depart, arrivee, heure_depart, heure_arrivee) VALUES (5, 'AF3', 'CDG', 'ORY', now(), now());",
+    ),
+  ).rejects.toThrow(/non-DEFAULT value|GENERATED ALWAYS/i);
+  // INSERT dans reservation sans reserve_le : la valeur par défaut (heure UTC) est appliquée.
+  await pg.exec("INSERT INTO reservation (id_vol, id_passager, prix) SELECT 100, id_passager, 200 FROM passager;");
+  const { rows: resa } = await pg.query<{ prix_ttc: string; reserve_le: Date | null }>(
+    "SELECT prix_ttc::text, reserve_le FROM reservation;",
+  );
+  expect(resa[0]!.prix_ttc).toBe("220.000000");
+  expect(resa[0]!.reserve_le).not.toBeNull();
+  // TINYINT : 0 à 255, même si le CHECK (<= 100) d'origine est désactivé.
+  await expect(pg.exec('UPDATE passager SET "Remise [%]" = 300;')).rejects.toThrow(/check constraint/);
+  await pg.exec('UPDATE passager SET "Remise [%]" = 150;'); // ck_passager_remise désactivée (NOCHECK CONSTRAINT)
+  // ISJSON → IS JSON.
+  await expect(pg.exec("UPDATE passager SET preferences = '{oups';")).rejects.toThrow(/ck_passager_json/);
+}
 
 describe("critères d'acceptation", () => {
   it("sans PostGIS (option de repli) : le script s'exécute ; DEFAULT de reserve_le appliqué ; un seul NULL conservé", async () => {
     const { sql, losses } = generate("postgresql", "18", { spatial: "wkb" });
     expect(sql).not.toContain("postgis");
-    expect(losses).toContainEqual(expect.objectContaining({ table: "aeroport", column: "position", message: expect.stringContaining("GEOGRAPHY → BYTEA (WKB)") }));
-    await withPg(sql, async (pg) => {
-      // Un seul NULL admis (SQL Server), conservé : un second aéroport sans code OACI est refusé.
-      await pg.exec("INSERT INTO ref.aeroport (code_iata, code_oaci, nom, ville, pays) VALUES ('CDG', 'LFPG', 'Roissy', 'Paris', 'FR'), ('ORY', NULL, 'Orly', 'Paris', 'FR');");
-      await expect(pg.exec("INSERT INTO ref.aeroport (code_iata, nom, ville, pays) VALUES ('BVA', 'Beauvais', 'Tillé', 'FR');")).rejects.toThrow(/uq_aeroport_oaci/);
-      // CHECK traduit : code IATA de 3 lettres (LEN, LIKE '%[^A-Z]%').
-      await expect(pg.exec("INSERT INTO ref.aeroport (code_iata, code_oaci, nom, ville, pays) VALUES ('C1G', 'LFXX', 'X', 'X', 'FR');")).rejects.toThrow(/ck_aeroport_iata/);
-      await pg.exec("INSERT INTO passager (nom) VALUES ('A');");
-      const { rows } = await pg.query<{ num_client: number }>("SELECT num_client FROM passager;");
-      expect(rows[0]!.num_client).toBe(10000);
-      // IDENTITY(100, 10) → GENERATED ALWAYS : valeur fournie refusée.
-      await pg.exec("INSERT INTO vol (numero, depart, arrivee, heure_depart, heure_arrivee) VALUES ('AF1', 'CDG', 'ORY', now(), now() + interval '1 hour'), ('AF2', 'ORY', 'CDG', now(), now() + interval '2 hours');");
-      expect((await pg.query<{ id_vol: number }>("SELECT id_vol FROM vol ORDER BY 1;")).rows.map((r) => r.id_vol)).toEqual([100, 110]);
-      await expect(pg.exec("INSERT INTO vol (id_vol, numero, depart, arrivee, heure_depart, heure_arrivee) VALUES (5, 'AF3', 'CDG', 'ORY', now(), now());")).rejects.toThrow(/non-DEFAULT value|GENERATED ALWAYS/i);
-      // INSERT dans reservation sans reserve_le : la valeur par défaut (heure UTC) est appliquée.
-      await pg.exec("INSERT INTO reservation (id_vol, id_passager, prix) SELECT 100, id_passager, 200 FROM passager;");
-      const { rows: resa } = await pg.query<{ prix_ttc: string; reserve_le: Date | null }>("SELECT prix_ttc::text, reserve_le FROM reservation;");
-      expect(resa[0]!.prix_ttc).toBe("220.000000");
-      expect(resa[0]!.reserve_le).not.toBeNull();
-      // TINYINT : 0 à 255, même si le CHECK (<= 100) d'origine est désactivé.
-      await expect(pg.exec("UPDATE passager SET \"Remise [%]\" = 300;")).rejects.toThrow(/check constraint/);
-      await pg.exec("UPDATE passager SET \"Remise [%]\" = 150;"); // ck_passager_remise désactivée (NOCHECK CONSTRAINT)
-      // ISJSON → IS JSON.
-      await expect(pg.exec("UPDATE passager SET preferences = '{oups';")).rejects.toThrow(/ck_passager_json/);
-    });
+    expect(losses).toContainEqual(
+      expect.objectContaining({
+        table: "aeroport",
+        column: "position",
+        message: expect.stringContaining("GEOGRAPHY → BYTEA (WKB)"),
+      }),
+    );
+    await withPg(sql, exerciseFallbackScript);
     // Repli WKT.
     const wkt = generate("postgresql", "18", { spatial: "wkt" });
     expect(wkt.sql).toContain("position TEXT");

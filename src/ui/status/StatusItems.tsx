@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { CircleAlert, CircleCheck, Maximize, TriangleAlert, ZoomIn, ZoomOut } from "lucide-react";
+import type { ReactNode } from "react";
 import { useLogicalModel } from "@/app/derived";
 import { revealSection } from "@/app/dock/actions";
 import { useDocumentView } from "@/app/document/DocumentContext";
@@ -14,7 +14,9 @@ const item = "flex items-center gap-1 rounded px-1.5 hover:bg-neutral-200 dark:h
 /** Nombre d'objets sélectionnés ; rien sans sélection. */
 export function SelectionStatus() {
   const count = useDocumentView((s) => s.selection.length);
-  if (!count) return null;
+  if (!count) {
+    return null;
+  }
   return <span>{t("status.selected", { n: count })}</span>;
 }
 
@@ -61,7 +63,12 @@ export function ZoomStatus() {
   return (
     <div className="flex items-center">
       {button(t("toolbar.zoomOut"), () => mainCommand({ name: "zoomBy", factor: 1 / 1.2 }), <ZoomOut size={12} />)}
-      <button type="button" {...tip(t("toolbar.zoomReset"))} className={`${item} w-14 justify-center whitespace-nowrap tabular-nums`} onClick={() => mainCommand({ name: "zoomTo", zoom: 1 })}>
+      <button
+        type="button"
+        {...tip(t("toolbar.zoomReset"))}
+        className={`${item} w-14 justify-center whitespace-nowrap tabular-nums`}
+        onClick={() => mainCommand({ name: "zoomTo", zoom: 1 })}
+      >
         {Math.round(zoom * 100)} %
       </button>
       {button(t("toolbar.zoomIn"), () => mainCommand({ name: "zoomBy", factor: 1.2 }), <ZoomIn size={12} />)}

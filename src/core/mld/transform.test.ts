@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { generateDdl } from "../ddl/generate";
 import { createAssociation, createAutoIdentifier, createLink } from "../model/factory";
-import { MSG } from "../validation/messages";
 import { model } from "../testing/builder";
+import { MSG } from "../validation/messages";
 import { hasErrors, issueMessage } from "./logical";
 import { mldPlainText } from "./text";
 import { toLogicalModel } from "./transform";
@@ -57,7 +57,9 @@ describe("passage MCD → MLD", () => {
     );
     expect(logical.tables.find((t) => t.name === "R")!.primaryKey).toEqual(["a", "b", "c"]);
   });
+});
 
+describe("passage MCD → MLD", () => {
   it("identifiant relatif → clé étrangère dans la clé primaire", () => {
     expect(
       mld(
@@ -106,7 +108,9 @@ describe("passage MCD → MLD", () => {
     const logical = toLogicalModel(model().entity("A", ["a*"]).association("R", ["A 0,n"]).build());
     expect(logical.issues.map((i) => i.message)).toContain(MSG.associationNeedsTwoLegs);
   });
+});
 
+describe("passage MCD → MLD", () => {
   it("association réflexive n-n : la seconde clé étrangère est suffixée (override O-13)", () => {
     const logical = toLogicalModel(
       model().entity("EMPLOYE", ["id*"]).association("ENCADRER", ["EMPLOYE 0,n", "EMPLOYE 0,n"]).build(),
@@ -198,7 +202,11 @@ describe("renommage des clés étrangères (override O-07)", () => {
   it("chaque colonne migrée indique sa patte et son nom par défaut", () => {
     const doc = model().entity("A", ["a*"]).entity("B", ["b*"]).association("R", ["A 0,n", "B 1,1"]).build();
     const column = toLogicalModel(doc).tables[1]!.columns[1]!;
-    expect(column.origin).toEqual({ linkId: doc.links[0]!.id, attributeId: doc.entities[0]!.attributes[0]!.id, defaultName: "a" });
+    expect(column.origin).toEqual({
+      linkId: doc.links[0]!.id,
+      attributeId: doc.entities[0]!.attributes[0]!.id,
+      defaultName: "a",
+    });
   });
 });
 
@@ -206,7 +214,9 @@ describe("nommage des clés (override O-13)", () => {
   const base = () => {
     const doc = model().entity("user", []).entity("post", []).association("ecrire", ["user 0,n", "post 1,1"]).build();
     doc.settings.keys = { primary: "id_<table>", foreign: "<table>_id" };
-    for (const e of doc.entities) e.attributes = [createAutoIdentifier("code <entity>", e.name)];
+    for (const e of doc.entities) {
+      e.attributes = [createAutoIdentifier("code <entity>", e.name)];
+    }
     return doc;
   };
 
@@ -279,7 +289,10 @@ describe("vocabulaire par couche (override O-24)", () => {
       .entity("D", [])
       .inherit("B", ["C", "D"])
       .build();
-    const texts = toLogicalModel(doc).issues.flatMap((i) => [issueMessage(i, "conceptual"), issueMessage(i, "logical")]);
+    const texts = toLogicalModel(doc).issues.flatMap((i) => [
+      issueMessage(i, "conceptual"),
+      issueMessage(i, "logical"),
+    ]);
     expect(texts.length).toBeGreaterThan(4);
     expect(texts.filter((t) => /identifiant/i.test(t))).toEqual([]);
   });

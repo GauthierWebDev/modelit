@@ -31,7 +31,9 @@ export interface McpRequest {
 }
 
 /** Requêtes reçues ; `respond` renvoie la réponse JSON (ou `null` pour une notification). */
-export async function onMcpRequest(handler: (request: McpRequest, respond: (body: string | null) => void) => void): Promise<() => void> {
+export async function onMcpRequest(
+  handler: (request: McpRequest, respond: (body: string | null) => void) => void,
+): Promise<() => void> {
   const { listen } = await import("@tauri-apps/api/event");
   return listen<McpRequest>("mcp://request", (e) => {
     const request = e.payload;

@@ -1,6 +1,6 @@
-import { DBMS_LIST, groupLosses, issueMessage, mldLines, mldPlainText, type Loss } from "@core/index";
-import { useState, type ReactNode } from "react";
+import { DBMS_LIST, groupLosses, issueMessage, type Loss, mldLines, mldPlainText } from "@core/index";
 import { Copy } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { useDdl, useLogicalModel } from "@/app/derived";
 import { useDocument, useDocumentView } from "@/app/document/DocumentContext";
 import { t } from "@/i18n";
@@ -14,7 +14,7 @@ import { IconButton } from "@/ui/common/controls";
 function OutputBody({ copyText, children }: { copyText?: string | null; children: ReactNode }) {
   return (
     <div className="relative h-full overflow-auto p-3 font-mono text-[13px] leading-5 select-text">
-      {copyText != null && (
+      {typeof copyText === "string" && (
         <div className="absolute top-1 right-1">
           <IconButton tooltip={t("output.copy")} onClick={() => void navigator.clipboard.writeText(copyText)}>
             <Copy size={14} />
@@ -39,7 +39,11 @@ export function SqlSection() {
   const ddl = useDdl();
   return (
     <OutputBody copyText={ddl.ok ? ddl.sql : null}>
-      {ddl.ok ? <SqlView sql={ddl.sql} losses={ddl.losses} /> : <p className="text-red-600 dark:text-red-400">{ddl.error}</p>}
+      {ddl.ok ? (
+        <SqlView sql={ddl.sql} losses={ddl.losses} />
+      ) : (
+        <p className="text-red-600 dark:text-red-400">{ddl.error}</p>
+      )}
     </OutputBody>
   );
 }
@@ -66,7 +70,7 @@ export function IssuesTitle() {
   const errors = issues.filter((i) => i.severity === "error").length;
   return (
     <span className={errors > 0 ? "text-red-600 dark:text-red-400" : undefined}>
-      {issues.length ? t("output.issuesCount", { n: issues.length }) : t("output.issues")}
+      {issues.length > 0 ? t("output.issuesCount", { n: issues.length }) : t("output.issues")}
     </span>
   );
 }
@@ -80,26 +84,32 @@ function SqlView({ sql, losses }: { sql: string; losses: Loss[] }) {
   return (
     <>
       {losses.length > 0 && (
-        <div role="status" className="mb-3 rounded border border-amber-300 bg-amber-50 p-2 font-sans text-sm dark:border-amber-700 dark:bg-amber-950/40">
-          <button type="button" className="font-medium text-amber-800 dark:text-amber-300" onClick={() => setOpen(!open)}>
+        <div
+          role="status"
+          className="mb-3 rounded border border-amber-300 bg-amber-50 p-2 font-sans text-sm dark:border-amber-700 dark:bg-amber-950/40"
+        >
+          <button
+            type="button"
+            className="font-medium text-amber-800 dark:text-amber-300"
+            onClick={() => setOpen(!open)}
+          >
             {open ? "▾" : "▸"} {t("output.losses", { n: losses.length })}
           </button>
-          {open && (
+          {open ? (
             <ul className="mt-1 list-disc pl-5 text-xs text-neutral-700 dark:text-neutral-300">
               {/* Une ligne par perte, avec ses emplacements (O-37). */}
-              {groupLosses(losses).map((g, i) => (
-                <li key={i}>
+              {groupLosses(losses).map((g) => (
+                <li key={`${g.category}|${g.priority ?? ""}|${g.message}`}>
                   {g.message}
                   {g.places.length > 0 && (
                     <>
-                      {" — "}
-                      <span className="font-mono">{g.places.join(", ")}</span>
+                      —<span className="font-mono">{g.places.join(", ")}</span>
                     </>
                   )}
                 </li>
               ))}
             </ul>
-          )}
+          ) : null}
         </div>
       )}
       <pre>{sql}</pre>
@@ -109,25 +119,30 @@ function SqlView({ sql, losses }: { sql: string; losses: Loss[] }) {
 
 function MldView() {
   const lines = mldLines(useLogicalModel());
-  if (lines.length === 0) return <p className="font-sans text-neutral-500">{t("output.mldEmpty")}</p>;
+  if (lines.length === 0) {
+    return <p className="font-sans text-neutral-500">{t("output.mldEmpty")}</p>;
+  }
   return (
     <div>
       {lines.map((line) => (
         <div key={line.table}>
           <strong>{line.table}</strong> = (
           {line.columns.map((c, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, recalculée
             <span key={`${c.name}-${i}`}>
               {i > 0 && ", "}
               <span
-                className={[
-                  c.primaryKey && "underline",
-                  (c.primaryKey || c.unique) && "font-bold",
-                  c.foreign && "italic text-[var(--mcd-foreign)]",
-                ]
-                  .filter(Boolean)
-                  .join(" ") || undefined}
+                className={
+                  [
+                    c.primaryKey && "underline",
+                    (c.primaryKey || c.unique) && "font-bold",
+                    c.foreign && "italic text-[var(--mcd-foreign)]",
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || undefined
+                }
               >
-                {c.foreign && "#"}
+                {c.foreign ? "#" : null}
                 {c.name}
               </span>
             </span>
@@ -144,10 +159,13 @@ function IssuesView() {
   const { issues } = useLogicalModel();
   const select = useDocumentView((s) => s.select);
   const layer = useDocumentView((s) => (s.view === "mcd" ? "conceptual" : "logical"));
-  if (issues.length === 0) return <p className="font-sans text-neutral-500">{t("output.noIssues")}</p>;
+  if (issues.length === 0) {
+    return <p className="font-sans text-neutral-500">{t("output.noIssues")}</p>;
+  }
   return (
     <ul className="font-sans text-sm">
       {issues.map((issue, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: liste en lecture seule, recalculée
         <li key={i}>
           <button
             type="button"

@@ -1,7 +1,8 @@
-import type { RelationLabelMode } from "@core/index";
+import type { DocumentSettings, RelationLabelMode } from "@core/index";
 import { Eye } from "lucide-react";
 import * as cmd from "@/app/commands";
 import { useDocument, useDocumentHandle } from "@/app/document/DocumentContext";
+import type { DocumentHandle } from "@/app/document/handle";
 import { t } from "@/i18n";
 import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { IconButton } from "@/ui/common/controls";
@@ -30,57 +31,82 @@ export function DisplayMenu() {
         </IconButton>
       )}
     >
-      {() => (
-        <>
-          <MenuCheck
-            disabled={readOnly}
-            checked={s.display.showAttributes}
-            onSelect={() => cmd.updateSettings(handle, "history.showAttributes", (d) => void (d.display.showAttributes = !s.display.showAttributes))}
-          >
-            {t("display.attributes")}
-          </MenuCheck>
-          <MenuCheck
-            disabled={readOnly}
-            checked={s.grid.enabled}
-            onSelect={() => cmd.updateSettings(handle, "history.grid", (d) => void (d.grid.enabled = !s.grid.enabled))}
-          >
-            {t("inspector.grid")}
-          </MenuCheck>
-          <MenuSeparator />
-          <MenuLabel>{t("inspector.gridSize")}</MenuLabel>
-          {sizes.map((size) => (
-            <MenuCheck
-              key={size}
-              disabled={readOnly}
-              checked={s.grid.size === size}
-              onSelect={() => cmd.updateSettings(handle, "history.gridSize", (d) => void (d.grid.size = size))}
-            >
-              {size} px
-            </MenuCheck>
-          ))}
-          <MenuSeparator />
-          <MenuLabel>{t("inspector.relations")}</MenuLabel>
-          <MenuCheck
-            disabled={readOnly}
-            checked={s.display.relationArrows}
-            onSelect={() => cmd.updateSettings(handle, "history.relationArrows", (d) => void (d.display.relationArrows = !s.display.relationArrows))}
-          >
-            {t("inspector.relationArrows")}
-          </MenuCheck>
-          <MenuSeparator />
-          <MenuLabel>{t("inspector.relationLabels")}</MenuLabel>
-          {RELATION_LABELS.map((mode) => (
-            <MenuCheck
-              key={mode}
-              disabled={readOnly}
-              checked={s.display.relationLabels === mode}
-              onSelect={() => cmd.updateSettings(handle, "history.relationLabels", (d) => void (d.display.relationLabels = mode))}
-            >
-              {t(`inspector.relationLabels.${mode}`)}
-            </MenuCheck>
-          ))}
-        </>
-      )}
+      {() => displayItems(handle, s, readOnly, sizes)}
     </Menu>
+  );
+}
+
+/** Attributs, grille et son pas, flèches et étiquettes des relations (MLD / MPD). */
+function displayItems(handle: DocumentHandle, s: DocumentSettings, readOnly: boolean, sizes: number[]) {
+  return (
+    <>
+      <MenuCheck
+        disabled={readOnly}
+        checked={s.display.showAttributes}
+        onSelect={() =>
+          cmd.updateSettings(handle, "history.showAttributes", (d) => {
+            d.display.showAttributes = !s.display.showAttributes;
+          })
+        }
+      >
+        {t("display.attributes")}
+      </MenuCheck>
+      <MenuCheck
+        disabled={readOnly}
+        checked={s.grid.enabled}
+        onSelect={() =>
+          cmd.updateSettings(handle, "history.grid", (d) => {
+            d.grid.enabled = !s.grid.enabled;
+          })
+        }
+      >
+        {t("inspector.grid")}
+      </MenuCheck>
+      <MenuSeparator />
+      <MenuLabel>{t("inspector.gridSize")}</MenuLabel>
+      {sizes.map((size) => (
+        <MenuCheck
+          key={size}
+          disabled={readOnly}
+          checked={s.grid.size === size}
+          onSelect={() =>
+            cmd.updateSettings(handle, "history.gridSize", (d) => {
+              d.grid.size = size;
+            })
+          }
+        >
+          {size} px
+        </MenuCheck>
+      ))}
+      <MenuSeparator />
+      <MenuLabel>{t("inspector.relations")}</MenuLabel>
+      <MenuCheck
+        disabled={readOnly}
+        checked={s.display.relationArrows}
+        onSelect={() =>
+          cmd.updateSettings(handle, "history.relationArrows", (d) => {
+            d.display.relationArrows = !s.display.relationArrows;
+          })
+        }
+      >
+        {t("inspector.relationArrows")}
+      </MenuCheck>
+      <MenuSeparator />
+      <MenuLabel>{t("inspector.relationLabels")}</MenuLabel>
+      {RELATION_LABELS.map((mode) => (
+        <MenuCheck
+          key={mode}
+          disabled={readOnly}
+          checked={s.display.relationLabels === mode}
+          onSelect={() =>
+            cmd.updateSettings(handle, "history.relationLabels", (d) => {
+              d.display.relationLabels = mode;
+            })
+          }
+        >
+          {t(`inspector.relationLabels.${mode}`)}
+        </MenuCheck>
+      ))}
+    </>
   );
 }

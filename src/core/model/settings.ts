@@ -11,7 +11,13 @@ import type { Typology } from "../naming/typology";
 export type KeyPattern = string;
 
 /** Nom conceptuel du discriminant automatique (override O-12). */
-export const DISCRIMINANT_PRESETS: KeyPattern[] = ["code <entity>", "Id_<entity>", "<entity>_Id", "Id<entity>", "<entity>Id"];
+export const DISCRIMINANT_PRESETS: KeyPattern[] = [
+  "code <entity>",
+  "Id_<entity>",
+  "<entity>_Id",
+  "Id<entity>",
+  "<entity>Id",
+];
 
 /** Nom logique de la clé primaire issue du discriminant automatique (override O-13). */
 export const PRIMARY_KEY_PRESETS: KeyPattern[] = ["id_<table>", "<table>_id", "<name>"];
@@ -138,6 +144,21 @@ export function defaultSettings(): DocumentSettings {
     keys: { primary: "id_<table>", foreign: "<table>_id" },
     display: { showAttributes: true, relationArrows: false, relationLabels: "none" },
     grid: { enabled: true, size: 10 },
-    ddl: { foreignKeysInAlter: false, indexes: true, sourceColumnOrder: true, constraintNaming: "none", unsigned: "widen", enums: "check", sets: "array", collations: "icu", oracleDates: "timestamp", emptyStrings: "check", strictRanges: false, spatial: "postgis", sqlServerCollation: "ci_as", dboSchema: "public" },
+    ddl: {
+      foreignKeysInAlter: false,
+      indexes: true,
+      sourceColumnOrder: true,
+      constraintNaming: "none",
+      unsigned: "widen",
+      enums: "check",
+      sets: "array",
+      collations: "icu",
+      oracleDates: "timestamp",
+      emptyStrings: "check",
+      strictRanges: false,
+      spatial: "postgis",
+      sqlServerCollation: "ci_as",
+      dboSchema: "public",
+    },
   };
 }

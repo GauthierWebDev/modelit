@@ -1,7 +1,7 @@
 import type { ModelDocument } from "@core/index";
-import type { MessageKey } from "@/i18n";
-import { produce, type Draft } from "immer";
+import { type Draft, produce } from "immer";
 import { createStore, type StoreApi } from "zustand/vanilla";
+import type { MessageKey } from "@/i18n";
 
 /**
  * État d'un document ouvert et historique annuler / rétablir. Une instance par document
@@ -55,6 +55,9 @@ const pushPast = (past: HistoryEntry[], entry: HistoryEntry) => [...past, entry]
 
 export type DocumentStore = StoreApi<DocumentState>;
 
+type SetState = DocumentStore["setState"];
+type GetState = DocumentStore["getState"];
+
 export const createDocumentStore = (initial: ModelDocument): DocumentStore =>
   createStore<DocumentState>()((set, get) => ({
     doc: initial,
@@ -64,64 +67,97 @@ export const createDocumentStore = (initial: ModelDocument): DocumentStore =>
     past: [],
     future: [],
     transactionStart: null,
-
-    change(label, recipe) {
-      const { doc, past, transactionStart } = get();
-      if (transactionStart) throw new Error("change() appelé pendant une transaction");
-      const next = produce(doc, recipe);
-      if (next === doc) return;
-      set({ doc: next, past: pushPast(past, { doc, label }), future: [] });
-    },
-
-    begin() {
-      const { doc, transactionStart } = get();
-      if (!transactionStart) set({ transactionStart: doc });
-    },
-
-    preview(recipe) {
-      if (!get().transactionStart) return;
-      set({ doc: produce(get().doc, recipe) });
-    },
-
-    commit(label) {
-      const { doc, past, transactionStart } = get();
-      if (!transactionStart) return;
-      if (doc === transactionStart) return set({ transactionStart: null });
-      set({ transactionStart: null, past: pushPast(past, { doc: transactionStart, label }), future: [] });
-    },
-
-    cancel() {
-      const { transactionStart } = get();
-      if (transactionStart) set({ doc: transactionStart, transactionStart: null });
-    },
-
-    undo() {
-      const { doc, past, future, transactionStart } = get();
-      const entry = past.at(-1);
-      if (!entry || transactionStart) return;
-      set({ doc: entry.doc, past: past.slice(0, -1), future: [{ doc, label: entry.label }, ...future] });
-    },
-
-    redo() {
-      const { doc, past, future, transactionStart } = get();
-      const [entry, ...rest] = future;
-      if (!entry || transactionStart) return;
-      set({ doc: entry.doc, past: pushPast(past, { doc, label: entry.label }), future: rest });
-    },
-
-    load(doc, filePath, unsaved = false) {
-      set({ doc, savedDoc: unsaved ? { ...doc } : doc, filePath, recovered: false, past: [], future: [], transactionStart: null });
-    },
-
-    restore(doc, filePath) {
-      // `savedDoc` distinct de `doc` : le document apparaît modifié.
-      set({ doc, savedDoc: { ...doc }, filePath, recovered: true, past: [], future: [], transactionStart: null });
-    },
-
-    markSaved(filePath) {
-      set({ savedDoc: get().doc, filePath, recovered: false });
-    },
+    ...editing(set, get),
+    ...history(set, get),
+    ...files(set, get),
   }));
+
+/** Modification simple, ou transaction (glisser-déposer : une seule entrée d'historique). */
+const editing = (
+  set: SetState,
+  get: GetState,
+): Pick<DocumentState, "change" | "begin" | "preview" | "commit" | "cancel"> => ({
+  change(label, recipe) {
+    const { doc, past, transactionStart } = get();
+    if (transactionStart) {
+      throw new Error("change() appelé pendant une transaction");
+    }
+    const next = produce(doc, recipe);
+    if (next === doc) {
+      return;
+    }
+    set({ doc: next, past: pushPast(past, { doc, label }), future: [] });
+  },
+  begin() {
+    const { doc, transactionStart } = get();
+    if (!transactionStart) {
+      set({ transactionStart: doc });
+    }
+  },
+  preview(recipe) {
+    if (!get().transactionStart) {
+      return;
+    }
+    set({ doc: produce(get().doc, recipe) });
+  },
+  commit(label) {
+    const { doc, past, transactionStart } = get();
+    if (!transactionStart) {
+      return;
+    }
+    if (doc === transactionStart) {
+      return set({ transactionStart: null });
+    }
+    set({ transactionStart: null, past: pushPast(past, { doc: transactionStart, label }), future: [] });
+  },
+  cancel() {
+    const { transactionStart } = get();
+    if (transactionStart) {
+      set({ doc: transactionStart, transactionStart: null });
+    }
+  },
+});
+
+const history = (set: SetState, get: GetState): Pick<DocumentState, "undo" | "redo"> => ({
+  undo() {
+    const { doc, past, future, transactionStart } = get();
+    const entry = past.at(-1);
+    if (!entry || transactionStart) {
+      return;
+    }
+    set({ doc: entry.doc, past: past.slice(0, -1), future: [{ doc, label: entry.label }, ...future] });
+  },
+  redo() {
+    const { doc, past, future, transactionStart } = get();
+    const [entry, ...rest] = future;
+    if (!entry || transactionStart) {
+      return;
+    }
+    set({ doc: entry.doc, past: pushPast(past, { doc, label: entry.label }), future: rest });
+  },
+});
+
+/** Ouverture, récupération, enregistrement. */
+const files = (set: SetState, get: GetState): Pick<DocumentState, "load" | "restore" | "markSaved"> => ({
+  load(doc, filePath, unsaved = false) {
+    set({
+      doc,
+      savedDoc: unsaved ? { ...doc } : doc,
+      filePath,
+      recovered: false,
+      past: [],
+      future: [],
+      transactionStart: null,
+    });
+  },
+  restore(doc, filePath) {
+    // `savedDoc` distinct de `doc` : le document apparaît modifié.
+    set({ doc, savedDoc: { ...doc }, filePath, recovered: true, past: [], future: [], transactionStart: null });
+  },
+  markSaved(filePath) {
+    set({ savedDoc: get().doc, filePath, recovered: false });
+  },
+});
 
 export const selectIsDirty = (s: DocumentState) => s.doc !== s.savedDoc;
 export const selectUndoLabel = (s: DocumentState) => s.past.at(-1)?.label;

@@ -1,7 +1,7 @@
 {
   "name": "modelit",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Modélisation de données Merise (MCD → MLD → MPD → SQL), multiplateforme",
   "author": "Gauthier DANIELS",
   "license": "GPL-3.0-or-later",
@@ -17,9 +17,12 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "lint:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:sgbd": "SGBD_DOCKER=1 vitest run src/core/ddl/sgbd.test.ts",
+    "test:sgbd": "SGBD_DOCKER=1 vitest run src/core/ddl/sgbd",
     "test:perf": "PERF=1 vitest run src/core/layout/grid.test.ts",
     "tauri": "tauri"
   },
@@ -40,6 +43,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.15",
     "@electric-sql/pglite": "^0.5.9",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2.12.2",

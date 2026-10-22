@@ -1,8 +1,24 @@
-import { bendsOf, bestChunk, decidedChunk, diagramLinks, diagramNodes, gridLayout, LAYOUT_CHUNKS, linkSourceId, positionOf, type ChunkResult, type GridEdge, type GridNode, type Id, type Point } from "@core/index";
+import {
+  bendsOf,
+  bestChunk,
+  type ChunkResult,
+  decidedChunk,
+  diagramLinks,
+  diagramNodes,
+  type GridEdge,
+  type GridNode,
+  gridLayout,
+  type Id,
+  LAYOUT_CHUNKS,
+  linkSourceId,
+  type ModelDocument,
+  type Point,
+  positionOf,
+} from "@core/index";
 import { moveNodes } from "@/app/commands";
 import { logicalModelOf } from "@/app/derived";
 import type { DocumentHandle } from "@/app/document/handle";
-import { associationNamesByLink, center, nodeLayout, reflexiveBends, type Rect } from "./geometry";
+import { associationNamesByLink, center, nodeLayout, type Rect, reflexiveBends } from "./geometry";
 import { tableLayouts } from "./logicalGeometry";
 import { fitToWindow } from "./viewport";
 
@@ -21,29 +37,22 @@ import { fitToWindow } from "./viewport";
  * Le calcul tourne dans des Web Workers, en parallèle (lots de départs) : l'interface reste réactive.
  */
 export async function autoLayoutTables(handle: DocumentHandle) {
-  let doc = handle.store.getState().doc;
+  let { doc } = handle.store.getState();
   let nodes = diagramNodes(doc);
-  if (nodes.length === 0) return;
-  const display = doc.settings.display;
-  const mpd = new Map(tableLayouts(logicalModelOf(doc), doc, "mpd").map((t) => [t.sourceId, t]));
+  if (nodes.length === 0) {
+    return;
+  }
+  const { display } = doc.settings;
   const placed = await computeLayout(
-    nodes.map((node) => {
-      const mcd = nodeLayout(node, positionOf(doc.layout, node.id), display, associationNamesByLink(doc));
-      const table = mpd.get(node.id);
-      return {
-        id: node.id,
-        width: Math.max(mcd.width, table?.width ?? 0),
-        height: Math.max(mcd.height, table?.height ?? 0),
-        mcdWidth: mcd.width,
-        mcdHeight: mcd.height,
-      };
-    }),
+    layoutNodes(doc, nodes),
     diagramLinks(doc).map((l) => ({ a: linkSourceId(l), b: l.entityId })),
   );
   // Repartir du document courant ; s'il a changé d'objets pendant le calcul, résultat abandonné.
-  doc = handle.store.getState().doc;
+  ({ doc } = handle.store.getState());
   nodes = diagramNodes(doc);
-  if (nodes.length !== placed.size || nodes.some((n) => !placed.has(n.id))) return;
+  if (nodes.length !== placed.size || nodes.some((n) => !placed.has(n.id))) {
+    return;
+  }
 
   // Alignement sur la grille sans risque de chevauchement (décalage ≤ demi-pas, très inférieur aux écarts).
   const grid = doc.settings.grid.enabled && doc.settings.grid.size <= 20 ? doc.settings.grid.size : null;
@@ -55,37 +64,78 @@ export async function autoLayoutTables(handle: DocumentHandle) {
     return { ...positions.get(id)!, width, height };
   };
 
+  const bends = newBends(doc, positions, mcdRect, grid);
+
+  moveNodes(handle, positions, bends);
+  // Cadrage sur la vue affichée (le MPD, bien plus large, laisserait le MCD minuscule), sans dépasser 100 %.
+  fitToWindow(handle, 1);
+}
+
+/** Boîtes à placer : la plus grande des boîtes MCD et MPD de chaque objet (O-60), et sa boîte MCD. */
+function layoutNodes(doc: ModelDocument, nodes: ReturnType<typeof diagramNodes>) {
+  const { display } = doc.settings;
+  const mpd = new Map(tableLayouts(logicalModelOf(doc), doc, "mpd").map((t) => [t.sourceId, t]));
+  return nodes.map((node) => {
+    const mcd = nodeLayout(node, positionOf(doc.layout, node.id), display, associationNamesByLink(doc));
+    const table = mpd.get(node.id);
+    return {
+      id: node.id,
+      width: Math.max(mcd.width, table?.width ?? 0),
+      height: Math.max(mcd.height, table?.height ?? 0),
+      mcdWidth: mcd.width,
+      mcdHeight: mcd.height,
+    };
+  });
+}
+
+/** Cassures après placement : réflexive contournée, autres liens déplacés avec leurs extrémités ou redressés. */
+function newBends(
+  doc: ModelDocument,
+  positions: Map<Id, Point>,
+  mcdRect: (id: Id) => Rect,
+  grid: number | null,
+): Map<Id, Point[]> {
   const bends = new Map<Id, Point[]>();
   for (const link of diagramLinks(doc)) {
     const sourceId = linkSourceId(link);
     const legs = doc.links.filter((l) => l.associationId === sourceId);
     const reflexive = legs.length === 2 && legs.every((l) => l.entityId === link.entityId);
     if (reflexive) {
-      // Seconde patte : contourne l'entité et l'association ; la première reste droite.
-      if (link.id !== legs[1]!.id) {
-        if (bendsOf(doc.layout, link.id).length) bends.set(link.id, []);
-        continue;
-      }
-      const obstacles = [...positions.keys()].filter((id) => id !== link.entityId && id !== sourceId).map(mcdRect);
-      // Traits droits des autres liens (centre à centre) : le contournement évite de les couper.
-      const lines = diagramLinks(doc)
-        .filter((l) => linkSourceId(l) !== sourceId)
-        .map((l): [Point, Point] => [center(mcdRect(linkSourceId(l))), center(mcdRect(l.entityId))]);
-      bends.set(link.id, reflexiveBends(mcdRect(link.entityId), mcdRect(sourceId), grid, obstacles, lines));
+      reflexiveLeg(doc, { link, sourceId, second: legs[1]!.id }, { positions, mcdRect, grid }, bends);
       continue;
     }
     const linkBends = bendsOf(doc.layout, link.id);
-    if (linkBends.length === 0) continue;
+    if (linkBends.length === 0) {
+      continue;
+    }
     const node = (id: Id) => positionOf(doc.layout, id);
     const delta = (id: Id) => ({ x: positions.get(id)!.x - node(id).x, y: positions.get(id)!.y - node(id).y });
     const dE = delta(link.entityId);
     const dA = delta(sourceId);
     bends.set(link.id, dE.x === dA.x && dE.y === dA.y ? linkBends.map((b) => ({ x: b.x + dE.x, y: b.y + dE.y })) : []);
   }
+  return bends;
+}
 
-  moveNodes(handle, positions, bends);
-  // Cadrage sur la vue affichée (le MPD, bien plus large, laisserait le MCD minuscule), sans dépasser 100 %.
-  fitToWindow(handle, 1);
+/** Seconde patte d'une réflexive : contourne l'entité et l'association ; la première reste droite. */
+function reflexiveLeg(
+  doc: ModelDocument,
+  { link, sourceId, second }: { link: ReturnType<typeof diagramLinks>[number]; sourceId: Id; second: Id },
+  { positions, mcdRect, grid }: { positions: Map<Id, Point>; mcdRect: (id: Id) => Rect; grid: number | null },
+  bends: Map<Id, Point[]>,
+) {
+  if (link.id !== second) {
+    if (bendsOf(doc.layout, link.id).length > 0) {
+      bends.set(link.id, []);
+    }
+    return;
+  }
+  const obstacles = [...positions.keys()].filter((id) => id !== link.entityId && id !== sourceId).map(mcdRect);
+  // Traits droits des autres liens (centre à centre) : le contournement évite de les couper.
+  const lines = diagramLinks(doc)
+    .filter((l) => linkSourceId(l) !== sourceId)
+    .map((l): [Point, Point] => [center(mcdRect(linkSourceId(l))), center(mcdRect(l.entityId))]);
+  bends.set(link.id, reflexiveBends(mcdRect(link.entityId), mcdRect(sourceId), grid, obstacles, lines));
 }
 
 /**
@@ -109,13 +159,16 @@ let queue: Promise<unknown> = Promise.resolve();
 const WORKER_TIMEOUT = 8000;
 
 function computeLayout(nodes: GridNode[], edges: GridEdge[]): Promise<Map<string, Point>> {
-  const run = queue.then(() =>
-    withTimeout(computeLayoutNow(nodes, edges), WORKER_TIMEOUT).catch((e: unknown) => {
+  const run = queue.then(async () => {
+    try {
+      return await withTimeout(computeLayoutNow(nodes, edges), WORKER_TIMEOUT);
+    } catch (e: unknown) {
+      // biome-ignore lint/suspicious/noConsole: diagnostic de repli pour le développeur, sans effet pour l'utilisateur
       console.warn("Placement automatique : Workers indisponibles, calcul sur le fil principal.", e);
       resetPool();
       return gridLayout(nodes, edges).positions;
-    }),
-  );
+    }
+  });
   queue = run.catch(() => undefined);
   return run;
 }
@@ -124,15 +177,23 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`no answer from the layout workers after ${ms} ms`)), ms);
     promise.then(
-      (value) => (clearTimeout(timer), resolve(value)),
-      (error: unknown) => (clearTimeout(timer), reject(error)),
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
     );
   });
 }
 
 /** Workers arrêtés et oubliés : le prochain placement en recrée. */
 function resetPool() {
-  for (const worker of pool.splice(0)) worker.terminate();
+  for (const worker of pool.splice(0)) {
+    worker.terminate();
+  }
 }
 
 /**
@@ -142,7 +203,9 @@ function resetPool() {
  */
 async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<Map<string, Point>> {
   const workerCount = Math.max(1, Math.min(LAYOUT_CHUNKS, (navigator.hardwareConcurrency || 2) - 1));
-  while (pool.length < workerCount) pool.push(newWorker());
+  while (pool.length < workerCount) {
+    pool.push(newWorker());
+  }
   const workers = pool.slice(0, workerCount);
   const busy = new Set<Worker>();
   const results: ChunkResult[] = [];
@@ -152,16 +215,25 @@ async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<M
       let running = workers.length;
       const lane = async (worker: Worker) => {
         while (next < LAYOUT_CHUNKS) {
-          const chunk = next++;
+          const chunk = next;
+          next += 1;
           busy.add(worker);
+          // biome-ignore lint/performance/noAwaitInLoops: un fil traite ses lots l'un après l'autre ; les fils tournent en parallèle
           results.push(await runChunk(worker, nodes, edges, chunk));
           busy.delete(worker);
           // Décision certaine : inutile d'attendre les lots en cours ailleurs.
-          if (decidedChunk(results)) return resolve();
+          if (decidedChunk(results)) {
+            return resolve();
+          }
         }
-        if (--running === 0) resolve();
+        running -= 1;
+        if (running === 0) {
+          resolve();
+        }
       };
-      workers.forEach((worker) => lane(worker).catch(reject));
+      for (const worker of workers) {
+        lane(worker).catch(reject);
+      }
     });
   } finally {
     // Workers encore occupés (lots abandonnés, ou erreur) : arrêtés et remplacés.
@@ -178,7 +250,11 @@ function runChunk(worker: Worker, nodes: GridNode[], edges: GridEdge[], chunk: n
     worker.onmessage = (event: MessageEvent<ChunkResult>) => resolve(event.data);
     worker.onerror = (event) => {
       event.preventDefault();
-      reject(new Error(event.message || `layout worker failed${event.filename ? ` (${event.filename}:${event.lineno})` : ""}`));
+      reject(
+        new Error(
+          event.message || `layout worker failed${event.filename ? ` (${event.filename}:${event.lineno})` : ""}`,
+        ),
+      );
     };
     worker.postMessage({ nodes, edges, chunk });
   });

@@ -37,7 +37,9 @@ export function versionOptions(dbms: Dbms): DbmsVersion[] {
 
 /** Version valide pour ce SGBD, sinon la plus récente. */
 export function resolveVersion(dbms: Dbms, version: string | undefined): string {
-  if (version === GENERIC_VERSION) return version;
+  if (version === GENERIC_VERSION) {
+    return version;
+  }
   return DBMS_VERSIONS[dbms].some((v) => v.id === version) ? version! : latestVersion(dbms);
 }
 
@@ -78,5 +80,7 @@ export const versionFeatureThresholds = () => VERSION_FEATURES.map(({ dbms, sinc
 
 /** Libellés de ce que `version` apporte par rapport aux versions plus anciennes ; rien en générique. */
 export function versionFeatures(dbms: Dbms, version: string): string[] {
-  return VERSION_FEATURES.filter((f) => f.dbms === dbms && isAtLeast(dbms, version, f.since)).map((f) => MSG.versionFeature[f.feature]);
+  return VERSION_FEATURES.filter((f) => f.dbms === dbms && isAtLeast(dbms, version, f.since)).map(
+    (f) => MSG.versionFeature[f.feature],
+  );
 }

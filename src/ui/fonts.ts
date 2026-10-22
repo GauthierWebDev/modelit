@@ -30,9 +30,11 @@ export async function embeddedFontCss(text: string, italic: boolean): Promise<st
   const rules = await Promise.all(
     faces.map(async (rule) => {
       const url = /url\("?([^")]+)"?\)/.exec(rule.style.getPropertyValue("src"))?.[1];
-      if (!url) return "";
+      if (!url) {
+        return "";
+      }
       const data = await dataUrl(url);
-      const style = rule.style;
+      const { style } = rule;
       return (
         `@font-face{font-family:"${FONT_NAME}";font-style:${style.getPropertyValue("font-style")};` +
         `font-weight:${style.getPropertyValue("font-weight")};src:url(${data}) format("woff2");` +
@@ -52,10 +54,12 @@ function fontFaceRules(): CSSFontFaceRule[] {
 
 /** `unicode-range` absent : la règle couvre tout. */
 function inUnicodeRange(codePoint: number, range: string): boolean {
-  if (!range) return true;
+  if (!range) {
+    return true;
+  }
   return range.split(",").some((part) => {
     const [start, end = start] = part.trim().replace(/^U\+/i, "").split("-");
-    return codePoint >= parseInt(start!, 16) && codePoint <= parseInt(end!, 16);
+    return codePoint >= Number.parseInt(start!, 16) && codePoint <= Number.parseInt(end!, 16);
   });
 }
 

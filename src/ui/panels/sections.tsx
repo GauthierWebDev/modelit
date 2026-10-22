@@ -3,18 +3,18 @@ import {
   DISCRIMINANT_PRESETS,
   displayPattern,
   FOREIGN_KEY_PRESETS,
-  parsePattern,
+  type KeyPattern,
   PATTERN_ALIASES,
   PATTERN_VARIABLES,
-  PRIMARY_KEY_PRESETS,
-  type KeyPattern,
   type PatternKind,
+  PRIMARY_KEY_PRESETS,
+  parsePattern,
 } from "@core/index";
 import { useState } from "react";
 import * as cmd from "@/app/commands";
-import { useDocumentHandle } from "@/app/document/DocumentContext";
 import { useLogicalModel } from "@/app/derived";
-import { getLocale, t, type MessageKey } from "@/i18n";
+import { useDocumentHandle } from "@/app/document/DocumentContext";
+import { getLocale, type MessageKey, t } from "@/i18n";
 import { CommitInput, inputClass, Section } from "@/ui/common/controls";
 
 /** Sections et listes communes à l'inspecteur, aux panneaux d'héritage et aux options. */
@@ -38,7 +38,13 @@ export function PathSection({ linkId, bends }: { linkId: string; bends: number }
   );
 }
 
-export function CommentSection({ value, onCommit }: { value?: string; onCommit: (comment: string | undefined) => void }) {
+export function CommentSection({
+  value,
+  onCommit,
+}: {
+  value?: string;
+  onCommit: (comment: string | undefined) => void;
+}) {
   return (
     <Section title={t("inspector.comment")} collapsible="node.comment" summary={value ? "•" : undefined}>
       <textarea
@@ -47,7 +53,9 @@ export function CommentSection({ value, onCommit }: { value?: string; onCommit: 
         defaultValue={value ?? ""}
         onBlur={(e) => {
           const next = e.target.value.trim() || undefined;
-          if (next !== value) onCommit(next);
+          if (next !== value) {
+            onCommit(next);
+          }
         }}
       />
     </Section>
@@ -90,7 +98,9 @@ export function KeyPatternField({
         className={inputClass}
         value={custom ? CUSTOM : value}
         onChange={(e) => {
-          if (e.target.value === CUSTOM) return setCustom(true);
+          if (e.target.value === CUSTOM) {
+            return setCustom(true);
+          }
           setCustom(false);
           onChange(e.target.value);
         }}
@@ -102,15 +112,19 @@ export function KeyPatternField({
         ))}
         <option value={CUSTOM}>{t("pattern.custom")}</option>
       </select>
-      {custom && (
+      {custom ? (
         <>
           <CommitInput
             value={displayPattern(value, language)}
             placeholder={t("pattern.customLabel")}
             onCommit={(input) => {
               const parsed = parsePattern(input, kind);
-              if (parsed.ok) return void onChange(parsed.pattern);
-              return "empty" in parsed ? t("pattern.empty") : t("pattern.unknown", { variables: parsed.unknown.join(", ") });
+              if (parsed.ok) {
+                return void onChange(parsed.pattern);
+              }
+              return "empty" in parsed
+                ? t("pattern.empty")
+                : t("pattern.unknown", { variables: parsed.unknown.join(", ") });
             }}
           />
           <div className="rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300">
@@ -122,8 +136,14 @@ export function KeyPatternField({
                 const others = [...new Set(all)].filter((a) => a !== shown).map((a) => `<${a}>`);
                 return (
                   <li key={variable}>
-                    <code className="font-mono">&lt;{shown}&gt;</code> — {t(`pattern.${kind}.${variable}` as MessageKey)}
-                    {others.length > 0 && <span className="text-neutral-400"> ({t("pattern.alsoAccepted", { aliases: others.join(", ") })})</span>}
+                    <code className="font-mono">&lt;{shown}&gt;</code> —{" "}
+                    {t(`pattern.${kind}.${variable}` as MessageKey)}
+                    {others.length > 0 && (
+                      <span className="text-neutral-400">
+                        {" "}
+                        ({t("pattern.alsoAccepted", { aliases: others.join(", ") })})
+                      </span>
+                    )}
                   </li>
                 );
               })}
@@ -132,7 +152,7 @@ export function KeyPatternField({
             <p className="mt-0.5">{t("pattern.example", { example: applyPattern(value, SAMPLE) })}</p>
           </div>
         </>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -149,7 +169,11 @@ export function RelationTextSection({ linkId, value }: { linkId: string; value?:
     <Section title={t("inspector.relationText")}>
       {createsForeignKey ? (
         <>
-          <CommitInput value={value ?? ""} placeholder={t("inspector.relationTextPlaceholder")} onCommit={(text) => cmd.setRelationLabel(handle, linkId, text)} />
+          <CommitInput
+            value={value ?? ""}
+            placeholder={t("inspector.relationTextPlaceholder")}
+            onCommit={(text) => cmd.setRelationLabel(handle, linkId, text)}
+          />
           <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("inspector.relationTextHelp")}</p>
         </>
       ) : (

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { updateDock } from "@/app/dock/actions";
-import { findGroup, keepOnScreen, moveGroup, setFloatingRect, setToolbar, type DockLayout, type DragItem } from "@/app/dock/layout";
+import { findGroup, keepOnScreen, moveGroup, setFloatingRect, setToolbar } from "@/app/dock/layout";
+import type { DockLayout, DragItem } from "@/app/dock/model";
 import { usePreferencesStore } from "@/app/preferencesStore";
 import { startOwner } from "@/app/windows/owner";
 import type { ToMain, ToReplica } from "@/app/windows/protocol";
@@ -14,9 +15,9 @@ import {
   openFloats,
   ownerChannel,
   placeFloat,
+  type ScreenRect,
   screens,
   toolbarLabel,
-  type ScreenRect,
 } from "@/platform/floatWindows";
 import { dropItem, setScreenOrigin, targetAt, useDragStore } from "@/ui/dock/drag";
 import { useToolbarBand } from "@/ui/toolbar/ToolbarHost";
@@ -45,11 +46,21 @@ function desiredFloats(layout: DockLayout) {
     const p = layout.toolbar.position ?? { x: inner.x + (inner.width - TOOLBAR_START.width) / 2, y: inner.y + 56 };
     // Fenêtre focalisable : sous macOS, une fenêtre qui ne peut pas prendre le focus ne reçoit pas le
     // survol (ni effet de survol, ni infobulle). Elle rend le focus après chaque clic (FloatRoot).
-    floats.set(toolbarLabel, { url: "/?float=toolbar", rect: { ...p, ...TOOLBAR_START }, resizable: false, focusable: true });
+    floats.set(toolbarLabel, {
+      url: "/?float=toolbar",
+      rect: { ...p, ...TOOLBAR_START },
+      resizable: false,
+      focusable: true,
+    });
   }
   // Un groupe contient des champs de saisie (Propriétés, Modèle) : il doit pouvoir prendre le focus.
   for (const g of layout.floating) {
-    floats.set(groupLabel(g.id), { url: `/?float=group&id=${encodeURIComponent(g.id)}`, rect: g.rect, resizable: true, focusable: true });
+    floats.set(groupLabel(g.id), {
+      url: `/?float=group&id=${encodeURIComponent(g.id)}`,
+      rect: g.rect,
+      resizable: true,
+      focusable: true,
+    });
   }
   return floats;
 }
@@ -60,13 +71,20 @@ async function reconcile(layout: DockLayout) {
   for (const [label, { url, rect, resizable, focusable }] of wanted) {
     // La barre s'ajuste elle-même à son contenu : seule sa position est imposée après l'ouverture.
     const key = JSON.stringify(label === toolbarLabel ? { x: rect.x, y: rect.y } : rect);
-    if (!open.has(label)) await openFloat(label, url, rect, { resizable, focusable });
-    else if (applied.get(label) !== key && label !== toolbarLabel) await placeFloat(label, rect);
+    if (!open.has(label)) {
+      // biome-ignore lint/performance/noAwaitInLoops: fenêtres natives ouvertes une à une, dans l'ordre de la disposition
+      await openFloat(label, url, rect, { resizable, focusable });
+    } else if (applied.get(label) !== key && label !== toolbarLabel) {
+      await placeFloat(label, rect);
+    }
     applied.set(label, key);
   }
   for (const label of open) {
-    if (wanted.has(label)) continue;
+    if (wanted.has(label)) {
+      continue;
+    }
     applied.delete(label);
+    // biome-ignore lint/performance/noAwaitInLoops: fenêtres natives fermées une à une
     await closeFloat(label);
   }
 }
@@ -86,30 +104,68 @@ function onMoved(message: Extract<ToMain, { type: "moved" }>) {
   const { float, rect, pointer, final } = message;
   const layout = usePreferencesStore.getState().dock;
   if (!pointer) {
-    if (float.kind === "toolbar" && layout.toolbar.floating) updateDock((l) => setToolbar(l, { position: { x: rect.x, y: rect.y } }));
-    if (float.kind === "group" && findGroup(layout, float.id)) updateDock((l) => setFloatingRect(l, float.id, rect));
+    savedGeometry(float, rect, layout);
     return;
   }
   const p = toClient(pointer);
   if (float.kind === "toolbar") {
-    const over = p.y > -TOOLBAR_BAND_ABOVE && p.y < TOOLBAR_BAND && p.x >= -ZONE_MARGIN && p.x <= inner.width + ZONE_MARGIN;
-    if (useToolbarBand.getState().over !== (over && !final)) useToolbarBand.setState({ over: over && !final });
-    if (final) updateDock((l) => setToolbar(l, over ? { floating: false } : { floating: true, position: { x: rect.x, y: rect.y } }));
+    toolbarMoved(p, rect, final);
     return;
   }
-  const item: DragItem = { kind: "group", group: float.id };
+  groupMoved(float.id, { p, rect, final }, layout);
+}
+
+type Moved = Extract<ToMain, { type: "moved" }>;
+
+/** Fenêtre déplacée autrement que par sa poignée : géométrie enregistrée. */
+function savedGeometry(float: Moved["float"], rect: Moved["rect"], layout: DockLayout) {
+  if (float.kind === "toolbar" && layout.toolbar.floating) {
+    updateDock((l) => setToolbar(l, { position: { x: rect.x, y: rect.y } }));
+  }
+  if (float.kind === "group" && findGroup(layout, float.id)) {
+    updateDock((l) => setFloatingRect(l, float.id, rect));
+  }
+}
+
+/** Barre d'outils flottante : bande d'ancrage allumée pendant le glisser, ancrée ou placée au relâchement. */
+function toolbarMoved(p: { x: number; y: number }, rect: Moved["rect"], final: Moved["final"]) {
+  const over =
+    p.y > -TOOLBAR_BAND_ABOVE && p.y < TOOLBAR_BAND && p.x >= -ZONE_MARGIN && p.x <= inner.width + ZONE_MARGIN;
+  if (useToolbarBand.getState().over !== (over && !final)) {
+    useToolbarBand.setState({ over: over && !final });
+  }
+  if (final) {
+    updateDock((l) =>
+      setToolbar(l, over ? { floating: false } : { floating: true, position: { x: rect.x, y: rect.y } }),
+    );
+  }
+}
+
+/** Groupe flottant : zone d'ancrage allumée pendant le glisser, ancré ou placé au relâchement. */
+function groupMoved(
+  id: string,
+  { p, rect, final }: { p: { x: number; y: number }; rect: Moved["rect"]; final: Moved["final"] },
+  layout: DockLayout,
+) {
+  const item: DragItem = { kind: "group", group: id };
   const target = insideMain(p) ? targetAt(p.x, p.y, item) : null;
   const docking = target?.kind === "zone" ? target : null;
   if (!final) {
     // Mis à jour seulement quand la cible change : pas de clignotement des zones.
     const current = useDragStore.getState();
     const same = current.item !== null && JSON.stringify(current.target) === JSON.stringify(docking);
-    if (!same) useDragStore.setState({ item, pointer: null, target: docking });
+    if (!same) {
+      useDragStore.setState({ item, pointer: null, target: docking });
+    }
     return;
   }
   useDragStore.setState({ item: null, pointer: null, target: null });
-  if (docking) return updateDock((l) => moveGroup(l, float.id, docking));
-  if (findGroup(layout, float.id)) updateDock((l) => setFloatingRect(l, float.id, rect));
+  if (docking) {
+    return updateDock((l) => moveGroup(l, id, docking));
+  }
+  if (findGroup(layout, id)) {
+    updateDock((l) => setFloatingRect(l, id, rect));
+  }
 }
 
 /** Glisser commencé dans une fenêtre flottante : la cible est décidée ici. */
@@ -123,7 +179,9 @@ export function FloatManager() {
   const layout = usePreferencesStore((s) => s.dock);
 
   useEffect(() => {
-    if (!nativeWindows()) return;
+    if (!nativeWindows()) {
+      return;
+    }
     const offs: (() => void)[] = [];
     let disposed = false;
     void (async () => {
@@ -133,7 +191,9 @@ export function FloatManager() {
       };
       await refresh();
       const channel = await ownerChannel<ToReplica, ToMain>();
-      if (disposed) return;
+      if (disposed) {
+        return;
+      }
       offs.push(
         startOwner(channel, runMainCommand, {
           onDrop,
@@ -147,12 +207,16 @@ export function FloatManager() {
     })();
     return () => {
       disposed = true;
-      offs.forEach((off) => off());
+      for (const off of offs) {
+        off();
+      }
     };
   }, []);
 
   useEffect(() => {
-    if (nativeWindows()) void reconcile(layout);
+    if (nativeWindows()) {
+      void reconcile(layout);
+    }
   }, [layout]);
 
   return null;

@@ -9,14 +9,16 @@ import { setNativeTheme } from "@/platform/window";
 export function useApplyTheme() {
   const theme = usePreferencesStore((s) => s.theme);
   useEffect(() => {
-    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const media = globalThis.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => {
       const dark = theme === "dark" || (theme === "system" && media.matches);
       document.documentElement.classList.toggle("dark", dark);
     };
     apply();
     void setNativeTheme(theme === "system" ? null : theme);
-    if (theme !== "system") return;
+    if (theme !== "system") {
+      return;
+    }
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
   }, [theme]);

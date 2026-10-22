@@ -33,7 +33,9 @@ export const resetWorkspace = () => useWorkspaceStore.setState(initialState(), t
 export function activeDocument(): DocumentHandle {
   const { documents, activeId } = useWorkspaceStore.getState();
   const active = documents.find((d) => d.id === activeId);
-  if (!active) throw new Error(`Document actif introuvable : ${activeId}`);
+  if (!active) {
+    throw new Error(`Document actif introuvable : ${activeId}`);
+  }
   return active;
 }
 
@@ -44,7 +46,9 @@ export const useActiveDocument = (): DocumentHandle =>
 function nextUntitled(untitled: Record<string, number>): number {
   const used = new Set(Object.values(untitled));
   let n = 1;
-  while (used.has(n)) n++;
+  while (used.has(n)) {
+    n += 1;
+  }
   return n;
 }
 
@@ -59,7 +63,9 @@ export const findByPath = (path: string): DocumentHandle | undefined =>
   useWorkspaceStore.getState().documents.find((d) => d.store.getState().filePath === path);
 
 export function activate(id: string) {
-  if (useWorkspaceStore.getState().documents.some((d) => d.id === id)) useWorkspaceStore.setState({ activeId: id });
+  if (useWorkspaceStore.getState().documents.some((d) => d.id === id)) {
+    useWorkspaceStore.setState({ activeId: id });
+  }
 }
 
 /** Active l'onglet voisin (`step` = 1 : suivant, -1 : précédent), en boucle. */
@@ -67,7 +73,9 @@ export function activateNeighbour(step: 1 | -1) {
   const { documents, activeId } = useWorkspaceStore.getState();
   const index = documents.findIndex((d) => d.id === activeId);
   const next = documents[(index + step + documents.length) % documents.length];
-  if (next) activate(next.id);
+  if (next) {
+    activate(next.id);
+  }
 }
 
 /**
@@ -86,8 +94,12 @@ export function openInTab(
   const named = doc.store.getState().filePath !== null;
   const replaced = reuseBlank && active && isBlank(active) ? active : undefined;
   const nextUntitledMap = { ...untitled };
-  if (replaced) delete nextUntitledMap[replaced.id];
-  if (!named) nextUntitledMap[doc.id] = nextUntitled(nextUntitledMap);
+  if (replaced) {
+    delete nextUntitledMap[replaced.id];
+  }
+  if (!named) {
+    nextUntitledMap[doc.id] = nextUntitled(nextUntitledMap);
+  }
 
   const index = documents.findIndex((d) => d.id === activeId);
   const list = replaced
@@ -101,7 +113,9 @@ export function openInTab(
 export function closeTab(id: string) {
   const { documents, activeId, untitled } = useWorkspaceStore.getState();
   const index = documents.findIndex((d) => d.id === id);
-  if (index < 0) return;
+  if (index < 0) {
+    return;
+  }
   const rest = documents.filter((d) => d.id !== id);
   const nextUntitledMap = { ...untitled };
   delete nextUntitledMap[id];
@@ -124,9 +138,13 @@ export function closeTab(id: string) {
  */
 export function replaceDocument(id: string, doc: DocumentHandle) {
   const { documents, activeId, untitled, titles } = useWorkspaceStore.getState();
-  if (!documents.some((d) => d.id === id)) return;
-  const rename = <T,>(record: Record<string, T>) => {
-    if (doc.id === id || !(id in record)) return record;
+  if (!documents.some((d) => d.id === id)) {
+    return;
+  }
+  const rename = <T>(record: Record<string, T>) => {
+    if (doc.id === id || !(id in record)) {
+      return record;
+    }
     const { [id]: value, ...rest } = record;
     return { ...rest, [doc.id]: value! };
   };
@@ -145,7 +163,11 @@ export function addTab(doc: DocumentHandle, title?: string) {
   useWorkspaceStore.setState({
     documents: [...documents.slice(0, index + 1), doc, ...documents.slice(index + 1)],
     activeId: doc.id,
-    ...(title ? { titles: { ...titles, [doc.id]: title } } : doc.store.getState().filePath ? {} : { untitled: { ...untitled, [doc.id]: nextUntitled(untitled) } }),
+    ...(title
+      ? { titles: { ...titles, [doc.id]: title } }
+      : doc.store.getState().filePath
+        ? {}
+        : { untitled: { ...untitled, [doc.id]: nextUntitled(untitled) } }),
   });
 }
 
@@ -159,7 +181,9 @@ export function setTitle(id: string, title: string | null) {
 export function moveTab(id: string, to: number) {
   const { documents } = useWorkspaceStore.getState();
   const doc = documents.find((d) => d.id === id);
-  if (!doc) return;
+  if (!doc) {
+    return;
+  }
   const rest = documents.filter((d) => d.id !== id);
   const at = Math.max(0, Math.min(rest.length, to));
   useWorkspaceStore.setState({ documents: [...rest.slice(0, at), doc, ...rest.slice(at)] });
@@ -176,7 +200,7 @@ export function syncUntitled(doc: DocumentHandle) {
     const next = { ...untitled };
     delete next[doc.id];
     useWorkspaceStore.setState({ untitled: next });
-  } else if (!named && !(doc.id in untitled)) {
+  } else if (!(named || doc.id in untitled)) {
     useWorkspaceStore.setState({ untitled: { ...untitled, [doc.id]: nextUntitled(untitled) } });
   }
 }

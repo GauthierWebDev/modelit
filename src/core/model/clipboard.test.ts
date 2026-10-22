@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { toLogicalModel } from "../mld/transform";
 import { model } from "../testing/builder";
+import { byCodeUnit } from "../testing/order";
 import { extractFragment, freeName, parseFragment, pasteFragment } from "./clipboard";
 import type { ModelDocument } from "./document";
 
@@ -11,7 +12,8 @@ const shop = () =>
     .association("PASSER", ["CLIENT 0,n", "COMMANDE 1,1"])
     .build();
 
-const idOf = (doc: ModelDocument, name: string) => [...doc.entities, ...doc.associations].find((n) => n.name === name)!.id;
+const idOf = (doc: ModelDocument, name: string) =>
+  [...doc.entities, ...doc.associations].find((n) => n.name === name)!.id;
 const roundTrip = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
 /** Copier, couper, coller, dupliquer (override O-52). */
@@ -39,12 +41,19 @@ describe("copier / coller", () => {
 
   it("association copiée avec ses entités : pattes rattachées aux copies", () => {
     const doc = shop();
-    const fragment = extractFragment(doc, ["CLIENT", "COMMANDE", "PASSER"].map((n) => idOf(doc, n)))!;
+    const fragment = extractFragment(
+      doc,
+      ["CLIENT", "COMMANDE", "PASSER"].map((n) => idOf(doc, n)),
+    )!;
     const pasted = new Set(pasteFragment(doc, fragment));
     const legs = doc.links.filter((l) => pasted.has(l.associationId));
     expect(legs).toHaveLength(2);
     expect(legs.every((l) => pasted.has(l.entityId))).toBe(true);
-    expect(toLogicalModel(doc).tables.map((t) => t.name).sort()).toEqual(["CLIENT", "CLIENT_2", "COMMANDE", "COMMANDE_2"]);
+    expect(
+      toLogicalModel(doc)
+        .tables.map((t) => t.name)
+        .sort(byCodeUnit),
+    ).toEqual(["CLIENT", "CLIENT_2", "COMMANDE", "COMMANDE_2"]);
   });
 
   it("association seule : pattes rattachées aux entités d'origine si elles existent", () => {
@@ -52,10 +61,12 @@ describe("copier / coller", () => {
     const fragment = extractFragment(doc, [idOf(doc, "PASSER")])!;
     const [copy] = pasteFragment(doc, fragment);
     const legs = doc.links.filter((l) => l.associationId === copy);
-    expect(legs.map((l) => l.entityId).sort()).toEqual([idOf(doc, "CLIENT"), idOf(doc, "COMMANDE")].sort());
+    expect(legs.map((l) => l.entityId).sort(byCodeUnit)).toEqual([idOf(doc, "CLIENT"), idOf(doc, "COMMANDE")].sort());
     expect(legs.find((l) => l.entityId === idOf(doc, "COMMANDE"))!.cardinality).toEqual({ min: 1, max: 1 });
   });
+});
 
+describe("copier / coller", () => {
   it("dans un autre document : pattes vers une entité absente abandonnées, positions gardées", () => {
     const source = shop();
     source.layout.positions[idOf(source, "PASSER")] = { x: 300, y: 120 };
@@ -80,7 +91,12 @@ describe("copier / coller", () => {
   });
 
   it("héritage copié avec ses entités ; trait ou patte seuls ignorés", () => {
-    const doc = model().entity("PERSONNE", ["id*"]).entity("ELEVE").entity("PROF").inherit("PERSONNE", ["ELEVE", "PROF"]).build();
+    const doc = model()
+      .entity("PERSONNE", ["id*"])
+      .entity("ELEVE")
+      .entity("PROF")
+      .inherit("PERSONNE", ["ELEVE", "PROF"])
+      .build();
     const h = doc.inheritances[0]!;
     const fragment = extractFragment(doc, [h.id, ...["PERSONNE", "ELEVE"].map((n) => idOf(doc, n))])!;
     const pasted = new Set(pasteFragment(doc, fragment));
@@ -90,7 +106,9 @@ describe("copier / coller", () => {
     expect(doc.inheritanceLinks.filter((l) => l.inheritanceId === copy.id)).toHaveLength(3);
     expect(extractFragment(doc, [doc.links[0]?.id ?? "aucun"])).toBeNull();
   });
+});
 
+describe("copier / coller", () => {
   it("noms de contraintes retirés de la copie (script sans doublon)", () => {
     const doc = shop();
     const client = doc.entities.find((e) => e.name === "CLIENT")!;
@@ -111,7 +129,17 @@ describe("copier / coller", () => {
     const doc = shop();
     doc.layout.positions[idOf(doc, "CLIENT")] = { x: 100, y: 200 };
     doc.layout.positions[idOf(doc, "COMMANDE")] = { x: 300, y: 120 };
-    const ids = pasteFragment(doc, extractFragment(doc, ["CLIENT", "COMMANDE"].map((n) => idOf(doc, n)))!, { x: 500, y: 500 });
-    expect(ids.map((id) => doc.layout.positions[id])).toEqual([{ x: 500, y: 580 }, { x: 700, y: 500 }]);
+    const ids = pasteFragment(
+      doc,
+      extractFragment(
+        doc,
+        ["CLIENT", "COMMANDE"].map((n) => idOf(doc, n)),
+      )!,
+      { x: 500, y: 500 },
+    );
+    expect(ids.map((id) => doc.layout.positions[id])).toEqual([
+      { x: 500, y: 580 },
+      { x: 700, y: 500 },
+    ]);
   });
 });

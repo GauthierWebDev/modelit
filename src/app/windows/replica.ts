@@ -1,10 +1,10 @@
-import { enablePatches, produce, produceWithPatches } from "immer";
 import type { ModelDocument } from "@core/index";
+import { enablePatches, produce, produceWithPatches } from "immer";
 import { create } from "zustand";
 import { createStore } from "zustand/vanilla";
 import { applyCollabMirror } from "../collab/session";
 import type { DocumentState } from "../document/documentStore";
-import { createDocumentViewStore, ZOOM_MAX, ZOOM_MIN, type DocumentViewState } from "../document/documentView";
+import { createDocumentViewStore, type DocumentViewState, ZOOM_MAX, ZOOM_MIN } from "../document/documentView";
 import type { DocumentHandle } from "../document/handle";
 import { newModelDocument } from "../modelDefaults";
 import { usePreferencesStore } from "../preferencesStore";
@@ -22,7 +22,15 @@ enablePatches();
 /** Dernier état reçu (nom du document, boîte modale ouverte…). */
 export const useMirrorStore = create<{ state: MirrorState | null }>(() => ({ state: null }));
 
-const UI_KEYS = ["tool", "exportOpen", "optionsOpen", "modelSettingsOpen", "reverseOpen", "shareOpen", "about"] as const;
+const UI_KEYS = [
+  "tool",
+  "exportOpen",
+  "optionsOpen",
+  "modelSettingsOpen",
+  "reverseOpen",
+  "shareOpen",
+  "about",
+] as const;
 /** Boîtes de dialogue : elles s'ouvrent dans la fenêtre principale, jamais dans une flottante. */
 const DIALOG_KEYS = ["exportOpen", "optionsOpen", "modelSettingsOpen", "reverseOpen", "shareOpen", "about"] as const;
 
@@ -34,12 +42,44 @@ export interface Replica {
 }
 
 export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
-  let documentId = "";
-  let applying = false;
-  const send = (message: ToMain) => channel.send(message);
+  const r: ReplicaLink = { documentId: "", applying: false, send: (message) => channel.send(message) };
+  const store = replicaStore(r, newModelDocument());
+  const view = replicaView(r);
+  const offUi = forwardUi(r);
 
-  const initial = newModelDocument();
-  const store = createStore<DocumentState>()((set, get) => ({
+  // Disposition : la principale l'applique et l'enregistre ; elle revient par le stockage partagé.
+  usePreferencesStore.setState({
+    updateDock: (change) => r.send({ type: "dock", layout: change(usePreferencesStore.getState().dock) }),
+  });
+
+  const offChannel = channel.listen((message) => {
+    if (message.type === "state") {
+      applyMainState(r, message.state, store, view);
+    }
+  });
+  r.send({ type: "hello" });
+
+  return {
+    handle: { id: "replica", store, view },
+    command: (command) => r.send({ type: "command", command }),
+    stop: () => {
+      offUi();
+      offChannel();
+    },
+  };
+}
+
+/** Lien vers la principale : document courant, état reçu en cours d'application, envoi. */
+interface ReplicaLink {
+  documentId: string;
+  /** État de la principale en cours d'application : rien n'est renvoyé. */
+  applying: boolean;
+  send: (message: ToMain) => void;
+}
+
+/** Document miroir : les modifications partent en patchs Immer vers la principale. */
+function replicaStore(r: ReplicaLink, initial: ModelDocument) {
+  return createStore<DocumentState>()((set, get) => ({
     doc: initial,
     savedDoc: initial,
     filePath: null,
@@ -49,85 +89,121 @@ export function startReplica(channel: Channel<ToMain, ToReplica>): Replica {
     transactionStart: null,
     change(label, recipe) {
       const [next, patches] = produceWithPatches(get().doc, recipe);
-      if (!patches.length) return;
+      if (patches.length === 0) {
+        return;
+      }
       set({ doc: next });
-      send({ type: "change", documentId, label, patches });
+      r.send({ type: "change", documentId: r.documentId, label, patches });
     },
     // Les glisser-déposer (seuls utilisateurs des transactions) n'existent que dans la principale.
-    begin() {},
+    begin() {
+      // Pas de transaction dans une fenêtre flottante (voir ci-dessus).
+    },
     preview(recipe) {
       set({ doc: produce(get().doc, recipe) });
     },
-    commit() {},
-    cancel() {},
-    undo: () => send({ type: "undo", documentId }),
-    redo: () => send({ type: "redo", documentId }),
-    load() {},
-    restore() {},
-    markSaved() {},
+    commit() {
+      // Pas de transaction dans une fenêtre flottante (voir ci-dessus).
+    },
+    cancel() {
+      // Pas de transaction dans une fenêtre flottante (voir ci-dessus).
+    },
+    undo: () => r.send({ type: "undo", documentId: r.documentId }),
+    redo: () => r.send({ type: "redo", documentId: r.documentId }),
+    load() {
+      // Ouvrir un fichier se fait dans la fenêtre principale.
+    },
+    restore() {
+      // La récupération se fait dans la fenêtre principale.
+    },
+    markSaved() {
+      // Enregistrer est le rôle de la fenêtre principale.
+    },
   }));
+}
 
+/** Vue (sélection, cadrage) : appliquée ici et renvoyée à la principale. */
+function replicaView(r: ReplicaLink) {
   const view = createDocumentViewStore();
   const forwardView = (patch: Partial<DocumentViewState>) => {
     view.setState(patch);
-    if (!applying) send({ type: "view", documentId, patch });
+    if (!r.applying) {
+      r.send({ type: "view", documentId: r.documentId, patch });
+    }
   };
   view.setState({
     setView: (v) => forwardView({ view: v }),
     select: (selection) => forwardView({ selection, activeBend: null }),
     toggleSelected: (id) => {
       const { selection } = view.getState();
-      forwardView({ activeBend: null, selection: selection.includes(id) ? selection.filter((x) => x !== id) : [...selection, id] });
+      forwardView({
+        activeBend: null,
+        selection: selection.includes(id) ? selection.filter((x) => x !== id) : [...selection, id],
+      });
     },
-    setViewport: (viewport) => forwardView({ viewport: { ...viewport, zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, viewport.zoom)) } }),
+    setViewport: (viewport) =>
+      forwardView({ viewport: { ...viewport, zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, viewport.zoom)) } }),
     setActiveBend: (activeBend) => forwardView({ activeBend }),
   });
+  return view;
+}
 
-  // Outil, boîtes de dialogue : renvoyés à la principale.
-  const offUi = useUiStore.subscribe((s, p) => {
-    if (applying) return;
+/** Outil, boîtes de dialogue : renvoyés à la principale. Renvoie le désabonnement. */
+function forwardUi(r: ReplicaLink) {
+  return useUiStore.subscribe((s, p) => {
+    if (r.applying) {
+      return;
+    }
     const patch: UiPatch = {};
-    for (const key of UI_KEYS) if (s[key] !== p[key]) Object.assign(patch, { [key]: s[key] });
-    if (!Object.keys(patch).length) return;
-    send({ type: "ui", patch });
-    if (DIALOG_KEYS.some((k) => k in patch)) useUiStore.setState({ exportOpen: false, optionsOpen: false, modelSettingsOpen: false, reverseOpen: false, shareOpen: false, about: null });
-  });
-
-  // Disposition : la principale l'applique et l'enregistre ; elle revient par le stockage partagé.
-  usePreferencesStore.setState({ updateDock: (change) => send({ type: "dock", layout: change(usePreferencesStore.getState().dock) }) });
-
-  const offChannel = channel.listen((message) => {
-    if (message.type !== "state") return;
-    const { state } = message;
-    applying = true;
-    try {
-      documentId = state.documentId;
-      const doc: ModelDocument = state.doc;
-      store.setState({
-        doc,
-        // Indicateur de modification et libellés d'annulation tels que la principale les voit.
-        savedDoc: state.dirty ? ({ ...doc } as ModelDocument) : doc,
-        recovered: state.recovered,
-        past: state.undoLabel ? [{ doc, label: state.undoLabel }] : [],
-        future: state.redoLabel ? [{ doc, label: state.redoLabel }] : [],
+    for (const key of UI_KEYS) {
+      if (s[key] !== p[key]) {
+        Object.assign(patch, { [key]: s[key] });
+      }
+    }
+    if (Object.keys(patch).length === 0) {
+      return;
+    }
+    r.send({ type: "ui", patch });
+    if (DIALOG_KEYS.some((k) => k in patch)) {
+      useUiStore.setState({
+        exportOpen: false,
+        optionsOpen: false,
+        modelSettingsOpen: false,
+        reverseOpen: false,
+        shareOpen: false,
+        about: null,
       });
-      view.setState(state.view);
-      const ui = useUiStore.getState();
-      if (ui.tool !== state.ui.tool) useUiStore.setState(state.ui);
-      applyCollabMirror(state.collab);
-      useMirrorStore.setState({ state });
-    } finally {
-      applying = false;
     }
   });
-  send({ type: "hello" });
+}
 
-  return {
-    handle: { id: "replica", store, view },
-    command: (command) => send({ type: "command", command }),
-    stop: () => {
-      offUi();
-      offChannel();
-    },
-  };
+/** État de la principale appliqué au miroir. */
+function applyMainState(
+  r: ReplicaLink,
+  state: Extract<ToReplica, { type: "state" }>["state"],
+  store: ReturnType<typeof replicaStore>,
+  view: ReturnType<typeof replicaView>,
+) {
+  r.applying = true;
+  try {
+    r.documentId = state.documentId;
+    const doc: ModelDocument = state.doc;
+    store.setState({
+      doc,
+      // Indicateur de modification et libellés d'annulation tels que la principale les voit.
+      savedDoc: state.dirty ? ({ ...doc } as ModelDocument) : doc,
+      recovered: state.recovered,
+      past: state.undoLabel ? [{ doc, label: state.undoLabel }] : [],
+      future: state.redoLabel ? [{ doc, label: state.redoLabel }] : [],
+    });
+    view.setState(state.view);
+    const ui = useUiStore.getState();
+    if (ui.tool !== state.ui.tool) {
+      useUiStore.setState(state.ui);
+    }
+    applyCollabMirror(state.collab);
+    useMirrorStore.setState({ state });
+  } finally {
+    r.applying = false;
+  }
 }

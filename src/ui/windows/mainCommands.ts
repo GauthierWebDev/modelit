@@ -1,5 +1,5 @@
-import { newDocument, newTab, openDocument, saveDocument } from "@/app/fileCommands";
 import { runCollabAction } from "@/app/collab/session";
+import { newDocument, newTab, openDocument, saveDocument } from "@/app/fileCommands";
 import type { MainCommand } from "@/app/windows/protocol";
 import { activeDocument } from "@/app/workspace";
 import { autoLayoutTables } from "@/ui/canvas/autoLayout";
@@ -37,6 +37,8 @@ export function runMainCommand(command: MainCommand) {
 let relay: ((command: MainCommand) => void) | null = null;
 
 /** Fenêtre flottante : ses commandes partent vers la principale. */
-export const setMainCommandRelay = (f: typeof relay) => (relay = f);
+export const setMainCommandRelay = (f: typeof relay) => {
+  relay = f;
+};
 
 export const mainCommand = (command: MainCommand) => (relay ? relay(command) : runMainCommand(command));

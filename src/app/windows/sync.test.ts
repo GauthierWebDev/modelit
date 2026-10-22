@@ -1,11 +1,29 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { useCollabStore } from "../collab/session";
 import { addEntity, renameNode } from "../commands";
 import { selectUndoLabel } from "../document/documentStore";
 import { activeDocument, openInTab, resetWorkspace } from "../workspace";
-import { useCollabStore } from "../collab/session";
 import { startOwner } from "./owner";
 import type { Channel, MainCommand, ToMain, ToReplica } from "./protocol";
 import { startReplica } from "./replica";
+
+let commands: MainCommand[];
+let channels: ReturnType<typeof memoryChannels>;
+let replica: ReturnType<typeof startReplica>;
+let stopOwner: () => void;
+
+beforeEach(() => {
+  resetWorkspace();
+  commands = [];
+  channels = memoryChannels();
+  stopOwner = startOwner(channels.owner, (c) => commands.push(c), { schedule: (f) => f() });
+  replica = startReplica(channels.replica);
+});
+
+afterEach(() => {
+  replica.stop();
+  stopOwner();
+});
 
 /** Canal en mémoire : ce qu'envoie un côté est reçu par l'autre, immédiatement. */
 function memoryChannels() {
@@ -13,36 +31,33 @@ function memoryChannels() {
   const toReplica = new Set<(m: ToReplica) => void>();
   const sent: ToReplica[] = [];
   const owner: Channel<ToReplica, ToMain> = {
-    send: (m) => (sent.push(m), toReplica.forEach((h) => h(structuredClone(m)))),
-    listen: (h) => (toMain.add(h), () => toMain.delete(h)),
+    send: (m) => {
+      sent.push(m);
+      for (const h of toReplica) {
+        h(structuredClone(m));
+      }
+    },
+    listen: (h) => {
+      toMain.add(h);
+      return () => toMain.delete(h);
+    },
   };
-  const replica: Channel<ToMain, ToReplica> = {
-    send: (m) => toMain.forEach((h) => h(structuredClone(m))),
-    listen: (h) => (toReplica.add(h), () => toReplica.delete(h)),
+  const replicaSide: Channel<ToMain, ToReplica> = {
+    send: (m) => {
+      for (const h of toMain) {
+        h(structuredClone(m));
+      }
+    },
+    listen: (h) => {
+      toReplica.add(h);
+      return () => toReplica.delete(h);
+    },
   };
-  return { owner, replica, sent };
+  return { owner, replica: replicaSide, sent };
 }
 
 /** Fenêtres flottantes synchronisées avec la principale (J-01, phase 4, D6). */
 describe("synchronisation entre fenêtres", () => {
-  let commands: MainCommand[];
-  let channels: ReturnType<typeof memoryChannels>;
-  let replica: ReturnType<typeof startReplica>;
-  let stopOwner: () => void;
-
-  beforeEach(() => {
-    resetWorkspace();
-    commands = [];
-    channels = memoryChannels();
-    stopOwner = startOwner(channels.owner, (c) => commands.push(c), { schedule: (f) => f() });
-    replica = startReplica(channels.replica);
-  });
-
-  afterEach(() => {
-    replica.stop();
-    stopOwner();
-  });
-
   it("la flottante reçoit le document actif dès son ouverture", () => {
     expect(replica.handle.store.getState().doc.entities).toEqual([]);
     addEntity(activeDocument(), { x: 0, y: 0 });
@@ -89,13 +104,19 @@ describe("synchronisation entre fenêtres", () => {
     expect(renameNode(stale, id, "X")).toBeNull();
     expect(activeDocument().store.getState().doc.entities).toEqual([]);
   });
+});
 
+describe("synchronisation entre fenêtres", () => {
   it("pendant un glisser-déposer, une seule diffusion, à la fin", () => {
     const id = addEntity(activeDocument(), { x: 0, y: 0 });
-    const store = activeDocument().store;
+    const { store } = activeDocument();
     const before = channels.sent.length;
     store.getState().begin();
-    for (let x = 1; x <= 10; x++) store.getState().preview((d) => void (d.layout.positions[id] = { x, y: 0 }));
+    for (let x = 1; x <= 10; x += 1) {
+      store.getState().preview((d) => {
+        d.layout.positions[id] = { x, y: 0 };
+      });
+    }
     expect(channels.sent.length).toBe(before);
     store.getState().commit("history.move");
     expect(channels.sent.length).toBe(before + 1);

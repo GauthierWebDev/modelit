@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Vocal des sessions collaboratives (O-48, D18) : sans cette clé, WebKit masque getUserMedia. -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>ModelIt utilise le micro pour le vocal des sessions collaboratives, quand vous rejoignez l'audio. / ModelIt uses the microphone for session voice chat when you join the audio.</string>
+</dict>
+</plist>

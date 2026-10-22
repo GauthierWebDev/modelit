@@ -2,7 +2,7 @@ import type { ModelDocument } from "@core/index";
 import type { Patch } from "immer";
 import type { MessageKey } from "@/i18n";
 import type { CollabAction, CollabMirror } from "../collab/session";
-import type { DockLayout, DragItem, Rect } from "../dock/layout";
+import type { DockLayout, DragItem, Rect } from "../dock/model";
 import type { DocumentViewState } from "../document/documentView";
 import type { AboutTab, Tool } from "../uiStore";
 
@@ -57,7 +57,11 @@ export type ToMain =
   | { type: "change"; documentId: string; label: MessageKey; patches: Patch[] }
   | { type: "undo"; documentId: string }
   | { type: "redo"; documentId: string }
-  | { type: "view"; documentId: string; patch: Partial<Pick<DocumentViewState, "view" | "selection" | "viewport" | "activeBend">> }
+  | {
+      type: "view";
+      documentId: string;
+      patch: Partial<Pick<DocumentViewState, "view" | "selection" | "viewport" | "activeBend">>;
+    }
   | { type: "ui"; patch: UiPatch }
   | { type: "dock"; layout: DockLayout }
   | { type: "command"; command: MainCommand }
@@ -77,11 +81,13 @@ export type ToMain =
     };
 
 /** Messages de la principale vers les flottantes. */
-export type ToReplica = { type: "state"; state: MirrorState };
+export interface ToReplica {
+  type: "state";
+  state: MirrorState;
+}
 
 /** Canal entre fenêtres : événements Tauri, ou en mémoire pour les tests. */
 export interface Channel<Out, In> {
-  send(message: Out): void;
-  listen(handler: (message: In) => void): () => void;
+  send: (message: Out) => void;
+  listen: (handler: (message: In) => void) => () => void;
 }
-

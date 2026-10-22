@@ -1,4 +1,4 @@
-import { formatCardinality, linksOf, type Id, type LogicalColumn, type ModelDocument } from "@core/index";
+import { formatCardinality, type Id, type LogicalColumn, linksOf, type ModelDocument } from "@core/index";
 import { Info } from "lucide-react";
 import { renameForeignKey } from "@/app/commands";
 import { useLogicalModel } from "@/app/derived";
@@ -21,13 +21,17 @@ export function ForeignKeysSection({ tableOf, linkIds }: { tableOf?: Id; linkIds
   const doc = useDocument((s) => s.doc);
   const rows: { table: string; column: LogicalColumn; referenced: string | undefined }[] = [];
   for (const table of logical.tables) {
-    table.columns.forEach((column) => {
-      if (!column.origin) return;
-      if (table.source.id !== tableOf && !linkIds?.includes(column.origin.linkId)) return;
+    for (const column of table.columns) {
+      if (!column.origin) {
+        continue;
+      }
+      if (table.source.id !== tableOf && !linkIds?.includes(column.origin.linkId)) {
+        continue;
+      }
       const fk = table.foreignKeys.find((f) => f.columns.includes(column.name));
       const referenced = fk && `${fk.referencedTable}.${fk.referencedColumns[fk.columns.indexOf(column.name)]}`;
       rows.push({ table: table.name, column, referenced });
-    });
+    }
   }
   // Depuis la bulle d'association, la clé peut arriver dans la table d'une entité : on la nomme.
   const showTable = linkIds !== undefined;
@@ -47,16 +51,24 @@ export function ForeignKeysSection({ tableOf, linkIds }: { tableOf?: Id; linkIds
         return (
           <div key={`${table}-${origin.linkId}-${origin.attributeId}`} className="flex flex-col gap-0.5">
             <div className="flex items-center gap-1">
-              <span className="w-3 font-mono text-sm text-pink-700 dark:text-pink-400">{column.foreign ? "#" : ""}</span>
+              <span className="w-3 font-mono text-sm text-pink-700 dark:text-pink-400">
+                {column.foreign ? "#" : ""}
+              </span>
               <CommitInput
                 className="flex-1"
                 value={column.name}
                 placeholder={origin.defaultName}
                 onCommit={(name) =>
-                  renameForeignKey(handle, origin.linkId, origin.attributeId, name.trim() === origin.defaultName ? "" : name)
+                  renameForeignKey(
+                    handle,
+                    origin.linkId,
+                    origin.attributeId,
+                    name.trim() === origin.defaultName ? "" : name,
+                  )
                 }
               />
               <span
+                role="img"
                 className="inline-flex cursor-help text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
                 aria-label={details}
                 {...tip(details)}
@@ -83,7 +95,9 @@ export function ForeignKeysSection({ tableOf, linkIds }: { tableOf?: Id; linkIds
 export function describeLinkage(doc: ModelDocument, linkId: Id): string {
   const reference = doc.links.find((l) => l.id === linkId);
   const association = reference && doc.associations.find((a) => a.id === reference.associationId);
-  if (!reference || !association) return "?";
+  if (!(reference && association)) {
+    return "?";
+  }
   const entity = (id: Id) => doc.entities.find((e) => e.id === id)?.name ?? "?";
   const others = linksOf(doc, association.id).filter((l) => l.id !== reference.id);
   const tail = others.map((l) => `(${formatCardinality(l.cardinality)}) ${entity(l.entityId)}`).join(", ");

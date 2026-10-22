@@ -1,0 +1,165 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": ["src/**", "scripts/**", "*.ts", "*.json", "!**/*.golden.*"]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 120,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all",
+      "arrowParentheses": "always"
+    },
+    "globals": ["__APP_INFO__"]
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        "noNonNullAssertion": "off",
+        "noProcessEnv": "error",
+        "noDefaultExport": "error",
+        "useBlockStatements": "error",
+        "noIncrementDecrement": "error",
+        "useExplicitLengthCheck": "error",
+        "useNumericSeparators": "error",
+        "noImplicitBoolean": "error",
+        "noNegationElse": "error",
+        "useConsistentCurlyBraces": "error",
+        "noUnusedTemplateLiteral": "error",
+        "useCollapsedIf": "error",
+        "useForOf": "error",
+        "useGlobalThis": "error",
+        "useNumberNamespace": "error",
+        "useConsistentTypeDefinitions": "error",
+        "useConsistentMethodSignatures": "error",
+        "useConsistentMemberAccessibility": "error",
+        "useDefaultSwitchClause": "off",
+        "noParameterAssign": "error",
+        "noParameterProperties": "error",
+        "noExportedImports": "error",
+        "useErrorCause": "error",
+        "noExcessiveClassesPerFile": "error",
+        "noExcessiveLinesPerFile": "error",
+        "useFilenamingConvention": {
+          "level": "error",
+          "options": {
+            "filenameCases": ["camelCase", "PascalCase", "kebab-case", "export"]
+          }
+        },
+        "useNamingConvention": "off",
+        "useExportsLast": "off",
+        "noNestedTernary": "off",
+        "noContinue": "off",
+        "noHexColors": "off",
+        "noJsxLiterals": "off",
+        "useDestructuring": "error",
+        "useComponentExportOnlyModules": "off"
+      },
+      "suspicious": {
+        "noLeakedRender": "error",
+        "useArraySortCompare": "error",
+        "noReturnAssign": "error",
+        "noEqualsToNull": "error",
+        "useAwait": "error",
+        "noNestedPromises": "error",
+        "noUnnecessaryConditions": "off",
+        "noShadow": "error",
+        "noEmptyBlockStatements": "error",
+        "noBitwiseOperators": "error",
+        "noConsole": "error",
+        "noMisplacedAssertion": "off"
+      },
+      "correctness": {
+        "noUndeclaredVariables": "error",
+        "noUnresolvedImports": "off",
+        "useUniqueElementIds": "error",
+        "noUndeclaredDependencies": "off",
+        "noNodejsModules": "error",
+        "noProcessGlobal": "error"
+      },
+      "security": {
+        "noSecrets": "off"
+      },
+      "a11y": {
+        "noNoninteractiveElementInteractions": "error"
+      },
+      "complexity": {
+        "noUselessReturn": "error",
+        "noUselessUndefined": "error",
+        "useSimplifiedLogicExpression": "error",
+        "noDivRegex": "error",
+        "noImplicitCoercions": "error",
+        "noForEach": "error",
+        "noVoid": "off",
+        "useMaxParams": "off",
+        "noExcessiveCognitiveComplexity": "error",
+        "noExcessiveLinesPerFunction": "error"
+      },
+      "performance": {
+        "noAwaitInLoops": "error",
+        "useTopLevelRegex": "off",
+        "noDelete": "off",
+        "noNamespaceImport": "off"
+      }
+    }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "on"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/platform/voiceWorklet.js"],
+      "javascript": {
+        "globals": ["AudioWorkletProcessor", "registerProcessor", "sampleRate", "currentTime"]
+      }
+    },
+    {
+      "includes": ["scripts/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/*.test.ts", "src/core/testing/**", "scripts/**", "*.ts"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noNodejsModules": "off",
+            "noProcessGlobal": "off"
+          },
+          "style": {
+            "noProcessEnv": "off",
+            "noDefaultExport": "off"
+          }
+        }
+      }
+    }
+  ]
+}

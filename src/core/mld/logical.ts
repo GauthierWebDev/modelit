@@ -111,7 +111,10 @@ export interface LogicalTable {
   schema?: string;
 }
 
-export type IssueTarget = { kind: "entity" | "association" | "link" | "inheritance"; id: Id };
+export interface IssueTarget {
+  kind: "entity" | "association" | "link" | "inheritance";
+  id: Id;
+}
 
 export interface Issue {
   severity: "error" | "warning";

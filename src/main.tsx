@@ -2,10 +2,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { usePreferencesStore } from "./app/preferencesStore";
 import { setLocale } from "./i18n";
-import { App } from "./ui/App";
 import { floatKind } from "./platform/floatWindows";
-import { FloatRoot } from "./ui/windows/FloatRoot";
+import { App } from "./ui/App";
 import { loadFonts } from "./ui/fonts";
+import { FloatRoot } from "./ui/windows/FloatRoot";
 import "./index.css";
 
 /**

@@ -1,7 +1,14 @@
 import { Check, Copy, LogOut, Square, Users } from "lucide-react";
-import { useState } from "react";
-import { joinFromLink, leaveSession, setGuestsAi, shareActiveTab, stopSharing, useCollabStore } from "@/app/collab/session";
+import { type ReactNode, useState } from "react";
 import { MIN_PASSWORD_LENGTH } from "@/app/collab/password";
+import {
+  joinFromLink,
+  leaveSession,
+  setGuestsAi,
+  shareActiveTab,
+  stopSharing,
+  useCollabStore,
+} from "@/app/collab/session";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { collabAvailable } from "@/platform/collab";
@@ -18,7 +25,13 @@ function LinkRow({ label, value }: { label: string; value: string }) {
     <div className="flex flex-col gap-1">
       <span className="text-xs font-medium text-neutral-500 dark:text-neutral-400">{label}</span>
       <div className="flex gap-2">
-        <input readOnly aria-label={label} value={value} className={`${inputClass} flex-1 font-mono text-xs`} onFocus={(e) => e.target.select()} />
+        <input
+          readOnly={true}
+          aria-label={label}
+          value={value}
+          className={`${inputClass} flex-1 font-mono text-xs`}
+          onFocus={(e) => e.target.select()}
+        />
         <button
           type="button"
           className={secondary}
@@ -48,7 +61,10 @@ export function ShareDialog() {
   const [password, setPassword] = useState("");
   const [allowAi, setAllowAi] = useState(false);
   const [link, setLink] = useState("");
-  if (!open) return null;
+  const form: StartForm = { mode, password, setPassword, allowAi, setAllowAi, link, setLink };
+  if (!open) {
+    return null;
+  }
 
   const close = () => setOpen(false);
   const busy = mode === "starting" || mode === "joining";
@@ -56,22 +72,80 @@ export function ShareDialog() {
   const tooShort = password.length > 0 && password.length < MIN_PASSWORD_LENGTH;
 
   const closeButton = (
-    <button type="button" className="rounded px-3 py-1 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800" onClick={close}>
+    <button
+      type="button"
+      className="rounded px-3 py-1 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+      onClick={close}
+    >
       {t("common.close")}
     </button>
   );
 
-  let body;
-  let footer;
+  const { body, footer } = content({ mode, links, aiAllowed, hostName, closeButton, busy, tooShort, form });
+
+  return (
+    <Modal title={t("collab.title")} icon={<Users size={16} />} onClose={close} footer={footer}>
+      <ErrorBanner message={error} onClose={() => useCollabStore.setState({ error: null })} />
+      <div className="mt-2">{body}</div>
+    </Modal>
+  );
+}
+
+type Mode = ReturnType<typeof useCollabStore.getState>["mode"];
+type Links = ReturnType<typeof useCollabStore.getState>["links"];
+
+interface Content {
+  body: ReactNode;
+  footer: ReactNode;
+}
+
+/** Saisies du partage et de la jonction. */
+interface StartForm {
+  mode: Mode;
+  password: string;
+  setPassword: (password: string) => void;
+  allowAi: boolean;
+  setAllowAi: (allowAi: boolean) => void;
+  link: string;
+  setLink: (link: string) => void;
+}
+
+interface ContentScope {
+  mode: Mode;
+  links: Links;
+  aiAllowed: boolean;
+  hostName: string;
+  closeButton: ReactNode;
+  busy: boolean;
+  tooShort: boolean;
+  form: StartForm;
+}
+
+/** Contenu selon l'état : hôte (liens), invité, partage ou jonction possibles, indisponible. */
+function content({ mode, links, aiAllowed, hostName, closeButton, busy, tooShort, form }: ContentScope): Content {
   if (mode === "host" && links) {
-    body = (
+    return hostContent(links, aiAllowed, closeButton);
+  }
+  if (mode === "guest") {
+    return guestContent(hostName, closeButton);
+  }
+  if (collabAvailable()) {
+    return startContent(form, busy, tooShort, closeButton);
+  }
+  return unavailableContent(closeButton);
+}
+
+/** Hôte : liens d'invitation, assistants IA des invités, arrêt. */
+function hostContent(links: NonNullable<Links>, aiAllowed: boolean, closeButton: ReactNode): Content {
+  return {
+    body: (
       <div className="flex flex-col gap-3">
         <LinkRow label={t("collab.editLink")} value={links.edit} />
         <LinkRow label={t("collab.readLink")} value={links.read} />
         <Checkbox label={t("collab.allowAi")} checked={aiAllowed} onChange={setGuestsAi} />
       </div>
-    );
-    footer = (
+    ),
+    footer: (
       <>
         <button type="button" className={`${secondary} text-red-600`} onClick={() => void stopSharing()}>
           <Square size={14} /> {t("collab.stop")}
@@ -79,10 +153,15 @@ export function ShareDialog() {
         <div className="flex-1" />
         {closeButton}
       </>
-    );
-  } else if (mode === "guest") {
-    body = <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.inSession", { host: hostName })}</p>;
-    footer = (
+    ),
+  };
+}
+
+/** Invité : hôte de la session, départ. */
+function guestContent(hostName: string, closeButton: ReactNode): Content {
+  return {
+    body: <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.inSession", { host: hostName })}</p>,
+    footer: (
       <>
         <button type="button" className={`${secondary} text-red-600`} onClick={() => void leaveSession()}>
           <LogOut size={14} /> {t("collab.leave")}
@@ -90,33 +169,47 @@ export function ShareDialog() {
         <div className="flex-1" />
         {closeButton}
       </>
-    );
-  } else if (!collabAvailable()) {
-    body = <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.unavailable")}</p>;
-    footer = (
-      <>
-        <div className="flex-1" />
-        {closeButton}
-      </>
-    );
-  } else {
-    body = (
+    ),
+  };
+}
+
+/** Partager l'onglet actif ou rejoindre par un lien collé. */
+function startContent(
+  { mode, password, setPassword, allowAi, setAllowAi, link, setLink }: StartForm,
+  busy: boolean,
+  tooShort: boolean,
+  closeButton: ReactNode,
+): Content {
+  return {
+    body: (
       <div className="flex flex-col gap-4">
         <section className="flex flex-col gap-2">
           <h3 className="text-sm font-semibold">{t("collab.shareTitle")}</h3>
           <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.shareHelp")}</p>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-neutral-500 dark:text-neutral-400">{t("collab.password", { n: MIN_PASSWORD_LENGTH })}</span>
-            <input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
+            <span className="text-neutral-500 dark:text-neutral-400">
+              {t("collab.password", { n: MIN_PASSWORD_LENGTH })}
+            </span>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputClass}
+            />
           </label>
           <Checkbox label={t("collab.allowAi")} checked={allowAi} onChange={setAllowAi} />
           <div>
             <button
               type="button"
-              data-autofocus
+              data-autofocus={true}
               disabled={busy || tooShort}
               className={primary}
-              onClick={() => void shareActiveTab({ ...(password ? { password } : {}), aiAllowed: allowAi }).then(() => setPassword(""))}
+              onClick={() =>
+                void shareActiveTab({ ...(password ? { password } : {}), aiAllowed: allowAi }).then(() =>
+                  setPassword(""),
+                )
+              }
             >
               {mode === "starting" ? t("collab.starting") : t("collab.start")}
             </button>
@@ -144,19 +237,25 @@ export function ShareDialog() {
           </form>
         </section>
       </div>
-    );
-    footer = (
+    ),
+    footer: (
       <>
         <div className="flex-1" />
         {closeButton}
       </>
-    );
-  }
+    ),
+  };
+}
 
-  return (
-    <Modal title={t("collab.title")} icon={<Users size={16} />} onClose={close} footer={footer}>
-      <ErrorBanner message={error} onClose={() => useCollabStore.setState({ error: null })} />
-      <div className="mt-2">{body}</div>
-    </Modal>
-  );
+/** Session collaborative indisponible (navigateur). */
+function unavailableContent(closeButton: ReactNode): Content {
+  return {
+    body: <p className="text-sm text-neutral-600 dark:text-neutral-300">{t("collab.unavailable")}</p>,
+    footer: (
+      <>
+        <div className="flex-1" />
+        {closeButton}
+      </>
+    ),
+  };
 }

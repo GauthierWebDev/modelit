@@ -1,23 +1,35 @@
-import { useEffect } from "react";
-import { ChevronDown, GripVertical, LayoutDashboard, MousePointer2, Redo2, Spline, Square, Triangle, Undo2, Users } from "lucide-react";
-import { AppMenu } from "./AppMenu";
-import { DisplayMenu } from "./DisplayMenu";
+import {
+  ChevronDown,
+  GripVertical,
+  LayoutDashboard,
+  MousePointer2,
+  Redo2,
+  Spline,
+  Square,
+  Triangle,
+  Undo2,
+  Users,
+} from "lucide-react";
 import type { PointerEvent, ReactNode } from "react";
+import { useEffect } from "react";
+import { useCollabStore } from "@/app/collab/session";
+import { updateDock } from "@/app/dock/actions";
+import { setToolbar } from "@/app/dock/layout";
 import { useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { selectRedoLabel, selectUndoLabel } from "@/app/document/documentStore";
 import type { ViewMode } from "@/app/document/documentView";
-import { useCollabStore } from "@/app/collab/session";
-import { useSessionReadOnly } from "@/ui/collab/readOnly";
-import { useUiStore, type Tool } from "@/app/uiStore";
+import type { DocumentHandle } from "@/app/document/handle";
+import { type Tool, useUiStore } from "@/app/uiStore";
 import { chooseTool, showView, toolAvailable } from "@/app/viewCommands";
-import { t, type MessageKey } from "@/i18n";
-import { mainCommand } from "@/ui/windows/mainCommands";
+import { type MessageKey, t } from "@/i18n";
+import { useSessionReadOnly } from "@/ui/collab/readOnly";
 import { IconButton } from "@/ui/common/controls";
 import { Menu, MenuItem } from "@/ui/common/Menu";
-import { updateDock } from "@/app/dock/actions";
-import { setToolbar } from "@/app/dock/layout";
 import { tip } from "@/ui/common/Tooltip";
 import { MOD } from "@/ui/shortcuts";
+import { mainCommand } from "@/ui/windows/mainCommands";
+import { AppMenu } from "./AppMenu";
+import { DisplayMenu } from "./DisplayMenu";
 
 /** Barre d'outils principale. */
 
@@ -32,7 +44,15 @@ const TOOLS: { id: Tool; label: MessageKey; icon: ReactNode; key: string }[] = [
 /** Icône de l'association : droite en haut et en bas, arrondie sur les côtés (override O-27). */
 function AssociationIcon() {
   return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+    <svg
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      aria-hidden="true"
+    >
       <rect x={2} y={7} width={20} height={10} rx={5} />
     </svg>
   );
@@ -47,14 +67,22 @@ export const views = (): { id: ViewMode; label: string; title: string }[] =>
  * thème et options sont dans le menu ≡, le zoom dans la barre d'état. `floating` : barre flottante, largeur ajustée à son
  * contenu ; `onGripDown` : poignée de déplacement (gérée par `ToolbarHost`).
  */
-export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; onGripDown?: (e: PointerEvent<HTMLElement>) => void }) {
+export function Toolbar({
+  floating = false,
+  onGripDown,
+}: {
+  floating?: boolean;
+  onGripDown?: (e: PointerEvent<HTMLElement>) => void;
+}) {
   const { tool, setShareOpen } = useUiStore();
   const sharing = useCollabStore((s) => s.mode === "host" || s.mode === "guest");
   const doc = useDocumentHandle();
   // Lecture seule (lecteur, reconnexion) : seul l'outil de sélection reste (O-05 §4.3).
   const readOnly = useSessionReadOnly(doc);
   useEffect(() => {
-    if (readOnly && tool !== "select") chooseTool(doc, "select");
+    if (readOnly && tool !== "select") {
+      chooseTool(doc, "select");
+    }
   }, [readOnly, tool, doc]);
   const view = useDocumentView((s) => s.view);
   const undoLabel = useDocument(selectUndoLabel);
@@ -69,6 +97,7 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
           : "flex items-center gap-1 border-b border-neutral-200 bg-neutral-50 py-1 pr-2 pl-1 dark:border-neutral-700 dark:bg-neutral-900"
       }
     >
+      {/* biome-ignore lint/a11y/useSemanticElements: poignée de déplacement au pointeur, hors de l'ordre de tabulation */}
       <span
         role="button"
         tabIndex={-1}
@@ -81,58 +110,12 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
         <GripVertical size={14} />
       </span>
       <AppMenu />
+      <Group>{historyButtons(undoLabel, redoLabel, undo, redo)}</Group>
       <Group>
-        <IconButton
-          tooltip={undoLabel ? t("toolbar.undoAction", { label: t(undoLabel), key: `${MOD}Z` }) : t("toolbar.undo")}
-          disabled={!undoLabel}
-          onClick={undo}
-        >
-          <Undo2 size={16} />
-        </IconButton>
-        <IconButton
-          tooltip={redoLabel ? t("toolbar.redoAction", { label: t(redoLabel), key: `⇧${MOD}Z` }) : t("toolbar.redo")}
-          disabled={!redoLabel}
-          onClick={redo}
-        >
-          <Redo2 size={16} />
-        </IconButton>
-      </Group>
-      <Group>
-        <div role="tablist" className="flex overflow-hidden rounded border border-neutral-300 dark:border-neutral-600">
-          {views().map((v, i) => (
-            <button
-              key={v.id}
-              type="button"
-              role="tab"
-              aria-selected={view === v.id}
-              {...tip(`${v.title} (${MOD}${i + 1})`)}
-              onClick={() => showView(doc, v.id)}
-              className={`px-2.5 py-0.5 text-xs font-semibold ${
-                view === v.id
-                  ? "bg-blue-600 text-white"
-                  : "text-neutral-600 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
-              }`}
-            >
-              {v.label}
-            </button>
-          ))}
-        </div>
+        {viewTabs(doc, view)}
         <DisplayMenu />
       </Group>
-      <Group>
-        {TOOLS.map((x) => (
-          <IconButton
-            key={x.id}
-            tooltip={t("tool.tooltip", { label: t(x.label), key: x.key })}
-            active={tool === x.id}
-            disabled={(!toolAvailable(x.id, view) || readOnly) && x.id !== "select"}
-            onClick={() => chooseTool(doc, x.id)}
-          >
-            {x.icon}
-            <span className="hidden text-xs whitespace-nowrap 2xl:inline">{t(x.label)}</span>
-          </IconButton>
-        ))}
-      </Group>
+      <Group>{toolButtons(doc, tool, view, readOnly)}</Group>
       <Group>
         <IconButton tooltip={t("toolbar.autoLayout")} onClick={() => mainCommand({ name: "autoLayout" })}>
           <LayoutDashboard size={16} />
@@ -168,6 +151,75 @@ export function Toolbar({ floating = false, onGripDown }: { floating?: boolean; 
         )}
       </Menu>
     </div>
+  );
+}
+
+type HistoryLabel = ReturnType<typeof selectUndoLabel>;
+
+/** Annuler et rétablir, avec le libellé de l'action concernée. */
+function historyButtons(undoLabel: HistoryLabel, redoLabel: HistoryLabel, undo: () => void, redo: () => void) {
+  return (
+    <>
+      <IconButton
+        tooltip={undoLabel ? t("toolbar.undoAction", { label: t(undoLabel), key: `${MOD}Z` }) : t("toolbar.undo")}
+        disabled={!undoLabel}
+        onClick={undo}
+      >
+        <Undo2 size={16} />
+      </IconButton>
+      <IconButton
+        tooltip={redoLabel ? t("toolbar.redoAction", { label: t(redoLabel), key: `⇧${MOD}Z` }) : t("toolbar.redo")}
+        disabled={!redoLabel}
+        onClick={redo}
+      >
+        <Redo2 size={16} />
+      </IconButton>
+    </>
+  );
+}
+
+/** Onglets des vues MCD, MLD, MPD (⌘1 à ⌘3). */
+function viewTabs(doc: DocumentHandle, view: ViewMode) {
+  return (
+    <div role="tablist" className="flex overflow-hidden rounded border border-neutral-300 dark:border-neutral-600">
+      {views().map((v, i) => (
+        <button
+          key={v.id}
+          type="button"
+          role="tab"
+          aria-selected={view === v.id}
+          {...tip(`${v.title} (${MOD}${i + 1})`)}
+          onClick={() => showView(doc, v.id)}
+          className={`px-2.5 py-0.5 text-xs font-semibold ${
+            view === v.id
+              ? "bg-blue-600 text-white"
+              : "text-neutral-600 hover:bg-neutral-200 dark:text-neutral-300 dark:hover:bg-neutral-700"
+          }`}
+        >
+          {v.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Outils de la fenêtre ; ceux sans objet dans la vue ou en lecture seule sont grisés (O-54). */
+function toolButtons(doc: DocumentHandle, tool: Tool, view: ViewMode, readOnly: boolean) {
+  return (
+    <>
+      {TOOLS.map((x) => (
+        <IconButton
+          key={x.id}
+          tooltip={t("tool.tooltip", { label: t(x.label), key: x.key })}
+          active={tool === x.id}
+          disabled={(!toolAvailable(x.id, view) || readOnly) && x.id !== "select"}
+          onClick={() => chooseTool(doc, x.id)}
+        >
+          {x.icon}
+          <span className="hidden text-xs whitespace-nowrap 2xl:inline">{t(x.label)}</span>
+        </IconButton>
+      ))}
+    </>
   );
 }
 

@@ -13,7 +13,9 @@ import { CommitInput, IconButton } from "@/ui/common/controls";
 export function CustomDbmsLibrary() {
   const library = usePreferencesStore((s) => s.customDbms);
   const { renameCustomDbms, duplicateCustomDbms, deleteCustomDbms } = usePreferencesStore();
-  if (!library.length) return <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("customDbms.libraryEmpty")}</p>;
+  if (library.length === 0) {
+    return <p className="text-xs text-neutral-500 dark:text-neutral-400">{t("customDbms.libraryEmpty")}</p>;
+  }
   return (
     <>
       <ul className="flex flex-col gap-1">
@@ -23,12 +25,17 @@ export function CustomDbmsLibrary() {
             <CommitInput
               className="flex-1"
               value={d.name}
-              onCommit={(name) => (name.trim() ? void renameCustomDbms(d.id, name.trim()) : t("customDbms.nameRequired"))}
+              onCommit={(name) =>
+                name.trim() ? void renameCustomDbms(d.id, name.trim()) : t("customDbms.nameRequired")
+              }
             />
             <span className="w-40 flex-none truncate text-xs text-neutral-500 dark:text-neutral-400">
               {t("customDbms.basedOnLabel", { dbms: dbmsLabel(d.base, d.version) })} · {Object.keys(d.types).length}
             </span>
-            <IconButton tooltip={t("customDbms.duplicate")} onClick={() => duplicateCustomDbms(d.id, t("customDbms.copyName", { name: d.name }))}>
+            <IconButton
+              tooltip={t("customDbms.duplicate")}
+              onClick={() => duplicateCustomDbms(d.id, t("customDbms.copyName", { name: d.name }))}
+            >
               <Copy size={14} />
             </IconButton>
             <IconButton

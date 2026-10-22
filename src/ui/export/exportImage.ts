@@ -57,19 +57,29 @@ export async function buildSvg(
 ): Promise<{ svg: string; width: number; height: number }> {
   const canvas = document.querySelector<SVGSVGElement>("svg[data-canvas]");
   const root = canvas?.querySelector<SVGGElement>("[data-export-root]");
-  if (!canvas || !root) throw new ExportError(t("export.noCanvas"));
+  if (!(canvas && root)) {
+    throw new ExportError(t("export.noCanvas"));
+  }
 
   const content = root.cloneNode(true) as SVGGElement;
   content.removeAttribute("transform");
   content.removeAttribute("data-export-root");
-  content.querySelectorAll(UI_ONLY).forEach((el) => el.remove());
+  for (const el of content.querySelectorAll(UI_ONLY)) {
+    el.remove();
+  }
 
   // Recadrage sur le contenu réel (sans les éléments d'interface).
   const hidden = root.querySelectorAll<SVGElement>(UI_ONLY);
-  hidden.forEach((el) => (el.style.display = "none"));
+  for (const el of hidden) {
+    el.style.display = "none";
+  }
   const box = root.getBBox();
-  hidden.forEach((el) => (el.style.display = ""));
-  if (box.width === 0 || box.height === 0) throw new ExportError(t("export.empty"));
+  for (const el of hidden) {
+    el.style.display = "";
+  }
+  if (box.width === 0 || box.height === 0) {
+    throw new ExportError(t("export.empty"));
+  }
 
   const x = Math.floor(box.x - MARGIN);
   const y = Math.floor(box.y - MARGIN);
@@ -86,7 +96,10 @@ export async function buildSvg(
   const values = themeValues(names, options.theme);
   body = body.replace(/var\((--[\w-]+)\)/g, (_, name: string) => values.get(name) || "currentColor");
 
-  const fontCss = await embeddedFontCss(content.textContent ?? "", content.querySelector("[font-style=italic]") !== null);
+  const fontCss = await embeddedFontCss(
+    content.textContent ?? "",
+    content.querySelector("[font-style=italic]") !== null,
+  );
   const style = fontCss ? `<style>${fontCss}</style>` : "";
 
   const background = options.background
@@ -104,7 +117,9 @@ async function rasterize(svg: string, width: number, height: number, options: Ex
   canvas.width = Math.ceil(width * scale);
   canvas.height = Math.ceil(height * scale);
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new ExportError(t("export.tooLarge"));
+  if (!ctx) {
+    throw new ExportError(t("export.tooLarge"));
+  }
 
   const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
   try {
@@ -120,11 +135,15 @@ async function rasterize(svg: string, width: number, height: number, options: Ex
     URL.revokeObjectURL(url);
   }
 
-  const mime = FORMATS.find((f) => f.id === options.format)!.mime;
+  const { mime } = FORMATS.find((f) => f.id === options.format)!;
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mime, 0.92));
   // Le moteur refuse les images trop grandes.
-  if (!blob) throw new ExportError(t("export.tooLarge"));
-  if (blob.type === mime) return blob;
+  if (!blob) {
+    throw new ExportError(t("export.tooLarge"));
+  }
+  if (blob.type === mime) {
+    return blob;
+  }
 
   // WebKit (macOS) n'encode pas le WebP : encodeur WebAssembly, chargé à la demande.
   if (options.format === "webp") {
@@ -139,6 +158,8 @@ async function rasterize(svg: string, width: number, height: number, options: Ex
 export async function renderExport(options: ExportOptions): Promise<Blob> {
   const background = options.format === "jpg" ? (options.background ?? "#ffffff") : options.background;
   const { svg, width, height } = await buildSvg({ theme: options.theme, background });
-  if (options.format === "svg") return new Blob([svg], { type: "image/svg+xml" });
+  if (options.format === "svg") {
+    return new Blob([svg], { type: "image/svg+xml" });
+  }
   return rasterize(svg, width, height, { ...options, background });
 }

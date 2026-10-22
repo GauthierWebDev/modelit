@@ -1,0 +1,3 @@
+# Comme Biome (biome.json) : largeur 120, une expression reste sur une ligne tant qu'elle y tient.
+max_width = 120
+use_small_heuristics = "Max"
