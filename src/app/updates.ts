@@ -1,10 +1,10 @@
 import { t } from "@/i18n";
-import { type AvailableUpdate, checkForUpdate, updatesConfigured, updatesSupported } from "@/platform/updater";
 import { APP_INFO, CHANGELOG } from "./appInfo";
 import { alertDialog, confirmDialog, showError } from "./dialogStore";
 import { usePreferencesStore } from "./preferencesStore";
 import { useUiStore } from "./uiStore";
 import { confirmLoseAllChanges } from "./unsavedGuard";
+import { type AvailableUpdate, updateSource } from "./updateSource";
 
 /**
  * Proposition de mise à jour : vérification automatique à chaque lancement (désactivable dans
@@ -21,7 +21,7 @@ let busy = false;
 
 /** Vérification automatique, à appeler au lancement ; silencieuse si rien n'est disponible ou en cas d'erreur. */
 export function scheduleUpdateCheck(): () => void {
-  if (!updatesSupported()) {
+  if (!updateSource().supported()) {
     return () => {
       // Aucune vérification programmée : rien à annuler.
     };
@@ -43,7 +43,7 @@ async function run(manual: boolean) {
   }
   busy = true;
   try {
-    if (!(await updatesConfigured())) {
+    if (!(await updateSource().configured())) {
       if (manual) {
         await alertDialog({
           title: t("update.title"),
@@ -56,7 +56,7 @@ async function run(manual: boolean) {
     }
     let update: AvailableUpdate | null;
     try {
-      update = await checkForUpdate();
+      update = await updateSource().check();
     } catch (e) {
       // Hors ligne, GitHub indisponible… : sans conséquence pour une vérification automatique.
       if (manual) {

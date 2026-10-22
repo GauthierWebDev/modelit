@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { claudeCodeCommand, newToken, useMcpStore } from "@/app/mcp/activity";
+import { takeOverMcp } from "@/app/mcp/bridge";
 import { usePreferencesStore } from "@/app/preferencesStore";
 import { t } from "@/i18n";
 import { Checkbox, Field, NumberInput } from "@/ui/common/controls";
-import { takeOverMcp } from "./McpBridge";
 
 /** Options « Assistants IA (MCP) » (override O-47) : activation, port, jeton, configuration à copier. */
 export function McpOptions() {

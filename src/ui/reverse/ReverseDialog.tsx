@@ -2,11 +2,11 @@ import { DBMS_LIST, detectDialect, type ReverseReport, type SqlDialect } from "@
 import { FileUp } from "lucide-react";
 import { useId, useState } from "react";
 import { showError } from "@/app/dialogStore";
+import { fileAccess } from "@/app/fileAccess";
 import { reverseIntoNewTab } from "@/app/reverseCommands";
 import { useUiStore } from "@/app/uiStore";
 import { showView } from "@/app/viewCommands";
 import { t } from "@/i18n";
-import { openTextFile } from "@/platform/files";
 import { autoLayoutTables } from "@/ui/canvas/autoLayout";
 import { Modal } from "@/ui/common/Modal";
 
@@ -55,7 +55,7 @@ export function ReverseDialog() {
 /** Script lu depuis un fichier : remplace la saisie, efface le compte rendu. */
 async function importFile(setSql: (sql: string) => void, setReport: (report: ReverseReport | null) => void) {
   try {
-    const file = await openTextFile({ name: t("file.sqlFilter"), extensions: ["sql", "ddl", "txt"] });
+    const file = await fileAccess().openText({ name: t("file.sqlFilter"), extensions: ["sql", "ddl", "txt"] });
     if (file) {
       setSql(file.content);
       setReport(null);

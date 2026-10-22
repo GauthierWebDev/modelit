@@ -1,9 +1,9 @@
 import { deserializeModel, FILE_EXTENSION, ModelFileError, serializeModel } from "@core/index";
 import { t } from "@/i18n";
-import { openModelFile, saveModelFile } from "@/platform/files";
 import { showError, showWarnings } from "./dialogStore";
 import type { DocumentHandle } from "./document/handle";
 import { fileName } from "./documentNames";
+import { fileAccess } from "./fileAccess";
 import { useUiStore } from "./uiStore";
 import { confirmLoseChanges } from "./unsavedGuard";
 import { activate, closeTab, findByPath, openInTab, syncUntitled } from "./workspace";
@@ -24,7 +24,7 @@ export function newTab() {
 
 export async function openDocument() {
   try {
-    const file = await openModelFile(t("file.modelFilter"));
+    const file = await fileAccess().openModel(t("file.modelFilter"));
     if (!file) {
       return;
     }
@@ -43,7 +43,7 @@ export async function openDocument() {
 export async function saveDocument(doc: DocumentHandle, saveAs = false) {
   const { doc: model, filePath, markSaved } = doc.store.getState();
   try {
-    const path = await saveModelFile(
+    const path = await fileAccess().saveModel(
       serializeModel(model),
       saveAs ? null : filePath,
       `${t("file.defaultName")}.${FILE_EXTENSION}`,

@@ -4,10 +4,10 @@ import { useDocumentHandle, useDocumentView } from "@/app/document/DocumentConte
 import type { ViewMode } from "@/app/document/documentView";
 import type { DocumentHandle } from "@/app/document/handle";
 import { fileName } from "@/app/documentNames";
+import { fileAccess } from "@/app/fileAccess";
 import { usePreferencesStore } from "@/app/preferencesStore";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
-import { saveExportFile } from "@/platform/files";
 import { inputClass } from "@/ui/common/controls";
 import { tip } from "@/ui/common/Tooltip";
 import { views } from "@/ui/toolbar/Toolbar";
@@ -126,7 +126,7 @@ async function runExport({ doc, view, prefs, format, transparent, setBusy, setOp
     });
     const path = doc.store.getState().filePath;
     const base = path ? fileName(path).replace(/\.[^.]+$/, "") : t("export.defaultName");
-    const saved = await saveExportFile(blob, `${base}-${view}.${prefs.format}`, {
+    const saved = await fileAccess().saveExport(blob, `${base}-${view}.${prefs.format}`, {
       name: format.label,
       extensions: [prefs.format],
     });
