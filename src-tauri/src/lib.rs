@@ -42,8 +42,11 @@ pub fn run() {
         .manage(collab::CollabState::default())
         // Micro : demandé par le vocal d'une session (O-48, D18), seulement après « Rejoindre
         // l'audio ». Le système garde sa propre autorisation (macOS : Info.plist, invite TCC).
-        .on_permission_request(|_, kind| match kind {
-            tauri::webview::PermissionKind::Microphone => tauri::webview::PermissionResponse::Allow,
+        // Fenêtre principale seulement : les fenêtres flottantes n'ont pas de micro (audit A-01, P-3).
+        .on_permission_request(|webview, kind| match kind {
+            tauri::webview::PermissionKind::Microphone if webview.label() == "main" => {
+                tauri::webview::PermissionResponse::Allow
+            }
             _ => tauri::webview::PermissionResponse::Default,
         })
         .invoke_handler(tauri::generate_handler![
