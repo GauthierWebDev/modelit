@@ -1,141 +1,27 @@
 import {
-  bendsOf,
   bestChunk,
   type ChunkResult,
   decidedChunk,
-  diagramLinks,
-  diagramNodes,
   type GridEdge,
   type GridNode,
   gridLayout,
-  type Id,
   LAYOUT_CHUNKS,
-  linkSourceId,
-  type ModelDocument,
   type Point,
-  positionOf,
 } from "@core/index";
-import { moveNodes } from "@/app/commands";
-import { logicalModelOf } from "@/app/derived";
 import type { DocumentHandle } from "@/app/document/handle";
-import { associationNamesByLink, center, nodeLayout, type Rect, reflexiveBends } from "./geometry";
-import { tableLayouts } from "./logicalGeometry";
+import { autoLayout } from "@/app/layoutCommands";
+import type { LayoutRunner } from "@/app/layoutRunner";
 import { fitToWindow } from "./viewport";
 
 /**
- * « Placement automatique » (overrides O-09, O-30), disposition commune aux trois vues (O-01).
- *
- * 1. Tous les objets du MCD (entités, associations, héritages) sont placés ensemble sur une grille
- *    qui évite les traits traversant un objet, les croisements et les cardinalités superposées
- *    (`gridLayout`). Chaque cellule a la taille de l'objet dans sa vue la plus grande (MCD ou
- *    MPD) : aucun chevauchement, dans aucune vue.
- * 2. Cassures : la seconde patte d'une réflexive est (re)tracée pour ne pas se confondre avec la
- *    première ; celles d'un autre lien suivent si ses deux extrémités bougent ensemble, sinon
- *    elles sont retirées (le tracé n'aurait plus de sens).
- * 3. La vue est cadrée sur l'ensemble.
- *
- * Le calcul tourne dans des Web Workers, en parallèle (lots de départs) : l'interface reste réactive.
+ * Placement automatique (overrides O-09, O-30) depuis l'interface : calcul par `app/layoutCommands.ts`,
+ * puis cadrage de la vue affichée sur l'ensemble (le MPD, bien plus large, laisserait le MCD minuscule),
+ * sans dépasser 100 %.
  */
 export async function autoLayoutTables(handle: DocumentHandle) {
-  let { doc } = handle.store.getState();
-  let nodes = diagramNodes(doc);
-  if (nodes.length === 0) {
-    return;
+  if (await autoLayout(handle)) {
+    fitToWindow(handle, 1);
   }
-  const { display } = doc.settings;
-  const placed = await computeLayout(
-    layoutNodes(doc, nodes),
-    diagramLinks(doc).map((l) => ({ a: linkSourceId(l), b: l.entityId })),
-  );
-  // Repartir du document courant ; s'il a changé d'objets pendant le calcul, résultat abandonné.
-  ({ doc } = handle.store.getState());
-  nodes = diagramNodes(doc);
-  if (nodes.length !== placed.size || nodes.some((n) => !placed.has(n.id))) {
-    return;
-  }
-
-  // Alignement sur la grille sans risque de chevauchement (décalage ≤ demi-pas, très inférieur aux écarts).
-  const grid = doc.settings.grid.enabled && doc.settings.grid.size <= 20 ? doc.settings.grid.size : null;
-  const snap = (p: Point) => (grid ? { x: Math.round(p.x / grid) * grid, y: Math.round(p.y / grid) * grid } : p);
-  const positions = new Map<Id, Point>([...placed].map(([id, p]) => [id, snap(p)]));
-  const mcdRect = (id: Id): Rect => {
-    const node = nodes.find((n) => n.id === id)!;
-    const { width, height } = nodeLayout(node, positionOf(doc.layout, id), display, associationNamesByLink(doc));
-    return { ...positions.get(id)!, width, height };
-  };
-
-  const bends = newBends(doc, positions, mcdRect, grid);
-
-  moveNodes(handle, positions, bends);
-  // Cadrage sur la vue affichée (le MPD, bien plus large, laisserait le MCD minuscule), sans dépasser 100 %.
-  fitToWindow(handle, 1);
-}
-
-/** Boîtes à placer : la plus grande des boîtes MCD et MPD de chaque objet (O-60), et sa boîte MCD. */
-function layoutNodes(doc: ModelDocument, nodes: ReturnType<typeof diagramNodes>) {
-  const { display } = doc.settings;
-  const mpd = new Map(tableLayouts(logicalModelOf(doc), doc, "mpd").map((t) => [t.sourceId, t]));
-  return nodes.map((node) => {
-    const mcd = nodeLayout(node, positionOf(doc.layout, node.id), display, associationNamesByLink(doc));
-    const table = mpd.get(node.id);
-    return {
-      id: node.id,
-      width: Math.max(mcd.width, table?.width ?? 0),
-      height: Math.max(mcd.height, table?.height ?? 0),
-      mcdWidth: mcd.width,
-      mcdHeight: mcd.height,
-    };
-  });
-}
-
-/** Cassures après placement : réflexive contournée, autres liens déplacés avec leurs extrémités ou redressés. */
-function newBends(
-  doc: ModelDocument,
-  positions: Map<Id, Point>,
-  mcdRect: (id: Id) => Rect,
-  grid: number | null,
-): Map<Id, Point[]> {
-  const bends = new Map<Id, Point[]>();
-  for (const link of diagramLinks(doc)) {
-    const sourceId = linkSourceId(link);
-    const legs = doc.links.filter((l) => l.associationId === sourceId);
-    const reflexive = legs.length === 2 && legs.every((l) => l.entityId === link.entityId);
-    if (reflexive) {
-      reflexiveLeg(doc, { link, sourceId, second: legs[1]!.id }, { positions, mcdRect, grid }, bends);
-      continue;
-    }
-    const linkBends = bendsOf(doc.layout, link.id);
-    if (linkBends.length === 0) {
-      continue;
-    }
-    const node = (id: Id) => positionOf(doc.layout, id);
-    const delta = (id: Id) => ({ x: positions.get(id)!.x - node(id).x, y: positions.get(id)!.y - node(id).y });
-    const dE = delta(link.entityId);
-    const dA = delta(sourceId);
-    bends.set(link.id, dE.x === dA.x && dE.y === dA.y ? linkBends.map((b) => ({ x: b.x + dE.x, y: b.y + dE.y })) : []);
-  }
-  return bends;
-}
-
-/** Seconde patte d'une réflexive : contourne l'entité et l'association ; la première reste droite. */
-function reflexiveLeg(
-  doc: ModelDocument,
-  { link, sourceId, second }: { link: ReturnType<typeof diagramLinks>[number]; sourceId: Id; second: Id },
-  { positions, mcdRect, grid }: { positions: Map<Id, Point>; mcdRect: (id: Id) => Rect; grid: number | null },
-  bends: Map<Id, Point[]>,
-) {
-  if (link.id !== second) {
-    if (bendsOf(doc.layout, link.id).length > 0) {
-      bends.set(link.id, []);
-    }
-    return;
-  }
-  const obstacles = [...positions.keys()].filter((id) => id !== link.entityId && id !== sourceId).map(mcdRect);
-  // Traits droits des autres liens (centre à centre) : le contournement évite de les couper.
-  const lines = diagramLinks(doc)
-    .filter((l) => linkSourceId(l) !== sourceId)
-    .map((l): [Point, Point] => [center(mcdRect(linkSourceId(l))), center(mcdRect(l.entityId))]);
-  bends.set(link.id, reflexiveBends(mcdRect(link.entityId), mcdRect(sourceId), grid, obstacles, lines));
 }
 
 /**
@@ -259,3 +145,6 @@ function runChunk(worker: Worker, nodes: GridNode[], edges: GridEdge[], chunk: n
     worker.postMessage({ nodes, edges, chunk });
   });
 }
+
+/** Adaptateur du port `LayoutRunner` (`app/layoutRunner.ts`) : lots en parallèle dans le pool de Workers. */
+export const workerLayoutRunner: LayoutRunner = { run: computeLayout };

@@ -13,6 +13,7 @@ export { type Target, targetOf } from "./ddl/dialects";
 export * from "./ddl/generate";
 export * from "./io/modelFile";
 export * from "./layout/arrange";
+export * from "./layout/autoBends";
 export * from "./layout/grid";
 export * from "./layout/move";
 export * from "./layout/placement";
