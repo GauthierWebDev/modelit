@@ -1,6 +1,6 @@
 import type { LogicalTable } from "../mld/logical";
 import type { CheckConstraint, SqlDialect } from "../model/physical";
-import { sqlTypeToDataType } from "../reverse/types";
+import { sqlTypeToDataType } from "../sql/types";
 import { MSG } from "../validation/messages";
 import type { Context } from "./context";
 import { enforcesCheck, sameDialect } from "./dialects";

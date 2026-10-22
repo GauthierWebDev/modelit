@@ -1,6 +1,6 @@
-import { referencedColumns } from "../ddl/expressions";
 import type { Association, Entity } from "../model/document";
 import type { AlternateKey, CheckConstraint, KeyMember } from "../model/physical";
+import { referencedColumns } from "../sql/references";
 import { MSG } from "../validation/messages";
 import { type Build, key, keyOptions, originOf, plainKey, sameColumns } from "./buildState";
 import type { NamedExpression, ParsedKey, ParsedTable } from "./parse";

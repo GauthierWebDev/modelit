@@ -1,7 +1,7 @@
 import type { DataType } from "../model/datatype";
 import type { SqlDialect } from "../model/physical";
-import { type Token, tokenize } from "./tokenize";
-import { sqlTypeToDataType } from "./types";
+import { type Token, tokenize } from "../sql/tokenize";
+import { sqlTypeToDataType } from "../sql/types";
 
 /**
  * Type d'une colonne calculée sans type déclaré (SQL Server `col AS expr`) (O-41), déduit de son

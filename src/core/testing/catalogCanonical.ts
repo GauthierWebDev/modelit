@@ -1,7 +1,7 @@
 import { type Condition, likeToRegex, type Operand, parseCondition, parseDefault } from "../ddl/expressions";
 import type { DataType } from "../model/datatype";
 import type { SqlDialect } from "../model/physical";
-import { tokenize } from "../reverse/tokenize";
+import { tokenize } from "../sql/tokenize";
 
 export const compact = (text: string) =>
   text

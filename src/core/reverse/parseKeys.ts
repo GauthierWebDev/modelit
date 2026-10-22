@@ -1,7 +1,7 @@
-import { Cursor, isName, isPunct, isWord, joinRaw, splitCommas } from "./cursor";
+import { Cursor, isName, isPunct, isWord, joinRaw, splitCommas } from "../sql/cursor";
+import type { Token } from "../sql/tokenize";
 import type { ParsedKey, ParsedTable } from "./parse";
 import { constraintState, references } from "./parseConstraints";
-import type { Token } from "./tokenize";
 
 /**
  * Éléments d'un index : colonnes, préfixes (`c(10)`, `left(c, 10)`, `substr(c, 1, 10)`) et

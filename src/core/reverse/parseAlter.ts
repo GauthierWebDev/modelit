@@ -1,10 +1,10 @@
-import { Cursor, isPunct, isWord, joinRaw, splitCommas } from "./cursor";
+import { Cursor, isPunct, isWord, joinRaw, splitCommas } from "../sql/cursor";
+import type { Token } from "../sql/tokenize";
 import type { ParsedColumn, ParsedSchema, ParsedTable } from "./parse";
 import { columnDefinition } from "./parseColumns";
 import { tableConstraint } from "./parseKeys";
 import { sequenceOfDefault } from "./parseSequences";
 import { findTable } from "./parseTables";
-import type { Token } from "./tokenize";
 
 /**
  * Effet d'une action d'ALTER TABLE sur l'indicateur « instruction utilisée » : reconnue et
