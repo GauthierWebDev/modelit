@@ -4,7 +4,7 @@ import * as cmd from "../commands";
 import { useDialogStore } from "../dialogStore";
 import { groupOf } from "../dock/layout";
 import { createDocumentViewStore } from "../document/documentView";
-import { documentName } from "../fileCommands";
+import { documentName } from "../documentNames";
 import { usePreferencesStore } from "../preferencesStore";
 import { activeDocument, closeTab, openInTab, resetWorkspace, useWorkspaceStore } from "../workspace";
 import { startGuest } from "./guest";

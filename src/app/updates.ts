@@ -2,9 +2,9 @@ import { t } from "@/i18n";
 import { type AvailableUpdate, checkForUpdate, updatesConfigured, updatesSupported } from "@/platform/updater";
 import { APP_INFO, CHANGELOG } from "./appInfo";
 import { alertDialog, confirmDialog, showError } from "./dialogStore";
-import { confirmLoseAllChanges } from "./fileCommands";
 import { usePreferencesStore } from "./preferencesStore";
 import { useUiStore } from "./uiStore";
+import { confirmLoseAllChanges } from "./unsavedGuard";
 
 /**
  * Proposition de mise à jour : vérification automatique à chaque lancement (désactivable dans

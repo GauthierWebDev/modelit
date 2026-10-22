@@ -14,7 +14,7 @@ import { APP_INFO } from "../appInfo";
 import { aiWriteRefusal } from "../collab/session";
 import { ddlOf, logicalModelOf } from "../derived";
 import type { DocumentHandle } from "../document/handle";
-import { documentName } from "../fileCommands";
+import { documentName } from "../documentNames";
 import { modalOpen } from "../modal";
 import { newModelDocument } from "../modelDefaults";
 import { activeDocument, openInTab, useWorkspaceStore } from "../workspace";

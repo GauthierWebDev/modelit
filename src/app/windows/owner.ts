@@ -3,7 +3,7 @@ import { applyPatches, type Draft, enablePatches } from "immer";
 import { collabMirror, sameCollabMirror, useCollabStore } from "../collab/session";
 import { useDialogStore } from "../dialogStore";
 import { selectIsDirty, selectRedoLabel, selectUndoLabel } from "../document/documentStore";
-import { documentName } from "../fileCommands";
+import { documentName } from "../documentNames";
 import { modalOpen } from "../modal";
 import { usePreferencesStore } from "../preferencesStore";
 import { useUiStore } from "../uiStore";
