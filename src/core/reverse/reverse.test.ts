@@ -56,7 +56,9 @@ describe("lecture multi-dialectes (override O-28)", () => {
     });
     expect(doc.links.find((l) => l.entityId === commande.id)!.onDelete).toBe("cascade");
   });
+});
 
+describe("lecture multi-dialectes (override O-28)", () => {
   it("MySQL (mysqldump) : accents graves, AUTO_INCREMENT, options de table, KEY ignorés", () => {
     const sql = `
       /*!40101 SET NAMES utf8mb4 */;
@@ -92,7 +94,9 @@ describe("lecture multi-dialectes (override O-28)", () => {
     });
     expect(actif!.type).toEqual({ kind: "boolean" });
   });
+});
 
+describe("lecture multi-dialectes (override O-28)", () => {
   it("SQL Server : crochets, IDENTITY, GO, schémas dbo", () => {
     const sql = `
       CREATE TABLE [dbo].[Service] ([Id] [int] IDENTITY(1,1) NOT NULL, [Nom] [nvarchar](50) NOT NULL,
@@ -119,7 +123,9 @@ describe("lecture multi-dialectes (override O-28)", () => {
     // FK nullable : 0,1 côté Employe
     expect(doc.links.find((l) => l.entityId === doc.entities[1]!.id)!.cardinality).toEqual({ min: 0, max: 1 });
   });
+});
 
+describe("lecture multi-dialectes (override O-28)", () => {
   it("Oracle : NUMBER, VARCHAR2, séparateur /, blocs PL/SQL ignorés", () => {
     const sql = `
       CREATE TABLE ville (code NUMBER(5) NOT NULL, nom VARCHAR2(60 CHAR), population NUMBER, CONSTRAINT pk_ville PRIMARY KEY (code));
