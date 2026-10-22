@@ -1,27 +1,19 @@
-import {
-  bendsOf,
-  diagramLinks,
-  diagramNodes,
-  type Id,
-  linkSourceId,
-  type ModelDocument,
-  type Point,
-  positionOf,
-  setBends,
-} from "@core/index";
+import { bendsOf, diagramNodes, type Id, type ModelDocument, type Point, setBends } from "@core/index";
 import type { PointerEvent } from "react";
-import { addAssociation, addEntity, addInheritance, connectNodes, removeBend } from "@/app/commands";
+import { connectPlaced } from "@/app/associationPlacement";
+import { addAssociation, addEntity, addInheritance, removeBend } from "@/app/commands";
 import { revealSection } from "@/app/dock/actions";
 import type { ActiveBend } from "@/app/document/documentView";
 import type { DocumentHandle } from "@/app/document/handle";
+import { beginMove, type MoveSession } from "@/app/moveCommands";
 import type { StatusMessage, Tool } from "@/app/uiStore";
 import { hitId } from "./CanvasSurface";
-import { placeNewAssociation } from "./canvasRules";
 import { INHERITANCE_SIZE, type NodeLayout, snap } from "./geometry";
+import { showConnection } from "./sharedGestures";
 
 export type Gesture =
-  /** `bendOrigins` : cassures des liens dont les deux extrémités sont déplacées. */
-  | { type: "move"; start: Point; origins: Map<Id, Point>; bendOrigins: Map<Id, Point[]> }
+  /** Déplacement en cours (une transaction, les cassures suivent). */
+  | { type: "move"; start: Point; move: MoveSession }
   | { type: "bend"; linkId: Id; index: number; created: boolean }
   | { type: "marquee"; start: Point; current: Point; base: Id[] }
   /** `pending` : premier clic fait, en attente du second. */
@@ -58,15 +50,7 @@ export function connect(c: McdContext, fromId: Id, toId: Id | null) {
   if (fromId === toId && !isEntity) {
     return;
   }
-  const result = connectNodes(c.docHandle, fromId, toId, placeNewAssociation(doc, fromId, toId, c.grid));
-  if (!result) {
-    return;
-  }
-  if ("error" in result) {
-    c.notify({ kind: "error", text: result.error });
-  } else {
-    c.select([result.created]);
-  }
+  showConnection(connectPlaced(c.docHandle, fromId, toId), c);
 }
 
 export function onPointerDown(c: McdContext, e: PointerEvent<SVGSVGElement>, point: Point): boolean {
@@ -177,24 +161,13 @@ function selectDown(c: McdContext, e: PointerEvent<SVGSVGElement>, hit: Id | nul
   return true;
 }
 
-/** Positions de départ des objets déplacés, et des cassures des liens qui les relient. */
+/** Déplacement des objets du schéma parmi `ids`. */
 function startMove(c: McdContext, ids: Id[], point: Point) {
-  const { doc } = c;
-  const origins = new Map<Id, Point>();
-  for (const n of diagramNodes(doc)) {
-    if (ids.includes(n.id)) {
-      origins.set(n.id, positionOf(doc.layout, n.id));
-    }
-  }
-  const bendOrigins = new Map<Id, Point[]>();
-  for (const l of diagramLinks(doc)) {
-    const bends = bendsOf(doc.layout, l.id);
-    if (bends.length > 0 && origins.has(linkSourceId(l)) && origins.has(l.entityId)) {
-      bendOrigins.set(l.id, bends);
-    }
-  }
-  if (origins.size > 0) {
-    c.docHandle.store.getState().begin();
-    c.setGesture({ type: "move", start: point, origins, bendOrigins });
+  const movable = diagramNodes(c.doc)
+    .filter((n) => ids.includes(n.id))
+    .map((n) => n.id);
+  const move = beginMove(c.docHandle, movable, c.grid);
+  if (move) {
+    c.setGesture({ type: "move", start: point, move });
   }
 }
