@@ -13,11 +13,10 @@ import {
 import { APP_INFO } from "../appInfo";
 import { aiWriteRefusal } from "../collab/session";
 import { ddlOf, logicalModelOf } from "../derived";
-import { useDialogStore } from "../dialogStore";
 import type { DocumentHandle } from "../document/handle";
 import { documentName } from "../fileCommands";
+import { modalOpen } from "../modal";
 import { newModelDocument } from "../modelDefaults";
-import { useUiStore } from "../uiStore";
 import { activeDocument, openInTab, useWorkspaceStore } from "../workspace";
 import { applyChanges, type Operation } from "./apply";
 import { describeModel } from "./describe";
@@ -62,17 +61,7 @@ const failure = (message: string) => ({ ...text(message), isError: true });
 
 /** ModelIt occupé : boîte de dialogue ouverte, ou glisser-déposer en cours (O-47). */
 function busy(): boolean {
-  const ui = useUiStore.getState();
-  return (
-    useDialogStore.getState().queue.length > 0 ||
-    ui.exportOpen ||
-    ui.optionsOpen ||
-    ui.modelSettingsOpen ||
-    ui.reverseOpen ||
-    ui.shareOpen ||
-    ui.about !== null ||
-    activeDocument().store.getState().transactionStart !== null
-  );
+  return modalOpen() || activeDocument().store.getState().transactionStart !== null;
 }
 
 const WRITE_TOOLS = new Set(["apply_changes", "reverse_engineer", "auto_layout"]);
