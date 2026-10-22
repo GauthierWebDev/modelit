@@ -1,4 +1,4 @@
-import type { Inheritance, InheritanceLink, Link, Point } from "@core/index";
+import { formatCardinality, type Inheritance, type InheritanceLink, type Link, type Point } from "@core/index";
 import { center, clipToRect, FONT_SIZE, type NodeLayout, type Rect, TAG_FONT_SIZE, textWidth } from "./shapeMetrics";
 
 export interface LinkGeometry {
@@ -36,6 +36,34 @@ function rolePosition(role: string, points: Point[], entity: Rect, association: 
       x: to.x - ux * distance + uy * (halfWidth * Math.abs(uy) + 8),
       y: to.y - uy * distance - ux * (halfWidth * Math.abs(uy) + 8),
     };
+    if (!(touches(candidate, entity) || touches(candidate, association))) {
+      return candidate;
+    }
+  }
+  return candidate;
+}
+
+/**
+ * Position de la cardinalité d'une patte (O-61) : près de l'entité, 22 px en arrière le long du dernier
+ * segment et 12 px de côté, reculée tant que le texte touche l'entité ou l'association — jamais recouverte
+ * par une boîte. Une cardinalité déjà dégagée ne bouge pas.
+ */
+function cardinalityPosition(text: string, points: Point[], entity: Rect, association: Rect): Point {
+  const to = points.at(-1)!;
+  const before = points.at(-2)!;
+  const length = Math.hypot(to.x - before.x, to.y - before.y) || 1;
+  const ux = (to.x - before.x) / length;
+  const uy = (to.y - before.y) / length;
+  const halfWidth = textWidth(text) / 2 + 3;
+  const halfHeight = 9;
+  const touches = (p: Point, r: Rect) =>
+    p.x + halfWidth > r.x &&
+    p.x - halfWidth < r.x + r.width &&
+    p.y + halfHeight > r.y &&
+    p.y - halfHeight < r.y + r.height;
+  let candidate = to;
+  for (let distance = 22; distance <= Math.max(22, length - 10); distance += 4) {
+    candidate = { x: to.x - ux * distance - uy * 12, y: to.y - uy * distance + ux * 12 };
     if (!(touches(candidate, entity) || touches(candidate, association))) {
       return candidate;
     }
@@ -84,12 +112,8 @@ export function linkGeometries(
       });
       points = [shift(clipToRect(a, shift(ce))), shift(clipToRect(e, shift(ca)))];
     }
-    const to = points.at(-1)!;
-    const before = points.at(-2)!;
-    const len = Math.hypot(to.x - before.x, to.y - before.y) || 1;
-    const ux = (to.x - before.x) / len;
-    const uy = (to.y - before.y) / len;
-    const label = { x: to.x - ux * 22 - uy * 12, y: to.y - uy * 22 + ux * 12 };
+    const text = formatCardinality(link.cardinality) + (link.relativeId ? "(R)" : "");
+    const label = cardinalityPosition(text, points, e, a);
     result.push({
       link,
       bends,

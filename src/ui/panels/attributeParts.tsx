@@ -32,6 +32,13 @@ export function AttributeDetail({
           onCommit={(name) => update({ name: name.trim() })}
         />
       </Field>
+      <Field label={t("inspector.logicalName")}>
+        <CommitInput
+          value={a.logicalName ?? ""}
+          placeholder={t("inspector.logicalPlaceholder")}
+          onCommit={(logicalName) => update({ logicalName: logicalName.trim() || undefined })}
+        />
+      </Field>
       <Field label={t("attributes.type")}>
         {/* Nouveau type choisi : le type d'origine (rétroconception) ne vaut plus. */}
         <TypePicker value={a.type} onChange={(type) => update({ type, sourceType: undefined })} />

@@ -28,7 +28,10 @@ ready() {
   case "$1" in
     postgres) docker exec merise-postgres pg_isready -U postgres >/dev/null 2>&1 && docker exec merise-postgres psql -U postgres -c 'SELECT 1' >/dev/null 2>&1 ;;
     postgis) docker exec merise-postgis pg_isready -U postgres >/dev/null 2>&1 && docker exec merise-postgis psql -U postgres -c 'SELECT 1' >/dev/null 2>&1 ;;
-    mysql) docker exec merise-mysql mysql -uroot -proot -e 'SELECT 1' >/dev/null 2>&1 ;;
+    # L'image démarre d'abord un serveur temporaire (initialisation), puis le redémarre : prêt
+    # seulement après « init process done », sinon les tests tombent pendant le redémarrage.
+    mysql) [[ $(docker logs merise-mysql 2>&1) == *'MySQL init process done'* ]] \
+      && docker exec merise-mysql mysql -uroot -proot -e 'SELECT 1' >/dev/null 2>&1 ;;
     oracle) docker exec merise-oracle healthcheck.sh >/dev/null 2>&1 ;;
     mssql) docker exec merise-mssql /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_PASSWORD" -Q 'SELECT 1' >/dev/null 2>&1 ;;
   esac
