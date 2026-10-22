@@ -14,6 +14,7 @@ export * from "./ddl/generate";
 export * from "./io/modelFile";
 export * from "./layout/arrange";
 export * from "./layout/grid";
+export * from "./layout/move";
 export * from "./mld/logical";
 export * from "./mld/rename";
 export * from "./mld/text";

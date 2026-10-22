@@ -1,17 +1,9 @@
-import {
-  bendsOf,
-  diagramLinks,
-  type Id,
-  linkSourceId,
-  type ModelDocument,
-  type Point,
-  positionOf,
-  setBends,
-} from "@core/index";
+import type { Id, ModelDocument, Point } from "@core/index";
 import type { MouseEvent, PointerEvent } from "react";
 import { addEntity, connectNodes } from "@/app/commands";
 import { revealSection } from "@/app/dock/actions";
 import type { DocumentHandle } from "@/app/document/handle";
+import { beginMove, type MoveSession } from "@/app/moveCommands";
 import type { StatusMessage, Tool } from "@/app/uiStore";
 import { hitId, hitIdAt } from "./CanvasSurface";
 import { logicalRenameTarget, placeNewAssociation } from "./canvasRules";
@@ -20,11 +12,10 @@ import type { RenameTarget } from "./InlineRename";
 import type { LogicalViewMode, TableLayout } from "./logicalGeometry";
 import { openCanvasMenu } from "./objectActions";
 
-/** Déplacement des tables sélectionnées : positions et cassures (traits entre deux d'entre elles) d'origine. */
+/** Déplacement des tables sélectionnées : point de départ du pointeur, transaction de déplacement. */
 export interface TableDrag {
   start: Point;
-  origins: Map<Id, Point>;
-  bends: Map<Id, Point[]>;
+  move: MoveSession;
 }
 
 /** Rectangle de sélection en cours (O-57) ; `base` : sélection conservée (Maj). */
@@ -151,21 +142,18 @@ function selectDown(c: LogicalContext, e: PointerEvent<SVGSVGElement>, hit: Id |
 }
 
 function startDrag(c: LogicalContext, ids: Id[], point: Point) {
-  const { doc } = c;
-  const moved = new Set(ids.filter((id) => c.tableOf(id)));
-  const origins = new Map([...moved].map((id) => [id, positionOf(doc.layout, id)]));
-  const bends = new Map<Id, Point[]>();
-  for (const l of diagramLinks(doc)) {
-    if (moved.has(linkSourceId(l)) && moved.has(l.entityId)) {
-      bends.set(l.id, bendsOf(doc.layout, l.id));
-    }
+  const move = beginMove(
+    c.docHandle,
+    ids.filter((id) => c.tableOf(id)),
+    c.grid,
+  );
+  if (move) {
+    c.drag.current = { start: point, move };
   }
-  c.docHandle.store.getState().begin();
-  c.drag.current = { start: point, origins, bends };
 }
 
 export function onPointerMove(c: LogicalContext, point: Point) {
-  const { link, marquee, grid } = c;
+  const { link, marquee } = c;
   if (link) {
     c.setLink({ ...link, current: point });
   }
@@ -180,20 +168,7 @@ export function onPointerMove(c: LogicalContext, point: Point) {
   if (!d) {
     return;
   }
-  const dx = point.x - d.start.x;
-  const dy = point.y - d.start.y;
-  c.docHandle.store.getState().preview((draft) => {
-    for (const [id, o] of d.origins) {
-      draft.layout.positions[id] = { x: snap(o.x + dx, grid), y: snap(o.y + dy, grid) };
-    }
-    for (const [id, points] of d.bends) {
-      setBends(
-        draft.layout,
-        id,
-        points.map((b) => ({ x: snap(b.x + dx, grid), y: snap(b.y + dy, grid) })),
-      );
-    }
-  });
+  d.move.update({ x: point.x - d.start.x, y: point.y - d.start.y });
 }
 
 export function onPointerUp(c: LogicalContext, e: PointerEvent<SVGSVGElement>, point: Point) {
@@ -208,9 +183,7 @@ export function onPointerUp(c: LogicalContext, e: PointerEvent<SVGSVGElement>, p
     }
   }
   if (c.drag.current) {
-    c.docHandle.store
-      .getState()
-      .commit(c.drag.current.origins.size > 1 ? "history.moveSelection" : "history.moveTable");
+    c.drag.current.move.commit(c.drag.current.move.count > 1 ? "history.moveSelection" : "history.moveTable");
   }
   c.drag.current = null;
   c.setMarquee(null);
@@ -227,9 +200,7 @@ export function onContextMenu(c: LogicalContext, e: MouseEvent<SVGSVGElement>) {
 }
 
 export function onPointerCancel(c: LogicalContext) {
-  if (c.drag.current) {
-    c.docHandle.store.getState().cancel();
-  }
+  c.drag.current?.move.cancel();
   c.drag.current = null;
   c.setMarquee(null);
 }

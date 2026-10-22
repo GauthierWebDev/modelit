@@ -1,4 +1,4 @@
-import { type Point, setBends } from "@core/index";
+import type { Point } from "@core/index";
 import type { MouseEvent, PointerEvent } from "react";
 import { removeBend } from "@/app/commands";
 import { hitIdAt } from "./CanvasSurface";
@@ -15,7 +15,7 @@ export function onPointerMove(c: McdContext, point: Point) {
   }
   switch (gesture.type) {
     case "move":
-      previewMove(c, gesture, point);
+      previewMove(gesture, point);
       break;
     case "bend": {
       docHandle.store.getState().preview((d) => {
@@ -39,24 +39,8 @@ export function onPointerMove(c: McdContext, point: Point) {
   }
 }
 
-function previewMove(c: McdContext, gesture: Extract<Gesture, { type: "move" }>, point: Point) {
-  const { grid } = c;
-  const dx = point.x - gesture.start.x;
-  const dy = point.y - gesture.start.y;
-  // Seule la géométrie change (`layout`) : MLD et SQL ne sont pas recalculés (J-01, phase 3).
-  c.docHandle.store.getState().preview((d) => {
-    for (const [id, origin] of gesture.origins) {
-      d.layout.positions[id] = { x: snap(origin.x + dx, grid), y: snap(origin.y + dy, grid) };
-    }
-    // Les cassures d'un lien suivent quand ses deux extrémités sont déplacées ensemble.
-    for (const [id, bends] of gesture.bendOrigins) {
-      setBends(
-        d.layout,
-        id,
-        bends.map((b) => ({ x: snap(b.x + dx, grid), y: snap(b.y + dy, grid) })),
-      );
-    }
-  });
+function previewMove(gesture: Extract<Gesture, { type: "move" }>, point: Point) {
+  gesture.move.update({ x: point.x - gesture.start.x, y: point.y - gesture.start.y });
 }
 
 export function onPointerUp(c: McdContext, e: PointerEvent<SVGSVGElement>, point: Point) {
@@ -65,7 +49,7 @@ export function onPointerUp(c: McdContext, e: PointerEvent<SVGSVGElement>, point
     return;
   }
   if (gesture.type === "move") {
-    docHandle.store.getState().commit(gesture.origins.size > 1 ? "history.moveSelection" : "history.move");
+    gesture.move.commit(gesture.move.count > 1 ? "history.moveSelection" : "history.move");
   } else if (gesture.type === "bend") {
     docHandle.store.getState().commit(gesture.created ? "history.createBend" : "history.moveBend");
   } else if (gesture.type === "link") {
@@ -83,7 +67,9 @@ export function onPointerUp(c: McdContext, e: PointerEvent<SVGSVGElement>, point
 }
 
 export function onPointerCancel(c: McdContext) {
-  if (c.gesture?.type === "move" || c.gesture?.type === "bend") {
+  if (c.gesture?.type === "move") {
+    c.gesture.move.cancel();
+  } else if (c.gesture?.type === "bend") {
     c.docHandle.store.getState().cancel();
   }
   c.setGesture(null);
