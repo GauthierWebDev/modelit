@@ -1,13 +1,13 @@
 import { bendsOf, diagramNodes, type Id, type ModelDocument, type Point, setBends } from "@core/index";
 import type { PointerEvent } from "react";
-import { addAssociation, addEntity, addInheritance, connectNodes, removeBend } from "@/app/commands";
+import { connectPlaced } from "@/app/associationPlacement";
+import { addAssociation, addEntity, addInheritance, removeBend } from "@/app/commands";
 import { revealSection } from "@/app/dock/actions";
 import type { ActiveBend } from "@/app/document/documentView";
 import type { DocumentHandle } from "@/app/document/handle";
 import { beginMove, type MoveSession } from "@/app/moveCommands";
 import type { StatusMessage, Tool } from "@/app/uiStore";
 import { hitId } from "./CanvasSurface";
-import { placeNewAssociation } from "./canvasRules";
 import { INHERITANCE_SIZE, type NodeLayout, snap } from "./geometry";
 
 export type Gesture =
@@ -49,7 +49,7 @@ export function connect(c: McdContext, fromId: Id, toId: Id | null) {
   if (fromId === toId && !isEntity) {
     return;
   }
-  const result = connectNodes(c.docHandle, fromId, toId, placeNewAssociation(doc, fromId, toId, c.grid));
+  const result = connectPlaced(c.docHandle, fromId, toId);
   if (!result) {
     return;
   }

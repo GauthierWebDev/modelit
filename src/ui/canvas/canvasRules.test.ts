@@ -1,16 +1,20 @@
 import {
+  betweenSlot,
   createAssociation,
   emptyDocument,
   type Id,
   type ModelDocument,
   nextFreeName,
+  reflexiveSlot,
   toLogicalModel,
 } from "@core/index";
 import { model } from "@core/testing/builder";
 import { describe, expect, it } from "vitest";
+import { placeNewAssociation } from "@/app/associationPlacement";
 import { connectNodes } from "@/app/commands";
+import { setDiagramSizer } from "@/app/diagramSizer";
 import { createDocumentHandle } from "@/app/document/handle";
-import { betweenSlot, newAssociationSize, placementBoxes, placeNewAssociation, reflexiveSlot } from "./canvasRules";
+import { canvasSizer, newAssociationSize, placementBoxes } from "./canvasRules";
 import { center, intersects, type NodeLayout, nodeLayout, type Rect } from "./geometry";
 import { tableLayouts } from "./logicalGeometry";
 import { layoutsOf } from "./viewport";
@@ -19,6 +23,8 @@ import { layoutsOf } from "./viewport";
  * Règles des canevas : placement des associations créées à l'outil Lien (O-02, O-08, O-60). Cible du
  * renommage au double-clic (O-56, O-58, O-59) : canvasRenameTargets.test.ts.
  */
+
+setDiagramSizer(canvasSizer);
 
 const EMPTY_DOC = emptyDocument();
 const box = (x: number, y: number, width = 110, height = 40): NodeLayout => ({ x, y, width, height, rows: [] });

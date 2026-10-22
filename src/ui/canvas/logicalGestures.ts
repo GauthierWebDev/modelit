@@ -1,12 +1,13 @@
 import type { Id, ModelDocument, Point } from "@core/index";
 import type { MouseEvent, PointerEvent } from "react";
-import { addEntity, connectNodes } from "@/app/commands";
+import { connectPlaced } from "@/app/associationPlacement";
+import { addEntity } from "@/app/commands";
 import { revealSection } from "@/app/dock/actions";
 import type { DocumentHandle } from "@/app/document/handle";
 import { beginMove, type MoveSession } from "@/app/moveCommands";
 import type { StatusMessage, Tool } from "@/app/uiStore";
 import { hitId, hitIdAt } from "./CanvasSurface";
-import { logicalRenameTarget, placeNewAssociation } from "./canvasRules";
+import { logicalRenameTarget } from "./canvasRules";
 import { intersects, normalizeRect, snap } from "./geometry";
 import type { RenameTarget } from "./InlineRename";
 import type { LogicalViewMode, TableLayout } from "./logicalGeometry";
@@ -58,7 +59,6 @@ export interface LogicalContext {
 }
 
 function connect(c: LogicalContext, fromId: Id, toId: Id | null) {
-  const { doc, grid } = c;
   c.setLink(null);
   const a = c.tableOf(fromId);
   const b = c.tableOf(toId);
@@ -66,7 +66,7 @@ function connect(c: LogicalContext, fromId: Id, toId: Id | null) {
     return;
   }
   // L'association (invisible ici) se place comme depuis le MCD (O-60).
-  const result = connectNodes(c.docHandle, fromId, toId, placeNewAssociation(doc, fromId, toId, grid));
+  const result = connectPlaced(c.docHandle, fromId, toId);
   if (!result) {
     return;
   }

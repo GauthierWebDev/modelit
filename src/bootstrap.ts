@@ -1,6 +1,7 @@
 import { flushAutosave } from "./app/autosave";
 import { joinFromLink, setCollabTransport } from "./app/collab/session";
 import { setVoiceBackend } from "./app/collab/voice/voiceSession";
+import { setDiagramSizer } from "./app/diagramSizer";
 import { setFileAccess } from "./app/fileAccess";
 import { setLocalStore } from "./app/localStore";
 import { startMcpBridge } from "./app/mcp/bridge";
@@ -15,6 +16,7 @@ import { platformMcp } from "./platform/mcp";
 import { platformUpdates } from "./platform/updater";
 import { startVoice, voiceSupport } from "./platform/voice";
 import { autoLayoutTables } from "./ui/canvas/autoLayout";
+import { canvasSizer } from "./ui/canvas/canvasRules";
 
 /**
  * Point d'assemblage de la fenêtre principale (esprit hexagonal, audit A-01 / M-00 L3) : seul endroit qui
@@ -25,6 +27,8 @@ export function bootstrapMain() {
   setFileAccess(platformFiles);
   setUpdateSource(platformUpdates);
   setLocalStore(indexedDbStore);
+  // Tailles des boîtes du schéma : mesurées par l'interface (texte, options d'affichage).
+  setDiagramSizer(canvasSizer);
   // Sauvegarde automatique : copies en attente écrites quand la fenêtre passe en arrière-plan ou se ferme.
   document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushAutosave());
   globalThis.addEventListener("pagehide", flushAutosave);
