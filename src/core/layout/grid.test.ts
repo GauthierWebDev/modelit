@@ -111,7 +111,9 @@ describe("placement sur grille (override O-30)", { timeout: 30_000 }, () => {
   });
 });
 
-describe("placement sur grille (override O-30)", { timeout: 30_000 }, () => {
+// Sous vitest, les appels entre les modules de la grille passent par des accesseurs : ≈ 1,4 fois le temps
+// du code bundlé de l'application (inchangé). Les « 20 MCD variés » dépassaient 30 s sur le runner macOS.
+describe("placement sur grille (override O-30)", { timeout: 60_000 }, () => {
   it("grand modèle (80 objets) : sans chevauchement ni traversée, au plus 2 croisements, en moins de 0,8 s (parallèle)", () => {
     const nodes: GridNode[] = Array.from({ length: 80 }, (_, i) => ({
       id: `n${i}`,
