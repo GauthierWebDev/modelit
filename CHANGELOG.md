@@ -4,6 +4,27 @@ Une section `## X.Y.Z — AAAA-MM-JJ` par version, la plus récente en haut. La 
 taguée devient le texte de la release GitHub et les notes proposées par la mise à jour ; tout
 l'historique est affiché dans l'application (À propos → Nouveautés).
 
+## 0.5.0 — 2026-10-22
+
+### Nouveautés
+
+- Vocal pendant une session collaborative : « Rejoindre l'audio » dans la section « Session ». Personne n'y est par défaut et le micro ne s'ouvre jamais sans votre action.
+- Pendant le vocal : couper ou ouvrir son micro (⌘/Ctrl + Maj + M), régler le volume de chaque participant de 0 à 200 % (seulement ce que vous entendez), voir qui parle dans la liste et sur son curseur.
+- Sans accès au micro, vous rejoignez l'audio en écoute seule, avec un message qui explique comment l'autoriser.
+
+### Améliorations
+
+- Une association créée à l'outil Lien (réflexive, ou entre deux entités) prend la première place libre dans les trois vues, à la taille de sa plus grande boîte : elle ne chevauche plus les tables du MLD et du MPD, et rien d'autre ne bouge.
+
+### Corrections
+
+- Rapport de pertes du script SQL : une perte sur une contrainte UNIQUE n'est plus annoncée deux fois (INCLUDE abandonné avant PostgreSQL 11), ni annoncée à tort (lignes entièrement vides avant PostgreSQL 15).
+
+### À savoir
+
+- Sous macOS, le vocal demande macOS 14 ou plus récent. Il n'a pas encore été éprouvé sur tous les systèmes (Windows, Linux, sans casque) : vos retours sont les bienvenus.
+- Les échanges du vocal sont chiffrés comme le reste de la session ; rien n'est envoyé pendant les silences.
+
 ## 0.4.0 — 2026-10-16
 
 ### Nouveautés
