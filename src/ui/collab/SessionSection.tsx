@@ -10,6 +10,7 @@ import { Checkbox } from "@/ui/common/controls";
 import { tip } from "@/ui/common/Tooltip";
 import { MOD } from "@/ui/shortcuts";
 import { mainCommand } from "@/ui/windows/mainCommands";
+import { followButton, followsYouMark } from "./followControls";
 
 /** Actions de session : exécutées par la fenêtre principale, même depuis une section flottante. */
 const act = (action: CollabAction) => mainCommand({ name: "collab", action });
@@ -200,7 +201,7 @@ function Chat() {
  * chat, commandes (arrêter le partage, quitter, exclure, assistants IA des invités).
  */
 export function SessionSection() {
-  const { mode, links, participants, presence, you, aiAllowed, voice } = useCollabStore();
+  const { mode, links, participants, presence, you, aiAllowed, voice, following } = useCollabStore();
   const speaking = useSpeakingStore((s) => s.ids);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -228,7 +229,7 @@ export function SessionSection() {
       <VoiceBar />
 
       <ul aria-label={t("collab.participantsList")} className="flex flex-col gap-0.5">
-        {participants.map((p) => participantRow(p, { presence, speaking, voice, you, isHost }))}
+        {participants.map((p) => participantRow(p, { presence, speaking, voice, you, isHost, following }))}
       </ul>
       <Chat />
     </div>
@@ -294,6 +295,7 @@ interface RowScope {
   voice: CollabState["voice"];
   you: CollabState["you"];
   isHost: boolean;
+  following: CollabState["following"];
 }
 
 type Participant = CollabState["participants"][number];
@@ -320,6 +322,7 @@ function participantRow(p: Participant, row: RowScope) {
         {p.id === you && <span className="text-neutral-400"> ({t("collab.you")})</span>}
       </span>
       <span className="text-xs text-neutral-400">{t(ROLE_LABEL[p.role])}</span>
+      {followsYouMark(p, row)}
       {audioMark(p)}
       <div className="flex-1" />
       {volumeControl(p, row)}
@@ -330,6 +333,7 @@ function participantRow(p: Participant, row: RowScope) {
           {VIEW_LABEL[view]}
         </span>
       )}
+      {followButton(p, row)}
       {isHost && p.role !== "host" && (
         <button
           type="button"
