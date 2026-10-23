@@ -171,32 +171,37 @@ export function applyCollabMirror(mirror: CollabMirror) {
   });
 }
 
-/** Section « Session » (O-05 §7) : affichée au début d'une session, masquée à la fin. */
-useCollabStore.subscribe((s, p) => {
-  // Fenêtre principale seulement (une flottante reçoit sa disposition de la principale).
-  if (!live.transport) {
-    return;
-  }
-  const active = (mode: CollabMode) => mode === "host" || mode === "guest";
-  if (active(s.mode) === active(p.mode)) {
-    return;
-  }
-  updateDock((layout) => {
-    if (!active(s.mode)) {
-      return hideSection(layout, "session");
+/**
+ * Suivi de la session par la fenêtre principale (une flottante reçoit sa disposition de la principale),
+ * démarré par `src/bootstrap.ts` ; renvoie la désinscription (audit A-01, A-3).
+ * - Section « Session » (O-05 §7) : affichée au début d'une session, masquée à la fin.
+ * - Identité changée dans les options : visible tout de suite par les autres (O-05 §3).
+ */
+export function startSessionSync(): () => void {
+  const offSection = useCollabStore.subscribe((s, p) => {
+    const active = (mode: CollabMode) => mode === "host" || mode === "guest";
+    if (active(s.mode) === active(p.mode)) {
+      return;
     }
-    const shown = showSection(layout, "session");
-    const found = groupOf(shown, "session");
-    return found ? setActive(shown, found.group.id, "session") : shown;
+    updateDock((layout) => {
+      if (!active(s.mode)) {
+        return hideSection(layout, "session");
+      }
+      const shown = showSection(layout, "session");
+      const found = groupOf(shown, "session");
+      return found ? setActive(shown, found.group.id, "session") : shown;
+    });
   });
-});
-
-/** Identité changée dans les options : visible tout de suite par les autres (O-05 §3). */
-usePreferencesStore.subscribe((s, p) => {
-  if (s.identity === p.identity) {
-    return;
-  }
-  const { name, color } = me();
-  live.host?.session.setIdentity(name, color);
-  live.guest?.session.setIdentity(name, color);
-});
+  const offIdentity = usePreferencesStore.subscribe((s, p) => {
+    if (s.identity === p.identity) {
+      return;
+    }
+    const { name, color } = me();
+    live.host?.session.setIdentity(name, color);
+    live.guest?.session.setIdentity(name, color);
+  });
+  return () => {
+    offSection();
+    offIdentity();
+  };
+}

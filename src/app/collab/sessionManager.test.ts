@@ -1,5 +1,5 @@
 import { emptyDocument } from "@core/index";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as cmd from "../commands";
 import { useDialogStore } from "../dialogStore";
 import { groupOf } from "../dock/layout";
@@ -22,12 +22,20 @@ import {
   sendChat,
   setCollabTransport,
   shareActiveTab,
+  startSessionSync,
   stopSharing,
   useCollabStore,
 } from "./session";
 
 let net: ReturnType<typeof memoryNetwork>;
 let peers = 0;
+
+// Suivi de la session démarré comme par l'assemblage de la fenêtre principale (src/bootstrap.ts).
+let stopSessionSync: () => void;
+beforeAll(() => {
+  stopSessionSync = startSessionSync();
+});
+afterAll(() => stopSessionSync());
 
 beforeEach(() => {
   resetWorkspace();
