@@ -1,4 +1,6 @@
 import { flushAutosave } from "./app/autosave";
+import { setCanvasMetrics } from "./app/canvasMetrics";
+import { startFollowSync } from "./app/collab/follow";
 import { joinFromLink, setCollabTransport, startSessionSync } from "./app/collab/session";
 import { setVoiceBackend, startVoiceSync } from "./app/collab/voice/voiceSession";
 import { setDiagramSizer } from "./app/diagramSizer";
@@ -18,6 +20,7 @@ import { platformUpdates } from "./platform/updater";
 import { startVoice, voiceSupport } from "./platform/voice";
 import { autoLayoutTables, workerLayoutRunner } from "./ui/canvas/autoLayout";
 import { canvasSizer } from "./ui/canvas/canvasRules";
+import { canvasMetricsAdapter } from "./ui/canvas/viewport";
 
 /**
  * Point d'assemblage de la fenêtre principale (esprit hexagonal, audit A-01 / M-00 L3) : seul endroit qui
@@ -31,12 +34,14 @@ export function bootstrapMain() {
   // Tailles des boîtes du schéma : mesurées par l'interface (texte, options d'affichage).
   setDiagramSizer(canvasSizer);
   setLayoutRunner(workerLayoutRunner);
+  setCanvasMetrics(canvasMetricsAdapter);
   // Sauvegarde automatique : copies en attente écrites quand la fenêtre passe en arrière-plan ou se ferme.
   document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushAutosave());
   globalThis.addEventListener("pagehide", flushAutosave);
   // Suivi de la session et du vocal par la fenêtre principale (section Session, identité, fin de session).
   startSessionSync();
   startVoiceSync();
+  startFollowSync();
   // Sessions collaboratives (O-05) et vocal (O-48) : transport natif ; un lien `modelit://` ouvert depuis le
   // système ouvre la boîte de session, qui montre l'avancement (O-05 §4.2).
   // Assistants IA (O-47) : écoute selon les options ; le placement automatique est calculé par l'interface.

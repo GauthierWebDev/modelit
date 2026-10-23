@@ -12,6 +12,9 @@ import { type CollabMode, type CollabState, live, markChatRead, me, useCollabSto
 export { answerPassword, joinFromLink, leaveSession } from "./sessionGuest";
 export { kick, setGuestsAi, shareActiveTab, stopSharing } from "./sessionHost";
 export { reportPresence } from "./sessionPresence";
+
+import { follow } from "./follow";
+
 export {
   type CollabMode,
   type CollabTransport,
@@ -120,7 +123,9 @@ export type CollabAction =
   | { kind: "guestsAi"; allowed: boolean }
   | { kind: "stop" }
   | { kind: "leave" }
-  | { kind: "voice"; action: VoiceAction };
+  | { kind: "voice"; action: VoiceAction }
+  /** Suivre un participant (O-05 §5), ou arrêter (`null`). */
+  | { kind: "follow"; peer: string | null };
 
 export function runCollabAction(action: CollabAction) {
   switch (action.kind) {
@@ -136,6 +141,8 @@ export function runCollabAction(action: CollabAction) {
       return void stopSharing();
     case "leave":
       return void leaveSession();
+    case "follow":
+      return follow(action.peer);
     case "voice":
       return voiceActions?.(action.action);
   }

@@ -29,6 +29,7 @@ export const enSession: Record<keyof typeof frSession, string> = {
   "collab.none": "No session running.",
   "collab.shareOrJoin": "Share or join…",
   "collab.participantsList": "Participants",
+  "collab.followEnded": "Stopped following: {name} left the session.",
   "collab.you": "you",
   "collab.kick": "Remove {name}",
   "collab.kickTitle": "Remove a participant",

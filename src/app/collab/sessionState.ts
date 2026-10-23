@@ -47,6 +47,8 @@ export interface CollabState {
   participants: Participant[];
   aiAllowed: boolean;
   presence: Record<string, RemotePresence>;
+  /** Participant que je suis (sa vue et son cadrage, O-05 §5), ou `null`. */
+  following: string | null;
   /** Vocal de ce poste (O-48) ; « qui parle » est à part (`voice/speaking.ts`), non reflété. */
   voice: VoiceState;
   chat: ChatMessage[];
@@ -98,6 +100,7 @@ export const useCollabStore = create<CollabState>(() => ({
   participants: [],
   aiAllowed: false,
   presence: {},
+  following: null,
   chat: [],
   unread: 0,
   you: null,

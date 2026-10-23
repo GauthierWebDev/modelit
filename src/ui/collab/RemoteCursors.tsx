@@ -1,6 +1,7 @@
 import type { Point } from "@core/index";
 import { useEffect, useState } from "react";
-import { CURSOR_IDLE, reportPresence, useCollabStore } from "@/app/collab/session";
+import { startPresenceSync } from "@/app/collab/presenceSync";
+import { CURSOR_IDLE, useCollabStore } from "@/app/collab/session";
 import { useSpeakingStore } from "@/app/collab/voice/speaking";
 import { useDocumentView } from "@/app/document/DocumentContext";
 import type { Viewport } from "@/app/document/documentView";
@@ -10,36 +11,12 @@ import type { DocumentHandle } from "@/app/document/handle";
 export const useIsSessionTab = (doc: DocumentHandle) =>
   useCollabStore((s) => s.tabId === doc.id && (s.mode === "host" || s.mode === "guest"));
 
-/**
- * Envoie ma présence pendant une session (O-05 §5) : vue et sélection à chaque changement ; le
- * curseur est transmis par `reportCursor`, appelé par la surface du canevas.
- */
+/** Envoie ma présence pendant une session (O-05 §5) : `app/collab/presenceSync.ts`, pour l'onglet partagé. */
 export function usePresenceReporting(doc: DocumentHandle, active: boolean) {
-  useEffect(() => {
-    if (!active) {
-      return;
-    }
-    const send = () => {
-      const { view, selection } = doc.view.getState();
-      reportPresence({ view, selection, cursor: cursor.get(doc.id) ?? null });
-    };
-    send();
-    return doc.view.subscribe((s, p) => {
-      if (s.view !== p.view || s.selection !== p.selection) {
-        send();
-      }
-    });
-  }, [doc, active]);
+  useEffect(() => (active ? startPresenceSync(doc) : undefined), [doc, active]);
 }
 
-/** Dernière position connue de mon curseur, par document. */
-const cursor = new Map<string, Point | null>();
-
-export function reportCursor(doc: DocumentHandle, point: Point | null) {
-  cursor.set(doc.id, point);
-  const { view, selection } = doc.view.getState();
-  reportPresence({ view, selection, cursor: point });
-}
+export { reportCursor } from "@/app/collab/presenceSync";
 
 /**
  * Curseurs des autres participants sur la même vue (O-05 §5) : flèche à leur couleur, étiquette avec
