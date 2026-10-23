@@ -4,6 +4,24 @@ Une section `## X.Y.Z — AAAA-MM-JJ` par version, la plus récente en haut. La 
 taguée devient le texte de la release GitHub et les notes proposées par la mise à jour ; tout
 l'historique est affiché dans l'application (À propos → Nouveautés).
 
+## 0.7.0 — 2026-10-23
+
+### Nouveautés
+
+- Session collaborative : les objets sélectionnés par les autres participants sont entourés de leur couleur.
+- « Suivre » un participant : bouton œil sur sa ligne, dans la section Session ; votre vue et votre cadrage suivent les siens, le canevas est bordé de sa couleur. Le suivi s'arrête dès que vous déplacez la vue, changez de vue, modifiez le modèle ou appuyez sur Échap. La liste des participants indique qui vous suit.
+
+### Corrections
+
+- Un fichier abîmé ou enregistré par une version plus récente (SGBD inconnu) est refusé avec un message clair, au lieu d'une erreur technique.
+- Session collaborative : l'hôte libère les ressources de chaque invité parti.
+- Sécurité : les fenêtres détachées n'ont plus accès aux commandes de session, d'assistant IA et de mise à jour, ni au micro.
+
+### À savoir
+
+- Avec un participant encore en version 0.6, « Suivre » reprend sa vue mais pas son cadrage.
+- Les fondations de l'application ont été consolidées (architecture, nombreux tests ajoutés), sans changement visible.
+
 ## 0.6.0 — 2026-10-22
 
 ### Nouveautés
