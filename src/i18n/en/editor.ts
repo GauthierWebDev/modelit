@@ -12,6 +12,7 @@ export const enEditor: Record<keyof typeof frEditor, string> = {
   "toolbar.fit": "Fit to window (⇧F)",
   "toolbar.autoLayout": "Automatic layout, without overlaps (shared by the CDM, LDM and PDM views)",
   "toolbar.autoLayoutShort": "Auto layout",
+  "toolbar.autoLayoutRunning": "Automatic layout in progress…",
   "toolbar.dbms": "DBMS",
   "target.tooltip": "Target DBMS of the model",
   "target.title": "Model target",

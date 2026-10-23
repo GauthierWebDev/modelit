@@ -21,7 +21,7 @@ export interface MirrorState {
   recovered: boolean;
   undoLabel?: MessageKey;
   redoLabel?: MessageKey;
-  view: Pick<DocumentViewState, "view" | "selection" | "viewport" | "activeBend">;
+  view: Pick<DocumentViewState, "view" | "selection" | "viewport" | "activeBend" | "layoutRunning">;
   ui: { tool: Tool };
   /** Une boîte modale est ouverte dans la fenêtre principale : les flottantes sont désactivées (O-45). */
   modal: boolean;

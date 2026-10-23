@@ -11,6 +11,7 @@ export const frEditor = {
   "toolbar.fit": "Ajuster à la fenêtre (⇧F)",
   "toolbar.autoLayout": "Placement automatique, sans chevauchement (commun aux vues MCD, MLD et MPD)",
   "toolbar.autoLayoutShort": "Placement auto.",
+  "toolbar.autoLayoutRunning": "Placement automatique en cours…",
   "toolbar.dbms": "SGBD",
   "target.tooltip": "SGBD cible du modèle",
   "target.title": "Cible du modèle",
