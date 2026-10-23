@@ -1,10 +1,11 @@
 import { deserializeModel, serializeModel } from "@core/index";
 import { t } from "@/i18n";
-import { indexedDbStore, type LocalStore, removeLegacyLocalStorageCopy } from "@/platform/localStore";
+import { type AutosaveEntry, entryKey, INDEX_KEY, readCopies, removeLegacyLocalStorageCopy } from "./autosaveCopies";
 import { confirmDialog } from "./dialogStore";
 import { selectIsDirty } from "./document/documentStore";
 import type { DocumentHandle } from "./document/handle";
-import { documentName } from "./fileCommands";
+import { documentName } from "./documentNames";
+import { localStore } from "./localStore";
 import { usePreferencesStore } from "./preferencesStore";
 import { useUiStore } from "./uiStore";
 import { openInTab, useWorkspaceStore } from "./workspace";
@@ -22,23 +23,9 @@ import { openInTab, useWorkspaceStore } from "./workspace";
  * Au lancement, les copies présentes sont proposées ensemble à la récupération.
  */
 
-/** Ordre des onglets qui ont une copie : identifiants de session des documents. */
-const INDEX_KEY = "modelit/autosave/documents";
-const entryKey = (id: string) => `modelit/autosave/document/${id}`;
-/** Copie unique des versions 0.1.x (un seul document). */
-const LEGACY_KEY = "modelit/autosave";
-
-export interface AutosaveEntry {
-  savedAt: string;
-  filePath: string | null;
-  /** Nom affiché (« Sans titre 2 »…) ; absent des copies des versions 0.1.x. */
-  name?: string;
-  content: string;
-}
-
 interface Tracked {
   unsubscribe: () => void;
-  timer: number | undefined;
+  timer: ReturnType<typeof setTimeout> | undefined;
   pending: boolean;
   lastWrite: number;
 }
@@ -47,7 +34,6 @@ let started = false;
 const tracked = new Map<string, Tracked>();
 /** Documents dont une copie est actuellement stockée. */
 const stored = new Set<string>();
-const store: LocalStore = indexedDbStore;
 
 const enabled = () => usePreferencesStore.getState().autosave === "indexeddb";
 const documents = () => useWorkspaceStore.getState().documents;
@@ -59,9 +45,9 @@ async function writeIndex() {
     .map((d) => d.id)
     .filter((id) => stored.has(id));
   if (ids.length > 0) {
-    await store.set(INDEX_KEY, JSON.stringify(ids));
+    await localStore().set(INDEX_KEY, JSON.stringify(ids));
   } else {
-    await store.remove(INDEX_KEY);
+    await localStore().remove(INDEX_KEY);
   }
 }
 
@@ -85,10 +71,10 @@ async function write(doc: DocumentHandle) {
         name: documentName(doc),
         content: serializeModel(state.doc),
       };
-      await store.set(entryKey(doc.id), JSON.stringify(copy));
+      await localStore().set(entryKey(doc.id), JSON.stringify(copy));
       stored.add(doc.id);
     } else {
-      await store.remove(entryKey(doc.id));
+      await localStore().remove(entryKey(doc.id));
       stored.delete(doc.id);
     }
     await writeIndex();
@@ -109,8 +95,7 @@ function schedule(doc: DocumentHandle) {
   }
   const delay = usePreferencesStore.getState().autosaveDelay * 60_000;
   const wait = Math.max(0, entry.lastWrite + delay - Date.now());
-  // biome-ignore lint/style/useGlobalThis: minuterie du DOM (identifiant numérique), pas celle de Node
-  entry.timer = window.setTimeout(() => void write(doc), wait);
+  entry.timer = globalThis.setTimeout(() => void write(doc), wait);
 }
 
 function track(doc: DocumentHandle) {
@@ -145,7 +130,7 @@ async function untrack(id: string) {
     return;
   }
   try {
-    await store.remove(entryKey(id));
+    await localStore().remove(entryKey(id));
     await writeIndex();
   } catch (e) {
     reportError(e);
@@ -171,30 +156,6 @@ function syncTracked() {
   }
 }
 
-/** Copies laissées par une session interrompue, dans l'ordre de ses onglets. */
-export async function readCopies(from: LocalStore): Promise<{ keys: string[]; copies: AutosaveEntry[] }> {
-  const keys: string[] = [];
-  const copies: AutosaveEntry[] = [];
-  const index = await from.get(INDEX_KEY);
-  if (index) {
-    keys.push(INDEX_KEY);
-    for (const id of JSON.parse(index) as string[]) {
-      // biome-ignore lint/performance/noAwaitInLoops: lecture séquentielle de l'index, dans l'ordre des onglets
-      const raw = await from.get(entryKey(id));
-      keys.push(entryKey(id));
-      if (raw) {
-        copies.push(JSON.parse(raw) as AutosaveEntry);
-      }
-    }
-  }
-  const legacy = await from.get(LEGACY_KEY);
-  if (legacy) {
-    keys.push(LEGACY_KEY);
-    copies.push(JSON.parse(legacy) as AutosaveEntry);
-  }
-  return { keys, copies };
-}
-
 /** Propose de récupérer, en une fois, les documents laissés par une session interrompue. */
 async function offerRecovery() {
   if (!enabled()) {
@@ -202,7 +163,7 @@ async function offerRecovery() {
   }
   let keys: string[] = [];
   try {
-    const found = await readCopies(store);
+    const found = await readCopies(localStore());
     ({ keys } = found);
     if (found.copies.length === 0) {
       return;
@@ -237,7 +198,21 @@ async function offerRecovery() {
   }
   for (const key of keys) {
     // biome-ignore lint/performance/noAwaitInLoops: effacement une clé à la fois, un échec n'arrête pas les suivantes
-    await store.remove(key).catch(() => undefined);
+    await localStore()
+      .remove(key)
+      .catch(() => undefined);
+  }
+}
+
+/**
+ * Écrit sans attendre les copies en attente : fenêtre passée en arrière-plan ou fermée (branché par
+ * `src/bootstrap.ts`, qui connaît le cycle de vie de la page).
+ */
+export function flushAutosave() {
+  for (const doc of documents()) {
+    if (tracked.get(doc.id)?.pending) {
+      void write(doc);
+    }
   }
 }
 
@@ -247,7 +222,7 @@ export function startAutosave() {
     return;
   }
   started = true;
-  removeLegacyLocalStorageCopy(LEGACY_KEY);
+  removeLegacyLocalStorageCopy();
 
   void offerRecovery().then(() => {
     syncTracked();
@@ -257,16 +232,6 @@ export function startAutosave() {
       }
     });
   });
-
-  const flush = () => {
-    for (const doc of documents()) {
-      if (tracked.get(doc.id)?.pending) {
-        void write(doc);
-      }
-    }
-  };
-  document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flush());
-  window.addEventListener("pagehide", flush);
 
   usePreferencesStore.subscribe((state, previous) => {
     if (state.autosave !== previous.autosave) {
@@ -283,10 +248,14 @@ export function startAutosave() {
 function autosaveSwitched(off: boolean) {
   if (off) {
     for (const id of [...stored]) {
-      void store.remove(entryKey(id)).catch(() => undefined);
+      void localStore()
+        .remove(entryKey(id))
+        .catch(() => undefined);
     }
     stored.clear();
-    void store.remove(INDEX_KEY).catch(() => undefined);
+    void localStore()
+      .remove(INDEX_KEY)
+      .catch(() => undefined);
   } else {
     for (const doc of documents()) {
       void write(doc);

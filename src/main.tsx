@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { usePreferencesStore } from "./app/preferencesStore";
+import { startPreferencesSync, usePreferencesStore } from "./app/preferencesStore";
+import { bootstrapMain } from "./bootstrap";
 import { setLocale } from "./i18n";
 import { floatKind } from "./platform/floatWindows";
 import { App } from "./ui/App";
@@ -19,6 +20,12 @@ function Root() {
   // Fenêtre flottante native (barre d'outils, groupe de sections ; O-45, O-46).
   const float = floatKind();
   return float ? <FloatRoot key={locale} kind={float} /> : <App key={locale} />;
+}
+
+// Toutes les fenêtres : options relues quand une autre fenêtre les écrit ; la principale assemble le reste.
+startPreferencesSync();
+if (!floatKind()) {
+  bootstrapMain();
 }
 
 // Les largeurs de texte du schéma sont mesurées (et mises en cache) avec la police embarquée :

@@ -47,6 +47,7 @@ export function LogicalCanvas({ mode }: { mode: LogicalViewMode }) {
     <>
       <CanvasSurface
         grid={grid}
+        remoteBoxes={new Map(layouts.map((l) => [l.sourceId, l]))}
         className={tool === "select" ? "" : "cursor-crosshair"}
         onPointerDown={(e, point) => onPointerDown(c, e, point)}
         onPointerMove={(_, point) => onPointerMove(c, point)}

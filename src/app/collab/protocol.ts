@@ -26,6 +26,10 @@ export interface Presence {
   view: ViewMode;
   cursor: { x: number; y: number } | null;
   selection: string[];
+  /** Cadrage : centre du canevas en coordonnées du modèle, et zoom (« Suivre », O-05 §5) ; absent avant v0.7. */
+  viewport?: { center: { x: number; y: number }; zoom: number };
+  /** Participant que je suis (« vous suit », O-05 §5). */
+  following?: string | null;
 }
 
 /** Longueur maximale d'un message du chat (O-05 §6). */

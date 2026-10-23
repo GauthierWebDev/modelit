@@ -1,7 +1,7 @@
 import { sqlType } from "../dbms/typeMapping";
 import type { LogicalColumn, LogicalTable } from "../mld/logical";
 import type { DataType } from "../model/datatype";
-import { integerRange } from "../reverse/types";
+import { integerRange } from "../sql/types";
 import { MSG } from "../validation/messages";
 import { activeConditions, type Context } from "./context";
 import { valueBounds } from "./expressions";

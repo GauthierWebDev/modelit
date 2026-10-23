@@ -27,6 +27,15 @@ import { addInheritanceLink } from "./nodeCommands";
 /** Résultat d'une liaison : objet créé à sélectionner, ou message d'erreur. */
 export type ConnectResult = { created: Id } | { error: string } | null;
 
+/** Association que crée l'outil Lien entre deux entités : nom par défaut libre (« Association 2 »…). */
+export const newAssociation = (doc: ModelDocument) =>
+  createAssociation(
+    nextFreeName(
+      t("default.association"),
+      doc.associations.map((a) => a.name),
+    ),
+  );
+
 /**
  * Crée une patte entre une association et une entité, dans n'importe quel ordre.
  * Une seule patte par couple association / entité (override O-08) ; la réflexive
@@ -81,12 +90,7 @@ export function connectNodes(
   if (!(isEntity(fromId) && isEntity(toId))) {
     return addLink(doc, fromId, toId);
   }
-  const association = createAssociation(
-    nextFreeName(
-      t("default.association"),
-      current(doc).associations.map((a) => a.name),
-    ),
-  );
+  const association = newAssociation(current(doc));
   const first = createLink(association.id, fromId);
   const second = createLink(association.id, toId);
   change(doc, fromId === toId ? "history.createReflexive" : "history.createAssociation", (d) => {

@@ -1,7 +1,8 @@
 import { emptyDocument } from "@core/index";
 import { beforeEach, describe, expect, it } from "vitest";
 import { addEntity } from "./commands";
-import { documentName, newTab } from "./fileCommands";
+import { documentName } from "./documentNames";
+import { newTab } from "./fileCommands";
 import {
   activate,
   activateNeighbour,

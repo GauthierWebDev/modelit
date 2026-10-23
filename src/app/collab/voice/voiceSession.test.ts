@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { VoiceEngine, VoiceFrame } from "@/platform/voice";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { resetWorkspace } from "../../workspace";
 import { type GuestSession, startGuest } from "../guest";
 import { parseLink } from "../link";
@@ -7,7 +6,8 @@ import { memoryNetwork } from "../memoryNetwork";
 import { setCollabTransport, shareActiveTab, stopSharing, useCollabStore, VOICE_OFF } from "../session";
 import type { AudioPacket } from "./packet";
 import { useSpeakingStore } from "./speaking";
-import { joinAudio, leaveAudio, setMuted, setVoiceBackend, setVolume } from "./voiceSession";
+import type { VoiceEngine, VoiceFrame } from "./voiceEngine";
+import { joinAudio, leaveAudio, setMuted, setVoiceBackend, setVolume, startVoiceSync } from "./voiceSession";
 
 /** Moteur factice : enregistre ce qu'on lui fait jouer ; `speak` simule 20 ms de voix captée. */
 function fakeBackend(options: { mic?: boolean; support?: "ok" | "no-codec" | "no-media" } = {}) {
@@ -65,6 +65,13 @@ function fakeBackend(options: { mic?: boolean; support?: "ok" | "no-codec" | "no
 let net: ReturnType<typeof memoryNetwork>;
 let bob: GuestSession;
 let atBob: AudioPacket[];
+
+// Suivi du vocal démarré comme par l'assemblage de la fenêtre principale (src/bootstrap.ts).
+let stopVoiceSync: () => void;
+beforeAll(() => {
+  stopVoiceSync = startVoiceSync();
+});
+afterAll(() => stopVoiceSync());
 
 beforeEach(async () => {
   resetWorkspace();

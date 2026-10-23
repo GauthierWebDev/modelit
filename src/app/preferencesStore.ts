@@ -202,13 +202,17 @@ export const usePreferencesStore = create<PreferencesState>()(
   ),
 );
 
-// Fenêtres flottantes (J-01, phase 4) : les options écrites par une autre fenêtre de l'application
-// (thème, langue, disposition) sont relues dès qu'elles changent.
-// biome-ignore lint/style/useGlobalThis: présence d'une fenêtre (absente sous Node, dans les tests)
-if (typeof window !== "undefined") {
-  globalThis.addEventListener("storage", (e) => {
+/**
+ * Options écrites par une autre fenêtre de l'application (thème, langue, disposition) : relues dès qu'elles
+ * changent (fenêtres flottantes, J-01 phase 4). Démarré par `src/main.tsx` dans toutes les fenêtres ;
+ * renvoie la désinscription (audit A-01, A-3).
+ */
+export function startPreferencesSync(): () => void {
+  const reread = (e: StorageEvent) => {
     if (e.key === "modelit/preferences") {
       void usePreferencesStore.persist.rehydrate();
     }
-  });
+  };
+  globalThis.addEventListener("storage", reread);
+  return () => globalThis.removeEventListener("storage", reread);
 }

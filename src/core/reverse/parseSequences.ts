@@ -1,7 +1,7 @@
 import type { SequenceDefinition } from "../model/physical";
-import { type Cursor, isName, isPunct, isWord } from "./cursor";
+import { type Cursor, isName, isPunct, isWord } from "../sql/cursor";
+import type { Token } from "../sql/tokenize";
 import type { ParsedSchema } from "./parse";
-import type { Token } from "./tokenize";
 
 /** Nom de la séquence d'un DEFAULT : nextval('s'), s.NEXTVAL (Oracle), NEXT VALUE FOR s ; sinon `undefined`. */
 export function sequenceOfDefault(source: string): string | undefined {

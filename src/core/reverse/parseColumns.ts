@@ -1,9 +1,9 @@
-import { Cursor, isName, isPunct, isWord, joinRaw } from "./cursor";
+import { Cursor, isName, isPunct, isWord, joinRaw } from "../sql/cursor";
+import type { Token } from "../sql/tokenize";
 import type { ParsedColumn, ParsedTable } from "./parse";
 import { counterOption, otherOption } from "./parseColumnOptions";
 import { constraintState, references } from "./parseConstraints";
 import { sequenceOfDefault } from "./parseSequences";
-import type { Token } from "./tokenize";
 
 /** Mots qui terminent le type d'une colonne. */
 const AFTER_TYPE = new Set([

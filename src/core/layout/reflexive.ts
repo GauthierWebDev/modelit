@@ -1,5 +1,6 @@
-import type { Point } from "@core/index";
-import { center, clipToRect, type Rect, snap } from "./shapeMetrics";
+import type { Point } from "../model/document";
+import { snap } from "./move";
+import { center, clipToRect, type Rect } from "./rect";
 
 /** Nombre d'obstacles traversés par une ligne brisée (échantillonnage des segments). */
 function crossings(points: Point[], obstacles: Rect[]): number {

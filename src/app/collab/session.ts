@@ -1,7 +1,7 @@
 import { updateDock } from "../dock/actions";
 import { groupOf, hideSection, setActive, showSection } from "../dock/layout";
 import type { ViewMode } from "../document/documentView";
-import { documentName } from "../fileCommands";
+import { documentName } from "../documentNames";
 import { usePreferencesStore } from "../preferencesStore";
 import { useWorkspaceStore } from "../workspace";
 import type { HostSession } from "./host";
@@ -12,6 +12,9 @@ import { type CollabMode, type CollabState, live, markChatRead, me, useCollabSto
 export { answerPassword, joinFromLink, leaveSession } from "./sessionGuest";
 export { kick, setGuestsAi, shareActiveTab, stopSharing } from "./sessionHost";
 export { reportPresence } from "./sessionPresence";
+
+import { follow } from "./follow";
+
 export {
   type CollabMode,
   type CollabTransport,
@@ -120,7 +123,9 @@ export type CollabAction =
   | { kind: "guestsAi"; allowed: boolean }
   | { kind: "stop" }
   | { kind: "leave" }
-  | { kind: "voice"; action: VoiceAction };
+  | { kind: "voice"; action: VoiceAction }
+  /** Suivre un participant (O-05 §5), ou arrêter (`null`). */
+  | { kind: "follow"; peer: string | null };
 
 export function runCollabAction(action: CollabAction) {
   switch (action.kind) {
@@ -136,6 +141,8 @@ export function runCollabAction(action: CollabAction) {
       return void stopSharing();
     case "leave":
       return void leaveSession();
+    case "follow":
+      return follow(action.peer);
     case "voice":
       return voiceActions?.(action.action);
   }
@@ -145,16 +152,26 @@ export function runCollabAction(action: CollabAction) {
  * Ce qu'une fenêtre flottante reçoit de la session : tout sauf les curseurs (dessinés dans le
  * canevas de la principale), réduits à la vue de chacun.
  */
-export type CollabMirror = Omit<CollabState, "presence"> & { views: Record<string, ViewMode> };
+export type CollabMirror = Omit<CollabState, "presence"> & {
+  views: Record<string, ViewMode>;
+  /** Participants qui me suivent (« vous suit », O-05 §5). */
+  followers: string[];
+};
 
 export function collabMirror(): CollabMirror {
   const { presence, ...rest } = useCollabStore.getState();
-  return { ...rest, views: Object.fromEntries(Object.entries(presence).map(([id, p]) => [id, p.view])) };
+  return {
+    ...rest,
+    views: Object.fromEntries(Object.entries(presence).map(([id, p]) => [id, p.view])),
+    followers: Object.entries(presence)
+      .filter(([, p]) => rest.you !== null && p.following === rest.you)
+      .map(([id]) => id),
+  };
 }
 
 export const sameCollabMirror = (a: CollabMirror, b: CollabMirror) =>
   (Object.keys(a) as (keyof CollabMirror)[]).every((k) =>
-    k === "views" ? JSON.stringify(a.views) === JSON.stringify(b.views) : a[k] === b[k],
+    k === "views" || k === "followers" ? JSON.stringify(a[k]) === JSON.stringify(b[k]) : a[k] === b[k],
   );
 
 export function applyCollabMirror(mirror: CollabMirror) {
@@ -162,41 +179,49 @@ export function applyCollabMirror(mirror: CollabMirror) {
   if (JSON.stringify(mirror) === JSON.stringify(collabMirror())) {
     return;
   }
-  const { views, ...rest } = mirror;
+  const { views, followers, ...rest } = mirror;
   useCollabStore.setState({
     ...rest,
     presence: Object.fromEntries(
-      Object.entries(views).map(([id, view]) => [id, { view, cursor: null, selection: [], movedAt: 0 }]),
+      Object.entries(views).map(([id, view]) => [
+        id,
+        { view, cursor: null, selection: [], movedAt: 0, following: followers.includes(id) ? rest.you : null },
+      ]),
     ),
   });
 }
 
-/** Section « Session » (O-05 §7) : affichée au début d'une session, masquée à la fin. */
-useCollabStore.subscribe((s, p) => {
-  // Fenêtre principale seulement (une flottante reçoit sa disposition de la principale).
-  if (!live.transport) {
-    return;
-  }
-  const active = (mode: CollabMode) => mode === "host" || mode === "guest";
-  if (active(s.mode) === active(p.mode)) {
-    return;
-  }
-  updateDock((layout) => {
-    if (!active(s.mode)) {
-      return hideSection(layout, "session");
+/**
+ * Suivi de la session par la fenêtre principale (une flottante reçoit sa disposition de la principale),
+ * démarré par `src/bootstrap.ts` ; renvoie la désinscription (audit A-01, A-3).
+ * - Section « Session » (O-05 §7) : affichée au début d'une session, masquée à la fin.
+ * - Identité changée dans les options : visible tout de suite par les autres (O-05 §3).
+ */
+export function startSessionSync(): () => void {
+  const offSection = useCollabStore.subscribe((s, p) => {
+    const active = (mode: CollabMode) => mode === "host" || mode === "guest";
+    if (active(s.mode) === active(p.mode)) {
+      return;
     }
-    const shown = showSection(layout, "session");
-    const found = groupOf(shown, "session");
-    return found ? setActive(shown, found.group.id, "session") : shown;
+    updateDock((layout) => {
+      if (!active(s.mode)) {
+        return hideSection(layout, "session");
+      }
+      const shown = showSection(layout, "session");
+      const found = groupOf(shown, "session");
+      return found ? setActive(shown, found.group.id, "session") : shown;
+    });
   });
-});
-
-/** Identité changée dans les options : visible tout de suite par les autres (O-05 §3). */
-usePreferencesStore.subscribe((s, p) => {
-  if (s.identity === p.identity) {
-    return;
-  }
-  const { name, color } = me();
-  live.host?.session.setIdentity(name, color);
-  live.guest?.session.setIdentity(name, color);
-});
+  const offIdentity = usePreferencesStore.subscribe((s, p) => {
+    if (s.identity === p.identity) {
+      return;
+    }
+    const { name, color } = me();
+    live.host?.session.setIdentity(name, color);
+    live.guest?.session.setIdentity(name, color);
+  });
+  return () => {
+    offSection();
+    offIdentity();
+  };
+}

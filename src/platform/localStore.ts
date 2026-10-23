@@ -1,12 +1,9 @@
+import type { LocalStore } from "@/app/localStore";
+
 /**
- * Stockage local clé → texte de la sauvegarde automatique (override O-22) : IndexedDB, la base
- * de données du navigateur (et de la webview Tauri), sans la limite de quelques Mo du localStorage.
+ * Stockage local de la sauvegarde automatique (override O-22) : IndexedDB, la base de données du
+ * navigateur (et de la webview Tauri), sans la limite de quelques Mo du localStorage.
  */
-export interface LocalStore {
-  get: (key: string) => Promise<string | null>;
-  set: (key: string, value: string) => Promise<void>;
-  remove: (key: string) => Promise<void>;
-}
 
 const DB_NAME = "modelit";
 const STORE = "autosave";
@@ -39,12 +36,3 @@ export const indexedDbStore: LocalStore = {
   set: async (key, value) => void (await run("readwrite", (s) => s.put(value, key))),
   remove: async (key) => void (await run("readwrite", (s) => s.delete(key))),
 };
-
-/** Copie laissée dans le localStorage par une version précédente : à supprimer. */
-export function removeLegacyLocalStorageCopy(key: string) {
-  try {
-    globalThis.localStorage.removeItem(key);
-  } catch {
-    // localStorage indisponible : rien à nettoyer.
-  }
-}

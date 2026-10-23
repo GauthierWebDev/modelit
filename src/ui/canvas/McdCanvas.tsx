@@ -38,6 +38,7 @@ export function McdCanvas() {
     <>
       <CanvasSurface
         grid={grid}
+        remoteBoxes={layouts}
         className={tool === "select" ? "" : "cursor-crosshair"}
         onDoubleClick={(_, point) => {
           if (tool !== "select" || readOnly) {

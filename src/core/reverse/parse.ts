@@ -1,5 +1,6 @@
 import type { ConstraintState, ReferentialAction, SequenceDefinition, SqlDialect } from "../model/physical";
-import { Cursor, isPunct, isWord, joinRaw } from "./cursor";
+import { Cursor, isPunct, isWord, joinRaw } from "../sql/cursor";
+import { splitStatements, type Token, tokenize } from "../sql/tokenize";
 import { alterTable } from "./parseAlter";
 import { createIndex } from "./parseIndexes";
 import { alterSequence, createSequence, resolveSequences } from "./parseSequences";
@@ -12,7 +13,6 @@ import {
   extendedProperty,
 } from "./parseStatements";
 import { createTable } from "./parseTables";
-import { splitStatements, type Token, tokenize } from "./tokenize";
 
 /**
  * Lecture d'un script SQL de création (overrides O-28, O-29), quel que soit le SGBD et sa version.

@@ -2,7 +2,7 @@ import { t } from "@/i18n";
 import { confirmDialog } from "../dialogStore";
 import { createDocumentStore } from "../document/documentStore";
 import type { DocumentHandle } from "../document/handle";
-import { documentName } from "../fileCommands";
+import { documentName } from "../documentNames";
 import { activeDocument, replaceDocument, useWorkspaceStore } from "../workspace";
 import { type HostSession, startHost } from "./host";
 import { buildLink, newSecret } from "./link";

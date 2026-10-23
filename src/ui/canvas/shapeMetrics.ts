@@ -1,4 +1,4 @@
-import type { Attribute, Point } from "@core/index";
+import type { Attribute, Rect } from "@core/index";
 
 /** Police embarquée, identique sur tous les OS (cf. `ui/fonts.ts`). */
 export const FONT_FAMILY = "'Inter Variable', sans-serif";
@@ -14,13 +14,6 @@ export const PAD_X = 10;
 export const PAD_BOTTOM = 6;
 
 export const MIN_WIDTH = { entity: 110, association: 100 };
-
-export interface Rect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
 
 export interface AttributeRow {
   attribute: Attribute;
@@ -76,28 +69,5 @@ export const TAG_FONT_SIZE = 10;
 /** Encombrement du triangle d'héritage (override O-18). */
 export const INHERITANCE_SIZE = { width: 56, height: 56 };
 
-export const center = (r: Rect): Point => ({ x: r.x + r.width / 2, y: r.y + r.height / 2 });
-
-/** Point où le segment centre(r) → `toward` sort du rectangle. */
-export function clipToRect(r: Rect, toward: Point): Point {
-  const c = center(r);
-  const dx = toward.x - c.x;
-  const dy = toward.y - c.y;
-  if (dx === 0 && dy === 0) {
-    return c;
-  }
-  const scale = Math.min(
-    dx === 0 ? Number.POSITIVE_INFINITY : r.width / 2 / Math.abs(dx),
-    dy === 0 ? Number.POSITIVE_INFINITY : r.height / 2 / Math.abs(dy),
-  );
-  return { x: c.x + dx * scale, y: c.y + dy * scale };
-}
-
-export const snap = (value: number, grid: number | null) => (grid ? Math.round(value / grid) * grid : value);
-
-export const intersects = (a: Rect, b: Rect) =>
-  a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
-
-export function normalizeRect(p: Point, q: Point): Rect {
-  return { x: Math.min(p.x, q.x), y: Math.min(p.y, q.y), width: Math.abs(p.x - q.x), height: Math.abs(p.y - q.y) };
-}
+// Géométrie plane, calculs du domaine (core/layout) : réexportée pour les modules de l'interface.
+export { center, clipToRect, intersects, normalizeRect, type Rect, snap } from "@core/index";

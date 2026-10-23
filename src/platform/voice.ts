@@ -6,6 +6,8 @@
  * (`app/collab`) ; ce module ne connaît que les API audio du webview.
  */
 
+import type { VoiceEngine, VoiceFrame } from "@/app/collab/voice/voiceEngine";
+
 export const SAMPLE_RATE = 48_000;
 export const FRAME = 960; // 20 ms
 const BITRATE = 24_000;
@@ -20,13 +22,6 @@ const ENCODER_CONFIG: AudioEncoderConfig = {
   bitrate: BITRATE,
 };
 const DECODER_CONFIG: AudioDecoderConfig = { codec: "opus", sampleRate: SAMPLE_RATE, numberOfChannels: 1 };
-
-/** Paquet produit par le moteur : 20 ms de voix compressée, numéro de séquence, niveau (0–255). */
-export interface VoiceFrame {
-  seq: number;
-  level: number;
-  payload: Uint8Array;
-}
 
 /** Niveau d'une trame : dBFS ramenés à 0–255 (−60 dB → 0, 0 dB → 255). */
 export function levelOf(samples: Float32Array): number {
@@ -61,18 +56,6 @@ export async function voiceSupport(): Promise<"ok" | "no-codec" | "no-media"> {
   }
   // Sans description d'usage du micro (macOS : Info.plist), WebKit n'expose pas `mediaDevices`.
   return typeof navigator.mediaDevices?.getUserMedia === "function" ? "ok" : "no-media";
-}
-
-export interface VoiceEngine {
-  /** Micro coupé : plus rien n'est capturé ni envoyé. */
-  setMuted: (muted: boolean) => void;
-  /** Voix reçue d'un participant. */
-  play: (speaker: string, frame: VoiceFrame) => void;
-  /** Volume d'un participant, de 0 à 2 (200 %). */
-  setVolume: (speaker: string, gain: number) => void;
-  /** Participant parti : sa lecture s'arrête. */
-  forget: (speaker: string) => void;
-  stop: () => void;
 }
 
 export interface StartOptions {

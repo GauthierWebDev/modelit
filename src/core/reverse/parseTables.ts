@@ -1,8 +1,8 @@
-import { type Cursor, isName, isPunct, isWord, joinRaw, splitCommas } from "./cursor";
+import { type Cursor, isName, isPunct, isWord, joinRaw, splitCommas } from "../sql/cursor";
+import type { Token } from "../sql/tokenize";
 import type { ParsedSchema, ParsedTable } from "./parse";
 import { columnDefinition } from "./parseColumns";
 import { tableConstraint } from "./parseKeys";
-import type { Token } from "./tokenize";
 
 export const findTable = (schema: ParsedSchema, name: string | null | undefined) =>
   name ? schema.tables.find((t) => t.name.toLowerCase() === name.toLowerCase()) : undefined;

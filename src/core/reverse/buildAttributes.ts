@@ -3,11 +3,11 @@ import type { Attribute } from "../model/document";
 import { createAttribute, createEntity } from "../model/factory";
 import type { ValueDomain } from "../model/physical";
 import { logicalName } from "../naming/typology";
+import { tokenize } from "../sql/tokenize";
+import { sqlTypeToDataType } from "../sql/types";
 import { type Build, key, plainKey } from "./buildState";
 import { inferComputedType } from "./computedType";
 import type { ParsedColumn, ParsedTable } from "./parse";
-import { tokenize } from "./tokenize";
-import { sqlTypeToDataType } from "./types";
 
 /** 4. Entités et rubriques : colonnes hors clés étrangères. */
 export function createEntities(b: Build, entityTables: ParsedTable[]) {

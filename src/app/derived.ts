@@ -4,6 +4,7 @@ import {
   type Id,
   type Issue,
   type LogicalModel,
+  MODEL_COLLECTIONS,
   type ModelDocument,
   targetOf,
   toLogicalModel,
@@ -23,12 +24,7 @@ import { useDocument } from "./document/DocumentContext";
 type Semantic = Omit<ModelDocument, "layout">;
 
 const sameSemantic = (a: Semantic, b: Semantic) =>
-  a.settings === b.settings &&
-  a.entities === b.entities &&
-  a.associations === b.associations &&
-  a.links === b.links &&
-  a.inheritances === b.inheritances &&
-  a.inheritanceLinks === b.inheritanceLinks;
+  a.settings === b.settings && MODEL_COLLECTIONS.every((collection) => a[collection] === b[collection]);
 
 /** Indexé par la liste des entités : propre à un document, partagée tant qu'elle ne change pas. */
 const logicalCache = new WeakMap<object, { source: Semantic; locale: string; result: LogicalModel }>();

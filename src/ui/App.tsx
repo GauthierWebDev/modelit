@@ -4,8 +4,10 @@ import { startAutosave } from "@/app/autosave";
 import { endSessionOnExit } from "@/app/collab/session";
 import { DocumentProvider, useDocument, useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import { selectIsDirty } from "@/app/document/documentStore";
-import { closeDocument, confirmLoseAllChanges, documentName } from "@/app/fileCommands";
+import { documentName } from "@/app/documentNames";
+import { closeDocument } from "@/app/fileCommands";
 import { useUiStore } from "@/app/uiStore";
+import { confirmLoseAllChanges } from "@/app/unsavedGuard";
 import { scheduleUpdateCheck, showWhatsNew } from "@/app/updates";
 import { activeDocument, useActiveDocument, useWorkspaceStore } from "@/app/workspace";
 import { t } from "@/i18n";
@@ -24,7 +26,6 @@ import { DialogHost } from "./common/DialogHost";
 import { TooltipLayer } from "./common/Tooltip";
 import { DockZone, DragGhost, FloatingGroups } from "./dock/Dock";
 import { ExportDialog } from "./export/ExportDialog";
-import { McpBridge } from "./mcp/McpBridge";
 import { McpIndicator } from "./mcp/McpIndicator";
 import { OptionsDialog } from "./options/OptionsDialog";
 import { ReverseDialog } from "./reverse/ReverseDialog";
@@ -118,7 +119,6 @@ function Workbench() {
       </div>
       <FloatingGroups />
       <FloatManager />
-      <McpBridge />
       <DragGhost />
       <ExportDialog />
       <OptionsDialog />

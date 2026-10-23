@@ -13,7 +13,11 @@ const samePresence = (a: Presence, b: Presence) =>
   a.view === b.view &&
   a.cursor?.x === b.cursor?.x &&
   a.cursor?.y === b.cursor?.y &&
-  a.selection.join() === b.selection.join();
+  a.selection.join() === b.selection.join() &&
+  a.viewport?.center.x === b.viewport?.center.x &&
+  a.viewport?.center.y === b.viewport?.center.y &&
+  a.viewport?.zoom === b.viewport?.zoom &&
+  (a.following ?? null) === (b.following ?? null);
 
 function flushPresence() {
   presenceTimer = undefined;

@@ -1,7 +1,7 @@
 import { sqlType } from "../dbms/typeMapping";
 import type { LogicalColumn, LogicalTable } from "../mld/logical";
 import type { DataType } from "../model/datatype";
-import { sqlTypeToDataType } from "../reverse/types";
+import { sqlTypeToDataType } from "../sql/types";
 import { MSG } from "../validation/messages";
 import { activeConditions, type Context, describe } from "./context";
 import { sqliteAffinity } from "./dialects";

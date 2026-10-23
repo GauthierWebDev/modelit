@@ -1,6 +1,6 @@
-import { tokenize } from "../reverse/tokenize";
+import { tokenize } from "../sql/tokenize";
 import type { DateFunction, SpecialFunction } from "./dialects";
-import { KEYWORDS, operand, Reader } from "./expressionOperands";
+import { operand, Reader } from "./expressionOperands";
 import { orExpression } from "./expressionParser";
 
 /**
@@ -110,20 +110,6 @@ export function parseDefault(expression: string): Operand | null {
   } catch {
     return null;
   }
-}
-
-/** Colonnes citées par une expression (pour rattacher un CHECK à une colonne). */
-export function referencedColumns(expression: string): string[] {
-  const tokens = tokenize(expression);
-  const names = new Set<string>();
-  tokens.forEach((t, i) => {
-    if (t.type === "quoted") {
-      names.add(t.value);
-    } else if (t.type === "word" && !KEYWORDS.has(t.value.toLowerCase()) && tokens[i + 1]?.value !== "(") {
-      names.add(t.value);
-    }
-  });
-  return [...names];
 }
 
 // ---------------------------------------------------------------------------------------------
