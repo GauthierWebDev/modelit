@@ -114,6 +114,7 @@ function emptyActions(doc: DocumentHandle, point: Point, model: ModelDocument, v
       kind: "item",
       id: "autoLayout",
       label: t("actions.autoLayout"),
+      disabled: doc.view.getState().layoutRunning,
       run: () => mainCommand({ name: "autoLayout" }),
     },
     { kind: "item", id: "fit", label: t("actions.fit"), shortcut: "⇧F", run: () => fitToWindow(doc) },

@@ -53,3 +53,36 @@ describe("placement automatique", () => {
     expect(doc.store.getState().doc.layout.positions[a]).toEqual({ x: 500, y: 500 });
   });
 });
+
+/** Un seul placement à la fois par document : les clics répétés ne s'empilent pas. */
+describe("placement automatique", () => {
+  it("appel répété pendant le calcul : ignoré, un seul calcul, indicateur levé puis baissé", async () => {
+    let calls = 0;
+    let finish: () => void = () => undefined;
+    setLayoutRunner({
+      run: (nodes) => {
+        calls += 1;
+        return new Promise((resolve) => {
+          finish = () => resolve(new Map(nodes.map((n): [string, Point] => [n.id, { x: 0, y: 0 }])));
+        });
+      },
+    });
+    const doc = createDocumentHandle(newModelDocument());
+    addEntity(doc, { x: 500, y: 500 });
+    const first = autoLayout(doc);
+    expect(doc.view.getState().layoutRunning).toBe(true);
+    expect(await autoLayout(doc)).toBe(false);
+    finish();
+    expect(await first).toBe(true);
+    expect(calls).toBe(1);
+    expect(doc.view.getState().layoutRunning).toBe(false);
+  });
+
+  it("calcul en échec : indicateur baissé", async () => {
+    setLayoutRunner({ run: () => Promise.reject(new Error("échec")) });
+    const doc = createDocumentHandle(newModelDocument());
+    addEntity(doc, { x: 500, y: 500 });
+    await expect(autoLayout(doc)).rejects.toThrow("échec");
+    expect(doc.view.getState().layoutRunning).toBe(false);
+  });
+});

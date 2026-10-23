@@ -31,12 +31,15 @@ export interface DocumentViewState {
   selection: Id[];
   viewport: Viewport;
   activeBend: ActiveBend | null;
+  /** Placement automatique en cours sur ce document : bouton désactivé, nouvel appel ignoré. */
+  layoutRunning: boolean;
 
   setView: (view: ViewMode) => void;
   select: (ids: Id[]) => void;
   toggleSelected: (id: Id) => void;
   setViewport: (viewport: Viewport) => void;
   setActiveBend: (bend: ActiveBend | null) => void;
+  setLayoutRunning: (running: boolean) => void;
 }
 
 export type DocumentViewStore = StoreApi<DocumentViewState>;
@@ -47,6 +50,7 @@ export const createDocumentViewStore = (): DocumentViewStore =>
     selection: [],
     viewport: { x: 40, y: 40, zoom: 1 },
     activeBend: null,
+    layoutRunning: false,
 
     setView: (view) => set({ view }),
     select: (selection) => set({ selection, activeBend: null }),
@@ -58,4 +62,5 @@ export const createDocumentViewStore = (): DocumentViewStore =>
     setViewport: (viewport) =>
       set({ viewport: { ...viewport, zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, viewport.zoom)) } }),
     setActiveBend: (activeBend) => set({ activeBend }),
+    setLayoutRunning: (layoutRunning) => set({ layoutRunning }),
   }));

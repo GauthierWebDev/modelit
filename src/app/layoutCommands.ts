@@ -20,22 +20,32 @@ import { layoutRunner } from "./layoutRunner";
  *    les traits traversant un objet, les croisements et les cardinalités superposées. Chaque cellule a la
  *    taille de l'objet dans sa vue la plus grande (MCD ou MPD) : aucun chevauchement, dans aucune vue.
  * 2. Cassures : réflexives contournées, autres liens déplacés avec leurs extrémités ou redressés.
- * Renvoie faux si rien n'a été placé (schéma vide, ou objets changés pendant le calcul). Le cadrage de la
- * vue reste à l'interface (audit A-01, U-2).
+ * Renvoie faux si rien n'a été placé (schéma vide, placement déjà en cours sur ce document, ou objets changés
+ * pendant le calcul). Le cadrage de la vue reste à l'interface (audit A-01, U-2).
  */
 export async function autoLayout(handle: DocumentHandle): Promise<boolean> {
-  let { doc } = handle.store.getState();
-  let nodes = diagramNodes(doc);
-  if (nodes.length === 0) {
+  const view = handle.view.getState();
+  // Un seul placement à la fois par document : les clics répétés ne s'empilent pas dans la file des calculs.
+  if (view.layoutRunning || diagramNodes(handle.store.getState().doc).length === 0) {
     return false;
   }
+  view.setLayoutRunning(true);
+  try {
+    return await placeNodes(handle);
+  } finally {
+    handle.view.getState().setLayoutRunning(false);
+  }
+}
+
+async function placeNodes(handle: DocumentHandle): Promise<boolean> {
+  let { doc } = handle.store.getState();
   const placed = await layoutRunner().run(
     gridNodes(doc),
     diagramLinks(doc).map((l) => ({ a: linkSourceId(l), b: l.entityId })),
   );
   // Repartir du document courant ; s'il a changé d'objets pendant le calcul, résultat abandonné.
   ({ doc } = handle.store.getState());
-  nodes = diagramNodes(doc);
+  const nodes = diagramNodes(doc);
   if (nodes.length !== placed.size || nodes.some((n) => !placed.has(n.id))) {
     return false;
   }
