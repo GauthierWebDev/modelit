@@ -176,3 +176,25 @@ describe("architecture du cœur", () => {
     expect(cycles(graph)).toEqual(CORE_CYCLES);
   });
 });
+
+/**
+ * Instruction exécutée au chargement d'un module : tout ce qui n'est ni déclaration, ni import, ni fin de bloc,
+ * en début de ligne. Abonnements et écouteurs se démarrent explicitement (`start…()`, src/bootstrap.ts,
+ * src/main.tsx), jamais à l'import (audit A-01, A-3).
+ */
+const TOP_LEVEL_STATEMENT =
+  /^(?!(?:export|import|const|let|var|function|async|type|interface|class|enum|declare)\b|[}\])]|\/\/|\/\*|\*|\s|$)/;
+/** Permis : configuration globale d'Immer (patchs des fenêtres flottantes), idempotente, sans effet observable. */
+const STARTUP_ALLOWED = ["app/windows/owner.ts: enablePatches();", "app/windows/replica.ts: enablePatches();"];
+
+describe("démarrage explicite", () => {
+  it("aucun effet au chargement d'un module d'app (abonnements, écouteurs : fonctions start…)", () => {
+    const offenders = sources(join(SRC, "app")).flatMap((path) =>
+      readFileSync(path, "utf8")
+        .split("\n")
+        .filter((line) => TOP_LEVEL_STATEMENT.test(line))
+        .map((line) => `${relative(SRC, path)}: ${line.trim()}`),
+    );
+    expect(offenders.filter((o) => !STARTUP_ALLOWED.includes(o))).toEqual([]);
+  });
+});

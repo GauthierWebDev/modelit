@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { usePreferencesStore } from "./app/preferencesStore";
+import { startPreferencesSync, usePreferencesStore } from "./app/preferencesStore";
 import { bootstrapMain } from "./bootstrap";
 import { setLocale } from "./i18n";
 import { floatKind } from "./platform/floatWindows";
@@ -22,6 +22,8 @@ function Root() {
   return float ? <FloatRoot key={locale} kind={float} /> : <App key={locale} />;
 }
 
+// Toutes les fenêtres : options relues quand une autre fenêtre les écrit ; la principale assemble le reste.
+startPreferencesSync();
 if (!floatKind()) {
   bootstrapMain();
 }
