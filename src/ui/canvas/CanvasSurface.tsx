@@ -1,10 +1,12 @@
-import type { Point } from "@core/index";
+import type { Id, Point, Rect } from "@core/index";
 import { type MouseEvent, type PointerEvent, type ReactNode, type RefObject, useEffect, useRef } from "react";
 import { useDocumentHandle, useDocumentView } from "@/app/document/DocumentContext";
 import type { Viewport } from "@/app/document/documentView";
 import type { DocumentHandle } from "@/app/document/handle";
 import { t } from "@/i18n";
+import { FollowFrame } from "@/ui/collab/FollowFrame";
 import { RemoteCursors, reportCursor, useIsSessionTab, usePresenceReporting } from "@/ui/collab/RemoteCursors";
+import { RemoteSelections } from "@/ui/collab/RemoteSelections";
 import { setCanvasElement, setCanvasSize, zoomBy } from "./viewport";
 
 /**
@@ -28,9 +30,17 @@ export function CanvasSurface({
   grid,
   panOnEmpty,
   className = "",
+  remoteBoxes,
   children,
   ...handlers
-}: SurfaceHandlers & { grid: number | null; panOnEmpty?: boolean; className?: string; children: ReactNode }) {
+}: SurfaceHandlers & {
+  grid: number | null;
+  panOnEmpty?: boolean;
+  className?: string;
+  /** Boîtes de la vue (sélection des autres participants, O-05 §5). */
+  remoteBoxes?: Map<Id, Rect>;
+  children: ReactNode;
+}) {
   const doc = useDocumentHandle();
   const viewport = useDocumentView((s) => s.viewport);
   const setViewport = useDocumentView((s) => s.setViewport);
@@ -76,7 +86,9 @@ export function CanvasSurface({
       <g data-export-root="" transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.zoom})`}>
         {children}
       </g>
+      {shared && remoteBoxes ? <RemoteSelections viewport={viewport} boxes={remoteBoxes} /> : null}
       {shared && <RemoteCursors viewport={viewport} />}
+      {shared && <FollowFrame />}
     </svg>
   );
 }

@@ -1,4 +1,5 @@
 import { diagramNodes, type ModelDocument, type Point, positionOf } from "@core/index";
+import type { CanvasMetrics } from "@/app/canvasMetrics";
 import { logicalModelOf } from "@/app/derived";
 import type { ViewMode } from "@/app/document/documentView";
 import type { DocumentHandle } from "@/app/document/handle";
@@ -141,3 +142,6 @@ export function revealObjects(doc: DocumentHandle, ids: string[]) {
   }
   setViewport({ zoom: z, x: size.width / 2 - ((minX + maxX) / 2) * z, y: size.height / 2 - ((minY + maxY) / 2) * z });
 }
+
+/** Adaptateur du port `CanvasMetrics` (`app/canvasMetrics.ts`) : taille réelle du canevas affiché. */
+export const canvasMetricsAdapter: CanvasMetrics = { canvasSize: canvasSizeNow };

@@ -56,6 +56,15 @@ export function useShortcuts() {
   }, []);
 }
 
+/** Suivi d'un participant en cours (O-05 §5) : Échap l'arrête. Vrai si la touche a servi. */
+function stopFollowing(e: KeyboardEvent): boolean {
+  if (e.key !== "Escape" || !useCollabStore.getState().following) {
+    return false;
+  }
+  mainCommand({ name: "collab", action: { kind: "follow", peer: null } });
+  return true;
+}
+
 /** Ce que les raccourcis lisent au moment de la frappe. */
 interface Keys {
   e: KeyboardEvent;
@@ -71,7 +80,7 @@ function onKeyDown(e: KeyboardEvent) {
     commaCode = e.code;
   }
   // Boîte modale ouverte : les raccourcis du schéma et des fichiers sont suspendus.
-  if (document.querySelector('[aria-modal="true"]')) {
+  if (document.querySelector('[aria-modal="true"]') || stopFollowing(e)) {
     return;
   }
   const mod = isMac ? e.metaKey : e.ctrlKey;
