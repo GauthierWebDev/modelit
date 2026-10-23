@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -11,6 +11,8 @@ import { describe, expect, it } from "vitest";
  * `src/core/architecture.test.ts` garde en plus l'indépendance de `core`.
  */
 const SRC = fileURLToPath(new URL(".", import.meta.url));
+/** Chemin relatif à `src`, toujours avec « / » (Windows : `path.relative` rend des « \\ »). */
+const fromSrc = (path: string) => relative(SRC, path).split(sep).join("/");
 
 /**
  * Couches qu'une couche peut importer (hors elle-même). La racine (`main.tsx`) assemble : tout lui est permis.
@@ -72,14 +74,14 @@ function resolve(file: string, specifier: string): { target: string; layer: stri
     return { target: `core${specifier.slice(5)}`, layer: "core" };
   }
   if (specifier.startsWith(".")) {
-    const target = relative(SRC, join(dirname(join(SRC, file)), specifier));
+    const target = fromSrc(join(dirname(join(SRC, file)), specifier));
     return { target, layer: targetLayer(target) };
   }
   return { target: specifier, layer: "npm" };
 }
 
 const IMPORTS: Import[] = sources(SRC).flatMap((path) => {
-  const from = relative(SRC, path);
+  const from = fromSrc(path);
   return [...readFileSync(path, "utf8").matchAll(IMPORT)].map((m) => ({
     from,
     ...resolve(from, m[3]!),
@@ -193,7 +195,7 @@ describe("démarrage explicite", () => {
       readFileSync(path, "utf8")
         .split("\n")
         .filter((line) => TOP_LEVEL_STATEMENT.test(line))
-        .map((line) => `${relative(SRC, path)}: ${line.trim()}`),
+        .map((line) => `${fromSrc(path)}: ${line.trim()}`),
     );
     expect(offenders.filter((o) => !STARTUP_ALLOWED.includes(o))).toEqual([]);
   });
