@@ -7,8 +7,8 @@ import { attributeOf, current, owner, refuse } from "./opSupport";
 const nonEmpty = <T>(list: T[]): T[] | undefined => (list.length > 0 ? list : undefined);
 
 /**
- * Annotations physiques d'une table (bloc « Avancé », O-29, O-50 ; IA : O-69) : nom de la clé primaire,
- * identifiants alternatifs, index, CHECK portant sur plusieurs colonnes. Chaque liste donnée remplace la
+ * Annotations physiques d'une table (bloc « Avancé », O-29, O-50 ; IA : O-69) : casse du nom, nom de la clé
+ * primaire, identifiants alternatifs, index, CHECK portant sur plusieurs colonnes. Chaque liste donnée remplace la
  * précédente ; une liste vide la vide. Les membres sont des rubriques de l'objet.
  */
 export function setPhysical(doc: DocumentHandle, op: OperationOf<"set_physical">): string {
@@ -29,6 +29,7 @@ export function setPhysical(doc: DocumentHandle, op: OperationOf<"set_physical">
   });
   // Champs donnés seulement ; une liste vide retire l'annotation.
   const patch: Partial<Entity | Association> = {
+    ...(op.caseSensitive === undefined ? {} : { caseSensitive: op.caseSensitive || undefined }),
     ...(op.primaryKeyName === undefined ? {} : { primaryKeyName: op.primaryKeyName.trim() || undefined }),
     ...(alternateKeys ? { alternateKeys: nonEmpty(alternateKeys) } : {}),
     ...(indexes ? { indexes: nonEmpty(indexes) } : {}),

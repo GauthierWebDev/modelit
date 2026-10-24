@@ -166,6 +166,8 @@ export const frMenus = {
   "physical.emptyExpression": "L'expression ne peut pas être vide.",
   "physical.dialect": "Écrit pour : {dialect}",
   "physical.none": "(aucune)",
+  "physical.complement": "Complément",
+  "physical.complementHelp": "SQL ajouté tel quel à la colonne dans le script",
   "physical.sourceType": "Type d'origine : {type} ({dialect})",
   "physical.forgetSourceType": "Oublier le type d'origine",
   "physical.caseSensitive": "Casse significative (nom entre guillemets)",

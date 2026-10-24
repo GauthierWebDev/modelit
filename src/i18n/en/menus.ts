@@ -167,6 +167,8 @@ export const enMenus: Record<keyof typeof frMenus, string> = {
   "physical.emptyExpression": "The expression cannot be empty.",
   "physical.dialect": "Written for: {dialect}",
   "physical.none": "(none)",
+  "physical.complement": "Complement",
+  "physical.complementHelp": "SQL appended as is to the column in the script",
   "physical.sourceType": "Original type: {type} ({dialect})",
   "physical.forgetSourceType": "Forget the original type",
   "physical.caseSensitive": "Case-sensitive (quoted name)",

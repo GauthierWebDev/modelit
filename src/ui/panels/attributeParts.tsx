@@ -54,6 +54,9 @@ export function AttributeDetail({
         <Checkbox label="NOT NULL" checked={a.notNull} onChange={(notNull) => update({ notNull })} />
         <Checkbox label="UNIQUE" checked={a.unique} onChange={(unique) => update({ unique })} />
       </div>
+      <Field label={t("inspector.comment")}>
+        <CommitInput value={a.comment ?? ""} onCommit={(comment) => update({ comment: comment.trim() || undefined })} />
+      </Field>
       {/* biome-ignore lint/correctness/useUniqueElementIds: prop « id » de Disclosure = clé de préférence, pas un id du DOM */}
       <Disclosure id="attribute.advanced" title={t("inspector.advanced")}>
         <AdvancedFields attribute={a} dialect={doc.settings.dbms} update={(patch) => void update(patch)} />

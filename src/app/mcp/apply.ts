@@ -2,7 +2,7 @@ import type { Id } from "@core/index";
 import type { Recipe } from "../document/documentStore";
 import { createDocumentHandle, type DocumentHandle } from "../document/handle";
 import { addAutoIdentifier, setAttributes, updateAttribute } from "./attributeOps";
-import { setLink } from "./linkOps";
+import { addLink, setLink } from "./linkOps";
 import type { Operation, OperationOf } from "./operationTypes";
 import { type ApplyContext, Refused, refuse } from "./opSupport";
 import { setPhysical } from "./physicalOps";
@@ -52,6 +52,7 @@ const HANDLERS: { [K in Operation["op"]]: Handler<K> } = {
   add_attributes: setAttributes,
   update_attribute: updateAttribute,
   add_auto_identifier: addAutoIdentifier,
+  add_link: addLink,
   set_link: setLink,
   set_physical: setPhysical,
   set_dbms: setDbms,
