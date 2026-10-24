@@ -4,6 +4,32 @@ Une section `## X.Y.Z — AAAA-MM-JJ` par version, la plus récente en haut. La 
 taguée devient le texte de la release GitHub et les notes proposées par la mise à jour ; tout
 l'historique est affiché dans l'application (À propos → Nouveautés).
 
+## 0.8.0 — 2026-10-24
+
+### Nouveautés
+
+- Recherche dans le schéma (⌘/Ctrl + F) : un champ s'ouvre en haut à droite ; les entités et associations (MCD) ou les tables (MLD, MPD) trouvées sont entourées, par leur nom ou leur nom logique, sans tenir compte de la casse ni des accents. Entrée et Maj + Entrée passent d'un résultat à l'autre, la vue suit.
+- Export d'image : choix de la zone — ce qui est affiché à l'écran (cadrage et zoom, par défaut), la sélection, ou le schéma complet ; couleurs « comme l'écran ».
+- Fichiers récents : les 5 derniers modèles ouverts ou enregistrés, dans le menu ≡.
+- Glisser-déposer : un ou plusieurs fichiers .mcd déposés sur la fenêtre s'ouvrent chacun dans un onglet.
+- « Rouvrir sans sauvegarder » (menu ≡, ou clic droit sur un onglet) : recharge le fichier depuis le disque, par exemple après l'avoir modifié dans un autre programme.
+- Ligne de commande : « Installer la commande modelit » dans les options générales ; « modelit » ouvre ModelIt depuis un terminal, « modelit fichier.mcd » ouvre ce modèle, dans l'application déjà ouverte s'il y en a une.
+- Double-cliquer sur un fichier .mcd l'ouvre dans ModelIt.
+- Placement automatique : un second clic sur le bouton annule un placement en cours.
+- Rubriques : le commentaire et le complément SQL se modifient dans le détail de la rubrique.
+- Assistants IA : ils lisent et modifient désormais tout ce que l'interface permet — noms logiques des tables et des colonnes, annotations SQL (DEFAULT, CHECK, index, identifiants alternatifs, clé primaire nommée), rôles et actions des clés étrangères, héritages, paramètres du modèle, SGBD personnalisé.
+
+### Corrections
+
+- Placement automatique : l'application ne se fige plus pendant le calcul (⌘Q compris), et les clics répétés sur le bouton ne relancent plus le calcul.
+- Placement automatique nettement plus rapide sur les grands schémas (environ cinq fois), avec exactement la même disposition.
+- Les cardinalités, rôles et libellés des liens restent lisibles dans un SVG exporté ouvert dans un autre logiciel (ils pouvaient apparaître noir sur noir).
+- Assistants IA : remplacer les rubriques d'un objet ne fait plus perdre leurs noms logiques, valeurs par défaut, contraintes et index ; changer de SGBD garde le SGBD personnalisé.
+
+### À savoir
+
+- La commande modelit demande le mot de passe administrateur sous macOS ; sous Linux, elle s'installe dans ~/.local/bin, qui doit être dans votre PATH.
+
 ## 0.7.0 — 2026-10-23
 
 ### Nouveautés
