@@ -15,6 +15,11 @@ export class State {
   readonly cornerMark: Int32Array;
   readonly touched: Int32Array;
   readonly corners: Int32Array;
+  /** Boîte englobante de chaque trait, tenue à jour à chaque déplacement (pré-test des conflits). */
+  readonly minX: Float64Array;
+  readonly maxX: Float64Array;
+  readonly minY: Float64Array;
+  readonly maxY: Float64Array;
   // Géométrie exacte : tailles et origines des colonnes / lignes, et tampons de comparaison.
   private readonly colW: Float64Array;
   private readonly rowH: Float64Array;
@@ -42,6 +47,10 @@ export class State {
     this.cornerMark = new Int32Array(pb.n);
     this.touched = new Int32Array(pb.m);
     this.corners = new Int32Array(pb.n);
+    this.minX = new Float64Array(pb.m);
+    this.maxX = new Float64Array(pb.m);
+    this.minY = new Float64Array(pb.m);
+    this.maxY = new Float64Array(pb.m);
     this.colW = new Float64Array(pb.cols);
     this.rowH = new Float64Array(pb.rows);
     this.colX = new Float64Array(pb.cols);
@@ -59,6 +68,20 @@ export class State {
     const c = this.cellOf[v]!;
     this.px[v] = (c % this.pb.cols) * this.pb.cellW + this.pb.offX[v]!;
     this.py[v] = Math.floor(c / this.pb.cols) * this.pb.cellH + this.pb.offY[v]!;
+    this.frame(v);
+  }
+
+  /** Boîtes englobantes des traits issus de `v`, après un changement de sa position. */
+  private frame(v: number) {
+    const { pb, px, py } = this;
+    for (const e of pb.incident[v]!) {
+      const a = pb.ea[e]!;
+      const b = pb.eb[e]!;
+      this.minX[e] = Math.min(px[a]!, px[b]!);
+      this.maxX[e] = Math.max(px[a]!, px[b]!);
+      this.minY[e] = Math.min(py[a]!, py[b]!);
+      this.maxY[e] = Math.max(py[a]!, py[b]!);
+    }
   }
 
   /** Déplace `v` en `cell`, en échangeant avec l'occupant éventuel (positions non mises à jour). */
@@ -151,6 +174,7 @@ export class State {
     const dy = Math.max(0, Math.min((h - pb.mcdH[v]!) / 2, h - pb.height[v]!));
     this.px[v] = this.colX[col]! + dx + pb.mcdW[v]! / 2;
     this.py[v] = this.rowY[row]! + dy + pb.mcdH[v]! / 2;
+    this.frame(v);
   }
 
   /** Géométrie exacte : centres MCD après ajustement des colonnes et des lignes. */

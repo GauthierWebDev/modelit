@@ -29,6 +29,24 @@ function lengthTerm(s: State, e: number, quality?: GridQuality): number {
   return cost;
 }
 
+/**
+ * Boîtes englobantes des traits `e` et `f` strictement séparées : ni croisement, ni boucle coupée (la zone
+ * d'une réflexive est dans la boîte de son trait). Pré-test exact, sans appel : la plupart des paires sont loin.
+ */
+const apart = (s: State, e: number, f: number) =>
+  s.maxX[e]! < s.minX[f]! || s.maxX[f]! < s.minX[e]! || s.maxY[e]! < s.minY[f]! || s.maxY[f]! < s.minY[e]!;
+
+/** Trait `e` strictement d'un côté de la boîte de l'objet `w` : il ne la traverse pas (pré-test exact). */
+const clear = (s: State, e: number, w: number) =>
+  s.maxX[e]! < s.px[w]! - s.pb.halfW[w]! ||
+  s.minX[e]! > s.px[w]! + s.pb.halfW[w]! ||
+  s.maxY[e]! < s.py[w]! - s.pb.halfH[w]! ||
+  s.minY[e]! > s.py[w]! + s.pb.halfH[w]!;
+
+/** Croisement ou boucle coupée entre `e` et `f`. */
+const conflict = (s: State, e: number, f: number) =>
+  !apart(s, e, f) && (crosses(s, e, f) || cutsLoop(s, e, f) || cutsLoop(s, f, e));
+
 function crosses(s: State, e: number, f: number): boolean {
   const { pb, px, py } = s;
   const a = pb.ea[e]!;
@@ -72,7 +90,7 @@ function hits(s: State, e: number, w: number): boolean {
   const { pb, px, py } = s;
   const a = pb.ea[e]!;
   const b = pb.eb[e]!;
-  if (w === a || w === b) {
+  if (clear(s, e, w) || w === a || w === b) {
     return false;
   }
   return segmentHitsBox(px[a]!, py[a]!, px[b]!, py[b]!, px[w]!, py[w]!, pb.halfW[w]!, pb.halfH[w]!);
@@ -121,7 +139,7 @@ function edgeConflicts(s: State, e: number, cost: number, quality?: GridQuality)
   const { pb } = s;
   let total = cost;
   for (let f = e + 1; f < pb.m; f += 1) {
-    if (crosses(s, e, f) || cutsLoop(s, e, f) || cutsLoop(s, f, e)) {
+    if (conflict(s, e, f)) {
       total += WEIGHT.crossing;
       if (quality) {
         quality.crossings += 1;
@@ -218,7 +236,7 @@ function touchedEdgeCost(s: State, e: number, stamp: number, cost: number): numb
     if (f === e || (s.edgeMark[f] === stamp && f < e)) {
       continue;
     }
-    if (crosses(s, e, f) || cutsLoop(s, e, f) || cutsLoop(s, f, e)) {
+    if (conflict(s, e, f)) {
       total += WEIGHT.crossing;
     }
   }
