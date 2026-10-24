@@ -1,8 +1,10 @@
 //! Coquille native. Toute la logique métier vit côté TypeScript (`src/core`) ;
 //! Rust ne fournit que la fenêtre et l'accès au système (dialogues, fichiers, mises à jour).
 
+mod cli;
 mod collab;
 mod files;
+mod launch;
 mod mcp;
 
 /// Vrai si la configuration donne une adresse de mise à jour : seuls les builds de release
@@ -27,20 +29,24 @@ fn updater_configured(app: tauri::AppHandle) -> bool {
 pub fn run() {
     let builder = tauri::Builder::default();
     // Une seule instance (builds de release) : un lien modelit:// ou un second lancement va à la
-    // fenêtre déjà ouverte. Désactivé en développement, pour lancer `tauri dev` à côté d'une
-    // version installée (même identifiant d'application).
+    // fenêtre déjà ouverte, avec ses fichiers (O-68). Désactivé en développement, pour lancer
+    // `tauri dev` à côté d'une version installée (même identifiant d'application).
     #[cfg(not(debug_assertions))]
-    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
-        use tauri::Manager;
-        if let Some(window) = app.get_webview_window("main") {
-            let _ = window.unminimize();
-            let _ = window.set_focus();
-        }
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+        launch::second_instance(app, &argv, &cwd);
     }));
     let builder = builder
         .plugin(tauri_plugin_deep_link::init())
         .manage(mcp::McpState::default())
         .manage(collab::CollabState::default())
+        .manage(launch::LaunchState::default())
+        // Fichiers du lancement (`modelit a.mcd`, double-clic sous Windows et Linux, O-68).
+        .setup(|app| {
+            let args: Vec<String> = std::env::args().collect();
+            let cwd = std::env::current_dir().unwrap_or_default();
+            launch::deliver(app.handle(), launch::file_arguments(&args, &cwd));
+            Ok(())
+        })
         // Micro : demandé par le vocal d'une session (O-48, D18), seulement après « Rejoindre
         // l'audio ». Le système garde sa propre autorisation (macOS : Info.plist, invite TCC).
         // Fenêtre principale seulement : les fenêtres flottantes n'ont pas de micro (audit A-01, P-3).
@@ -65,6 +71,10 @@ pub fn run() {
             collab::collab_guest_datagram,
             collab::collab_guest_close,
             files::allow_model_file,
+            launch::launch_files,
+            cli::cli_status,
+            cli::cli_install,
+            cli::cli_uninstall,
             updater_configured
         ])
         .plugin(tauri_plugin_dialog::init())
@@ -74,7 +84,18 @@ pub fn run() {
         .plugin(tauri_plugin_process::init());
     #[cfg(target_os = "macos")]
     let builder = builder.menu(macos::menu).on_menu_event(macos::on_menu_event);
-    builder.run(tauri::generate_context!()).expect("erreur au lancement de l'application");
+    let app = builder.build(tauri::generate_context!()).expect("erreur au lancement de l'application");
+    app.run(on_run_event);
+}
+
+/// Modèles ouverts par le Finder, `open` ou la commande `modelit` sous macOS (O-68) : adresses `file://`.
+#[cfg_attr(not(target_os = "macos"), allow(unused_variables, clippy::needless_pass_by_value))]
+fn on_run_event(app: &tauri::AppHandle, event: tauri::RunEvent) {
+    #[cfg(target_os = "macos")]
+    if let tauri::RunEvent::Opened { urls } = event {
+        let files = urls.iter().filter_map(|url| url.to_file_path().ok());
+        launch::deliver(app, files.map(|p| p.to_string_lossy().into_owned()).collect());
+    }
 }
 
 /// Menu de l'application sous macOS : celui de Tauri par défaut, à trois éléments près.

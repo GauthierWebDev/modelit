@@ -4,6 +4,7 @@ import { applyDefaultsToCurrent } from "@/app/commands";
 import { useDocumentHandle } from "@/app/document/DocumentContext";
 import type { DocumentHandle } from "@/app/document/handle";
 import { type AutosaveBackend, type ThemePreference, usePreferencesStore } from "@/app/preferencesStore";
+import { shellIntegration } from "@/app/shellIntegration";
 import { useUiStore } from "@/app/uiStore";
 import { checkForUpdatesNow } from "@/app/updates";
 import { LOCALES, t } from "@/i18n";
@@ -14,6 +15,7 @@ import { Checkbox, CommitInput, Field, inputClass, Select } from "@/ui/common/co
 import { Modal } from "@/ui/common/Modal";
 import { McpOptions } from "@/ui/mcp/McpOptions";
 import { KeyPatternField } from "@/ui/panels/sections";
+import { CommandLineOptions } from "./CommandLineOptions";
 import { CustomDbmsLibrary } from "./CustomDbmsLibrary";
 
 /**
@@ -66,6 +68,12 @@ export function OptionsDialog() {
           <McpOptions />
         </Group>
       )}
+
+      {shellIntegration().available ? (
+        <Group title={t("cli.title")}>
+          <CommandLineOptions />
+        </Group>
+      ) : null}
 
       {updatesGroup(prefs)}
     </Modal>

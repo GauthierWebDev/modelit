@@ -75,16 +75,16 @@ export async function openPath(path: string) {
 }
 
 /**
- * Fichiers déposés sur la fenêtre (O-66) : chaque modèle `.mcd` s'ouvre dans un onglet, l'un après l'autre ; les
- * autres sont ignorés et signalés dans la barre d'état.
+ * Fichiers à ouvrir déposés sur la fenêtre (O-66) ou donnés par le système (ligne de commande, double-clic : O-68) :
+ * chaque modèle `.mcd` s'ouvre dans un onglet, l'un après l'autre ; les autres sont ignorés et signalés.
  */
-export async function openDropped(paths: readonly string[]) {
+export async function openFiles(paths: readonly string[]) {
   const isModel = (p: string) => p.toLowerCase().endsWith(`.${FILE_EXTENSION}`);
   const ignored = paths.filter((p) => !isModel(p));
   if (ignored.length > 0) {
     useUiStore
       .getState()
-      .notify({ kind: "error", text: t("file.dropIgnored", { files: ignored.map(fileName).join(", ") }) });
+      .notify({ kind: "error", text: t("file.ignored", { files: ignored.map(fileName).join(", ") }) });
   }
   for (const path of paths.filter(isModel)) {
     // biome-ignore lint/performance/noAwaitInLoops: un onglet après l'autre, avertissements et erreurs dans l'ordre

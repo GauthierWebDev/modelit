@@ -1,13 +1,13 @@
 import { FileDown } from "lucide-react";
 import { useEffect, useState } from "react";
-import { openDropped } from "@/app/fileCommands";
+import { openFiles } from "@/app/fileCommands";
 import { t } from "@/i18n";
 import { onFileDrop } from "@/platform/window";
 
 /** Glisser-déposer de modèles sur la fenêtre principale (override O-66) : voile au survol, ouverture au dépôt. */
 export function DropZone() {
   const [over, setOver] = useState(false);
-  useEffect(() => onFileDrop(setOver, (paths) => void openDropped(paths)), []);
+  useEffect(() => onFileDrop(setOver, (paths) => void openFiles(paths)), []);
   if (!over) {
     return null;
   }
