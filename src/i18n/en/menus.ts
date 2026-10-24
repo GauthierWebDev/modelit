@@ -39,6 +39,7 @@ export const enMenus: Record<keyof typeof frMenus, string> = {
   "actions.newInheritance": "New inheritance here",
   "actions.selectAll": "Select all",
   "actions.autoLayout": "Automatic layout",
+  "actions.cancelAutoLayout": "Cancel automatic layout",
   "actions.fit": "Fit to window",
   "actions.fictive": "Fictive entity",
   "actions.deleteLeg": "Delete leg",

@@ -175,13 +175,12 @@ function historyButtons(undoLabel: HistoryLabel, redoLabel: HistoryLabel, undo: 
   );
 }
 
-/** Placement automatique ; pendant le calcul, un loader à la place du contenu et le bouton désactivé. */
+/** Placement automatique ; pendant le calcul, un loader à la place du contenu, et un clic l'annule (O-62). */
 function autoLayoutButton(running: boolean) {
   return (
     <IconButton
       tooltip={t(running ? "toolbar.autoLayoutRunning" : "toolbar.autoLayout")}
-      disabled={running}
-      onClick={() => mainCommand({ name: "autoLayout" })}
+      onClick={() => mainCommand({ name: running ? "cancelAutoLayout" : "autoLayout" })}
     >
       {running ? (
         <LoaderCircle size={16} className="animate-spin" />

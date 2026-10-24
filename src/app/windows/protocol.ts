@@ -39,6 +39,7 @@ export type MainCommand =
   | { name: "zoomBy"; factor: number }
   | { name: "fit" }
   | { name: "autoLayout" }
+  | { name: "cancelAutoLayout" }
   | { name: "collab"; action: CollabAction };
 
 export type UiPatch = Partial<{

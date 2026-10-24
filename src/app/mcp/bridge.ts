@@ -1,4 +1,5 @@
 import { t } from "@/i18n";
+import type { AutoLayoutOutcome } from "../layoutCommands";
 import { type McpPreferences, usePreferencesStore } from "../preferencesStore";
 import { useUiStore } from "../uiStore";
 import { useMcpStore } from "./activity";
@@ -12,7 +13,7 @@ import { handleMcpMessage } from "./server";
 
 export interface McpBridgeHooks {
   /** Placement automatique du document actif (outil `auto_layout`, rétroconception). */
-  autoLayout: () => Promise<void>;
+  autoLayout: () => Promise<AutoLayoutOutcome>;
 }
 
 /**

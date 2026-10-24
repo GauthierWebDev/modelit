@@ -37,6 +37,7 @@ export const frMenus = {
   "actions.newInheritance": "Nouvel héritage ici",
   "actions.selectAll": "Tout sélectionner",
   "actions.autoLayout": "Placement automatique",
+  "actions.cancelAutoLayout": "Annuler le placement automatique",
   "actions.fit": "Ajuster à la fenêtre",
   "actions.fictive": "Entité fictive",
   "actions.deleteLeg": "Supprimer la patte",

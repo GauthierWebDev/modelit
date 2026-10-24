@@ -8,6 +8,7 @@ import { aiWriteRefusal } from "../collab/session";
 import { ddlOf, logicalModelOf } from "../derived";
 import type { DocumentHandle } from "../document/handle";
 import { documentName } from "../documentNames";
+import type { AutoLayoutOutcome } from "../layoutCommands";
 import { modalOpen } from "../modal";
 import { reverseIntoNewTab } from "../reverseCommands";
 import { activeDocument, useWorkspaceStore } from "../workspace";
@@ -42,8 +43,8 @@ export interface McpHooks {
   onApplied?: (summary: string) => void;
   /** Un client a échangé avec ModelIt. */
   onActivity?: () => void;
-  /** Placement automatique du document actif (exécuté par l'interface). */
-  autoLayout?: () => Promise<void> | void;
+  /** Placement automatique du document actif (exécuté par l'interface) ; annulable par l'utilisateur (O-62). */
+  autoLayout?: () => Promise<AutoLayoutOutcome | undefined> | undefined;
 }
 
 export const text = (value: unknown) => ({
@@ -128,11 +129,17 @@ async function writeTool(name: string, args: Record<string, unknown>, doc: Docum
     case "reverse_engineer":
       return reverseTool(String(args.sql ?? ""), hooks);
     case "auto_layout":
-      await hooks.autoLayout?.();
-      return text("Layout done.");
+      return layoutTool(await hooks.autoLayout?.());
     default:
       return failure(`Unknown tool « ${name} ».`);
   }
+}
+
+function layoutTool(outcome: AutoLayoutOutcome | undefined) {
+  if (outcome === "cancelled") {
+    return text("Layout cancelled by the user.");
+  }
+  return outcome === "failed" ? failure("Layout failed.") : text("Layout done.");
 }
 
 async function reverseTool(sql: string, hooks: McpHooks) {
