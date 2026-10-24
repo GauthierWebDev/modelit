@@ -5,7 +5,7 @@ import { useCollabStore } from "./collab/session";
 import { addEntity } from "./commands";
 import { useDialogStore } from "./dialogStore";
 import { selectIsDirty } from "./document/documentStore";
-import { canReload, openDocument, openDropped, openPath, reloadDocument, saveDocument } from "./fileCommands";
+import { canReload, openDocument, openFiles, openPath, reloadDocument, saveDocument } from "./fileCommands";
 import { usePreferencesStore } from "./preferencesStore";
 import { RECENT_LIMIT, withRecent } from "./recentFiles";
 import { dialogMessage, fakeFiles } from "./testing/files";
@@ -76,7 +76,7 @@ describe("ouvrir par chemin, glisser-déposer (O-66)", () => {
 
   it("dépôt : un onglet par modèle, les autres fichiers signalés et ignorés", async () => {
     fakeFiles(disk({ "/m/client.mcd": CLIENT, "/m/F.MCD": FOURNISSEUR }));
-    await openDropped(["/m/client.mcd", "/m/notes.txt", "/m/F.MCD"]);
+    await openFiles(["/m/client.mcd", "/m/notes.txt", "/m/F.MCD"]);
     const names = useWorkspaceStore.getState().documents.map((d) => d.store.getState().doc.entities[0]?.name);
     expect(names).toEqual(["Client", "Fournisseur"]);
     expect(useUiStore.getState().status).toMatchObject({ kind: "error" });

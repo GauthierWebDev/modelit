@@ -51,6 +51,10 @@
     "allow-collab-guest-datagram",
     "allow-collab-guest-close",
     "allow-updater-configured",
-    "allow-allow-model-file"
+    "allow-allow-model-file",
+    "allow-launch-files",
+    "allow-cli-status",
+    "allow-cli-install",
+    "allow-cli-uninstall"
   ]
 }

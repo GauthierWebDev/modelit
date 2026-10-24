@@ -42,6 +42,15 @@
       "icons/icon.ico"
     ],
     "shortDescription": "Modélisation de données Merise",
+    "fileAssociations": [
+      {
+        "ext": ["mcd"],
+        "name": "ModelIt model",
+        "description": "Modèle ModelIt",
+        "role": "Editor",
+        "mimeType": "application/x-modelit+json"
+      }
+    ],
     "macOS": {
       "minimumSystemVersion": "13.3"
     }
