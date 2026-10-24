@@ -13,7 +13,7 @@ import { modalOpen } from "../modal";
 import { reverseIntoNewTab } from "../reverseCommands";
 import { activeDocument, useWorkspaceStore } from "../workspace";
 import { applyChanges, type Operation } from "./apply";
-import { describeModel } from "./describe";
+import { describeModel, describeSettings } from "./describe";
 
 /**
  * Serveur MCP de ModelIt (override O-47), côté interface : JSON-RPC reçu du point d'écoute local
@@ -72,18 +72,20 @@ async function callTool(name: string, args: Record<string, unknown>, hooks: McpH
   if (refusal) {
     return failure(refusal);
   }
-  return readTool(name, doc, model) ?? (await writeTool(name, args, doc, hooks));
+  return readTool(name, doc, model, args) ?? (await writeTool(name, args, doc, hooks));
 }
 
 /** Outils de lecture ; `undefined` pour un autre outil. */
-function readTool(name: string, doc: DocumentHandle, model: ModelDocument) {
+function readTool(name: string, doc: DocumentHandle, model: ModelDocument, args: Record<string, unknown>) {
   switch (name) {
     case "list_documents": {
       const { documents, activeId } = useWorkspaceStore.getState();
       return text(documents.map((d) => ({ name: documentName(d), active: d.id === activeId })));
     }
     case "get_model":
-      return text(describeModel(model, documentName(doc)));
+      return text(describeModel(model, documentName(doc), args.detail === "full" ? "full" : "conceptual"));
+    case "get_settings":
+      return text(describeSettings(model));
     case "get_mld":
       return text(mldPlainText(logicalModelOf(model)) || "(empty model)");
     case "get_sql": {
