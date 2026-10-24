@@ -29,6 +29,7 @@ export function snapshot(): MirrorState {
     documentId: doc.id,
     doc: state.doc,
     name: documentName(doc),
+    filePath: state.filePath,
     dirty: selectIsDirty(state),
     recovered: state.recovered,
     undoLabel: selectUndoLabel(state),
@@ -50,6 +51,7 @@ const same = (a: MirrorState, b: MirrorState) =>
   a.documentId === b.documentId &&
   a.doc === b.doc &&
   a.name === b.name &&
+  a.filePath === b.filePath &&
   a.dirty === b.dirty &&
   a.recovered === b.recovered &&
   a.undoLabel === b.undoLabel &&

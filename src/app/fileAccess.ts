@@ -31,6 +31,13 @@ export interface FileAccess {
   ) => Promise<string | null>;
   /** Enregistre un fichier exporté (image) ; chemin utilisé, ou `null` si annulé. */
   saveExport: (data: Blob, suggestedName: string, filter: FileFilter) => Promise<string | null>;
+  /**
+   * Lit un modèle désigné par son chemin, sans dialogue (récents, glisser-déposer, ligne de commande, rouvrir :
+   * O-65 à O-68) ; `null` s'il n'existe plus. Indisponible si `readsPaths` est faux (navigateur).
+   */
+  readModel: (path: string) => Promise<OpenedFile | null>;
+  /** La plateforme sait-elle lire un chemin (application native) ? */
+  readsPaths: boolean;
 }
 
 let access: FileAccess = unplugged<FileAccess>("FileAccess");

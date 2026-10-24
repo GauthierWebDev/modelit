@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permissions de la fenêtre principale. Les fichiers ne sont accessibles qu'après sélection par l'utilisateur dans un dialogue (le plugin dialog étend alors la portée du plugin fs). Liens externes : dépôt GitHub et texte de la licence uniquement. Fenêtres flottantes (O-45, O-46) : création, géométrie, affichage et fermeture des fenêtres float-*. Commandes de l'application (MCP, session collaborative, mises à jour) : fenêtre principale seulement.",
+  "description": "Permissions de la fenêtre principale. Les fichiers ne sont accessibles qu'après sélection par l'utilisateur dans un dialogue (le plugin dialog étend alors la portée du plugin fs), ou, pour un modèle .mcd désigné par son chemin (récents, glisser-déposer, ligne de commande), après la commande allow_model_file, qui n'accepte que ces fichiers. Liens externes : dépôt GitHub et texte de la licence uniquement. Fenêtres flottantes (O-45, O-46) : création, géométrie, affichage et fermeture des fenêtres float-*. Commandes de l'application (MCP, session collaborative, mises à jour) : fenêtre principale seulement.",
   "windows": [
     "main"
   ],
@@ -20,6 +20,7 @@
     "dialog:allow-open",
     "dialog:allow-save",
     "fs:allow-read-text-file",
+    "fs:allow-exists",
     "fs:allow-write-text-file",
     "fs:allow-write-file",
     "updater:default",
@@ -49,6 +50,7 @@
     "allow-collab-guest-send",
     "allow-collab-guest-datagram",
     "allow-collab-guest-close",
-    "allow-updater-configured"
+    "allow-updater-configured",
+    "allow-allow-model-file"
   ]
 }

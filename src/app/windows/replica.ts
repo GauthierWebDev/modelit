@@ -193,6 +193,7 @@ function applyMainState(
       // Indicateur de modification et libellés d'annulation tels que la principale les voit.
       savedDoc: state.dirty ? ({ ...doc } as ModelDocument) : doc,
       recovered: state.recovered,
+      filePath: state.filePath,
       past: state.undoLabel ? [{ doc, label: state.undoLabel }] : [],
       future: state.redoLabel ? [{ doc, label: state.redoLabel }] : [],
     });
