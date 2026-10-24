@@ -18,6 +18,7 @@ import { blockNativeContextMenu, ContextMenuLayer } from "./canvas/ContextMenu";
 import { LogicalCanvas } from "./canvas/LogicalCanvas";
 import { McdCanvas } from "./canvas/McdCanvas";
 import { QuickActions } from "./canvas/QuickActions";
+import { SearchBox } from "./canvas/SearchBox";
 import { useClipboard } from "./clipboard";
 import { CollabBridge } from "./collab/CollabBridge";
 import { CollabIndicator } from "./collab/CollabIndicator";
@@ -112,6 +113,7 @@ function Workbench() {
           <div className="relative min-h-0 flex-1 overflow-hidden">
             {view === "mcd" ? <McdCanvas /> : <LogicalCanvas key={view} mode={view} />}
             <QuickActions />
+            <SearchBox />
           </div>
           <DockZone zone="bottom" />
         </div>

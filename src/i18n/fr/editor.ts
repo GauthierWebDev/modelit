@@ -178,6 +178,12 @@ export const frEditor = {
   "canvas.deleteBend": "Supprimer ce point de cassure (Suppr)",
   "canvas.compositeKey": "Clé primaire composée",
   "canvas.label": "Zone de modélisation",
+  "search.placeholder": "Rechercher une entité, une table…",
+  "search.count": "{current} / {total}",
+  "search.none": "Aucun résultat",
+  "search.previous": "Résultat précédent (Maj+Entrée)",
+  "search.next": "Résultat suivant (Entrée)",
+  "search.close": "Fermer la recherche (Échap)",
   // export
   "export.title": "Exporter l'image",
   "export.format": "Format",

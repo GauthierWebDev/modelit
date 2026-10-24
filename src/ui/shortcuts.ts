@@ -3,10 +3,12 @@ import { useEffect } from "react";
 import { selectReadOnlyTab, useCollabStore } from "@/app/collab/session";
 import { deleteObjects, removeBend } from "@/app/commands";
 import { closeDocument, newDocument, newTab, openDocument, saveDocument } from "@/app/fileCommands";
+import { openSearch } from "@/app/searchCommands";
 import { type Tool, useUiStore } from "@/app/uiStore";
 import { chooseTool, showView } from "@/app/viewCommands";
 import { activateNeighbour, activeDocument } from "@/app/workspace";
 import { endNudge, nudgeSelection } from "@/ui/canvas/arrange";
+import { focusSearch } from "@/ui/canvas/SearchBox";
 import { fitToWindow, zoomBy, zoomTo } from "@/ui/canvas/viewport";
 import { mainCommand } from "@/ui/windows/mainCommands";
 
@@ -154,6 +156,11 @@ function modActions({ e, doc, docStore, view, ui }: Keys): Record<string, () => 
     Object.assign(actions, {
       z: () => (e.shiftKey ? docStore.redo() : docStore.undo()),
       y: () => docStore.redo(),
+      // Recherche dans le canevas (O-64) ; dans un champ, ⌘/Ctrl+F garde son rôle.
+      f: () => {
+        openSearch(doc);
+        focusSearch();
+      },
       a: () => view.select([...diagramNodes(docStore.doc), ...diagramLinks(docStore.doc)].map((o) => o.id)),
       i: () => {
         const all = [...diagramNodes(docStore.doc), ...diagramLinks(docStore.doc)].map((o) => o.id);
