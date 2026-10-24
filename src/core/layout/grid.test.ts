@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { diagramLinks, diagramNodes, linkSourceId } from "../model/document";
 import { emptyDocument } from "../model/factory";
 import { reverseEngineer } from "../reverse/build";
+import { banqueGraph } from "../testing/banqueFixture";
 import { bestChunk, type GridEdge, type GridNode, gridLayout, gridLayoutChunk, LAYOUT_CHUNKS } from "./grid";
 
 /**
@@ -146,6 +147,19 @@ describe("placement sur grille (override O-30)", { timeout: 30_000 }, () => {
     // modules de la grille passent par des accesseurs (≈ ×1,4 sur le code bundlé, inchangé) : plus de 30 s
     // sur les runners de la CI.
   }, 60_000);
+});
+
+// Gros schéma : 8 lots de plus d'une seconde chacun, mesurés seulement en passage isolé (`pnpm test:perf`).
+describe.runIf(PERF)("placement sur grille (override O-31)", { timeout: 120_000 }, () => {
+  it("MCD bancaire (63 entités, 108 associations, 172 objets) : sans chevauchement ni traversée, en moins de 3,5 s (parallèle)", () => {
+    const { nodes, edges } = banqueGraph();
+    const { positions, quality, wall } = layout(nodes, edges);
+    expect(overlaps(nodes, positions)).toBe(false);
+    expect(quality.through).toBe(0);
+    // Schéma très dense : 63 croisements avec la recherche actuelle ; une régression de qualité se verrait ici.
+    expect(quality.crossings).toBeLessThanOrEqual(63);
+    expectWithin(wall, 3500);
+  });
 });
 
 /** MCD aléatoire réaliste : entités larges en MPD, associations binaires, ternaires (10 %), réflexives (10 %). */

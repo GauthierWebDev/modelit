@@ -1,5 +1,6 @@
 import type { GridQuality } from "./grid";
 import { segmentHitsBox, segmentsCross } from "./gridGeometry";
+import type { Problem } from "./gridProblem";
 import type { State } from "./gridState";
 
 const WEIGHT = { through: 150, crossing: 60, angle: 20, length: 1 };
@@ -28,6 +29,24 @@ function lengthTerm(s: State, e: number, quality?: GridQuality): number {
   }
   return cost;
 }
+
+/**
+ * Boîtes englobantes des traits `e` et `f` strictement séparées : ni croisement, ni boucle coupée (la zone
+ * d'une réflexive est dans la boîte de son trait). Pré-test exact, sans appel : la plupart des paires sont loin.
+ */
+const apart = (s: State, e: number, f: number) =>
+  s.maxX[e]! < s.minX[f]! || s.maxX[f]! < s.minX[e]! || s.maxY[e]! < s.minY[f]! || s.maxY[f]! < s.minY[e]!;
+
+/** Trait `e` strictement d'un côté de la boîte de l'objet `w` : il ne la traverse pas (pré-test exact). */
+const clear = (s: State, e: number, w: number) =>
+  s.maxX[e]! < s.px[w]! - s.pb.halfW[w]! ||
+  s.minX[e]! > s.px[w]! + s.pb.halfW[w]! ||
+  s.maxY[e]! < s.py[w]! - s.pb.halfH[w]! ||
+  s.minY[e]! > s.py[w]! + s.pb.halfH[w]!;
+
+/** Croisement ou boucle coupée entre `e` et `f`. */
+const conflict = (s: State, e: number, f: number) =>
+  !apart(s, e, f) && (crosses(s, e, f) || cutsLoop(s, e, f) || cutsLoop(s, f, e));
 
 function crosses(s: State, e: number, f: number): boolean {
   const { pb, px, py } = s;
@@ -72,7 +91,7 @@ function hits(s: State, e: number, w: number): boolean {
   const { pb, px, py } = s;
   const a = pb.ea[e]!;
   const b = pb.eb[e]!;
-  if (w === a || w === b) {
+  if (clear(s, e, w) || w === a || w === b) {
     return false;
   }
   return segmentHitsBox(px[a]!, py[a]!, px[b]!, py[b]!, px[w]!, py[w]!, pb.halfW[w]!, pb.halfH[w]!);
@@ -98,11 +117,16 @@ function angleTerm(s: State, v: number, e: number, f: number, quality?: GridQual
   return WEIGHT.angle * ((cos - COS_MIN_ANGLE) / (1 - COS_MIN_ANGLE) + 0.2);
 }
 
+/** Travail compté pour un coût complet (budget du placement). */
+export function fullCostWork(pb: Problem) {
+  pb.work += (pb.m * (pb.m + 2 * pb.n)) / 2;
+}
+
 /** Coût complet ; chaque terme compté une fois. */
 export function fullCost(s: State, quality?: GridQuality): number {
   s.refresh();
   const { pb } = s;
-  pb.work += (pb.m * (pb.m + 2 * pb.n)) / 2;
+  fullCostWork(pb);
   let cost = 0;
   for (let e = 0; e < pb.m; e += 1) {
     cost += lengthTerm(s, e, quality);
@@ -118,18 +142,20 @@ export function fullCost(s: State, quality?: GridQuality): number {
 
 /** Croisements de `e` avec les traits suivants, puis objets que `e` traverse (ajoutés à `cost`, dans l'ordre). */
 function edgeConflicts(s: State, e: number, cost: number, quality?: GridQuality): number {
-  const { pb } = s;
   let total = cost;
-  for (let f = e + 1; f < pb.m; f += 1) {
-    if (crosses(s, e, f) || cutsLoop(s, e, f) || cutsLoop(s, f, e)) {
+  const edges = nearEdges(s, e);
+  for (let i = 0; i < edges; i += 1) {
+    const f = s.edgeIndex.found[i]!;
+    if (f > e && conflict(s, e, f)) {
       total += WEIGHT.crossing;
       if (quality) {
         quality.crossings += 1;
       }
     }
   }
-  for (let w = 0; w < pb.n; w += 1) {
-    if (hits(s, e, w)) {
+  const nodes = nearNodes(s, e);
+  for (let i = 0; i < nodes; i += 1) {
+    if (hits(s, e, s.nodeIndex.found[i]!)) {
       total += WEIGHT.through;
       if (quality) {
         quality.through += 1;
@@ -170,7 +196,14 @@ export function partialCost(s: State, v: number, w: number): number {
     cost = touchedEdgeCost(s, s.touched[i]!, stamp, cost);
   }
   for (const x of w >= 0 ? [v, w] : [v]) {
-    for (let e = 0; e < pb.m; e += 1) {
+    const edges = s.edgeIndex.query(
+      s.px[x]! - pb.halfW[x]!,
+      s.px[x]! + pb.halfW[x]!,
+      s.py[x]! - pb.halfH[x]!,
+      s.py[x]! + pb.halfH[x]!,
+    );
+    for (let i = 0; i < edges; i += 1) {
+      const e = s.edgeIndex.found[i]!;
       if (s.edgeMark[e] !== stamp && hits(s, e, x)) {
         cost += WEIGHT.through;
       }
@@ -212,23 +245,32 @@ function markTouched(s: State, v: number, w: number, stamp: number) {
 
 /** Longueur, croisements (chaque paire de traits marqués une seule fois) et traversées d'un trait marqué. */
 function touchedEdgeCost(s: State, e: number, stamp: number, cost: number): number {
-  const { pb } = s;
   let total = cost + lengthTerm(s, e);
-  for (let f = 0; f < pb.m; f += 1) {
+  const edges = nearEdges(s, e);
+  for (let i = 0; i < edges; i += 1) {
+    const f = s.edgeIndex.found[i]!;
     if (f === e || (s.edgeMark[f] === stamp && f < e)) {
       continue;
     }
-    if (crosses(s, e, f) || cutsLoop(s, e, f) || cutsLoop(s, f, e)) {
+    if (conflict(s, e, f)) {
       total += WEIGHT.crossing;
     }
   }
-  for (let x = 0; x < pb.n; x += 1) {
-    if (hits(s, e, x)) {
+  const nodes = nearNodes(s, e);
+  for (let i = 0; i < nodes; i += 1) {
+    if (hits(s, e, s.nodeIndex.found[i]!)) {
       total += WEIGHT.through;
     }
   }
   return total;
 }
+
+/**
+ * Traits, puis objets, qui peuvent toucher la boîte du trait `e` (dans `found` de chaque index). Les autres ne
+ * comptent pas (`apart`, `clear`) ; les pénalités étant constantes, l'ordre de visite ne change pas le coût.
+ */
+const nearEdges = (s: State, e: number) => s.edgeIndex.query(s.minX[e]!, s.maxX[e]!, s.minY[e]!, s.maxY[e]!);
+const nearNodes = (s: State, e: number) => s.nodeIndex.query(s.minX[e]!, s.maxX[e]!, s.minY[e]!, s.maxY[e]!);
 
 /** Angles au coin `x` qui font intervenir un objet ou un trait marqué. */
 function cornerAngles(s: State, x: number, stamp: number, cost: number): number {
