@@ -1,10 +1,12 @@
 import { Menu as MenuIcon } from "lucide-react";
+import { useDocumentHandle } from "@/app/document/DocumentContext";
 import { type ThemePreference, usePreferencesStore } from "@/app/preferencesStore";
 import { useUiStore } from "@/app/uiStore";
 import { t } from "@/i18n";
 import { IconButton } from "@/ui/common/controls";
 import { Menu, MenuCheck, MenuItem, MenuLabel, MenuSeparator } from "@/ui/common/Menu";
 import { SectionChecks } from "@/ui/dock/Dock";
+import { RecentFiles, ReloadItem, useCanReload } from "@/ui/files/fileMenus";
 import { MOD, MODEL_SETTINGS_SHORTCUT } from "@/ui/shortcuts";
 import { mainCommand } from "@/ui/windows/mainCommands";
 
@@ -17,6 +19,7 @@ const THEMES: ThemePreference[] = ["system", "light", "dark"];
 export function AppMenu() {
   const { setOptionsOpen, setModelSettingsOpen, setExportOpen, setReverseOpen, setAbout } = useUiStore();
   const { theme, setTheme } = usePreferencesStore();
+  const canReload = useCanReload(useDocumentHandle());
   return (
     <Menu
       align="left"
@@ -45,6 +48,8 @@ export function AppMenu() {
             <MenuItem shortcut={`⇧${MOD}S`} onSelect={run(() => mainCommand({ name: "save", saveAs: true }))}>
               {t("menu.saveAs")}
             </MenuItem>
+            <ReloadItem enabled={canReload} run={run} />
+            <RecentFiles run={run} />
             <MenuSeparator />
             <MenuItem shortcut={`${MOD}E`} onSelect={run(() => setExportOpen(true))}>
               {t("menu.exportImage")}

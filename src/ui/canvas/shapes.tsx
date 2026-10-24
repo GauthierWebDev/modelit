@@ -21,6 +21,7 @@ import {
   TAG_FONT_SIZE,
   type Triangle,
 } from "./geometry";
+import { HaloText } from "./haloText";
 
 /**
  * Rendu SVG des objets du schéma. Les couleurs viennent des variables CSS
@@ -97,21 +98,18 @@ export const LinkShape = memo(function LinkShape({ geometry, selected }: LinkSha
         stroke={selected ? "var(--mcd-selection)" : "var(--mcd-link)"}
         strokeWidth={selected ? 2.5 : 1.25}
       />
-      <text
+      <HaloText
         x={label.x}
         y={label.y}
         textAnchor="middle"
         dominantBaseline="central"
         fill={selected ? "var(--mcd-selection)" : "var(--mcd-text)"}
-        paintOrder="stroke"
-        stroke="var(--mcd-canvas)"
-        strokeWidth={4}
       >
         {text}
-      </text>
+      </HaloText>
       {role ? (
         /* Rôle de la patte (réflexives : parrain, originale…) (O-36). */
-        <text
+        <HaloText
           x={rolePoint.x}
           y={rolePoint.y}
           textAnchor="middle"
@@ -119,12 +117,9 @@ export const LinkShape = memo(function LinkShape({ geometry, selected }: LinkSha
           fontSize={TAG_FONT_SIZE + 1}
           fontStyle="italic"
           fill={selected ? "var(--mcd-selection)" : "var(--mcd-muted)"}
-          paintOrder="stroke"
-          stroke="var(--mcd-canvas)"
-          strokeWidth={4}
         >
           {role}
-        </text>
+        </HaloText>
       ) : null}
     </g>
   );

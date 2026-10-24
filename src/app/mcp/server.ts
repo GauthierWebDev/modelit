@@ -8,11 +8,12 @@ import { aiWriteRefusal } from "../collab/session";
 import { ddlOf, logicalModelOf } from "../derived";
 import type { DocumentHandle } from "../document/handle";
 import { documentName } from "../documentNames";
+import type { AutoLayoutOutcome } from "../layoutCommands";
 import { modalOpen } from "../modal";
 import { reverseIntoNewTab } from "../reverseCommands";
 import { activeDocument, useWorkspaceStore } from "../workspace";
 import { applyChanges, type Operation } from "./apply";
-import { describeModel } from "./describe";
+import { describeModel, describeSettings } from "./describe";
 
 /**
  * Serveur MCP de ModelIt (override O-47), côté interface : JSON-RPC reçu du point d'écoute local
@@ -42,8 +43,8 @@ export interface McpHooks {
   onApplied?: (summary: string) => void;
   /** Un client a échangé avec ModelIt. */
   onActivity?: () => void;
-  /** Placement automatique du document actif (exécuté par l'interface). */
-  autoLayout?: () => Promise<void> | void;
+  /** Placement automatique du document actif (exécuté par l'interface) ; annulable par l'utilisateur (O-62). */
+  autoLayout?: () => Promise<AutoLayoutOutcome | undefined> | undefined;
 }
 
 export const text = (value: unknown) => ({
@@ -71,18 +72,20 @@ async function callTool(name: string, args: Record<string, unknown>, hooks: McpH
   if (refusal) {
     return failure(refusal);
   }
-  return readTool(name, doc, model) ?? (await writeTool(name, args, doc, hooks));
+  return readTool(name, doc, model, args) ?? (await writeTool(name, args, doc, hooks));
 }
 
 /** Outils de lecture ; `undefined` pour un autre outil. */
-function readTool(name: string, doc: DocumentHandle, model: ModelDocument) {
+function readTool(name: string, doc: DocumentHandle, model: ModelDocument, args: Record<string, unknown>) {
   switch (name) {
     case "list_documents": {
       const { documents, activeId } = useWorkspaceStore.getState();
       return text(documents.map((d) => ({ name: documentName(d), active: d.id === activeId })));
     }
     case "get_model":
-      return text(describeModel(model, documentName(doc)));
+      return text(describeModel(model, documentName(doc), args.detail === "full" ? "full" : "conceptual"));
+    case "get_settings":
+      return text(describeSettings(model));
     case "get_mld":
       return text(mldPlainText(logicalModelOf(model)) || "(empty model)");
     case "get_sql": {
@@ -128,11 +131,17 @@ async function writeTool(name: string, args: Record<string, unknown>, doc: Docum
     case "reverse_engineer":
       return reverseTool(String(args.sql ?? ""), hooks);
     case "auto_layout":
-      await hooks.autoLayout?.();
-      return text("Layout done.");
+      return layoutTool(await hooks.autoLayout?.());
     default:
       return failure(`Unknown tool « ${name} ».`);
   }
+}
+
+function layoutTool(outcome: AutoLayoutOutcome | undefined) {
+  if (outcome === "cancelled") {
+    return text("Layout cancelled by the user.");
+  }
+  return outcome === "failed" ? failure("Layout failed.") : text("Layout done.");
 }
 
 async function reverseTool(sql: string, hooks: McpHooks) {

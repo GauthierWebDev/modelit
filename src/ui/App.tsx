@@ -18,6 +18,7 @@ import { blockNativeContextMenu, ContextMenuLayer } from "./canvas/ContextMenu";
 import { LogicalCanvas } from "./canvas/LogicalCanvas";
 import { McdCanvas } from "./canvas/McdCanvas";
 import { QuickActions } from "./canvas/QuickActions";
+import { SearchBox } from "./canvas/SearchBox";
 import { useClipboard } from "./clipboard";
 import { CollabBridge } from "./collab/CollabBridge";
 import { CollabIndicator } from "./collab/CollabIndicator";
@@ -26,6 +27,7 @@ import { DialogHost } from "./common/DialogHost";
 import { TooltipLayer } from "./common/Tooltip";
 import { DockZone, DragGhost, FloatingGroups } from "./dock/Dock";
 import { ExportDialog } from "./export/ExportDialog";
+import { DropZone } from "./files/DropZone";
 import { McpIndicator } from "./mcp/McpIndicator";
 import { OptionsDialog } from "./options/OptionsDialog";
 import { ReverseDialog } from "./reverse/ReverseDialog";
@@ -112,6 +114,7 @@ function Workbench() {
           <div className="relative min-h-0 flex-1 overflow-hidden">
             {view === "mcd" ? <McdCanvas /> : <LogicalCanvas key={view} mode={view} />}
             <QuickActions />
+            <SearchBox />
           </div>
           <DockZone zone="bottom" />
         </div>
@@ -129,6 +132,7 @@ function Workbench() {
       <CollabBridge />
       <DialogHost />
       <ContextMenuLayer />
+      <DropZone />
       <TooltipLayer />
       <footer className="flex h-6 flex-none items-center gap-3 border-t border-neutral-200 bg-neutral-50 px-3 text-xs text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900">
         <span>

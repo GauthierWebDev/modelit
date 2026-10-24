@@ -125,7 +125,7 @@ describe("serveur MCP", () => {
     const model = json(await tool("get_model"));
     expect(model.entities.map((e: { name: string }) => e.name)).toEqual(["CLIENT", "COMMANDE"]);
     expect(model.entities[0].attributes[0]).toMatchObject({ name: "id_client", identifier: true });
-    expect(model.associations[0].links).toEqual([
+    expect(model.associations[0].links).toMatchObject([
       { entity: "CLIENT", cardinality: "0,n" },
       { entity: "COMMANDE", cardinality: "1,1" },
     ]);
@@ -156,7 +156,7 @@ describe("serveur MCP", () => {
     await tool("apply_changes", { operations: [{ op: "delete", targets: ["COMMANDE"] }] });
     const after = json(await tool("get_model"));
     expect(after.entities.map((e: { name: string }) => e.name)).toEqual(["CLIENT"]);
-    expect(after.associations[0].links).toEqual([{ entity: "CLIENT", cardinality: "1,n" }]);
+    expect(after.associations[0].links).toMatchObject([{ entity: "CLIENT", cardinality: "1,n" }]);
   });
 
   it("occupé (glisser-déposer en cours) : modification refusée, lecture permise", async () => {

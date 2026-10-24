@@ -5,17 +5,21 @@ import { joinFromLink, setCollabTransport, startSessionSync } from "./app/collab
 import { setVoiceBackend, startVoiceSync } from "./app/collab/voice/voiceSession";
 import { setDiagramSizer } from "./app/diagramSizer";
 import { setFileAccess } from "./app/fileAccess";
+import { openFiles } from "./app/fileCommands";
 import { setLayoutRunner } from "./app/layoutRunner";
 import { setLocalStore } from "./app/localStore";
 import { startMcpBridge } from "./app/mcp/bridge";
 import { setMcpEndpoint } from "./app/mcp/endpoint";
+import { setShellIntegration } from "./app/shellIntegration";
 import { useUiStore } from "./app/uiStore";
 import { setUpdateSource } from "./app/updateSource";
 import { activeDocument } from "./app/workspace";
 import { collabAvailable, connectGuestTransport, onOpenLink, startHostTransport } from "./platform/collab";
 import { platformFiles } from "./platform/files";
+import { startLaunchFiles } from "./platform/launch";
 import { indexedDbStore } from "./platform/localStore";
 import { platformMcp } from "./platform/mcp";
+import { platformShell } from "./platform/shell";
 import { platformUpdates } from "./platform/updater";
 import { startVoice, voiceSupport } from "./platform/voice";
 import { autoLayoutTables, workerLayoutRunner } from "./ui/canvas/autoLayout";
@@ -35,6 +39,9 @@ export function bootstrapMain() {
   setDiagramSizer(canvasSizer);
   setLayoutRunner(workerLayoutRunner);
   setCanvasMetrics(canvasMetricsAdapter);
+  setShellIntegration(platformShell);
+  // Fichiers donnés par le système : lancement, second lancement, Finder (O-68).
+  startLaunchFiles((paths) => void openFiles(paths));
   // Sauvegarde automatique : copies en attente écrites quand la fenêtre passe en arrière-plan ou se ferme.
   document.addEventListener("visibilitychange", () => document.visibilityState === "hidden" && flushAutosave());
   globalThis.addEventListener("pagehide", flushAutosave);

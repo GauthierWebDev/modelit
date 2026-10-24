@@ -17,11 +17,13 @@ export interface MirrorState {
   documentId: string;
   doc: ModelDocument;
   name: string;
+  /** Fichier du document (« Rouvrir sans sauvegarder » depuis la barre flottante, O-67). */
+  filePath: string | null;
   dirty: boolean;
   recovered: boolean;
   undoLabel?: MessageKey;
   redoLabel?: MessageKey;
-  view: Pick<DocumentViewState, "view" | "selection" | "viewport" | "activeBend">;
+  view: Pick<DocumentViewState, "view" | "selection" | "viewport" | "activeBend" | "layoutRunning">;
   ui: { tool: Tool };
   /** Une boîte modale est ouverte dans la fenêtre principale : les flottantes sont désactivées (O-45). */
   modal: boolean;
@@ -39,6 +41,9 @@ export type MainCommand =
   | { name: "zoomBy"; factor: number }
   | { name: "fit" }
   | { name: "autoLayout" }
+  | { name: "cancelAutoLayout" }
+  | { name: "openPath"; path: string }
+  | { name: "reload" }
   | { name: "collab"; action: CollabAction };
 
 export type UiPatch = Partial<{

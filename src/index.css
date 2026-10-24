@@ -14,6 +14,11 @@
  */
 :root {
   --mcd-canvas: #ffffff;
+  /* Résultats de la recherche (O-64). */
+  --mcd-search: #d97706;
+  --mcd-search-fill: rgb(245 158 11 / 0.12);
+  /* Halo des textes posés sur un trait (haloText.tsx) : la couleur du fond. */
+  --mcd-halo: var(--mcd-canvas);
   --mcd-grid: #d4d4d8;
   --mcd-text: #18181b;
   --mcd-muted: #71717a;
@@ -49,6 +54,8 @@
 
 :root.dark {
   --mcd-canvas: #18181b;
+  --mcd-search: #fbbf24;
+  --mcd-search-fill: rgb(251 191 36 / 0.14);
   --mcd-grid: #3f3f46;
   --mcd-text: #f4f4f5;
   --mcd-muted: #a1a1aa;

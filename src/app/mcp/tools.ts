@@ -1,19 +1,4 @@
-import { DBMS_LIST } from "@core/index";
-
-const DBMS_IDS = DBMS_LIST.map((d) => d.id);
-
-const ATTRIBUTE_SCHEMA = {
-  type: "object",
-  properties: {
-    name: { type: "string" },
-    type: { type: "string", description: "SQL type, e.g. VARCHAR(50), INT, DECIMAL(10,2), DATE, BOOLEAN, SERIAL" },
-    identifier: { type: "boolean", description: "Part of the identifier (primary key)" },
-    notNull: { type: "boolean" },
-    unique: { type: "boolean" },
-    comment: { type: "string" },
-  },
-  required: ["name"],
-};
+import { OPERATION_SCHEMAS } from "./toolOperations";
 
 export const TOOLS = [
   {
@@ -25,7 +10,13 @@ export const TOOLS = [
   {
     name: "get_model",
     description:
-      "Get the conceptual data model (Merise MCD) of the active tab: entities with their attributes (SQL type in the target DBMS), associations with their links and cardinalities, inheritances. Objects can be referred to by id or by name.",
+      'Get the conceptual data model (Merise MCD) of the active tab: entities and associations with ids, logical (table) names, attributes (ids, logical names, SQL type as in the PDM), links (ids, cardinalities, roles, foreign key names), inheritances. detail "full" adds physical annotations (DEFAULT, CHECK, keys, indexes, referential actions). Objects can be referred to by id or by name.',
+    inputSchema: { type: "object", properties: { detail: { enum: ["conceptual", "full"] } } },
+  },
+  {
+    name: "get_settings",
+    description:
+      "Get the model settings of the active tab: target DBMS and version, naming (typology, accents), key name patterns, SQL script options, custom DBMS (name and redefined types).",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -54,95 +45,7 @@ export const TOOLS = [
       properties: {
         operations: {
           type: "array",
-          items: {
-            oneOf: [
-              {
-                type: "object",
-                properties: {
-                  op: { const: "create_entity" },
-                  name: { type: "string" },
-                  attributes: { type: "array", items: ATTRIBUTE_SCHEMA },
-                },
-                required: ["op", "name"],
-              },
-              {
-                type: "object",
-                properties: {
-                  op: { const: "create_association" },
-                  name: { type: "string" },
-                  links: {
-                    type: "array",
-                    minItems: 2,
-                    items: {
-                      type: "object",
-                      properties: {
-                        entity: { type: "string" },
-                        cardinality: { type: "string" },
-                        relativeIdentifier: { type: "boolean" },
-                      },
-                      required: ["entity", "cardinality"],
-                    },
-                  },
-                  attributes: { type: "array", items: ATTRIBUTE_SCHEMA },
-                },
-                required: ["op", "name", "links"],
-              },
-              {
-                type: "object",
-                properties: {
-                  op: { const: "create_inheritance" },
-                  parent: { type: "string" },
-                  children: { type: "array", items: { type: "string" }, minItems: 2 },
-                  constraint: { enum: ["none", "X", "T", "XT"] },
-                },
-                required: ["op", "parent", "children"],
-              },
-              {
-                type: "object",
-                properties: { op: { const: "rename" }, target: { type: "string" }, name: { type: "string" } },
-                required: ["op", "target", "name"],
-              },
-              {
-                type: "object",
-                properties: {
-                  op: { const: "set_attributes" },
-                  target: { type: "string" },
-                  attributes: { type: "array", items: ATTRIBUTE_SCHEMA },
-                },
-                required: ["op", "target", "attributes"],
-              },
-              {
-                type: "object",
-                properties: {
-                  op: { const: "add_attributes" },
-                  target: { type: "string" },
-                  attributes: { type: "array", items: ATTRIBUTE_SCHEMA },
-                },
-                required: ["op", "target", "attributes"],
-              },
-              {
-                type: "object",
-                properties: {
-                  op: { const: "set_link" },
-                  association: { type: "string" },
-                  entity: { type: "string" },
-                  cardinality: { type: "string" },
-                  relativeIdentifier: { type: "boolean" },
-                },
-                required: ["op", "association", "entity"],
-              },
-              {
-                type: "object",
-                properties: { op: { const: "delete" }, targets: { type: "array", items: { type: "string" } } },
-                required: ["op", "targets"],
-              },
-              {
-                type: "object",
-                properties: { op: { const: "set_dbms" }, dbms: { enum: DBMS_IDS }, version: { type: "string" } },
-                required: ["op", "dbms"],
-              },
-            ],
-          },
+          items: { oneOf: OPERATION_SCHEMAS },
         },
       },
       required: ["operations"],

@@ -24,6 +24,15 @@ export function segmentsCross(
   sx: number,
   sy: number,
 ): boolean {
+  // Boîtes englobantes strictement séparées : aucun contact possible (même résultat, bien plus rapide).
+  if (
+    Math.max(px, qx) < Math.min(rx, sx) ||
+    Math.max(rx, sx) < Math.min(px, qx) ||
+    Math.max(py, qy) < Math.min(ry, sy) ||
+    Math.max(ry, sy) < Math.min(py, qy)
+  ) {
+    return false;
+  }
   const d1 = orient(rx, ry, sx, sy, px, py);
   const d2 = orient(rx, ry, sx, sy, qx, qy);
   const d3 = orient(px, py, qx, qy, rx, ry);
@@ -50,18 +59,27 @@ export function segmentHitsBox(
   hx: number,
   hy: number,
 ): boolean {
+  // Segment strictement d'un côté du rectangle : aucun contact possible (même résultat, bien plus rapide).
+  if (
+    Math.max(px, qx) < cx - hx ||
+    Math.min(px, qx) > cx + hx ||
+    Math.max(py, qy) < cy - hy ||
+    Math.min(py, qy) > cy + hy
+  ) {
+    return false;
+  }
   const dx = qx - px;
   const dy = qy - py;
   clipRange[0] = 0;
   clipRange[1] = 1;
-  const ps = [-dx, dx, -dy, dy];
-  const qs = [px - (cx - hx), cx + hx - px, py - (cy - hy), cy + hy - py];
-  for (let i = 0; i < 4; i += 1) {
-    if (!clip(ps[i]!, qs[i]!)) {
-      return false;
-    }
-  }
-  return clipRange[0]! < clipRange[1]!;
+  // Les quatre bords, sans tableau intermédiaire (appel très fréquent).
+  return (
+    clip(-dx, px - (cx - hx)) &&
+    clip(dx, cx + hx - px) &&
+    clip(-dy, py - (cy - hy)) &&
+    clip(dy, cy + hy - py) &&
+    clipRange[0]! < clipRange[1]!
+  );
 }
 
 /** Intervalle [t0, t1] du segment encore dans le rectangle (tampon réutilisé, sans allocation). */

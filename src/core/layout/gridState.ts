@@ -1,6 +1,10 @@
 import type { GridQuality } from "./grid";
-import { fullCost, partialCost } from "./gridCost";
+import { fullCost, fullCostWork, partialCost } from "./gridCost";
+import { BoxIndex } from "./gridIndex";
 import type { Problem } from "./gridProblem";
+
+/** Au-delà de ce nombre d'objets, les boucles de coût passent par l'index spatial (mesuré : gagnant dès ≈ 40). */
+const INDEX_ABOVE = 30;
 
 export class State {
   readonly cellOf: Int32Array;
@@ -8,6 +12,8 @@ export class State {
   readonly px: Float64Array;
   readonly py: Float64Array;
   private dirty = true;
+  /** Coût complet de la disposition courante (géométrie exacte), `NaN` si un déplacement l'a changé. */
+  private settledCost = Number.NaN;
   // Marques réutilisées (pas d'allocation dans la boucle de recherche).
   stamp = 0;
   readonly edgeMark: Int32Array;
@@ -15,6 +21,14 @@ export class State {
   readonly cornerMark: Int32Array;
   readonly touched: Int32Array;
   readonly corners: Int32Array;
+  /** Boîte englobante de chaque trait, tenue à jour à chaque déplacement (pré-test des conflits). */
+  readonly minX: Float64Array;
+  readonly maxX: Float64Array;
+  readonly minY: Float64Array;
+  readonly maxY: Float64Array;
+  /** Traits et objets par voisinage (boucles de coût limitées aux éléments proches). */
+  readonly edgeIndex: BoxIndex;
+  readonly nodeIndex: BoxIndex;
   // Géométrie exacte : tailles et origines des colonnes / lignes, et tampons de comparaison.
   private readonly colW: Float64Array;
   private readonly rowH: Float64Array;
@@ -42,6 +56,14 @@ export class State {
     this.cornerMark = new Int32Array(pb.n);
     this.touched = new Int32Array(pb.m);
     this.corners = new Int32Array(pb.n);
+    this.minX = new Float64Array(pb.m);
+    this.maxX = new Float64Array(pb.m);
+    this.minY = new Float64Array(pb.m);
+    this.maxY = new Float64Array(pb.m);
+    const grid = { cols: pb.cols, rows: pb.rows, sizeX: pb.cellW, sizeY: pb.cellH };
+    const whole = pb.n <= INDEX_ABOVE;
+    this.edgeIndex = new BoxIndex(pb.m, grid, whole);
+    this.nodeIndex = new BoxIndex(pb.n, grid, whole);
     this.colW = new Float64Array(pb.cols);
     this.rowH = new Float64Array(pb.rows);
     this.colX = new Float64Array(pb.cols);
@@ -59,6 +81,22 @@ export class State {
     const c = this.cellOf[v]!;
     this.px[v] = (c % this.pb.cols) * this.pb.cellW + this.pb.offX[v]!;
     this.py[v] = Math.floor(c / this.pb.cols) * this.pb.cellH + this.pb.offY[v]!;
+    this.frame(v);
+  }
+
+  /** Boîtes englobantes de `v` et des traits qui en sont issus, après un changement de sa position. */
+  private frame(v: number) {
+    const { pb, px, py } = this;
+    this.nodeIndex.set(v, px[v]! - pb.halfW[v]!, px[v]! + pb.halfW[v]!, py[v]! - pb.halfH[v]!, py[v]! + pb.halfH[v]!);
+    for (const e of pb.incident[v]!) {
+      const a = pb.ea[e]!;
+      const b = pb.eb[e]!;
+      this.minX[e] = Math.min(px[a]!, px[b]!);
+      this.maxX[e] = Math.max(px[a]!, px[b]!);
+      this.minY[e] = Math.min(py[a]!, py[b]!);
+      this.maxY[e] = Math.max(py[a]!, py[b]!);
+      this.edgeIndex.set(e, this.minX[e]!, this.maxX[e]!, this.minY[e]!, this.maxY[e]!);
+    }
   }
 
   /** Déplace `v` en `cell`, en échangeant avec l'occupant éventuel (positions non mises à jour). */
@@ -80,6 +118,7 @@ export class State {
     this.swap(v, cell);
     if (this.exact) {
       this.dirty = true;
+      this.settledCost = Number.NaN;
     } else {
       this.locate(v);
       if (w >= 0) {
@@ -97,6 +136,7 @@ export class State {
     }
     if (this.exact) {
       this.dirty = true;
+      this.settledCost = Number.NaN;
     } else {
       for (let v = 0; v < this.pb.n; v += 1) {
         this.locate(v);
@@ -151,6 +191,7 @@ export class State {
     const dy = Math.max(0, Math.min((h - pb.mcdH[v]!) / 2, h - pb.height[v]!));
     this.px[v] = this.colX[col]! + dx + pb.mcdW[v]! / 2;
     this.py[v] = this.rowY[row]! + dy + pb.mcdH[v]! / 2;
+    this.frame(v);
   }
 
   /** Géométrie exacte : centres MCD après ajustement des colonnes et des lignes. */
@@ -186,6 +227,20 @@ export class State {
     return fullCost(this, quality);
   }
 
+  /**
+   * Coût complet de la disposition courante, recalculé seulement après un déplacement : le même pour tous les
+   * essais d'un objet (géométrie exacte). Repris, il est compté dans le travail comme recalculé (budget, donc
+   * résultat, inchangés).
+   */
+  private currentCost(): number {
+    if (Number.isNaN(this.settledCost)) {
+      this.settledCost = this.totalCost();
+    } else {
+      fullCostWork(this.pb);
+    }
+    return this.settledCost;
+  }
+
   /** Coût des seuls termes qui font intervenir `v` ou `w` (w = -1 : aucun). */
   localCost(v: number, w: number): number {
     return partialCost(this, v, w);
@@ -218,7 +273,7 @@ export class State {
       const after = this.totalCost();
       this.swap(v, from);
       this.dirty = true;
-      return after - this.totalCost();
+      return after - this.currentCost();
     }
     const before = this.localCost(v, w);
     this.move(v, cell);

@@ -2,6 +2,7 @@ import {
   ChevronDown,
   GripVertical,
   LayoutDashboard,
+  LoaderCircle,
   MousePointer2,
   Redo2,
   Spline,
@@ -85,6 +86,7 @@ export function Toolbar({
     }
   }, [readOnly, tool, doc]);
   const view = useDocumentView((s) => s.view);
+  const layoutRunning = useDocumentView((s) => s.layoutRunning);
   const undoLabel = useDocument(selectUndoLabel);
   const redoLabel = useDocument(selectRedoLabel);
   const { undo, redo } = doc.store.getState();
@@ -116,12 +118,7 @@ export function Toolbar({
         <DisplayMenu />
       </Group>
       <Group>{toolButtons(doc, tool, view, readOnly)}</Group>
-      <Group>
-        <IconButton tooltip={t("toolbar.autoLayout")} onClick={() => mainCommand({ name: "autoLayout" })}>
-          <LayoutDashboard size={16} />
-          <span className="hidden text-xs whitespace-nowrap 2xl:inline">{t("toolbar.autoLayoutShort")}</span>
-        </IconButton>
-      </Group>
+      <Group>{autoLayoutButton(layoutRunning)}</Group>
       {floating ? <div className="w-1" /> : <div className="flex-1" />}
       <IconButton tooltip={t("collab.share")} active={sharing} onClick={() => setShareOpen(true)}>
         <Users size={16} />
@@ -175,6 +172,25 @@ function historyButtons(undoLabel: HistoryLabel, redoLabel: HistoryLabel, undo: 
         <Redo2 size={16} />
       </IconButton>
     </>
+  );
+}
+
+/** Placement automatique ; pendant le calcul, un loader à la place du contenu, et un clic l'annule (O-62). */
+function autoLayoutButton(running: boolean) {
+  return (
+    <IconButton
+      tooltip={t(running ? "toolbar.autoLayoutRunning" : "toolbar.autoLayout")}
+      onClick={() => mainCommand({ name: running ? "cancelAutoLayout" : "autoLayout" })}
+    >
+      {running ? (
+        <LoaderCircle size={16} className="animate-spin" />
+      ) : (
+        <>
+          <LayoutDashboard size={16} />
+          <span className="hidden text-xs whitespace-nowrap 2xl:inline">{t("toolbar.autoLayoutShort")}</span>
+        </>
+      )}
+    </IconButton>
   );
 }
 

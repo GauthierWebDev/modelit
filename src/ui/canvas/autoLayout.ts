@@ -4,12 +4,11 @@ import {
   decidedChunk,
   type GridEdge,
   type GridNode,
-  gridLayout,
   LAYOUT_CHUNKS,
   type Point,
 } from "@core/index";
 import type { DocumentHandle } from "@/app/document/handle";
-import { autoLayout } from "@/app/layoutCommands";
+import { type AutoLayoutOutcome, autoLayout } from "@/app/layoutCommands";
 import type { LayoutRunner } from "@/app/layoutRunner";
 import { fitToWindow } from "./viewport";
 
@@ -18,10 +17,12 @@ import { fitToWindow } from "./viewport";
  * puis cadrage de la vue affichée sur l'ensemble (le MPD, bien plus large, laisserait le MCD minuscule),
  * sans dépasser 100 %.
  */
-export async function autoLayoutTables(handle: DocumentHandle) {
-  if (await autoLayout(handle)) {
+export async function autoLayoutTables(handle: DocumentHandle): Promise<AutoLayoutOutcome> {
+  const outcome = await autoLayout(handle);
+  if (outcome === "placed") {
     fitToWindow(handle, 1);
   }
+  return outcome;
 }
 
 /**
@@ -38,41 +39,24 @@ const newWorker = () => new Worker(new URL("./layoutWorker.ts", import.meta.url)
 let queue: Promise<unknown> = Promise.resolve();
 
 /**
- * Délai au-delà duquel les Workers sont jugés indisponibles (fenêtre en arrière-plan, que le moteur
- * peut ralentir ou suspendre ; Worker qui ne se charge pas) : le calcul se fait alors sur le fil
- * principal, au même résultat. Un placement finit donc toujours, et n'en bloque aucun autre.
+ * Jamais de calcul sur le fil de l'interface (override O-62) : un placement long reste dans les Workers et
+ * s'annule par `signal`. Si les Workers échouent, le placement échoue (signalé par la commande).
  */
-const WORKER_TIMEOUT = 8000;
-
-function computeLayout(nodes: GridNode[], edges: GridEdge[]): Promise<Map<string, Point>> {
+function computeLayout(nodes: GridNode[], edges: GridEdge[], signal: AbortSignal): Promise<Map<string, Point>> {
   const run = queue.then(async () => {
+    // Annulé pendant qu'un autre onglet calculait : rien à lancer.
+    signal.throwIfAborted();
     try {
-      return await withTimeout(computeLayoutNow(nodes, edges), WORKER_TIMEOUT);
+      return await computeLayoutNow(nodes, edges, signal);
     } catch (e: unknown) {
-      // biome-ignore lint/suspicious/noConsole: diagnostic de repli pour le développeur, sans effet pour l'utilisateur
-      console.warn("Placement automatique : Workers indisponibles, calcul sur le fil principal.", e);
-      resetPool();
-      return gridLayout(nodes, edges).positions;
+      if (!signal.aborted) {
+        resetPool();
+      }
+      throw e;
     }
   });
   queue = run.catch(() => undefined);
   return run;
-}
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`no answer from the layout workers after ${ms} ms`)), ms);
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
 }
 
 /** Workers arrêtés et oubliés : le prochain placement en recrée. */
@@ -85,9 +69,13 @@ function resetPool() {
 /**
  * Lots de départs calculés en parallèle, un Web Worker par cœur disponible ; dès que la décision
  * est certaine (`decidedChunk`), les lots en cours sont abandonnés (leurs Workers remplacés).
- * Même résultat qu'en séquentiel.
+ * Même résultat qu'en séquentiel. Annulation (`signal`) : les lots en cours sont abandonnés de même.
  */
-async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<Map<string, Point>> {
+async function computeLayoutNow(
+  nodes: GridNode[],
+  edges: GridEdge[],
+  signal: AbortSignal,
+): Promise<Map<string, Point>> {
   const workerCount = Math.max(1, Math.min(LAYOUT_CHUNKS, (navigator.hardwareConcurrency || 2) - 1));
   while (pool.length < workerCount) {
     pool.push(newWorker());
@@ -105,7 +93,7 @@ async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<M
           next += 1;
           busy.add(worker);
           // biome-ignore lint/performance/noAwaitInLoops: un fil traite ses lots l'un après l'autre ; les fils tournent en parallèle
-          results.push(await runChunk(worker, nodes, edges, chunk));
+          results.push(await runChunk(worker, { nodes, edges, chunk }, signal));
           busy.delete(worker);
           // Décision certaine : inutile d'attendre les lots en cours ailleurs.
           if (decidedChunk(results)) {
@@ -131,18 +119,33 @@ async function computeLayoutNow(nodes: GridNode[], edges: GridEdge[]): Promise<M
   return bestChunk(results).positions;
 }
 
-function runChunk(worker: Worker, nodes: GridNode[], edges: GridEdge[], chunk: number): Promise<ChunkResult> {
+/** Un lot calculé par un Worker ; rejeté à l'annulation (le Worker est ensuite arrêté et remplacé). */
+function runChunk(
+  worker: Worker,
+  task: { nodes: GridNode[]; edges: GridEdge[]; chunk: number },
+  signal: AbortSignal,
+): Promise<ChunkResult> {
   return new Promise((resolve, reject) => {
-    worker.onmessage = (event: MessageEvent<ChunkResult>) => resolve(event.data);
+    const abort = () => reject(signal.reason);
+    signal.addEventListener("abort", abort, { once: true });
+    const settle = () => signal.removeEventListener("abort", abort);
+    worker.onmessage = (event: MessageEvent<ChunkResult>) => {
+      settle();
+      resolve(event.data);
+    };
     worker.onerror = (event) => {
       event.preventDefault();
+      settle();
       reject(
         new Error(
           event.message || `layout worker failed${event.filename ? ` (${event.filename}:${event.lineno})` : ""}`,
         ),
       );
     };
-    worker.postMessage({ nodes, edges, chunk });
+    if (signal.aborted) {
+      return abort();
+    }
+    worker.postMessage(task);
   });
 }
 

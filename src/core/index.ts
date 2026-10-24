@@ -31,6 +31,7 @@ export * from "./model/physical";
 export * from "./model/settings";
 export * from "./naming/keys";
 export * from "./naming/patterns";
+export * from "./naming/search";
 export * from "./naming/typology";
 export * from "./reverse/build";
 export { detectDialect } from "./reverse/dialect";

@@ -29,11 +29,18 @@ export function snapshot(): MirrorState {
     documentId: doc.id,
     doc: state.doc,
     name: documentName(doc),
+    filePath: state.filePath,
     dirty: selectIsDirty(state),
     recovered: state.recovered,
     undoLabel: selectUndoLabel(state),
     redoLabel: selectRedoLabel(state),
-    view: { view: view.view, selection: view.selection, viewport: view.viewport, activeBend: view.activeBend },
+    view: {
+      view: view.view,
+      selection: view.selection,
+      viewport: view.viewport,
+      activeBend: view.activeBend,
+      layoutRunning: view.layoutRunning,
+    },
     ui: { tool: ui.tool },
     modal: modalOpen(),
     collab: collabMirror(),
@@ -44,6 +51,7 @@ const same = (a: MirrorState, b: MirrorState) =>
   a.documentId === b.documentId &&
   a.doc === b.doc &&
   a.name === b.name &&
+  a.filePath === b.filePath &&
   a.dirty === b.dirty &&
   a.recovered === b.recovered &&
   a.undoLabel === b.undoLabel &&
@@ -52,6 +60,7 @@ const same = (a: MirrorState, b: MirrorState) =>
   a.view.selection === b.view.selection &&
   a.view.viewport === b.view.viewport &&
   a.view.activeBend === b.view.activeBend &&
+  a.view.layoutRunning === b.view.layoutRunning &&
   a.ui.tool === b.ui.tool &&
   a.modal === b.modal &&
   sameCollabMirror(a.collab, b.collab);

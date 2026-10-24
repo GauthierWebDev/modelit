@@ -5,15 +5,17 @@ import { useCollabStore } from "@/app/collab/session";
 import { selectIsDirty } from "@/app/document/documentStore";
 import type { DocumentHandle } from "@/app/document/handle";
 import { documentName } from "@/app/documentNames";
-import { closeDocument, newTab } from "@/app/fileCommands";
+import { canReload, closeDocument, newTab, reloadDocument } from "@/app/fileCommands";
 import { activate, moveTab, useWorkspaceStore } from "@/app/workspace";
 import { t } from "@/i18n";
+import { useContextMenu } from "@/ui/canvas/ContextMenu";
+import type { Action } from "@/ui/canvas/objectActions";
 import { tip } from "@/ui/common/Tooltip";
 import { MOD } from "@/ui/shortcuts";
 
 /**
  * Barre d'onglets, un par document ouvert (override O-44) : clic pour activer, clic milieu ou
- * croix pour fermer, glisser pour réordonner, « + » (⌘/Ctrl + T) pour un nouvel onglet vierge. Elle défile horizontalement si les onglets ne
+ * croix pour fermer, clic droit pour rouvrir depuis le disque ou fermer (O-67), glisser pour réordonner, « + » (⌘/Ctrl + T) pour un nouvel onglet vierge. Elle défile horizontalement si les onglets ne
  * tiennent pas ; l'onglet actif reste visible.
  */
 
@@ -85,6 +87,18 @@ export function TabBar() {
   );
 }
 
+/** Menu contextuel d'un onglet (O-67) : rouvrir depuis le disque, fermer. */
+const tabActions = (doc: DocumentHandle): Action[] => [
+  {
+    kind: "item",
+    id: "reload",
+    label: t("menu.reload"),
+    disabled: !canReload(doc),
+    run: () => void reloadDocument(doc),
+  },
+  { kind: "item", id: "close", label: t("menu.closeTab"), shortcut: `${MOD}W`, run: () => void closeDocument(doc) },
+];
+
 function Tab({
   doc,
   index,
@@ -126,6 +140,10 @@ function Tab({
       onPointerMove={handlers.onPointerMove}
       onPointerUp={handlers.onPointerUp}
       onAuxClick={(e) => e.button === 1 && void closeDocument(doc)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        useContextMenu.getState().open(e.clientX, e.clientY, tabActions(doc));
+      }}
       className={`group flex h-7 max-w-56 min-w-28 flex-none cursor-default items-center gap-1 rounded-t border border-b-0 px-2 text-xs select-none ${
         active
           ? "border-neutral-200 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"

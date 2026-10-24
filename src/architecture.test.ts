@@ -36,7 +36,7 @@ const UI_PLATFORM_FLAGS = [
   "ui/options/OptionsDialog.tsx → platform/updater",
 ];
 
-/** TEMPORAIRE — cycle entre sous-dossiers de `core`, dû au catalogue `MSG` de `validation` : M-02 (A-01, C-5). */
+/** TEMPORAIRE — cycle entre sous-dossiers de `core`, dû au catalogue `MSG` de `validation` : M-03, Merise avancé (A-01, C-5). */
 const CORE_CYCLES = ["dbms, model, naming, validation"];
 
 interface Import {

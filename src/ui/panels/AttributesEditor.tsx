@@ -5,7 +5,7 @@ import { Checkbox, CommitInput, Field, IconButton } from "@/ui/common/controls";
 import { CheckRow } from "./PhysicalSection";
 
 /**
- * Annotations physiques d'une rubrique (O-29) : valeur par défaut, CHECK, type d'origine, casse.
+ * Annotations physiques d'une rubrique (O-29) : valeur par défaut, complément SQL (O-69), CHECK, type d'origine, casse.
  * Affichées dans le bloc « Avancé » du détail de la section Rubriques (O-50).
  */
 export function AdvancedFields({
@@ -31,6 +31,14 @@ export function AdvancedFields({
             }
             update({ defaultValue: expression ? { expression, dialect } : undefined });
           }}
+        />
+      </Field>
+      <Field label={t("physical.complement")}>
+        <CommitInput
+          className="font-mono text-xs"
+          value={a.complement ?? ""}
+          placeholder={t("physical.complementHelp")}
+          onCommit={(value) => update({ complement: value.trim() || undefined })}
         />
       </Field>
       {a.check ? (

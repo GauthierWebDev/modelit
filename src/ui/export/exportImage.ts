@@ -1,19 +1,21 @@
 import type { ViewMode } from "@/app/document/documentView";
 import { t } from "@/i18n";
-import { FONT_FAMILY } from "@/ui/canvas/geometry";
+import { FONT_FAMILY, type Rect } from "@/ui/canvas/geometry";
 import { embeddedFontCss } from "@/ui/fonts";
+import { resolveColors } from "./svgColors";
 
 /**
  * Export du schéma en image (override O-17) : SVG, PNG, JPG, WEBP.
  *
- * Le dessin affiché par la zone graphique (`[data-export-root]`) est copié, recadré sur son
- * contenu, débarrassé des éléments d'interface (pastilles, poignées) et ses couleurs, données par
+ * Le dessin affiché par la zone graphique (`[data-export-root]`) est copié, cadré sur la zone demandée (O-63 :
+ * partie affichée, sélection ou schéma complet), débarrassé des éléments d'interface (pastilles, poignées) et ses couleurs, données par
  * des variables CSS, sont remplacées par leurs valeurs pour le thème choisi : le SVG obtenu est
  * autonome, police comprise. Les formats raster sont rendus à partir de ce SVG.
  */
 
 export type ExportFormat = "svg" | "png" | "jpg" | "webp";
-export type ExportTheme = "light" | "dark";
+/** `screen` : le thème affiché par l'application (O-63). */
+export type ExportTheme = "light" | "dark" | "screen";
 
 export interface ExportOptions {
   format: ExportFormat;
@@ -23,6 +25,7 @@ export interface ExportOptions {
   background: string | null;
   /** Résolution des formats raster ; 96 dpi = 100 %. */
   dpi: number;
+  area: AreaSpec;
 }
 
 export const FORMATS: { id: ExportFormat; label: string; mime: string; transparent: boolean }[] = [
@@ -44,47 +47,79 @@ export class ExportError extends Error {}
 function themeValues(names: Iterable<string>, theme: ExportTheme): Map<string, string> {
   const html = document.documentElement;
   const wasDark = html.classList.contains("dark");
-  html.classList.toggle("dark", theme === "dark");
+  html.classList.toggle("dark", theme === "screen" ? wasDark : theme === "dark");
   const style = getComputedStyle(html);
   const values = new Map([...names].map((n) => [n, style.getPropertyValue(n).trim()]));
   html.classList.toggle("dark", wasDark);
   return values;
 }
 
-/** SVG autonome du schéma affiché. */
+/** Zone à exporter, résolue par la boîte d'export (override O-63). */
+export type AreaSpec =
+  | { kind: "all" }
+  /** Objets gardés (`data-id`), voir `selectionIds`. */
+  | { kind: "selection"; ids: ReadonlySet<string> }
+  /** Partie visible du modèle et taille du canevas à l'écran, voir `visibleArea`. */
+  | { kind: "viewport"; rect: Rect; pixels: { width: number; height: number } };
+
+/** Éléments du schéma hors de la sélection exportée. */
+const outside = (root: Element, area: AreaSpec): Element[] =>
+  area.kind === "selection"
+    ? [...root.querySelectorAll("[data-id]")].filter((el) => !area.ids.has(el.getAttribute("data-id")!))
+    : [];
+
+/** Copie du schéma sans cadrage ni éléments d'interface ; sans halo des textes sur fond transparent. */
+function exportedContent(root: SVGGElement, background: string | null, area: AreaSpec): SVGGElement {
+  const content = root.cloneNode(true) as SVGGElement;
+  content.removeAttribute("transform");
+  content.removeAttribute("data-export-root");
+  for (const el of [...content.querySelectorAll(UI_ONLY), ...outside(content, area)]) {
+    el.remove();
+  }
+  // Un halo de la couleur du canevas ferait une tache sur un fond transparent.
+  if (!background) {
+    for (const el of content.querySelectorAll("[data-halo]")) {
+      el.remove();
+    }
+  }
+  return content;
+}
+
+/** Cadrage (coordonnées du modèle) et taille de l'image à 96 dpi. */
+function frameOf(root: SVGGElement, area: AreaSpec): { box: Rect; width: number; height: number } {
+  if (area.kind === "viewport") {
+    return { box: area.rect, ...area.pixels };
+  }
+  // Recadrage sur le contenu exporté réel : éléments d'interface et hors sélection masqués le temps de la mesure.
+  const hidden = [...root.querySelectorAll<SVGElement>(UI_ONLY), ...(outside(root, area) as SVGElement[])];
+  for (const el of hidden) {
+    el.style.display = "none";
+  }
+  const measured = root.getBBox();
+  for (const el of hidden) {
+    el.style.display = "";
+  }
+  if (measured.width === 0 || measured.height === 0) {
+    throw new ExportError(t("export.empty"));
+  }
+  const x = Math.floor(measured.x - MARGIN);
+  const y = Math.floor(measured.y - MARGIN);
+  const width = Math.ceil(measured.width + 2 * MARGIN);
+  const height = Math.ceil(measured.height + 2 * MARGIN);
+  return { box: { x, y, width, height }, width, height };
+}
+
+/** SVG autonome du schéma affiché, sur la zone demandée. */
 export async function buildSvg(
-  options: Pick<ExportOptions, "theme" | "background">,
+  options: Pick<ExportOptions, "theme" | "background" | "area">,
 ): Promise<{ svg: string; width: number; height: number }> {
   const canvas = document.querySelector<SVGSVGElement>("svg[data-canvas]");
   const root = canvas?.querySelector<SVGGElement>("[data-export-root]");
   if (!(canvas && root)) {
     throw new ExportError(t("export.noCanvas"));
   }
-
-  const content = root.cloneNode(true) as SVGGElement;
-  content.removeAttribute("transform");
-  content.removeAttribute("data-export-root");
-  for (const el of content.querySelectorAll(UI_ONLY)) {
-    el.remove();
-  }
-
-  // Recadrage sur le contenu réel (sans les éléments d'interface).
-  const hidden = root.querySelectorAll<SVGElement>(UI_ONLY);
-  for (const el of hidden) {
-    el.style.display = "none";
-  }
-  const box = root.getBBox();
-  for (const el of hidden) {
-    el.style.display = "";
-  }
-  if (box.width === 0 || box.height === 0) {
-    throw new ExportError(t("export.empty"));
-  }
-
-  const x = Math.floor(box.x - MARGIN);
-  const y = Math.floor(box.y - MARGIN);
-  const width = Math.ceil(box.width + 2 * MARGIN);
-  const height = Math.ceil(box.height + 2 * MARGIN);
+  const content = exportedContent(root, options.background, options.area);
+  const { box, width, height } = frameOf(root, options.area);
 
   const serializer = new XMLSerializer();
   const defs = [...canvas.querySelectorAll(":scope > defs")]
@@ -93,20 +128,19 @@ export async function buildSvg(
     .join("");
   let body = defs + serializer.serializeToString(content);
   const names = new Set([...body.matchAll(/var\((--[\w-]+)\)/g)].map((m) => m[1]!));
-  const values = themeValues(names, options.theme);
-  body = body.replace(/var\((--[\w-]+)\)/g, (_, name: string) => values.get(name) || "currentColor");
+  body = resolveColors(body, themeValues(names, options.theme), options.background);
 
   const fontCss = await embeddedFontCss(
     content.textContent ?? "",
     content.querySelector("[font-style=italic]") !== null,
   );
   const style = fontCss ? `<style>${fontCss}</style>` : "";
-
+  const viewBox = `${box.x} ${box.y} ${box.width} ${box.height}`;
   const background = options.background
-    ? `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${options.background}"/>`
+    ? `<rect x="${box.x}" y="${box.y}" width="${box.width}" height="${box.height}" fill="${options.background}"/>`
     : "";
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${x} ${y} ${width} ${height}"` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${viewBox}"` +
     ` font-family="${FONT_FAMILY.replace(/"/g, "'")}">${style}${background}${body}</svg>`;
   return { svg, width, height };
 }
@@ -157,7 +191,7 @@ async function rasterize(svg: string, width: number, height: number, options: Ex
 /** Image du schéma affiché, au format demandé. */
 export async function renderExport(options: ExportOptions): Promise<Blob> {
   const background = options.format === "jpg" ? (options.background ?? "#ffffff") : options.background;
-  const { svg, width, height } = await buildSvg({ theme: options.theme, background });
+  const { svg, width, height } = await buildSvg({ theme: options.theme, background, area: options.area });
   if (options.format === "svg") {
     return new Blob([svg], { type: "image/svg+xml" });
   }

@@ -26,17 +26,29 @@ export interface ActiveBend {
   index: number;
 }
 
+/** Recherche dans le canevas (override O-64) : champ ouvert, texte cherché, résultat courant. */
+export interface SearchState {
+  open: boolean;
+  query: string;
+  index: number;
+}
+
 export interface DocumentViewState {
   view: ViewMode;
   selection: Id[];
   viewport: Viewport;
   activeBend: ActiveBend | null;
+  /** Placement automatique en cours sur ce document : bouton désactivé, nouvel appel ignoré. */
+  layoutRunning: boolean;
+  search: SearchState;
 
   setView: (view: ViewMode) => void;
   select: (ids: Id[]) => void;
   toggleSelected: (id: Id) => void;
   setViewport: (viewport: Viewport) => void;
   setActiveBend: (bend: ActiveBend | null) => void;
+  setLayoutRunning: (running: boolean) => void;
+  setSearch: (patch: Partial<SearchState>) => void;
 }
 
 export type DocumentViewStore = StoreApi<DocumentViewState>;
@@ -47,6 +59,8 @@ export const createDocumentViewStore = (): DocumentViewStore =>
     selection: [],
     viewport: { x: 40, y: 40, zoom: 1 },
     activeBend: null,
+    layoutRunning: false,
+    search: { open: false, query: "", index: 0 },
 
     setView: (view) => set({ view }),
     select: (selection) => set({ selection, activeBend: null }),
@@ -58,4 +72,6 @@ export const createDocumentViewStore = (): DocumentViewStore =>
     setViewport: (viewport) =>
       set({ viewport: { ...viewport, zoom: Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, viewport.zoom)) } }),
     setActiveBend: (activeBend) => set({ activeBend }),
+    setLayoutRunning: (layoutRunning) => set({ layoutRunning }),
+    setSearch: (patch) => set((s) => ({ search: { ...s.search, ...patch } })),
   }));

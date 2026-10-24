@@ -7,6 +7,7 @@ import { t } from "@/i18n";
 import { FollowFrame } from "@/ui/collab/FollowFrame";
 import { RemoteCursors, reportCursor, useIsSessionTab, usePresenceReporting } from "@/ui/collab/RemoteCursors";
 import { RemoteSelections } from "@/ui/collab/RemoteSelections";
+import { SearchHighlights } from "./SearchHighlights";
 import { setCanvasElement, setCanvasSize, zoomBy } from "./viewport";
 
 /**
@@ -37,7 +38,7 @@ export function CanvasSurface({
   grid: number | null;
   panOnEmpty?: boolean;
   className?: string;
-  /** Boîtes de la vue (sélection des autres participants, O-05 §5). */
+  /** Boîtes de la vue (résultats de la recherche, O-64 ; sélection des autres participants, O-05 §5). */
   remoteBoxes?: Map<Id, Rect>;
   children: ReactNode;
 }) {
@@ -86,6 +87,7 @@ export function CanvasSurface({
       <g data-export-root="" transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.zoom})`}>
         {children}
       </g>
+      {remoteBoxes ? <SearchHighlights viewport={viewport} boxes={remoteBoxes} /> : null}
       {shared && remoteBoxes ? <RemoteSelections viewport={viewport} boxes={remoteBoxes} /> : null}
       {shared && <RemoteCursors viewport={viewport} />}
       {shared && <FollowFrame />}

@@ -110,12 +110,7 @@ function emptyActions(doc: DocumentHandle, point: Point, model: ModelDocument, v
       shortcut: `${MOD}A`,
       run: () => select([...diagramNodes(model), ...diagramLinks(model)].map((o) => o.id)),
     },
-    {
-      kind: "item",
-      id: "autoLayout",
-      label: t("actions.autoLayout"),
-      run: () => mainCommand({ name: "autoLayout" }),
-    },
+    autoLayoutAction(doc.view.getState().layoutRunning),
     { kind: "item", id: "fit", label: t("actions.fit"), shortcut: "⇧F", run: () => fitToWindow(doc) },
     SEPARATOR,
     {
@@ -219,4 +214,21 @@ function mcdCreationActions(doc: DocumentHandle, point: Point, grid: number, sel
         ]),
     },
   ];
+}
+
+/** Placement automatique, ou son annulation pendant le calcul (O-62). */
+function autoLayoutAction(running: boolean): Action {
+  return running
+    ? {
+        kind: "item",
+        id: "cancelAutoLayout",
+        label: t("actions.cancelAutoLayout"),
+        run: () => mainCommand({ name: "cancelAutoLayout" }),
+      }
+    : {
+        kind: "item",
+        id: "autoLayout",
+        label: t("actions.autoLayout"),
+        run: () => mainCommand({ name: "autoLayout" }),
+      };
 }

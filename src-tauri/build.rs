@@ -16,6 +16,11 @@ const COMMANDS: &[&str] = &[
     "collab_guest_datagram",
     "collab_guest_close",
     "updater_configured",
+    "allow_model_file",
+    "launch_files",
+    "cli_status",
+    "cli_install",
+    "cli_uninstall",
 ];
 
 fn main() {
