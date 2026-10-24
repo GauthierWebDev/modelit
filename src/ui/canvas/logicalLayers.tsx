@@ -1,6 +1,7 @@
 import type { Id, Issue, RelationLabelMode } from "@core/index";
 import { t } from "@/i18n";
 import { FONT_FAMILY, FONT_SIZE, normalizeRect, PAD_X, ROW_HEIGHT, TITLE_HEIGHT, TITLE_WEIGHT } from "./geometry";
+import { HaloText } from "./haloText";
 import {
   columnStyle,
   KEY_BAR_X,
@@ -85,7 +86,7 @@ export function logicalOverlays(v: LogicalView) {
         }
         const active = selected.has(r.relationId) || selected.has(r.sourceId);
         return (
-          <text
+          <HaloText
             key={`label-${r.key}`}
             data-id={r.relationId}
             className="cursor-pointer"
@@ -97,12 +98,9 @@ export function logicalOverlays(v: LogicalView) {
             fontSize={FONT_SIZE - 1}
             fill={active ? "var(--mcd-selection)" : "var(--mcd-muted)"}
             fontStyle={labelMode === "text" ? "italic" : undefined}
-            paintOrder="stroke"
-            stroke="var(--mcd-canvas)"
-            strokeWidth={4}
           >
             {label}
-          </text>
+          </HaloText>
         );
       })}
       {marquee ? (

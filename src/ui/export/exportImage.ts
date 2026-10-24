@@ -2,6 +2,7 @@ import type { ViewMode } from "@/app/document/documentView";
 import { t } from "@/i18n";
 import { FONT_FAMILY } from "@/ui/canvas/geometry";
 import { embeddedFontCss } from "@/ui/fonts";
+import { resolveColors } from "./svgColors";
 
 /**
  * Export du schéma en image (override O-17) : SVG, PNG, JPG, WEBP.
@@ -51,6 +52,23 @@ function themeValues(names: Iterable<string>, theme: ExportTheme): Map<string, s
   return values;
 }
 
+/** Copie du schéma sans cadrage ni éléments d'interface ; sans halo des textes sur fond transparent. */
+function exportedContent(root: SVGGElement, background: string | null): SVGGElement {
+  const content = root.cloneNode(true) as SVGGElement;
+  content.removeAttribute("transform");
+  content.removeAttribute("data-export-root");
+  for (const el of content.querySelectorAll(UI_ONLY)) {
+    el.remove();
+  }
+  // Un halo de la couleur du canevas ferait une tache sur un fond transparent.
+  if (!background) {
+    for (const el of content.querySelectorAll("[data-halo]")) {
+      el.remove();
+    }
+  }
+  return content;
+}
+
 /** SVG autonome du schéma affiché. */
 export async function buildSvg(
   options: Pick<ExportOptions, "theme" | "background">,
@@ -61,12 +79,7 @@ export async function buildSvg(
     throw new ExportError(t("export.noCanvas"));
   }
 
-  const content = root.cloneNode(true) as SVGGElement;
-  content.removeAttribute("transform");
-  content.removeAttribute("data-export-root");
-  for (const el of content.querySelectorAll(UI_ONLY)) {
-    el.remove();
-  }
+  const content = exportedContent(root, options.background);
 
   // Recadrage sur le contenu réel (sans les éléments d'interface).
   const hidden = root.querySelectorAll<SVGElement>(UI_ONLY);
@@ -94,7 +107,7 @@ export async function buildSvg(
   let body = defs + serializer.serializeToString(content);
   const names = new Set([...body.matchAll(/var\((--[\w-]+)\)/g)].map((m) => m[1]!));
   const values = themeValues(names, options.theme);
-  body = body.replace(/var\((--[\w-]+)\)/g, (_, name: string) => values.get(name) || "currentColor");
+  body = resolveColors(body, values, options.background);
 
   const fontCss = await embeddedFontCss(
     content.textContent ?? "",
