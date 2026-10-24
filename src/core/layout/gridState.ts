@@ -1,6 +1,10 @@
 import type { GridQuality } from "./grid";
 import { fullCost, fullCostWork, partialCost } from "./gridCost";
+import { BoxIndex } from "./gridIndex";
 import type { Problem } from "./gridProblem";
+
+/** Au-delà de ce nombre d'objets, les boucles de coût passent par l'index spatial (mesuré : gagnant dès ≈ 40). */
+const INDEX_ABOVE = 30;
 
 export class State {
   readonly cellOf: Int32Array;
@@ -22,6 +26,9 @@ export class State {
   readonly maxX: Float64Array;
   readonly minY: Float64Array;
   readonly maxY: Float64Array;
+  /** Traits et objets par voisinage (boucles de coût limitées aux éléments proches). */
+  readonly edgeIndex: BoxIndex;
+  readonly nodeIndex: BoxIndex;
   // Géométrie exacte : tailles et origines des colonnes / lignes, et tampons de comparaison.
   private readonly colW: Float64Array;
   private readonly rowH: Float64Array;
@@ -53,6 +60,10 @@ export class State {
     this.maxX = new Float64Array(pb.m);
     this.minY = new Float64Array(pb.m);
     this.maxY = new Float64Array(pb.m);
+    const grid = { cols: pb.cols, rows: pb.rows, sizeX: pb.cellW, sizeY: pb.cellH };
+    const whole = pb.n <= INDEX_ABOVE;
+    this.edgeIndex = new BoxIndex(pb.m, grid, whole);
+    this.nodeIndex = new BoxIndex(pb.n, grid, whole);
     this.colW = new Float64Array(pb.cols);
     this.rowH = new Float64Array(pb.rows);
     this.colX = new Float64Array(pb.cols);
@@ -73,9 +84,10 @@ export class State {
     this.frame(v);
   }
 
-  /** Boîtes englobantes des traits issus de `v`, après un changement de sa position. */
+  /** Boîtes englobantes de `v` et des traits qui en sont issus, après un changement de sa position. */
   private frame(v: number) {
     const { pb, px, py } = this;
+    this.nodeIndex.set(v, px[v]! - pb.halfW[v]!, px[v]! + pb.halfW[v]!, py[v]! - pb.halfH[v]!, py[v]! + pb.halfH[v]!);
     for (const e of pb.incident[v]!) {
       const a = pb.ea[e]!;
       const b = pb.eb[e]!;
@@ -83,6 +95,7 @@ export class State {
       this.maxX[e] = Math.max(px[a]!, px[b]!);
       this.minY[e] = Math.min(py[a]!, py[b]!);
       this.maxY[e] = Math.max(py[a]!, py[b]!);
+      this.edgeIndex.set(e, this.minX[e]!, this.maxX[e]!, this.minY[e]!, this.maxY[e]!);
     }
   }
 
