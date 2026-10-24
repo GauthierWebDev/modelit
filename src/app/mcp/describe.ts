@@ -93,6 +93,14 @@ export function describeModel(doc: ModelDocument, name: string, detail: ModelDet
         children: linked.filter((id) => id !== h.parentId).map((id) => entityName.get(id) ?? id),
         constraint: h.constraint,
         ...optional("comment", h.comment),
+        // Liens d'héritage : identifiant (texte du trait, `set_link`), entité, texte du trait.
+        links: doc.inheritanceLinks
+          .filter((l) => l.inheritanceId === h.id)
+          .map((l) => ({
+            id: l.id,
+            entity: entityName.get(l.entityId) ?? l.entityId,
+            ...optional("relationLabel", l.relationLabel),
+          })),
       };
     }),
   };

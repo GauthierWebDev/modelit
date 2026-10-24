@@ -120,11 +120,17 @@ export const OPERATION_SCHEMAS = [
     ["target", "attribute"],
     "Change one attribute without recreating it",
   ),
+  op(
+    "add_link",
+    { association: str(), entity: str(), cardinality: str(), relativeIdentifier: bool() },
+    ["association", "entity"],
+    "Add a link (leg) to an existing association, e.g. to make it ternary",
+  ),
   op("add_auto_identifier", { target: str("Entity") }, ["target"]),
   op(
     "set_link",
     {
-      link: str("Link id (required for a reflexive association)"),
+      link: str("Link id (required for a reflexive association); an inheritance link id sets relationLabel only"),
       association: str(),
       entity: str(),
       cardinality: str(),
@@ -146,6 +152,7 @@ export const OPERATION_SCHEMAS = [
     "set_physical",
     {
       target: str(),
+      caseSensitive: bool("Quoted table name"),
       primaryKeyName: str(CLEAR),
       alternateKeys: KEYS,
       indexes: KEYS,

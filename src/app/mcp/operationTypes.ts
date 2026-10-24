@@ -71,9 +71,10 @@ export type Operation =
   | { op: "add_attributes"; target: string; attributes: AttributeSpec[] }
   | ({ op: "update_attribute"; target: string; attribute: string } & AttributePatch)
   | { op: "add_auto_identifier"; target: string }
+  | { op: "add_link"; association: string; entity: string; cardinality?: string; relativeIdentifier?: boolean }
   | {
       op: "set_link";
-      /** Identifiant de la patte ; sinon `association` + `entity`. */
+      /** Identifiant de la patte (ou d'un lien d'héritage : `relationLabel` seulement) ; sinon `association` + `entity`. */
       link?: string;
       association?: string;
       entity?: string;
@@ -90,6 +91,8 @@ export type Operation =
   | {
       op: "set_physical";
       target: string;
+      /** Nom de table entre guillemets : sa casse est significative. */
+      caseSensitive?: boolean;
       primaryKeyName?: string;
       /** Remplace la liste. */
       alternateKeys?: KeySpec[];
