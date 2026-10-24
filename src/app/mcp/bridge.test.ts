@@ -45,7 +45,7 @@ const TOKEN = "0123456789abcdef0123";
 beforeAll(() => {
   setMcpEndpoint(endpoint);
   usePreferencesStore.setState({ mcp: { enabled: false, port: 47_321, token: TOKEN } });
-  startMcpBridge({ autoLayout: () => Promise.resolve() });
+  startMcpBridge({ autoLayout: () => Promise.resolve("placed") });
 });
 
 beforeEach(() => {
