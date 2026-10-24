@@ -1,5 +1,5 @@
 import type { GridQuality } from "./grid";
-import { fullCost, partialCost } from "./gridCost";
+import { fullCost, fullCostWork, partialCost } from "./gridCost";
 import type { Problem } from "./gridProblem";
 
 export class State {
@@ -8,6 +8,8 @@ export class State {
   readonly px: Float64Array;
   readonly py: Float64Array;
   private dirty = true;
+  /** Coût complet de la disposition courante (géométrie exacte), `NaN` si un déplacement l'a changé. */
+  private settledCost = Number.NaN;
   // Marques réutilisées (pas d'allocation dans la boucle de recherche).
   stamp = 0;
   readonly edgeMark: Int32Array;
@@ -103,6 +105,7 @@ export class State {
     this.swap(v, cell);
     if (this.exact) {
       this.dirty = true;
+      this.settledCost = Number.NaN;
     } else {
       this.locate(v);
       if (w >= 0) {
@@ -120,6 +123,7 @@ export class State {
     }
     if (this.exact) {
       this.dirty = true;
+      this.settledCost = Number.NaN;
     } else {
       for (let v = 0; v < this.pb.n; v += 1) {
         this.locate(v);
@@ -210,6 +214,20 @@ export class State {
     return fullCost(this, quality);
   }
 
+  /**
+   * Coût complet de la disposition courante, recalculé seulement après un déplacement : le même pour tous les
+   * essais d'un objet (géométrie exacte). Repris, il est compté dans le travail comme recalculé (budget, donc
+   * résultat, inchangés).
+   */
+  private currentCost(): number {
+    if (Number.isNaN(this.settledCost)) {
+      this.settledCost = this.totalCost();
+    } else {
+      fullCostWork(this.pb);
+    }
+    return this.settledCost;
+  }
+
   /** Coût des seuls termes qui font intervenir `v` ou `w` (w = -1 : aucun). */
   localCost(v: number, w: number): number {
     return partialCost(this, v, w);
@@ -242,7 +260,7 @@ export class State {
       const after = this.totalCost();
       this.swap(v, from);
       this.dirty = true;
-      return after - this.totalCost();
+      return after - this.currentCost();
     }
     const before = this.localCost(v, w);
     this.move(v, cell);

@@ -1,5 +1,6 @@
 import type { GridQuality } from "./grid";
 import { segmentHitsBox, segmentsCross } from "./gridGeometry";
+import type { Problem } from "./gridProblem";
 import type { State } from "./gridState";
 
 const WEIGHT = { through: 150, crossing: 60, angle: 20, length: 1 };
@@ -116,11 +117,16 @@ function angleTerm(s: State, v: number, e: number, f: number, quality?: GridQual
   return WEIGHT.angle * ((cos - COS_MIN_ANGLE) / (1 - COS_MIN_ANGLE) + 0.2);
 }
 
+/** Travail compté pour un coût complet (budget du placement). */
+export function fullCostWork(pb: Problem) {
+  pb.work += (pb.m * (pb.m + 2 * pb.n)) / 2;
+}
+
 /** Coût complet ; chaque terme compté une fois. */
 export function fullCost(s: State, quality?: GridQuality): number {
   s.refresh();
   const { pb } = s;
-  pb.work += (pb.m * (pb.m + 2 * pb.n)) / 2;
+  fullCostWork(pb);
   let cost = 0;
   for (let e = 0; e < pb.m; e += 1) {
     cost += lengthTerm(s, e, quality);
