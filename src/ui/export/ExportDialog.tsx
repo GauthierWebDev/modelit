@@ -11,18 +11,19 @@ import { t } from "@/i18n";
 import { inputClass } from "@/ui/common/controls";
 import { tip } from "@/ui/common/Tooltip";
 import { views } from "@/ui/toolbar/Toolbar";
+import { areaSpec, EXPORT_AREAS, effectiveArea } from "./exportArea";
 import { DPI_OPTIONS, ExportError, FORMATS, renderExport } from "./exportImage";
 
 /** Boîte « Exporter l'image » (override O-17). */
 export function ExportDialog() {
-  const { open, setOpen, doc, prefs, setPrefs, view, setView, busy, setBusy } = useExportDialog();
+  const { open, setOpen, doc, prefs, setPrefs, view, setView, busy, setBusy, hasSelection } = useExportDialog();
   if (!open) {
     return null;
   }
   const format = FORMATS.find((f) => f.id === prefs.format)!;
   const transparent = format.transparent && prefs.transparent;
 
-  const form: ExportForm = { prefs, setPrefs, view, setView, format, transparent };
+  const form: ExportForm = { prefs, setPrefs, view, setView, format, transparent, hasSelection };
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: fond de la boîte, un clic à l'extérieur la ferme
     // biome-ignore lint/a11y/noNoninteractiveElementInteractions: fond de la boîte, un clic à l'extérieur la ferme
@@ -41,6 +42,7 @@ export function ExportDialog() {
         <h2 className="mb-3 text-base font-semibold">{t("export.title")}</h2>
         <div className="flex flex-col gap-3 text-sm">
           {formatAndView(form)}
+          {areaChoice(form)}
           {colorsAndResolution(form)}
         </div>
         <div className="mt-4 flex justify-end gap-2">
@@ -75,6 +77,7 @@ function useExportDialog() {
   const setPrefs = usePreferencesStore((s) => s.setExport);
   const [view, setView] = useState<ViewMode>(currentView);
   const [busy, setBusy] = useState(false);
+  const hasSelection = useDocumentView((s) => s.selection.length > 0);
 
   useEffect(() => {
     if (open) {
@@ -90,7 +93,7 @@ function useExportDialog() {
     globalThis.addEventListener("keydown", onKey);
     return () => globalThis.removeEventListener("keydown", onKey);
   }, [open, setOpen]);
-  return { open, setOpen, doc, prefs, setPrefs, view, setView, busy, setBusy };
+  return { open, setOpen, doc, prefs, setPrefs, view, setView, busy, setBusy, hasSelection };
 }
 
 type Prefs = ReturnType<typeof usePreferencesStore.getState>["export"];
@@ -112,6 +115,8 @@ async function runExport({ doc, view, prefs, format, transparent, setBusy, setOp
   const ui = useUiStore.getState();
   const display = doc.view.getState();
   const previous = { view: display.view, selection: display.selection };
+  // Zone relevée avant de vider la sélection pour la capture (O-63).
+  const area = areaSpec(doc, view, effectiveArea(prefs.area, previous.selection));
   try {
     // Dessin de la vue demandée, sans sélection, avant capture (l'outil de la fenêtre n'est pas touché).
     display.select([]);
@@ -123,6 +128,7 @@ async function runExport({ doc, view, prefs, format, transparent, setBusy, setOp
       theme: prefs.theme,
       background: transparent ? null : prefs.color,
       dpi: prefs.dpi,
+      area,
     });
     const path = doc.store.getState().filePath;
     const base = path ? fileName(path).replace(/\.[^.]+$/, "") : t("export.defaultName");
@@ -143,6 +149,37 @@ async function runExport({ doc, view, prefs, format, transparent, setBusy, setOp
   }
 }
 
+/** Zone exportée : partie affichée, sélection ou schéma complet (O-63). */
+function areaChoice({ prefs, setPrefs, hasSelection }: ExportForm) {
+  const current = effectiveArea(prefs.area, hasSelection ? ["x"] : []);
+  return (
+    <div>
+      <p className={label}>{t("export.area")}</p>
+      <div className="mt-1 grid grid-cols-3 overflow-hidden rounded border border-neutral-300 dark:border-neutral-600">
+        {EXPORT_AREAS.map((a) => {
+          const disabled = a === "selection" && !hasSelection;
+          return (
+            <span
+              key={a}
+              className="inline-flex"
+              {...tip(t(disabled ? "export.area.noSelection" : `export.area.${a}Tip`))}
+            >
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => setPrefs({ area: a })}
+                className={`w-full py-1 text-xs font-semibold disabled:opacity-40 ${current === a ? "bg-blue-600 text-white" : "hover:bg-neutral-100 dark:hover:bg-neutral-800"}`}
+              >
+                {t(`export.area.${a}`)}
+              </button>
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 interface ExportForm {
   prefs: Prefs;
   setPrefs: (patch: Partial<Prefs>) => void;
@@ -150,6 +187,7 @@ interface ExportForm {
   setView: (view: ViewMode) => void;
   format: Format;
   transparent: boolean;
+  hasSelection: boolean;
 }
 
 const label = "text-xs font-semibold tracking-wide text-neutral-500 uppercase dark:text-neutral-400";
@@ -197,8 +235,9 @@ function colorsAndResolution({ prefs, setPrefs, format, transparent }: ExportFor
         <select
           className={inputClass}
           value={prefs.theme}
-          onChange={(e) => setPrefs({ theme: e.target.value as "light" | "dark" })}
+          onChange={(e) => setPrefs({ theme: e.target.value as Prefs["theme"] })}
         >
+          <option value="screen">{t("export.themeScreen")}</option>
           <option value="light">{t("export.themeLight")}</option>
           <option value="dark">{t("export.themeDark")}</option>
         </select>

@@ -16,10 +16,13 @@ export type ThemePreference = "system" | "light" | "dark";
 /** Stockage de la sauvegarde automatique (O-22) : IndexedDB uniquement, ou désactivée. */
 export type AutosaveBackend = "indexeddb" | "off";
 
-/** Derniers réglages d'export d'image (override O-17). */
+/** Derniers réglages d'export d'image (overrides O-17, O-63). */
 export interface ExportPreferences {
   format: "svg" | "png" | "jpg" | "webp";
-  theme: "light" | "dark";
+  /** `screen` : le thème affiché (O-63). */
+  theme: "light" | "dark" | "screen";
+  /** Zone exportée : partie affichée, sélection ou schéma complet (O-63). */
+  area: "viewport" | "selection" | "all";
   transparent: boolean;
   color: string;
   dpi: number;
@@ -113,7 +116,7 @@ const initial: Preferences = {
   },
   autosave: "indexeddb",
   autosaveDelay: 0,
-  export: { format: "png", theme: "light", transparent: false, color: "#ffffff", dpi: 150 },
+  export: { format: "png", theme: "screen", area: "viewport", transparent: false, color: "#ffffff", dpi: 150 },
   updateCheck: true,
   lastSeenVersion: "",
   dock: defaultLayout(),
