@@ -1,5 +1,5 @@
 import { runCollabAction } from "@/app/collab/session";
-import { newDocument, newTab, openDocument, saveDocument } from "@/app/fileCommands";
+import { newDocument, newTab, openDocument, openPath, reloadDocument, saveDocument } from "@/app/fileCommands";
 import { cancelAutoLayout } from "@/app/layoutCommands";
 import type { MainCommand } from "@/app/windows/protocol";
 import { activeDocument } from "@/app/workspace";
@@ -32,6 +32,10 @@ export function runMainCommand(command: MainCommand) {
       return void autoLayoutTables(doc);
     case "cancelAutoLayout":
       return cancelAutoLayout(doc);
+    case "openPath":
+      return void openPath(command.path);
+    case "reload":
+      return void reloadDocument(doc);
     case "collab":
       return runCollabAction(command.action);
   }

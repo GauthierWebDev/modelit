@@ -61,6 +61,8 @@ export interface Preferences {
   customDbms: LibraryDbms[];
   /** Assistants IA par MCP (override O-47) : désactivé par défaut. */
   mcp: McpPreferences;
+  /** Fichiers récents, du plus récent au plus ancien (O-65, `app/recentFiles.ts`). */
+  recentFiles: string[];
   /** Identité en session collaborative (O-05 §3). */
   identity: IdentityPreferences;
 }
@@ -100,6 +102,7 @@ interface PreferencesState extends Preferences {
   /** Applique une opération de `dock/layout.ts` à la disposition. */
   updateDock: (change: (layout: DockLayout) => DockLayout) => void;
   setMcp: (patch: Partial<McpPreferences>) => void;
+  setRecentFiles: (recentFiles: string[]) => void;
   setIdentity: (patch: Partial<Pick<IdentityPreferences, "name" | "color">>) => void;
 }
 
@@ -124,6 +127,7 @@ const initial: Preferences = {
   modelSettingsTab: "naming",
   customDbms: [],
   mcp: { enabled: false, port: 47_321, token: "" },
+  recentFiles: [],
   identity: newIdentity(),
 };
 
@@ -162,6 +166,7 @@ export const usePreferencesStore = create<PreferencesState>()(
       deleteCustomDbms: (id) => set((s) => ({ customDbms: s.customDbms.filter((d) => d.id !== id) })),
       updateDock: (change) => set((s) => ({ dock: change(s.dock) })),
       setMcp: (patch) => set((s) => ({ mcp: { ...s.mcp, ...patch } })),
+      setRecentFiles: (recentFiles) => set({ recentFiles }),
       setIdentity: (patch) =>
         set((s) => ({ identity: { ...s.identity, ...patch, name: (patch.name ?? s.identity.name).slice(0, 40) } })),
     }),
@@ -186,6 +191,7 @@ export const usePreferencesStore = create<PreferencesState>()(
           export: { ...current.export, ...saved.export },
           dock: saved.dock ? sanitizeLayout(saved.dock) : current.dock,
           mcp: { ...current.mcp, ...saved.mcp },
+          recentFiles: Array.isArray(saved.recentFiles) ? saved.recentFiles.filter((p) => typeof p === "string") : [],
           customDbms: Array.isArray(saved.customDbms)
             ? saved.customDbms.filter((d) => d && typeof d.id === "string" && typeof d.name === "string" && d.types)
             : [],

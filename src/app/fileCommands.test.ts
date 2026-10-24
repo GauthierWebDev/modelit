@@ -1,40 +1,15 @@
 import { serializeModel } from "@core/index";
 import { model } from "@core/testing/builder";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { addEntity } from "./commands";
-import { settleDialog, useDialogStore } from "./dialogStore";
+import { useDialogStore } from "./dialogStore";
 import { selectIsDirty } from "./document/documentStore";
-import { type FileAccess, setFileAccess } from "./fileAccess";
 import { newTab, openDocument, saveDocument } from "./fileCommands";
+import { dialogMessage, fakeFiles } from "./testing/files";
 import { useUiStore } from "./uiStore";
 import { activeDocument, resetWorkspace, useWorkspaceStore } from "./workspace";
 
 const CLIENT = serializeModel(model().entity("Client", ["id*"]).build());
-
-/** Faux accès aux fichiers : répond ce que le test prévoit, retient les enregistrements. */
-function fakeFiles(overrides: Partial<FileAccess> = {}) {
-  const saved: { content: string; path: string | null }[] = [];
-  const files: FileAccess = {
-    openModel: () => Promise.resolve(null),
-    openText: () => Promise.resolve(null),
-    saveModel: (content, path) => {
-      saved.push({ content, path });
-      return Promise.resolve(path ?? "/choisi/nouveau.mcd");
-    },
-    saveExport: () => Promise.resolve(null),
-    ...overrides,
-  };
-  setFileAccess(files);
-  return saved;
-}
-
-/** Message de la boîte affichée par la commande, fermée pour la laisser se terminer. */
-async function dialogMessage(): Promise<string> {
-  await vi.waitFor(() => expect(useDialogStore.getState().queue).toHaveLength(1));
-  const [request] = useDialogStore.getState().queue;
-  settleDialog(request!.id, true);
-  return request!.message;
-}
 
 const tabs = () => useWorkspaceStore.getState().documents.length;
 

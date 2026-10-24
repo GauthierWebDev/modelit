@@ -27,6 +27,7 @@ import { DialogHost } from "./common/DialogHost";
 import { TooltipLayer } from "./common/Tooltip";
 import { DockZone, DragGhost, FloatingGroups } from "./dock/Dock";
 import { ExportDialog } from "./export/ExportDialog";
+import { DropZone } from "./files/DropZone";
 import { McpIndicator } from "./mcp/McpIndicator";
 import { OptionsDialog } from "./options/OptionsDialog";
 import { ReverseDialog } from "./reverse/ReverseDialog";
@@ -131,6 +132,7 @@ function Workbench() {
       <CollabBridge />
       <DialogHost />
       <ContextMenuLayer />
+      <DropZone />
       <TooltipLayer />
       <footer className="flex h-6 flex-none items-center gap-3 border-t border-neutral-200 bg-neutral-50 px-3 text-xs text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900">
         <span>

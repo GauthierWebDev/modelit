@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { tip } from "./Tooltip";
 
 /**
  * Menu déroulant : un bouton déclencheur, une liste d'éléments sous lui.
@@ -52,17 +53,24 @@ export function MenuItem({
   onSelect,
   children,
   shortcut,
+  disabled,
+  tooltip,
 }: {
   onSelect: () => void;
   children: ReactNode;
   shortcut?: string;
+  disabled?: boolean;
+  /** Infobulle (chemin complet d'un fichier récent…). */
+  tooltip?: string;
 }) {
   return (
     <button
       type="button"
       role="menuitem"
+      disabled={disabled}
       onClick={onSelect}
-      className="flex w-full items-center gap-2 px-3 py-1 text-left whitespace-nowrap hover:bg-neutral-100 dark:hover:bg-neutral-700"
+      {...tip(tooltip ?? null)}
+      className="flex w-full items-center gap-2 px-3 py-1 text-left whitespace-nowrap hover:bg-neutral-100 disabled:opacity-40 disabled:hover:bg-transparent dark:hover:bg-neutral-700"
     >
       <span className="w-3.5 flex-none" />
       <span className="flex-1">{children}</span>

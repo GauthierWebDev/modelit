@@ -2,6 +2,9 @@ import { isTauri } from "@tauri-apps/api/core";
 
 /** Titre et fermeture de la fenêtre, selon la plateforme. */
 
+/** Application native : fichiers désignés par leur chemin (récents, rouvrir, glisser-déposer : O-65 à O-67). */
+export const nativeFiles = () => isTauri();
+
 export async function setWindowTitle(title: string) {
   document.title = title;
   if (isTauri()) {
@@ -85,3 +88,36 @@ export const onMenuModelSettings = (handler: () => void) => onMenuEvent("menu-mo
 
 /** Élément « Close Tab » (⌘W) du menu (macOS, override O-44). */
 export const onMenuCloseTab = (handler: () => void) => onMenuEvent("menu-close-tab", handler);
+
+/**
+ * Fichiers déposés sur la fenêtre depuis le système (O-66) : `hover` au survol (vrai) et à la sortie ou au dépôt
+ * (faux), `drop` avec leurs chemins. Application native seulement ; renvoie la désinscription.
+ */
+export function onFileDrop(hover: (over: boolean) => void, drop: (paths: string[]) => void): () => void {
+  if (!isTauri()) {
+    return () => undefined;
+  }
+  let unlisten: (() => void) | undefined;
+  let disposed = false;
+  void import("@tauri-apps/api/webview").then(async ({ getCurrentWebview }) => {
+    const off = await getCurrentWebview().onDragDropEvent(({ payload }) => {
+      if (payload.type === "enter" || payload.type === "over") {
+        hover(true);
+      } else if (payload.type === "drop") {
+        hover(false);
+        drop(payload.paths);
+      } else {
+        hover(false);
+      }
+    });
+    if (disposed) {
+      off();
+    } else {
+      unlisten = off;
+    }
+  });
+  return () => {
+    disposed = true;
+    unlisten?.();
+  };
+}

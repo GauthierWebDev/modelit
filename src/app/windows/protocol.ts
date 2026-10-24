@@ -17,6 +17,8 @@ export interface MirrorState {
   documentId: string;
   doc: ModelDocument;
   name: string;
+  /** Fichier du document (« Rouvrir sans sauvegarder » depuis la barre flottante, O-67). */
+  filePath: string | null;
   dirty: boolean;
   recovered: boolean;
   undoLabel?: MessageKey;
@@ -40,6 +42,8 @@ export type MainCommand =
   | { name: "fit" }
   | { name: "autoLayout" }
   | { name: "cancelAutoLayout" }
+  | { name: "openPath"; path: string }
+  | { name: "reload" }
   | { name: "collab"; action: CollabAction };
 
 export type UiPatch = Partial<{

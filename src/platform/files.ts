@@ -106,10 +106,29 @@ function browserDownload(name: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * Modèle désigné par son chemin : autorisé pour la session par la coquille (`allow_model_file`, qui n'accepte que
+ * les `.mcd`), puis lu ; lecture et enregistrement passent ensuite par le plugin fs comme après un dialogue.
+ */
+async function readModelFile(path: string): Promise<OpenedFile | null> {
+  if (!isTauri()) {
+    throw new Error("paths cannot be read in a browser");
+  }
+  const { invoke } = await import("@tauri-apps/api/core");
+  const { exists, readTextFile } = await import("@tauri-apps/plugin-fs");
+  await invoke("allow_model_file", { path });
+  if (!(await exists(path))) {
+    return null;
+  }
+  return { path, content: await readTextFile(path) };
+}
+
 /** Adaptateur du port `FileAccess` (`app/fileAccess.ts`). */
 export const platformFiles: FileAccess = {
   openModel: openModelFile,
   openText: openTextFile,
   saveModel: saveModelFile,
   saveExport: saveExportFile,
+  readModel: readModelFile,
+  readsPaths: isTauri(),
 };

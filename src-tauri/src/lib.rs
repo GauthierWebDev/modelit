@@ -2,6 +2,7 @@
 //! Rust ne fournit que la fenêtre et l'accès au système (dialogues, fichiers, mises à jour).
 
 mod collab;
+mod files;
 mod mcp;
 
 /// Vrai si la configuration donne une adresse de mise à jour : seuls les builds de release
@@ -63,6 +64,7 @@ pub fn run() {
             collab::collab_guest_send,
             collab::collab_guest_datagram,
             collab::collab_guest_close,
+            files::allow_model_file,
             updater_configured
         ])
         .plugin(tauri_plugin_dialog::init())
