@@ -127,7 +127,7 @@ mod system {
         std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/bin/modelit"))
     }
 
-    /// Exécutable à lancer : l'AppImage elle-même si l'application en vient, sinon le binaire installé.
+    /// Exécutable à lancer : l'image `AppImage` elle-même si l'application en vient, sinon le binaire installé.
     fn executable() -> Option<String> {
         std::env::var("APPIMAGE")
             .ok()
